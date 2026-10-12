@@ -17,14 +17,22 @@ jobs:
     name: Lint, typecheck & test
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # full history for Sonar blame / new-code detection
       - uses: ./.github/actions/setup-node-deps
       - run: npm run lint -- --max-warnings=0
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm run test:ci
       - run: npm run doctor
+      # Secrets aren't available to Dependabot and fork PRs: skip the scan there.
+      - name: SonarQube Cloud scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
 
   changes:
     name: Detect native changes
