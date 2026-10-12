@@ -29,6 +29,12 @@
 - **Accessibility**: every touchable has an accessible label/role.
 - Run `npm run check` before pushing.
 
+## Code quality (SonarQube Cloud)
+
+CI runs a [SonarQube Cloud](https://sonarcloud.io/project/overview?id=someoneinthe_dishes-cook) scan after the tests and uploads Jest coverage (`coverage/lcov.info`). Configuration lives in `sonar-project.properties`. Fix new issues reported on your PR before merging.
+
+The scan is skipped when `SONAR_TOKEN` isn't available (Dependabot and fork PRs).
+
 ## Upgrading the Expo SDK
 
 Dependabot does not propose Expo SDK majors. Do it in a dedicated PR:
