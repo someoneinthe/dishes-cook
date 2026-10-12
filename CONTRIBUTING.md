@@ -61,6 +61,8 @@ The scan is skipped when `SONAR_TOKEN` isn't available (Dependabot and fork PRs)
 
 Dependabot opens grouped update PRs weekly, only for versions **published at least 7 days ago** (`cooldown` in `.github/dependabot.yml`). The same rule is **enforced locally and in CI** by `min-release-age=7` in `.npmrc`: `npm install` / `npx expo install` pick the newest version that is at least 7 days old. `engines.npm >= 11.10.0` + `engine-strict` make older npm versions (which would silently ignore the setting) fail. Dependabot security updates are not delayed.
 
+`npm run doctor` runs `expo-doctor` without its online dependency check (it demands Expo's latest patches, which the 7-day rule refuses for a week) and `scripts/check-expo-dependencies.mjs` instead: installed Expo SDK packages must match the ranges of the **installed** `expo` package (`bundledNativeModules.json`), so wrong SDK or minor versions still fail.
+
 ## Upgrading the Expo SDK
 
 Dependabot does not propose Expo SDK majors, nor majors of the toolchain coupled to the SDK (TypeScript — minors too, `typescript-eslint` caps it — and Jest). Upgrade them together in a dedicated PR:
