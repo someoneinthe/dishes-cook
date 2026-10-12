@@ -93,12 +93,10 @@ reviews:
 knowledge_base:
   code_guidelines:
     enabled: true
+    # AGENTS.md and CLAUDE.md are discovered by default and apply to every path (their rules are
+    # repo-wide). Add the docs CodeRabbit doesn't pick up on its own.
     filePatterns:
-      # Code conventions (structure, styling, tests, accessibility) for the app sources.
-      - files: 'CONTRIBUTING.md,AGENTS.md,CLAUDE.md'
-        applyTo: 'src/**,app.config.ts,index.ts'
-      # Stack, workflow and release rules for everything else (CI, config, docs).
-      - files: 'docs/tech-stack.md,docs/release.md,CONTRIBUTING.md'
+      - files: 'CONTRIBUTING.md,docs/tech-stack.md,docs/release.md'
         applyTo: '**/*'
 
 chat:
