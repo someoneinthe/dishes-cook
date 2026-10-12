@@ -1,0 +1,42 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore
+      include: scope
+    # Expo SDK packages move together: upgrade them via `npx expo install expo@^<next> --fix`,
+    # not one by one. Only patch/minor updates inside the current SDK are proposed here.
+    ignore:
+      - dependency-name: 'expo'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'expo-*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'jest-expo'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'eslint-config-expo'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react'
+      - dependency-name: 'react-dom'
+      - dependency-name: 'react-native'
+      - dependency-name: 'react-native-*'
+      - dependency-name: '@types/react'
+    groups:
+      expo-sdk:
+        patterns: ['expo', 'expo-*', 'jest-expo', 'eslint-config-expo']
+      dev-tooling:
+        dependency-type: development
+        exclude-patterns: ['expo', 'expo-*', 'jest-expo', 'eslint-config-expo']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']

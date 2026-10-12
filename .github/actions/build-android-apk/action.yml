@@ -1,0 +1,66 @@
+name: Build Android APK
+description: Prebuild the native Android project and assemble a release APK, signed when a keystore is provided.
+inputs:
+  keystore-base64:
+    description: Base64-encoded upload keystore (.jks). When empty, the APK keeps the debug signature.
+    required: false
+    default: ''
+  keystore-password:
+    required: false
+    default: ''
+  key-alias:
+    required: false
+    default: ''
+  key-password:
+    required: false
+    default: ''
+  output-name:
+    description: File name of the produced APK.
+    required: true
+outputs:
+  apk-path:
+    description: Path of the built APK.
+    value: ${{ steps.output.outputs.apk-path }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      with:
+        distribution: temurin
+        java-version: '17'
+
+    - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+    - name: Generate native project
+      shell: bash
+      run: npx expo prebuild --platform android --no-install --clean
+
+    - name: Assemble release APK
+      shell: bash
+      working-directory: android
+      run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+    - name: Sign APK
+      if: inputs.keystore-base64 != ''
+      shell: bash
+      env:
+        KEYSTORE_BASE64: ${{ inputs.keystore-base64 }}
+        KEYSTORE_PASSWORD: ${{ inputs.keystore-password }}
+        KEY_ALIAS: ${{ inputs.key-alias }}
+        KEY_PASSWORD: ${{ inputs.key-password }}
+      run: |
+        keystore="$RUNNER_TEMP/release.jks"
+        echo "$KEYSTORE_BASE64" | base64 --decode > "$keystore"
+        apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
+        "$apksigner" sign \
+          --ks "$keystore" --ks-pass env:KEYSTORE_PASSWORD \
+          --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASSWORD \
+          android/app/build/outputs/apk/release/app-release.apk
+        "$apksigner" verify --print-certs android/app/build/outputs/apk/release/app-release.apk
+        rm -f "$keystore"
+
+    - id: output
+      shell: bash
+      run: |
+        mv android/app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/${{ inputs.output-name }}"
+        echo "apk-path=$RUNNER_TEMP/${{ inputs.output-name }}" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, typecheck & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-node-deps
+      - run: npm run lint -- --max-warnings=0
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm run test:ci
+      - run: npm run doctor
+
+  changes:
+    name: Detect native changes
+    runs-on: ubuntu-latest
+    outputs:
+      native: ${{ steps.filter.outputs.native }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            native:
+              - 'package.json'
+              - 'package-lock.json'
+              - 'app.config.ts'
+              - 'assets/**'
+              - '.github/actions/build-android-apk/**'
+
+  android-build:
+    name: Android build
+    needs: [checks, changes]
+    if: needs.changes.outputs.native == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-node-deps
+      - uses: ./.github/actions/build-android-apk
+        id: build
+        with:
+          output-name: dishes-cook-${{ github.sha }}.apk
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-apk
+          path: ${{ steps.build.outputs.apk-path }}
+          retention-days: 7
