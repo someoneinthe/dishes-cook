@@ -4,7 +4,7 @@
 > **Draft project — not usable yet.** Only the project foundations (tooling, CI, release pipeline) exist; the app has no features so far.
 
 > [!NOTE]
-> **Built with AI.** This repository is created and maintained with AI: code, configuration, CI and documentation are written by [Claude Code](https://claude.com/claude-code) (Anthropic), under the direction and review of the repository owner. Pull requests are also reviewed by [CodeRabbit](https://www.coderabbit.ai/).
+> **Built with AI.** This repository is created and maintained with AI: code, configuration, CI and documentation are written by [Claude Code](https://claude.com/claude-code) (Anthropic), under the direction and review of the repository owner. Eligible pull requests (not drafts or bot PRs) are also reviewed automatically by [CodeRabbit](https://www.coderabbit.ai/).
 
 Mobile app that helps you decide what to eat, picking from the recipes you've saved.
 
