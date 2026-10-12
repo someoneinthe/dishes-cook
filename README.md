@@ -42,3 +42,7 @@ The first native build downloads the Android NDK, SDK platform and build-tools (
 - [Tech stack & decisions](docs/tech-stack.md)
 - [Contributing: workflow & conventions](CONTRIBUTING.md)
 - [Release process](docs/release.md)
+
+## License
+
+[MIT](LICENSE) © Florian Casset
