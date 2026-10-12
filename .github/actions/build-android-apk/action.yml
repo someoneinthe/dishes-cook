@@ -1,6 +1,14 @@
 name: Build Android APK
-description: Prebuild the native Android project and assemble a release APK, signed when a keystore is provided.
+description: Prebuild the native Android project and assemble an APK (release, signed when a keystore is provided; or debug for CI checks).
 inputs:
+  variant:
+    description: '`release` (bundled JS, signable) or `debug` (faster: no JS bundle, for CI checks).'
+    required: false
+    default: release
+  architectures:
+    description: Comma-separated ABIs to build.
+    required: false
+    default: arm64-v8a,armeabi-v7a
   keystore-base64:
     description: Base64-encoded upload keystore (.jks). When empty, the APK keeps the debug signature.
     required: false
@@ -35,13 +43,16 @@ runs:
       shell: bash
       run: npx expo prebuild --platform android --no-install --clean
 
-    - name: Assemble release APK
+    - name: Assemble ${{ inputs.variant }} APK
       shell: bash
       working-directory: android
-      run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+      env:
+        VARIANT: ${{ inputs.variant }}
+        ARCHITECTURES: ${{ inputs.architectures }}
+      run: ./gradlew "assemble${VARIANT^}" --no-daemon -PreactNativeArchitectures="$ARCHITECTURES"
 
     - name: Sign APK
-      if: inputs.keystore-base64 != ''
+      if: inputs.variant == 'release' && inputs.keystore-base64 != ''
       shell: bash
       env:
         KEYSTORE_BASE64: ${{ inputs.keystore-base64 }}
@@ -62,5 +73,5 @@ runs:
     - id: output
       shell: bash
       run: |
-        mv android/app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/${{ inputs.output-name }}"
+        mv "android/app/build/outputs/apk/${{ inputs.variant }}/app-${{ inputs.variant }}.apk" "$RUNNER_TEMP/${{ inputs.output-name }}"
         echo "apk-path=$RUNNER_TEMP/${{ inputs.output-name }}" >> "$GITHUB_OUTPUT"

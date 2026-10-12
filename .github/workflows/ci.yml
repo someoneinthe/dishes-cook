@@ -31,44 +31,63 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:ci
       - run: npm run doctor
+      # The Android check builds a debug APK, which doesn't contain the JS bundle: bundle it here.
+      - name: Bundle JS for Android (Metro)
+        run: npx expo export --platform android --output-dir "$RUNNER_TEMP/expo-export"
       # Secrets aren't available to Dependabot and fork PRs: skip the scan there.
       - name: SonarQube Cloud scan
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
 
   changes:
+    # Native fingerprint (@expo/fingerprint: native deps, config plugins, app config, native
+    # assets) + the build action and this workflow. The Android build only runs for a combination that
+    # hasn't been built successfully yet (cache marker), so JS-only changes and rebases skip it.
     name: Detect native changes
     runs-on: ubuntu-latest
     outputs:
-      native: ${{ steps.filter.outputs.native }}
+      cache-key: ${{ steps.key.outputs.cache-key }}
+      is-built: ${{ steps.lookup.outputs.cache-hit }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        id: filter
+      - uses: ./.github/actions/setup-node-deps
+      - name: Compute native fingerprint
+        id: key
+        env:
+          BUILD_ACTION_HASH: ${{ hashFiles('.github/actions/build-android-apk/**', '.github/workflows/ci.yml') }}
+        run: |
+          fingerprint="$(npx fingerprint fingerprint:generate --platform android | jq -r .hash)"
+          echo "Android native fingerprint: $fingerprint"
+          echo "cache-key=android-debug-arm64-$fingerprint-$BUILD_ACTION_HASH" >> "$GITHUB_OUTPUT"
+      - name: Look up a previous successful build
+        id: lookup
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          filters: |
-            native:
-              - 'package.json'
-              - 'package-lock.json'
-              - 'app.config.ts'
-              - 'assets/**'
-              - '.github/actions/build-android-apk/**'
+          path: .android-build-ok
+          key: ${{ steps.key.outputs.cache-key }}
+          lookup-only: true
 
   android-build:
+    # Skipped (= passing) when this native fingerprint was already built on this branch or on main.
+    # Run the workflow manually to force a build.
     name: Android build
     needs: [checks, changes]
-    if: needs.changes.outputs.native == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.changes.outputs.is-built != 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-node-deps
+      # PR check: does the native project compile? Debug + one ABI is enough and ~2x faster;
+      # the release workflow builds the full signed APK.
       - uses: ./.github/actions/build-android-apk
-        id: build
         with:
-          output-name: dishes-cook-${{ github.sha }}.apk
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+          architectures: arm64-v8a
+          output-name: dishes-cook-${{ github.sha }}-debug.apk
+          variant: debug
+      - name: Record the successful build
+        run: echo '${{ needs.changes.outputs.cache-key }}' > .android-build-ok
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          name: android-apk
-          path: ${{ steps.build.outputs.apk-path }}
-          retention-days: 7
+          path: .android-build-ok
+          key: ${{ needs.changes.outputs.cache-key }}

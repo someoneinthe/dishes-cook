@@ -5,7 +5,7 @@
 1. Branch from `main`: `feat/<short-topic>`, `fix/<short-topic>`, `chore/<short-topic>`.
 2. Commit using [Conventional Commits](https://www.conventionalcommits.org/) — enforced by commitlint in the `commit-msg` hook.
 3. Open a PR **assigned to yourself** (`gh pr create --assignee @me`). Its **title must be a Conventional Commit** (checked in CI) because PRs are **squash-merged** and the title becomes the commit on `main`.
-4. **Every CI job must complete successfully** before merging (enforced by the `main` ruleset): lint, format, typecheck, tests, expo-doctor, SonarQube Cloud, CodeQL, dependency review, and the Android build when dependencies, `app.config.ts` or assets change. See [the required checks](docs/release.md#1-repository-settings-already-applied).
+4. **Every CI job must complete successfully** before merging (enforced by the `main` ruleset): lint, format, typecheck, tests, expo-doctor, SonarQube Cloud, CodeQL, dependency review, a Metro bundle of the JS, and a debug Android build (arm64) **only when the native fingerprint changed** (native dependencies, config plugins, `app.config.ts`, native assets — computed with `@expo/fingerprint`). A fingerprint already built on your branch or on `main` is skipped, so JS-only changes and rebases don't rebuild; run the CI workflow manually to force a build. See [the required checks](docs/release.md#1-repository-settings-already-applied).
 5. Keep the branch up to date by **rebasing, never merging** `main` into it: `git rebase origin/main` then `git push --force-with-lease` (or `gh pr update-branch --rebase`). History on branches stays linear.
 6. Squash-merge. Never push directly to `main`.
 

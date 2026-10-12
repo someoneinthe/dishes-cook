@@ -24,16 +24,16 @@ These are configured on GitHub; keep them in sync if you change workflows or job
 - **Settings → Environments**: `release` environment, deployable from `main` only; it holds the signing secrets below.
 - **Settings → Rules → Rulesets → `main`**: no direct pushes, force-pushes or deletion; changes land through a squash-merged PR once **every CI job** has completed successfully **on a branch that is up to date with `main`** (rebase first, see CONTRIBUTING), so two PRs that pass separately can't break `main` together:
 
-  | Required check                 | Workflow                                     |
-  | ------------------------------ | -------------------------------------------- |
-  | Lint, typecheck & test         | `ci.yml` (includes the SonarQube Cloud scan) |
-  | Detect native changes          | `ci.yml`                                     |
-  | Android build                  | `ci.yml` (a skipped run counts as passed)    |
-  | Conventional PR title          | `pr-title.yml`                               |
-  | CodeQL (javascript-typescript) | `codeql.yml`                                 |
-  | CodeQL (actions)               | `codeql.yml`                                 |
-  | CodeQL (code scanning result)  | GitHub Advanced Security                     |
-  | Dependency review              | `dependency-review.yml`                      |
+  | Required check                 | Workflow                                                                                      |
+  | ------------------------------ | --------------------------------------------------------------------------------------------- |
+  | Lint, typecheck & test         | `ci.yml` (includes the SonarQube Cloud scan)                                                  |
+  | Detect native changes          | `ci.yml`                                                                                      |
+  | Android build                  | `ci.yml`: debug arm64 build, skipped (= passed) when the native fingerprint was already built |
+  | Conventional PR title          | `pr-title.yml`                                                                                |
+  | CodeQL (javascript-typescript) | `codeql.yml`                                                                                  |
+  | CodeQL (actions)               | `codeql.yml`                                                                                  |
+  | CodeQL (code scanning result)  | GitHub Advanced Security                                                                      |
+  | Dependency review              | `dependency-review.yml`                                                                       |
 
   Checks are pinned to the GitHub Actions / Advanced Security apps. **Renaming a job or workflow requires updating the ruleset**, otherwise PRs wait forever for the old name.
 
