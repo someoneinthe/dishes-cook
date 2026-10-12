@@ -15,6 +15,7 @@
 ## Project skills
 
 - `/new-feature <name>` — scaffold a feature folder, screen, route and test.
+- `/run-android` — build, install and run the app on an Android emulator, screenshot and inspect it.
 - `/add-dependency <pkg>` — add a package the Expo-compatible way and validate it.
 - `/upgrade-expo-sdk` — upgrade to the next Expo SDK.
 - `/release-status` — what the next release will contain and whether it's ready.
