@@ -36,6 +36,7 @@ export function LoadingScreen({ onFinish }: LoadingScreenProps) {
 
   return (
     <Animated.View
+      accessibilityHint="The app opens automatically once it has loaded"
       accessibilityLabel="Loading Dishes Cook"
       accessibilityRole="progressbar"
       accessible
