@@ -9,14 +9,20 @@ Android first (iOS later, same codebase). Built with Expo + React Native + TypeS
 
 ## Getting started
 
-Prerequisites: Node 24 with npm ≥ 11.10 (`nvm use`), and for native builds Android Studio with an emulator or a device with USB debugging, JDK 17.
+Prerequisites:
+
+- Node 24 with npm ≥ 11.10 (`nvm use`)
+- For native builds: Android Studio (SDK + an emulator, or a device with USB debugging) and **JDK 17**
+
+> **Use JDK 17, not Android Studio's bundled JDK.** Android Studio ships JDK 25, and with it the native (CMake) build fails with `A restricted method in java.lang.System has been called`. Point `JAVA_HOME` at a JDK 17, e.g. `export JAVA_HOME=$(/usr/libexec/java_home -v 17)` (or the one Gradle downloads under `~/.gradle/jdks/`).
 
 ```bash
 npm install
-npm run android     # first run: build & install the development build (Expo Go is not supported)
-npm start           # then: dev server, press "a" to open the installed development build
-npm run android     # build & install a development build on emulator/device
+npm run android     # build & install the development build, then start Metro (Expo Go is not supported)
+npm start           # later: dev server only, press "a" to open the installed development build
 ```
+
+The first native build downloads the Android NDK, SDK platform and build-tools (several GB, ~30 min); rebuilds take ~2–3 min and JS changes reload instantly. To pick a specific emulator, pass its AVD name: `npx expo run:android --device Pixel_9a`.
 
 ## Scripts
 
