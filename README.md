@@ -1,5 +1,11 @@
 # Dishes Cook
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=someoneinthe_dishes-cook&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=someoneinthe_dishes-cook)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=someoneinthe_dishes-cook&metric=coverage)](https://sonarcloud.io/summary/new_code?id=someoneinthe_dishes-cook)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=someoneinthe_dishes-cook&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=someoneinthe_dishes-cook)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=someoneinthe_dishes-cook&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=someoneinthe_dishes-cook)
+[![CI](https://github.com/someoneinthe/dishes-cook/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/someoneinthe/dishes-cook/actions/workflows/ci.yml)
+
 > [!WARNING]
 > **Draft project — not usable yet.** Only the project foundations (tooling, CI, release pipeline) exist; the app has no features so far.
 
