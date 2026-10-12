@@ -34,6 +34,8 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
     orientation: 'portrait',
     plugins: [
       'expo-router',
+      // One NDK for every native module (see the plugin).
+      './plugins/with-uniform-ndk.js',
       [
         'expo-splash-screen',
         // Android 12+ only allows a centered icon: the plate from the loading illustration.
