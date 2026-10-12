@@ -10,10 +10,10 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
   return {
     ...config,
     android: {
-      // The plate from the loading illustration on a cream background; monochrome = line art
-      // for Android 13+ themed icons.
+      // App icon (assets/source/app-icon.jpg): plate and cutlery on the icon's blue-grey;
+      // monochrome = simplified glyph for Android 13+ themed icons.
       adaptiveIcon: {
-        backgroundColor: '#FFF7ED',
+        backgroundColor: '#C0CBCF',
         foregroundImage: './assets/images/android-icon-foreground.png',
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
@@ -39,7 +39,7 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
       './plugins/with-uniform-ndk.js',
       [
         'expo-splash-screen',
-        // Android 12+ only allows a centered icon: the plate from the loading illustration.
+        // Android 12+ only allows a centered icon: the app icon's plate and cutlery.
         {
           backgroundColor: '#FFFFFF',
           // Dark mode: Material dark surface instead of a white flash before the loading screen.
