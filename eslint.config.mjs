@@ -19,10 +19,11 @@ const TS_FILES = ['**/*.ts', '**/*.tsx'];
 const TEST_FILES = ['**/*.test.ts', '**/*.test.tsx'];
 
 // eslint-config-expo already registers the @typescript-eslint plugin and parser, so only the
-// type-aware *rules* are taken from typescript-eslint (registering it twice is an error).
+// *rules* of typescript-eslint's full recommended + type-aware preset are taken (registering the
+// plugin twice is an error). Expo itself only enables a handful of TypeScript rules.
 const typeCheckedRules = Object.assign(
   {},
-  ...tseslint.configs.recommendedTypeCheckedOnly.map((config) => config.rules ?? {}),
+  ...tseslint.configs.recommendedTypeChecked.map((config) => config.rules ?? {}),
 );
 
 export default defineConfig([
@@ -173,6 +174,9 @@ export default defineConfig([
       'expo/prefer-box-shadow': 'error',
       'react-native/no-color-literals': 'error',
       'react-native/no-inline-styles': 'error',
+      // Text outside <Text> crashes at runtime ("Text strings must be rendered within a <Text>").
+      'react-native/no-raw-text': 'error',
+      'react-native/no-single-element-style-arrays': 'error',
       'react-native/no-unused-styles': 'error',
       // Android-first; switch to the `all` preset when iOS is added.
       ...reactNativeA11y.configs.android.rules,

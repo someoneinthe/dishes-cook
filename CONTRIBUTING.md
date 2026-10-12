@@ -34,10 +34,10 @@
 
 `eslint.config.mjs` (ESLint 10, flat config) follows the SPA's rule set, adapted to React Native. On top of `eslint-config-expo`:
 
-- **typescript-eslint** type-aware rules (floating/misused promises, unsafe `any`…) and the SPA's `naming-convention`: booleans start with `is`/`can`/`will`/`should`/`has`, arrays end with `List`, types are PascalCase, enum members UPPER_CASE
+- **typescript-eslint** full `recommendedTypeChecked` preset (recommended + type-aware rules: floating/misused promises, unsafe `any`, `ban-ts-comment`…) and the SPA's `naming-convention`: booleans start with `is`/`can`/`will`/`should`/`has`, arrays end with `List`, types are PascalCase, enum members UPPER_CASE
 - Core rules: `curly`, `complexity` (12), `arrow-body-style`, `object-shorthand`, `prefer-template`; unused `eslint-disable` comments are errors
 - **unicorn** (tuned like the SPA), **sonarjs**, **perfectionist** (natural sorting of imports, objects, JSX props…), **unused-imports** (auto-removed on `--fix`)
-- **react-you-might-not-need-an-effect** (strict) and **react-native** (`no-unused-styles`, `no-inline-styles`, `no-color-literals`)
+- **react-you-might-not-need-an-effect** (strict) and **react-native** (`no-raw-text`, `no-unused-styles`, `no-inline-styles`, `no-color-literals`, `no-single-element-style-arrays`)
 - **@react-native/eslint-plugin** (official, versioned with `react-native`): `no-deep-imports`, `platform-colors`; and `expo/prefer-box-shadow` (cross-platform `boxShadow` instead of `elevation` / `shadow*`)
 - **react-native-a11y** (`android` preset; switch to `all` when iOS is added): valid accessibility roles/states/values, no nested touchables
 - Tests: **jest** (`all`, with the SPA's exceptions) and **testing-library**
