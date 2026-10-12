@@ -89,5 +89,6 @@
     "eslint-plugin-react-native-a11y": {
       "eslint": "$eslint"
     }
-  }
+  },
+  "license": "MIT"
 }
