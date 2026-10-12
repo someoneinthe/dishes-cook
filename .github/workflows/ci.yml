@@ -4,13 +4,15 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch: # run manually to force an Android build
 
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Superseded PR runs are cancelled; runs on main always finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   checks:
@@ -55,7 +57,7 @@ jobs:
   android-build:
     name: Android build
     needs: [checks, changes]
-    if: needs.changes.outputs.native == 'true'
+    if: needs.changes.outputs.native == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
