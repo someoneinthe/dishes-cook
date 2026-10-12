@@ -184,6 +184,12 @@ export default defineConfig([
   {
     files: TEST_FILES,
     ...testingLibrary.configs['flat/react'],
+    rules: {
+      ...testingLibrary.configs['flat/react'].rules,
+      // React Native Testing Library v14 made fireEvent async (returns a Promise): it must be
+      // awaited, which this rule (written for the sync API) wrongly reports.
+      'testing-library/no-await-sync-events': 'off',
+    },
   },
 
   // Turns off rules that conflict with Prettier: keep it after every rule-setting config.

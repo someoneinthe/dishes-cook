@@ -1,5 +1,6 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 import { version } from './package.json';
+import palette from './src/theme/palette.json';
 
 // package.json is the single source of truth for the version (bumped by release-please).
 // Android needs a monotonically increasing integer: 1.2.3 -> 1002003.
@@ -36,10 +37,11 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
       'expo-router',
       [
         'expo-splash-screen',
+        // Android 12+ only allows a centered icon: the plate from the loading illustration.
         {
-          backgroundColor: '#208AEF',
+          backgroundColor: palette.wood,
           image: './assets/images/splash-icon.png',
-          imageWidth: 76,
+          imageWidth: 240,
         },
       ],
     ],
