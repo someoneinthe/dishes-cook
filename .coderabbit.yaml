@@ -3,8 +3,10 @@
 language: en-US
 
 reviews:
-  profile: chill
-  request_changes_workflow: false
+  # Thorough reviews; CodeRabbit requests changes until its comments are resolved (like the SPA).
+  profile: assertive
+  request_changes_workflow: true
+  allow_author_approval: false
   high_level_summary: true
   poem: false
   in_progress_fortune: false
@@ -53,12 +55,14 @@ reviews:
   path_instructions:
     - path: 'src/app/**'
       instructions: >-
-        Expo Router routes only. Files must stay thin re-exports of a screen from
+        Apply the project guidelines (knowledge base); when a guideline and existing code disagree,
+        the guideline wins. Expo Router routes only. Files must stay thin re-exports of a screen from
         src/features/<feature>/ (layouts excepted). Never put tests, helpers or components here:
         every file becomes a route.
     - path: 'src/**/*.{ts,tsx}'
       instructions: >-
-        Expo SDK 57 / React Native 0.86, New Architecture, Hermes, React Compiler enabled (flag
+        Apply the project guidelines (knowledge base); when a guideline and existing code disagree,
+        the guideline wins. Expo SDK 57 / React Native 0.86, New Architecture, Hermes, React Compiler enabled (flag
         unnecessary useMemo/useCallback). Styles use Unistyles (`StyleSheet` from
         react-native-unistyles) with theme tokens (theme.colors, theme.gap, theme.typography,
         theme.radius): no raw colors or magic numbers; tokens must exist in both light and dark
@@ -90,10 +94,12 @@ knowledge_base:
   code_guidelines:
     enabled: true
     filePatterns:
-      - CONTRIBUTING.md
-      - AGENTS.md
-      - CLAUDE.md
-      - docs/tech-stack.md
+      # Code conventions (structure, styling, tests, accessibility) for the app sources.
+      - files: 'CONTRIBUTING.md,AGENTS.md,CLAUDE.md'
+        applyTo: 'src/**,app.config.ts,index.ts'
+      # Stack, workflow and release rules for everything else (CI, config, docs).
+      - files: 'docs/tech-stack.md,docs/release.md,CONTRIBUTING.md'
+        applyTo: '**/*'
 
 chat:
   auto_reply: true
