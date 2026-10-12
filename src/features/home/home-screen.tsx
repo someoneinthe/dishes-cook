@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
 
 export function HomeScreen() {
   return (
@@ -10,15 +11,16 @@ export function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create((theme) => ({
   container: {
     alignItems: 'center',
+    backgroundColor: theme.colors.background,
     flex: 1,
     justifyContent: 'center',
-    padding: 16,
+    padding: theme.gap(4),
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
+    ...theme.typography.title,
+    color: theme.colors.text,
   },
-});
+}));

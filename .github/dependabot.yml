@@ -26,6 +26,8 @@ updates:
       - dependency-name: 'react'
       - dependency-name: 'react-dom'
       - dependency-name: 'react-native'
+      # Also matches react-native-unistyles + react-native-nitro-modules: upgrade those two together
+      # by hand (Unistyles' README lists the Nitro version each release needs).
       - dependency-name: 'react-native-*'
       # Versioned with react-native itself (e.g. @react-native/eslint-plugin).
       - dependency-name: '@react-native/*'

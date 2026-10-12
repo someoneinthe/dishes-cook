@@ -25,7 +25,7 @@
 - **Routes are thin**: `src/app/**` only re-exports a screen from `src/features/**`.
 - **Imports**: use the `@/` alias for `src/`; ESLint sorts import groups.
 - **Dependencies**: add with `npx expo install <pkg>` (SDK-compatible versions), not `npm install`. Prefer Expo modules over third-party ones.
-- **Styling**: `StyleSheet.create`, theme tokens in one place; support light and dark mode.
+- **Styling**: [Unistyles 3](https://www.unistyl.es/) — `import { StyleSheet } from 'react-native-unistyles'` and `StyleSheet.create((theme) => ({ … }))`. Use theme tokens (`theme.colors.*`, `theme.gap(n)`, `theme.typography.*`, `theme.radius.*` from `src/theme/themes.ts`), never raw colors or magic numbers. Light/dark themes switch automatically with the system setting; add a color token to **both** themes (TypeScript enforces it). For non-style props (e.g. navigation options) read the theme with `useUnistyles()`.
 - **Tests**: colocated `*.test.ts(x)`; query by what the user sees (`getByText`, `getByRole`), not test IDs, when possible. Pure logic (e.g. the "what to eat" picker) gets unit tests.
 - **Accessibility**: every touchable has an accessible label/role.
 - Run `npm run check` before pushing.
