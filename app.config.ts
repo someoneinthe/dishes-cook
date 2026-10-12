@@ -10,9 +10,10 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
   return {
     ...config,
     android: {
+      // The plate from the loading illustration on a cream background; monochrome = line art
+      // for Android 13+ themed icons.
       adaptiveIcon: {
-        backgroundColor: '#E6F4FE',
-        backgroundImage: './assets/images/android-icon-background.png',
+        backgroundColor: '#FFF7ED',
         foregroundImage: './assets/images/android-icon-foreground.png',
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
@@ -28,7 +29,7 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
     ios: {
       buildNumber: String(versionCode),
       bundleIdentifier: 'io.github.someoneinthe.dishescook',
-      icon: './assets/expo.icon',
+      icon: './assets/images/icon.png',
     },
     name: 'Dishes Cook',
     orientation: 'portrait',
