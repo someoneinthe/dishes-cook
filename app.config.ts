@@ -38,6 +38,12 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
         'expo-splash-screen',
         // Android 12+ only allows a centered icon: the plate from the loading illustration.
         {
+          backgroundColor: '#FFFFFF',
+          // Dark mode: Material dark surface instead of a white flash before the loading screen.
+          dark: {
+            backgroundColor: '#121212',
+            image: './assets/images/splash-icon.png',
+          },
           image: './assets/images/splash-icon.png',
           imageWidth: 240,
         },
