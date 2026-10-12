@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "0.1.0",
   "dependencies": {
+    "eslint": "^10",
     "expo": "~57.0.27",
     "expo-constants": "~57.0.21",
     "expo-font": "~57.0.4",
@@ -24,19 +25,28 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
+    "@eslint/compat": "^2.1.1",
     "@testing-library/react-native": "^14.1.0",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
-    "eslint": "^9.39.5",
+    "eslint": "^10.12.0",
     "eslint-config-expo": "^57.0.2",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jest": "^29.16.6",
+    "eslint-plugin-perfectionist": "^5.12.1",
+    "eslint-plugin-react-native": "^5.0.0",
+    "eslint-plugin-react-you-might-not-need-an-effect": "^1.0.2",
+    "eslint-plugin-sonarjs": "^4.2.2",
+    "eslint-plugin-testing-library": "^7.16.2",
+    "eslint-plugin-unicorn": "^77.0.0",
     "expo-doctor": "^1.20.4",
     "husky": "^9.1.7",
     "jest": "^29.7.0",
     "jest-expo": "^57.0.5",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.10",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.0"
   },
   "scripts": {
     "start": "expo start",
@@ -58,6 +68,15 @@
     "npm": ">=11.10.0"
   },
   "overrides": {
+    "eslint-plugin-react": {
+      "eslint": "$eslint"
+    },
+    "eslint-plugin-import": {
+      "eslint": "$eslint"
+    },
+    "eslint-plugin-react-native": {
+      "eslint": "$eslint"
+    },
     "xcode": {
       "uuid": "^11.1.1"
     }

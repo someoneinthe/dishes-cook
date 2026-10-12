@@ -1,5 +1,7 @@
-/** @type {import('jest').Config} */
+/**
+@type {import('jest').Config}
+*/
 module.exports = {
-  preset: 'jest-expo',
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/app/**', '!**/*.d.ts'],
+  preset: 'jest-expo',
 };

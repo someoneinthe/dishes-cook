@@ -29,6 +29,18 @@
 - **Accessibility**: every touchable has an accessible label/role.
 - Run `npm run check` before pushing.
 
+## Linting
+
+`eslint.config.mjs` (ESLint 10, flat config) layers, on top of `eslint-config-expo`:
+
+- **typescript-eslint** type-aware rules (`recommendedTypeCheckedOnly`: floating promises, misused promises, unsafe `any`…)
+- **unicorn**, **sonarjs**, **perfectionist** (natural sorting of imports, objects, JSX props…) — aligned with the SPA
+- **react-you-might-not-need-an-effect** (strict) and **react-native** (`no-unused-styles`, `no-inline-styles`, `no-color-literals`)
+- **jest** and **testing-library** on test files
+- **eslint-config-prettier** last (Prettier owns formatting)
+
+`eslint-plugin-react` and `eslint-plugin-import` (bundled by Expo) and `eslint-plugin-react-native` don't declare ESLint 10 support yet: npm `overrides` in `package.json` let them install with our ESLint, and `@eslint/compat` shims the APIs ESLint 10 removed. Drop both workarounds once those plugins support ESLint 10.
+
 ## Code quality (SonarQube Cloud)
 
 CI runs a [SonarQube Cloud](https://sonarcloud.io/project/overview?id=someoneinthe_dishes-cook) scan after the tests and uploads Jest coverage (`coverage/lcov.info`). Configuration lives in `sonar-project.properties`. Fix new issues reported on your PR before merging.
@@ -41,11 +53,11 @@ Dependabot opens grouped update PRs weekly, only for versions **published at lea
 
 ## Upgrading the Expo SDK
 
-Dependabot does not propose Expo SDK majors, nor majors of the toolchain coupled to the SDK (TypeScript — minors too, `typescript-eslint` caps it —, ESLint, Jest). Upgrade them together in a dedicated PR:
+Dependabot does not propose Expo SDK majors, nor majors of the toolchain coupled to the SDK (TypeScript — minors too, `typescript-eslint` caps it — and Jest). Upgrade them together in a dedicated PR:
 
 ```bash
 npx expo install expo@^<next> --fix
 npx expo-doctor
 ```
 
-Then bump `typescript`, `eslint`, `jest` and `@types/jest` to the versions the new `jest-expo` / `eslint-config-expo` support, read the SDK changelog and test on a device.
+Then bump `typescript`, `jest` and `@types/jest` to the versions the new `jest-expo` / `eslint-config-expo` support, read the SDK changelog and test on a device.
