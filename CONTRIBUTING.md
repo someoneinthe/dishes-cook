@@ -37,11 +37,11 @@ The scan is skipped when `SONAR_TOKEN` isn't available (Dependabot and fork PRs)
 
 ## Upgrading the Expo SDK
 
-Dependabot does not propose Expo SDK majors. Do it in a dedicated PR:
+Dependabot does not propose Expo SDK majors, nor majors of the toolchain coupled to the SDK (TypeScript — minors too, `typescript-eslint` caps it —, ESLint, Jest). Upgrade them together in a dedicated PR:
 
 ```bash
 npx expo install expo@^<next> --fix
 npx expo-doctor
 ```
 
-Then read the SDK changelog and test on a device.
+Then bump `typescript`, `eslint`, `jest` and `@types/jest` to the versions the new `jest-expo` / `eslint-config-expo` support, read the SDK changelog and test on a device.

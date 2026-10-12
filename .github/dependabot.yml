@@ -24,6 +24,16 @@ updates:
       - dependency-name: 'react-native'
       - dependency-name: 'react-native-*'
       - dependency-name: '@types/react'
+      # Toolchain coupled to the SDK: typescript-eslint (via eslint-config-expo) caps TypeScript,
+      # jest-expo pins Jest, eslint-config-expo pins its ESLint plugins. Bump majors with the SDK.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'jest'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/jest'
+        update-types: ['version-update:semver-major']
     groups:
       expo-sdk:
         patterns: ['expo', 'expo-*', 'jest-expo', 'eslint-config-expo']
