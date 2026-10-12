@@ -4,6 +4,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Only propose versions published at least 7 days ago (lets bad releases get yanked first).
+    # Security updates are not delayed.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 10
     commit-message:
       prefix: chore
@@ -45,6 +49,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Only propose versions published at least 7 days ago (lets bad releases get yanked first).
+    # Security updates are not delayed.
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: ci
     groups:
