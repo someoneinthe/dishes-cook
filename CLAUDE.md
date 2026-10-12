@@ -8,6 +8,8 @@
 - **Dependencies**: always `npx expo install <pkg>`; justify any new dependency in the PR description.
 - **Generated / release-owned files — never edit by hand**: `android/`, `ios/`, `CHANGELOG.md`, `.release-please-manifest.json`, and the `version` field in `package.json` (release-please owns them).
 - **Commits & PRs**: Conventional Commits; the PR title is the squash commit and drives the version bump (`feat` → minor, `fix` → patch). Branch from `main` as `feat/…`, `fix/…`, `chore/…`.
+- **Never merge, always rebase**: never bring `main` into a branch with a merge commit (no `git merge main`, no default `gh pr update-branch`). Rebase instead (`git rebase origin/main` then `git push --force-with-lease`, or `gh pr update-branch --rebase`). Force-push only feature branches, never `main`.
+- **Assign PRs to the author**: always open PRs with `gh pr create --assignee @me`.
 - **Expo APIs change every SDK**: check the versioned docs for the installed `expo` major (see above) instead of relying on memory.
 
 ## Project skills

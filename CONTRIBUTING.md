@@ -4,9 +4,10 @@
 
 1. Branch from `main`: `feat/<short-topic>`, `fix/<short-topic>`, `chore/<short-topic>`.
 2. Commit using [Conventional Commits](https://www.conventionalcommits.org/) — enforced by commitlint in the `commit-msg` hook.
-3. Open a PR. Its **title must be a Conventional Commit** (checked in CI) because PRs are **squash-merged** and the title becomes the commit on `main`.
+3. Open a PR **assigned to yourself** (`gh pr create --assignee @me`). Its **title must be a Conventional Commit** (checked in CI) because PRs are **squash-merged** and the title becomes the commit on `main`.
 4. **Every CI job must complete successfully** before merging (enforced by the `main` ruleset): lint, format, typecheck, tests, expo-doctor, SonarQube Cloud, CodeQL, dependency review, and the Android build when dependencies, `app.config.ts` or assets change. See [the required checks](docs/release.md#1-repository-settings-already-applied).
-5. Squash-merge. Never push directly to `main`.
+5. Keep the branch up to date by **rebasing, never merging** `main` into it: `git rebase origin/main` then `git push --force-with-lease` (or `gh pr update-branch --rebase`). History on branches stays linear.
+6. Squash-merge. Never push directly to `main`.
 
 ### Commit types and their release impact
 
