@@ -1,0 +1,99 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit review settings: https://docs.coderabbit.ai/reference/configuration
+language: en-US
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  in_progress_fortune: false
+  sequence_diagrams: false
+  # Linting, typing, tests, CodeQL and Sonar already run in CI: don't duplicate them.
+  tools:
+    eslint:
+      enabled: false
+    biome:
+      enabled: false
+    markdownlint:
+      enabled: false # Prettier owns Markdown formatting
+    languagetool:
+      enabled: false
+    # Not covered by CI: keep them.
+    actionlint:
+      enabled: true
+    zizmor:
+      enabled: true
+    shellcheck:
+      enabled: true
+    gitleaks:
+      enabled: true
+  auto_review:
+    enabled: true
+    drafts: false
+    # Also review PRs stacked on another branch, not only those targeting main.
+    base_branches: ['.*']
+    ignore_usernames: ['dependabot[bot]', 'github-actions[bot]']
+  path_filters:
+    - '!package-lock.json'
+    - '!CHANGELOG.md'
+    - '!.release-please-manifest.json'
+    - '!assets/**'
+    - '!android/**'
+    - '!ios/**'
+  pre_merge_checks:
+    title:
+      mode: warning
+      requirements: >-
+        Conventional Commits (`feat:`, `fix:`, `chore:`, `ci:`, `docs:`, `build:`, `refactor:`,
+        `test:`, `perf:`), imperative, lowercase after the type. PRs are squash-merged: the title
+        is the commit on main and drives the release version.
+    docstrings:
+      mode: 'off'
+  path_instructions:
+    - path: 'src/app/**'
+      instructions: >-
+        Expo Router routes only. Files must stay thin re-exports of a screen from
+        src/features/<feature>/ (layouts excepted). Never put tests, helpers or components here:
+        every file becomes a route.
+    - path: 'src/**/*.{ts,tsx}'
+      instructions: >-
+        Expo SDK 57 / React Native 0.86, New Architecture, Hermes, React Compiler enabled (flag
+        unnecessary useMemo/useCallback). Styles use Unistyles (`StyleSheet` from
+        react-native-unistyles) with theme tokens (theme.colors, theme.gap, theme.typography,
+        theme.radius): no raw colors or magic numbers; tokens must exist in both light and dark
+        themes. Touchables need accessibility role/label/hint. Data is local-only: flag any
+        network call, analytics, or account logic. Flag APIs Hermes lacks (structuredClone,
+        top-level await…).
+    - path: 'src/**/*.test.{ts,tsx}'
+      instructions: >-
+        Jest + React Native Testing Library v14 (render and fireEvent are async and awaited).
+        Query by role/text as a user would; avoid testing implementation details.
+    - path: 'app.config.ts'
+      instructions: >-
+        Native config (Continuous Native Generation: android/ and ios/ are generated, never
+        edited). The version comes from package.json (release-please). Changes here alter the
+        native fingerprint and trigger a native rebuild.
+    - path: '.github/**'
+      instructions: >-
+        Actions are pinned to full commit SHAs with a version comment; least-privilege
+        `permissions`. Required check names (see docs/release.md) must not change without
+        updating the main ruleset.
+    - path: 'package.json'
+      instructions: >-
+        Dependencies are added with `npx expo install` (SDK-compatible versions) and must be at
+        least 7 days old (.npmrc min-release-age). Expo SDK-coupled packages (expo*, react-native*,
+        jest-expo, babel-preset-expo, eslint-config-expo, @react-native/*) move together with the
+        SDK. The `version` field is owned by release-please.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - CONTRIBUTING.md
+      - AGENTS.md
+      - CLAUDE.md
+      - docs/tech-stack.md
+
+chat:
+  auto_reply: true
