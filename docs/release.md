@@ -22,7 +22,7 @@ These are configured on GitHub; keep them in sync if you change workflows or job
 - **Settings → Actions → General → Workflow permissions**: read-only default token, and _Allow GitHub Actions to create and approve pull requests_ enabled (needed for the release PR).
 - **Settings → General → Pull Requests**: squash merging only, commit title = PR title, branches deleted after merge.
 - **Settings → Environments**: `release` environment, deployable from `main` only; it holds the signing secrets below.
-- **Settings → Rules → Rulesets → `main`**: no direct pushes, force-pushes or deletion; changes land through a squash-merged PR once **every CI job** has completed successfully:
+- **Settings → Rules → Rulesets → `main`**: no direct pushes, force-pushes or deletion; changes land through a squash-merged PR once **every CI job** has completed successfully **on a branch that is up to date with `main`** (rebase first, see CONTRIBUTING), so two PRs that pass separately can't break `main` together:
 
   | Required check                 | Workflow                                     |
   | ------------------------------ | -------------------------------------------- |
