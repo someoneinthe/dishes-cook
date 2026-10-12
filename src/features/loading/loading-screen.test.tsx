@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import * as SplashScreen from 'expo-splash-screen';
+import { hide as hideSplashScreen } from 'expo-splash-screen';
 import { FADE_OUT_MS, LoadingScreen, MIN_DISPLAY_MS } from './loading-screen';
 
 jest.mock('expo-splash-screen', () => ({ hide: jest.fn() }));
@@ -21,12 +21,12 @@ describe('loadingScreen', () => {
 
     await render(<LoadingScreen onFinish={jest.fn()} />);
 
-    expect(SplashScreen.hide).not.toHaveBeenCalled();
+    expect(hideSplashScreen).not.toHaveBeenCalled();
 
     await fireEvent(screen.getByTestId('loading-screen'), 'layout', layoutEvent);
 
     expect(screen.getByRole('progressbar', { name: 'Loading Dishes Cook' })).toBeOnTheScreen();
-    expect(SplashScreen.hide).toHaveBeenCalledTimes(1);
+    expect(hideSplashScreen).toHaveBeenCalledTimes(1);
   });
 
   it('fades out after the minimum display time once the illustration is displayed', async () => {

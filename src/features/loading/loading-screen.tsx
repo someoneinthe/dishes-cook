@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import * as SplashScreen from 'expo-splash-screen';
+import { hide as hideSplashScreen } from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { Animated } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
@@ -21,16 +21,16 @@ export function LoadingScreen({ onFinish }: LoadingScreenProps) {
   const [isImageDisplayed, setIsImageDisplayed] = useState(false);
 
   useEffect(() => {
-    if (!isImageDisplayed) {
-      return;
-    }
-    const timeout = setTimeout(() => {
-      Animated.timing(opacity, {
-        duration: FADE_OUT_MS,
-        toValue: 0,
-        useNativeDriver: true,
-      }).start(() => onFinish());
-    }, MIN_DISPLAY_MS);
+    // The fade-out is only scheduled once the illustration is displayed.
+    const timeout = isImageDisplayed
+      ? setTimeout(() => {
+          Animated.timing(opacity, {
+            duration: FADE_OUT_MS,
+            toValue: 0,
+            useNativeDriver: true,
+          }).start(() => onFinish());
+        }, MIN_DISPLAY_MS)
+      : undefined;
     return () => clearTimeout(timeout);
   }, [isImageDisplayed, onFinish, opacity]);
 
@@ -43,7 +43,7 @@ export function LoadingScreen({ onFinish }: LoadingScreenProps) {
       // Hide the native splash as soon as this screen is laid out, not when the image is
       // displayed: while the splash is kept, Android blocks the first draw, so the image would
       // never load (deadlock).
-      onLayout={() => SplashScreen.hide()}
+      onLayout={() => hideSplashScreen()}
       style={[styles.container, { opacity }]}
       testID="loading-screen"
     >
