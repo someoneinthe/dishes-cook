@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { Animated, StyleSheet } from 'react-native';
+import { Animated } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
 import loadingImage from '@/assets/images/loading-screen.webp';
 
 // How long the illustration stays fully visible once it's displayed.
@@ -57,7 +58,7 @@ export function LoadingScreen({ onFinish }: LoadingScreenProps) {
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     pointerEvents: 'none',
   },
   image: {

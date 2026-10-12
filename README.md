@@ -13,7 +13,8 @@ Prerequisites: Node 24 with npm ≥ 11.10 (`nvm use`), and for native builds And
 
 ```bash
 npm install
-npm start           # dev server: press "a" to open on Android (Expo Go or a dev build)
+npm run android     # first run: build & install the development build (Expo Go is not supported)
+npm start           # then: dev server, press "a" to open the installed development build
 npm run android     # build & install a development build on emulator/device
 ```
 
