@@ -3,7 +3,6 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { Animated, StyleSheet } from 'react-native';
 import loadingImage from '@/assets/images/loading-screen.webp';
-import { colors } from '@/theme/colors';
 
 // How long the illustration stays fully visible once it's displayed.
 export const MIN_DISPLAY_MS = 1500;
@@ -14,8 +13,8 @@ type LoadingScreenProps = Readonly<{
   onFinish: () => void;
 }>;
 
-// Full-screen illustration shown over the app at startup. The native splash screen (plate on a
-// wood background) is kept until this image is rendered, then this screen fades out.
+// Full-screen illustration shown over the app at startup. The native splash screen (the plate) is
+// kept until this image is rendered, then this screen fades out.
 export function LoadingScreen({ onFinish }: LoadingScreenProps) {
   const [opacity] = useState(() => new Animated.Value(1));
   const [isImageDisplayed, setIsImageDisplayed] = useState(false);
@@ -58,7 +57,6 @@ export function LoadingScreen({ onFinish }: LoadingScreenProps) {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: colors.wood,
     pointerEvents: 'none',
   },
   image: {
