@@ -10,6 +10,7 @@ Scaffold the feature `$ARGUMENTS` following `docs/tech-stack.md` and `CONTRIBUTI
 2. Create:
    - `src/features/<feature>/<feature>-screen.tsx` — named export `<Feature>Screen`, Unistyles `StyleSheet.create((theme) => …)` using theme tokens (no raw colors), accessible labels on touchables.
    - `src/features/<feature>/<feature>-screen.test.tsx` — React Native Testing Library test querying by visible text/role; mock `expo-router` only if the screen uses it.
+   - For user-facing behaviour: `src/features/<feature>/<feature>.feature` (Gherkin scenarios) + `<feature>.steps.test.tsx` (jest-cucumber step definitions), see `src/features/loading/`.
    - The route file under `src/app/` containing only `export { <Feature>Screen as default } from '@/features/<feature>/<feature>-screen';`
    - Subfolders (`components/`, `hooks/`, `db/`) only when the feature actually needs them.
 3. If the screen needs a layout change (tabs, stack options), edit the nearest `_layout.tsx`.

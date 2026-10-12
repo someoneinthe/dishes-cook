@@ -209,6 +209,18 @@ export default defineConfig([
     },
   },
 
+  {
+    // Gherkin step definitions (jest-cucumber): `loadFeature` runs at module level, `defineFeature`
+    // creates the describe block, and assertions live in step callbacks shared across scenarios.
+    files: ['**/*.steps.test.ts', '**/*.steps.test.tsx'],
+    rules: {
+      'jest/no-standalone-expect': 'off',
+      'jest/require-hook': 'off',
+      'jest/require-top-level-describe': 'off',
+      'sonarjs/assertions-in-tests': 'off',
+    },
+  },
+
   // Turns off rules that conflict with Prettier: keep it after every rule-setting config.
   prettierConfig,
   {

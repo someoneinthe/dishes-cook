@@ -73,6 +73,12 @@ reviews:
       instructions: >-
         Jest + React Native Testing Library v14 (render and fireEvent are async and awaited).
         Query by role/text as a user would; avoid testing implementation details.
+    - path: '**/*.feature'
+      instructions: >-
+        Gherkin behaviour specs: scenarios describe what the user sees or does, in plain English,
+        without implementation details (no component names, test IDs or timings beyond what the
+        user notices). Every step must have a matching definition in the sibling
+        `*.steps.test.tsx`.
     - path: 'app.config.ts'
       instructions: >-
         Native config (Continuous Native Generation: android/ and ios/ are generated, never
