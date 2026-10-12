@@ -35,6 +35,10 @@ CI runs a [SonarQube Cloud](https://sonarcloud.io/project/overview?id=someoneint
 
 The scan is skipped when `SONAR_TOKEN` isn't available (Dependabot and fork PRs).
 
+## Dependency updates
+
+Dependabot opens grouped update PRs weekly, only for versions **published at least 7 days ago** (`cooldown` in `.github/dependabot.yml`). The same rule is **enforced locally and in CI** by `min-release-age=7` in `.npmrc`: `npm install` / `npx expo install` pick the newest version that is at least 7 days old. `engines.npm >= 11.10.0` + `engine-strict` make older npm versions (which would silently ignore the setting) fail. Dependabot security updates are not delayed.
+
 ## Upgrading the Expo SDK
 
 Dependabot does not propose Expo SDK majors, nor majors of the toolchain coupled to the SDK (TypeScript — minors too, `typescript-eslint` caps it —, ESLint, Jest). Upgrade them together in a dedicated PR:

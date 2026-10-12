@@ -9,7 +9,7 @@ Android first (iOS later, same codebase). Built with Expo + React Native + TypeS
 
 ## Getting started
 
-Prerequisites: Node 24 (`nvm use`), and for native builds Android Studio with an emulator or a device with USB debugging, JDK 17.
+Prerequisites: Node 24 with npm ≥ 11.10 (`nvm use`), and for native builds Android Studio with an emulator or a device with USB debugging, JDK 17.
 
 ```bash
 npm install
