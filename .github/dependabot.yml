@@ -21,6 +21,8 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: 'jest-expo'
         update-types: ['version-update:semver-major']
+      - dependency-name: 'babel-preset-expo'
+        update-types: ['version-update:semver-major']
       - dependency-name: 'eslint-config-expo'
         update-types: ['version-update:semver-major']
       - dependency-name: 'react'
@@ -42,10 +44,10 @@ updates:
         update-types: ['version-update:semver-major']
     groups:
       expo-sdk:
-        patterns: ['expo', 'expo-*', 'jest-expo', 'eslint-config-expo']
+        patterns: ['expo', 'expo-*', 'jest-expo', 'eslint-config-expo', 'babel-preset-expo']
       dev-tooling:
         dependency-type: development
-        exclude-patterns: ['expo', 'expo-*', 'jest-expo', 'eslint-config-expo']
+        exclude-patterns: ['expo', 'expo-*', 'jest-expo', 'eslint-config-expo', 'babel-preset-expo']
 
   - package-ecosystem: github-actions
     directory: /
