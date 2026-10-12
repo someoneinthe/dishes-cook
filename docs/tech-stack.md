@@ -12,6 +12,7 @@
 | Lint / format      | ESLint 9 flat config (`eslint-config-expo`) + Prettier                  | Expo-maintained rules; Prettier owns formatting, ESLint owns correctness.                          |
 | Tests              | Jest + `jest-expo` + React Native Testing Library                       | Standard for Expo; test behaviour, not implementation.                                             |
 | E2E (later)        | Maestro                                                                 | YAML flows, easy on Android emulators in CI. Add once there are real user flows.                   |
+| Security scanning  | CodeQL (JS/TS + Actions) + Dependency review                            | Code scanning on every PR/weekly; PRs adding vulnerable or GPL deps are blocked.                   |
 | Git hooks          | Husky + lint-staged + commitlint                                        | Fast feedback before CI.                                                                           |
 | CI/CD              | GitHub Actions                                                          | Checks on every PR, Android build when native inputs change, release on merge.                     |
 | Release            | release-please + Gradle build on CI → signed APK on GitHub Releases     | No store, no paid service; versions and changelog derived from commits.                            |
