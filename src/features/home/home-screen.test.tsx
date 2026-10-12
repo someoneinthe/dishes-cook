@@ -5,7 +5,7 @@ jest.mock('expo-router', () => ({
   Stack: { Screen: () => null },
 }));
 
-describe('HomeScreen', () => {
+describe('homeScreen', () => {
   it('renders the welcome title', async () => {
     await render(<HomeScreen />);
 

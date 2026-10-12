@@ -31,13 +31,20 @@
 
 ## Linting
 
-`eslint.config.mjs` (ESLint 10, flat config) layers, on top of `eslint-config-expo`:
+`eslint.config.mjs` (ESLint 10, flat config) follows the SPA's rule set, adapted to React Native. On top of `eslint-config-expo`:
 
-- **typescript-eslint** type-aware rules (`recommendedTypeCheckedOnly`: floating promises, misused promises, unsafe `any`…)
-- **unicorn**, **sonarjs**, **perfectionist** (natural sorting of imports, objects, JSX props…) — aligned with the SPA
+- **typescript-eslint** type-aware rules (floating/misused promises, unsafe `any`…) and the SPA's `naming-convention`: booleans start with `is`/`can`/`will`/`should`/`has`, arrays end with `List`, types are PascalCase, enum members UPPER_CASE
+- Core rules: `curly`, `complexity` (12), `arrow-body-style`, `object-shorthand`, `prefer-template`; unused `eslint-disable` comments are errors
+- **unicorn** (tuned like the SPA), **sonarjs**, **perfectionist** (natural sorting of imports, objects, JSX props…), **unused-imports** (auto-removed on `--fix`)
 - **react-you-might-not-need-an-effect** (strict) and **react-native** (`no-unused-styles`, `no-inline-styles`, `no-color-literals`)
-- **jest** and **testing-library** on test files
+- Tests: **jest** (`all`, with the SPA's exceptions) and **testing-library**
 - **eslint-config-prettier** last (Prettier owns formatting)
+
+React Native specifics:
+
+- unicorn rules that push APIs Hermes / React Native lack (`structuredClone`, `Blob#text()`, `URL.canParse`, `AbortSignal.any`, top-level `await`…) are off. Iterator helpers, Set methods and `Promise.withResolvers` are off until verified on a device.
+- `sonarjs/pseudo-random` is off: picking a random recipe is the app's purpose.
+- `unicorn/filename-case` is kebab-case (`_layout.tsx` excepted), not the SPA's camel/Pascal case.
 
 `eslint-plugin-react` and `eslint-plugin-import` (bundled by Expo) and `eslint-plugin-react-native` don't declare ESLint 10 support yet: npm `overrides` in `package.json` let them install with our ESLint, and `@eslint/compat` shims the APIs ESLint 10 removed. Drop both workarounds once those plugins support ESLint 10.
 

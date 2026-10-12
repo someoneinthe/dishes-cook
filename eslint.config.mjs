@@ -9,6 +9,7 @@ import reactYouMightNotNeedAnEffect from 'eslint-plugin-react-you-might-not-need
 import sonarjs from 'eslint-plugin-sonarjs';
 import testingLibrary from 'eslint-plugin-testing-library';
 import unicorn from 'eslint-plugin-unicorn';
+import unusedImports from 'eslint-plugin-unused-imports';
 import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
@@ -27,7 +28,10 @@ export default defineConfig([
   // predate ESLint 10: @eslint/compat shims the context APIs it removed (e.g. getSourceCode).
   fixupConfigRules(expoConfig),
   {
-    ignores: ['dist/*', 'android/*', 'ios/*', 'coverage/*', '.expo/*'],
+    ignores: ['dist/*', 'android/*', 'ios/*', 'coverage/*', '.expo/*', '.claude/worktrees/*'],
+  },
+  {
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
   },
 
   // General code quality
@@ -35,25 +39,63 @@ export default defineConfig([
   sonarjs.configs.recommended,
   perfectionist.configs['recommended-natural'],
   {
+    plugins: { 'unused-imports': unusedImports },
     rules: {
-      // Import sorting is owned by perfectionist (same as the SPA).
+      // Same core rules as the SPA.
+      'arrow-body-style': ['error', 'as-needed'],
+      complexity: ['error', 12],
+      // Import sorting is owned by perfectionist.
       'import/order': 'off',
-
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-console': ['error', { allow: ['warn', 'error'] }],
+      'object-shorthand': 'error',
       'perfectionist/sort-imports': ['error', { newlinesBetween: 0, type: 'natural' }],
-
+      'perfectionist/sort-objects': ['error', { newlinesBetween: 0, type: 'natural' }],
+      'prefer-template': 'error',
       'sonarjs/deprecation': 'warn',
+      'sonarjs/no-globals-shadowing': 'error',
+      // Picking a random recipe is the app's core feature, not a security concern.
+      'sonarjs/pseudo-random': 'off',
       'sonarjs/todo-tag': 'warn',
+      // Team conventions (mirrors the SPA's unicorn tuning).
+      'unicorn/consistent-boolean-name': [
+        'error',
+        { checkFields: 'never', checkMethods: 'never', prefixes: { did: false, was: false } },
+      ],
+      'unicorn/consistent-function-scoping': 'off',
       'unicorn/filename-case': [
         'error',
         { case: 'kebabCase', ignore: [String.raw`^_layout\.tsx$`] },
       ],
+      'unicorn/name-replacements': [
+        'warn',
+        { replacements: { params: false, props: false, ref: false } },
+      ],
       'unicorn/no-array-reduce': 'warn',
-
-      // React Native / SQLite APIs use null; abbreviations like props/ref/params are idiomatic.
+      // React Native / SQLite APIs use null.
       'unicorn/no-null': 'off',
       'unicorn/no-top-level-side-effects': 'off',
-      'unicorn/prevent-abbreviations': 'off',
+      // Rules pushing APIs that Hermes / React Native don't provide (or not reliably):
+      // structuredClone, Blob#text(), URL.canParse, AbortSignal.any/timeout, Response.json,
+      // Temporal, EventTarget, top-level await (unsupported by Metro). Iterator helpers, Set
+      // methods and Promise.withResolvers stay off until verified on a device.
+      'unicorn/prefer-abort-signal-any': 'off',
+      'unicorn/prefer-abort-signal-timeout': 'off',
+      'unicorn/prefer-blob-reading-methods': 'off',
+      'unicorn/prefer-event-target': 'off',
+      'unicorn/prefer-iterator-helpers': 'off',
+      'unicorn/prefer-iterator-to-array': 'off',
+      'unicorn/prefer-iterator-to-array-at-end': 'off',
+      'unicorn/prefer-iterator-zip': 'off',
+      'unicorn/prefer-promise-with-resolvers': 'off',
+      'unicorn/prefer-response-static-json': 'off',
+      'unicorn/prefer-set-methods': 'off',
+      'unicorn/prefer-structured-clone': 'off',
+      'unicorn/prefer-temporal-conversion': 'off',
+      'unicorn/prefer-top-level-await': 'off',
+      'unicorn/prefer-url-can-parse': 'off',
+      'unicorn/switch-case-braces': ['error', 'always'],
+      // Auto-removes unused imports on --fix (@typescript-eslint/no-unused-vars only reports).
+      'unused-imports/no-unused-imports': 'error',
     },
   },
   {
@@ -80,7 +122,35 @@ export default defineConfig([
     rules: {
       ...typeCheckedRules,
       '@typescript-eslint/consistent-type-imports': 'error',
+      // Same conventions as the SPA.
+      '@typescript-eslint/naming-convention': [
+        'error',
+        {
+          format: ['strictCamelCase', 'StrictPascalCase', 'UPPER_CASE'],
+          leadingUnderscore: 'forbid',
+          selector: 'variable',
+          trailingUnderscore: 'forbid',
+        },
+        { format: ['StrictPascalCase'], selector: 'typeLike' },
+        { format: ['PascalCase'], selector: 'typeParameter' },
+        { format: ['UPPER_CASE'], selector: 'enumMember' },
+        {
+          custom: { match: true, regex: '^(is|can|will|should|has)[A-Z]' },
+          format: ['strictCamelCase'],
+          selector: 'variable',
+          types: ['boolean'],
+        },
+        {
+          custom: { match: true, regex: '[a-z]List$' },
+          filter: { match: false, regex: '^[A-Z][A-Z_0-9]*$' },
+          format: ['strictCamelCase'],
+          selector: 'variable',
+          types: ['array'],
+        },
+        { format: null, modifiers: ['destructured'], selector: 'variable' },
+      ],
       '@typescript-eslint/no-explicit-any': 'error',
+      // Handled by unused-imports (imports, auto-fixable) and this rule (everything else).
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
@@ -96,13 +166,19 @@ export default defineConfig([
     },
   },
 
-  // Tests
+  // Tests (mirrors the SPA's vitest setup with the Jest equivalents)
   {
     files: TEST_FILES,
-    ...jest.configs['flat/recommended'],
+    ...jest.configs['flat/all'],
     rules: {
-      ...jest.configs['flat/recommended'].rules,
-      ...jest.configs['flat/style'].rules,
+      ...jest.configs['flat/all'].rules,
+      'jest/consistent-test-it': 'error',
+      'jest/no-hooks': 'off',
+      'jest/no-untyped-mock-factory': 'off',
+      'jest/prefer-expect-assertions': 'off',
+      'jest/prefer-importing-jest-globals': 'off',
+      'jest/require-top-level-describe': ['error', { maxNumberOfTopLevelDescribes: 1 }],
+      'sonarjs/assertions-in-tests': 'warn',
     },
   },
   {
@@ -110,6 +186,10 @@ export default defineConfig([
     ...testingLibrary.configs['flat/react'],
   },
 
-  // Must stay last: turns off rules that conflict with Prettier.
+  // Turns off rules that conflict with Prettier: keep it after every rule-setting config.
   prettierConfig,
+  {
+    // eslint-config-prettier disables `curly`, but its "all" option is Prettier-safe (and the SPA's).
+    rules: { curly: ['error', 'all'] },
+  },
 ]);
