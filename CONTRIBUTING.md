@@ -38,6 +38,8 @@
 - Core rules: `curly`, `complexity` (12), `arrow-body-style`, `object-shorthand`, `prefer-template`; unused `eslint-disable` comments are errors
 - **unicorn** (tuned like the SPA), **sonarjs**, **perfectionist** (natural sorting of imports, objects, JSX props…), **unused-imports** (auto-removed on `--fix`)
 - **react-you-might-not-need-an-effect** (strict) and **react-native** (`no-unused-styles`, `no-inline-styles`, `no-color-literals`)
+- **@react-native/eslint-plugin** (official, versioned with `react-native`): `no-deep-imports`, `platform-colors`; and `expo/prefer-box-shadow` (cross-platform `boxShadow` instead of `elevation` / `shadow*`)
+- **react-native-a11y** (`android` preset; switch to `all` when iOS is added): valid accessibility roles/states/values, no nested touchables
 - Tests: **jest** (`all`, with the SPA's exceptions) and **testing-library**
 - **eslint-config-prettier** last (Prettier owns formatting)
 
@@ -47,7 +49,7 @@ React Native specifics:
 - `sonarjs/pseudo-random` is off: picking a random recipe is the app's purpose.
 - `unicorn/filename-case` is kebab-case (`_layout.tsx` excepted), not the SPA's camel/Pascal case.
 
-`eslint-plugin-react` and `eslint-plugin-import` (bundled by Expo) and `eslint-plugin-react-native` don't declare ESLint 10 support yet: npm `overrides` in `package.json` let them install with our ESLint, and `@eslint/compat` shims the APIs ESLint 10 removed. Drop both workarounds once those plugins support ESLint 10.
+`eslint-plugin-react` and `eslint-plugin-import` (bundled by Expo), `eslint-plugin-react-native` and `eslint-plugin-react-native-a11y` don't declare ESLint 10 support yet: npm `overrides` in `package.json` let them install with our ESLint, and `@eslint/compat` shims the APIs ESLint 10 removed. Drop both workarounds once those plugins support ESLint 10.
 
 ## Code quality (SonarQube Cloud)
 

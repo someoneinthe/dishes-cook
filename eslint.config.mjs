@@ -1,10 +1,12 @@
 // https://docs.expo.dev/guides/using-eslint/
 import { fixupConfigRules, fixupPluginRules } from '@eslint/compat';
+import reactNativeOfficial from '@react-native/eslint-plugin';
 import expoConfig from 'eslint-config-expo/flat.js';
 import prettierConfig from 'eslint-config-prettier/flat';
 import jest from 'eslint-plugin-jest';
 import perfectionist from 'eslint-plugin-perfectionist';
 import reactNative from 'eslint-plugin-react-native';
+import reactNativeA11y from 'eslint-plugin-react-native-a11y';
 import reactYouMightNotNeedAnEffect from 'eslint-plugin-react-you-might-not-need-an-effect';
 import sonarjs from 'eslint-plugin-sonarjs';
 import testingLibrary from 'eslint-plugin-testing-library';
@@ -24,8 +26,8 @@ const typeCheckedRules = Object.assign(
 );
 
 export default defineConfig([
-  // eslint-plugin-react / eslint-plugin-import (bundled by Expo) and eslint-plugin-react-native
-  // predate ESLint 10: @eslint/compat shims the context APIs it removed (e.g. getSourceCode).
+  // eslint-plugin-react / eslint-plugin-import (bundled by Expo), eslint-plugin-react-native and
+  // eslint-plugin-react-native-a11y predate ESLint 10: @eslint/compat shims the context APIs it removed (e.g. getSourceCode).
   fixupConfigRules(expoConfig),
   {
     ignores: ['dist/*', 'android/*', 'ios/*', 'coverage/*', '.expo/*', '.claude/worktrees/*'],
@@ -158,11 +160,22 @@ export default defineConfig([
   // React / React Native
   reactYouMightNotNeedAnEffect.configs.strict,
   {
-    plugins: { 'react-native': fixupPluginRules(reactNative) },
+    plugins: {
+      '@react-native': reactNativeOfficial,
+      'react-native': fixupPluginRules(reactNative),
+      'react-native-a11y': fixupPluginRules(reactNativeA11y),
+    },
     rules: {
+      // Official React Native plugin (versioned with react-native): no private internals.
+      '@react-native/no-deep-imports': 'error',
+      '@react-native/platform-colors': 'error',
+      // New Architecture: cross-platform boxShadow instead of elevation / shadow* props.
+      'expo/prefer-box-shadow': 'error',
       'react-native/no-color-literals': 'error',
       'react-native/no-inline-styles': 'error',
       'react-native/no-unused-styles': 'error',
+      // Android-first; switch to the `all` preset when iOS is added.
+      ...reactNativeA11y.configs.android.rules,
     },
   },
 
