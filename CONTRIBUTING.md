@@ -5,7 +5,7 @@
 1. Branch from `main`: `feat/<short-topic>`, `fix/<short-topic>`, `chore/<short-topic>`.
 2. Commit using [Conventional Commits](https://www.conventionalcommits.org/) — enforced by commitlint in the `commit-msg` hook.
 3. Open a PR. Its **title must be a Conventional Commit** (checked in CI) because PRs are **squash-merged** and the title becomes the commit on `main`.
-4. CI must be green: lint, format, typecheck, tests, expo-doctor, CodeQL, dependency review, and an Android build when dependencies, `app.config.ts` or assets change.
+4. **Every CI job must complete successfully** before merging (enforced by the `main` ruleset): lint, format, typecheck, tests, expo-doctor, SonarQube Cloud, CodeQL, dependency review, and the Android build when dependencies, `app.config.ts` or assets change. See [the required checks](docs/release.md#1-repository-settings-already-applied).
 5. Squash-merge. Never push directly to `main`.
 
 ### Commit types and their release impact
