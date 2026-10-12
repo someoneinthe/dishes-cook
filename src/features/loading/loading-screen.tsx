@@ -14,8 +14,8 @@ type LoadingScreenProps = Readonly<{
   onFinish: () => void;
 }>;
 
-// Full-screen illustration shown over the app at startup. The native splash screen (the plate) is
-// kept until this image is rendered, then this screen fades out.
+// Full-screen illustration shown over the app at startup: it replaces the native splash screen (the
+// plate) as soon as it's laid out, stays MIN_DISPLAY_MS once the image is displayed, then fades out.
 export function LoadingScreen({ onFinish }: LoadingScreenProps) {
   const [opacity] = useState(() => new Animated.Value(1));
   const [isImageDisplayed, setIsImageDisplayed] = useState(false);
@@ -24,7 +24,6 @@ export function LoadingScreen({ onFinish }: LoadingScreenProps) {
     if (!isImageDisplayed) {
       return;
     }
-    SplashScreen.hide();
     const timeout = setTimeout(() => {
       Animated.timing(opacity, {
         duration: FADE_OUT_MS,
@@ -41,6 +40,10 @@ export function LoadingScreen({ onFinish }: LoadingScreenProps) {
       accessibilityLabel="Loading Dishes Cook"
       accessibilityRole="progressbar"
       accessible
+      // Hide the native splash as soon as this screen is laid out, not when the image is
+      // displayed: while the splash is kept, Android blocks the first draw, so the image would
+      // never load (deadlock).
+      onLayout={() => SplashScreen.hide()}
       style={[styles.container, { opacity }]}
       testID="loading-screen"
     >
@@ -48,6 +51,8 @@ export function LoadingScreen({ onFinish }: LoadingScreenProps) {
         accessible={false}
         contentFit="cover"
         onDisplay={() => setIsImageDisplayed(true)}
+        // Never get stuck on the loading screen if the illustration fails to load.
+        onError={() => setIsImageDisplayed(true)}
         source={loadingImage}
         style={styles.image}
         testID="loading-screen-image"

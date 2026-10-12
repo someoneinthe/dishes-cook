@@ -4,6 +4,8 @@ import { FADE_OUT_MS, LoadingScreen, MIN_DISPLAY_MS } from './loading-screen';
 
 jest.mock('expo-splash-screen', () => ({ hide: jest.fn() }));
 
+const layoutEvent = { nativeEvent: { layout: { height: 800, width: 400, x: 0, y: 0 } } };
+
 describe('loadingScreen', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -14,16 +16,20 @@ describe('loadingScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('keeps the native splash screen until the illustration is displayed', async () => {
+  it('hides the native splash screen as soon as it is laid out', async () => {
     expect.hasAssertions();
 
     await render(<LoadingScreen onFinish={jest.fn()} />);
 
-    expect(screen.getByRole('progressbar', { name: 'Loading Dishes Cook' })).toBeOnTheScreen();
     expect(SplashScreen.hide).not.toHaveBeenCalled();
+
+    await fireEvent(screen.getByTestId('loading-screen'), 'layout', layoutEvent);
+
+    expect(screen.getByRole('progressbar', { name: 'Loading Dishes Cook' })).toBeOnTheScreen();
+    expect(SplashScreen.hide).toHaveBeenCalledTimes(1);
   });
 
-  it('hides the native splash screen, then fades out after the minimum display time', async () => {
+  it('fades out after the minimum display time once the illustration is displayed', async () => {
     expect.hasAssertions();
 
     const onFinish = jest.fn();
@@ -31,9 +37,28 @@ describe('loadingScreen', () => {
 
     await fireEvent(screen.getByTestId('loading-screen-image'), 'display');
 
-    expect(SplashScreen.hide).toHaveBeenCalledTimes(1);
+    await act(() => {
+      jest.advanceTimersByTime(MIN_DISPLAY_MS - 1);
+    });
+
     expect(onFinish).not.toHaveBeenCalled();
 
+    await act(() => {
+      jest.advanceTimersByTime(FADE_OUT_MS + 100);
+    });
+
+    expect(onFinish).toHaveBeenCalledTimes(1);
+  });
+
+  it('still finishes when the illustration fails to load', async () => {
+    expect.hasAssertions();
+
+    const onFinish = jest.fn();
+    await render(<LoadingScreen onFinish={onFinish} />);
+
+    await fireEvent(screen.getByTestId('loading-screen-image'), 'error', {
+      nativeEvent: { error: 'Failed to load the image' },
+    });
     await act(() => {
       jest.advanceTimersByTime(MIN_DISPLAY_MS + FADE_OUT_MS + 100);
     });
