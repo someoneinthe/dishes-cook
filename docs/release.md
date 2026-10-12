@@ -15,14 +15,29 @@ To force a specific version, add a commit to `main` with the footer `Release-As:
 
 ## One-time setup
 
-### 1. Repository settings
+### 1. Repository settings (already applied)
 
-- **Settings → Actions → General → Workflow permissions**: enable _Allow GitHub Actions to create and approve pull requests_ (needed for the release PR).
-- **Settings → General → Pull Requests**: allow squash merging only; enable "Default to PR title for squash merge commits".
-- **Settings → Environments**: create an environment named `release` (optionally restricted to `main`) and put the signing secrets below in it.
-- **Branch protection on `main`**: require a PR, and require the checks _Lint, typecheck & test_ and _Conventional PR title_.
+These are configured on GitHub; keep them in sync if you change workflows or job names.
 
-> Note: PRs opened by the default `GITHUB_TOKEN` don't trigger other workflows, so CI won't run on the release PR itself. If you make CI checks required, either merge it with admin bypass, or switch release-please to a fine-grained PAT / GitHub App token (`token:` input).
+- **Settings → Actions → General → Workflow permissions**: read-only default token, and _Allow GitHub Actions to create and approve pull requests_ enabled (needed for the release PR).
+- **Settings → General → Pull Requests**: squash merging only, commit title = PR title, branches deleted after merge.
+- **Settings → Environments**: `release` environment, deployable from `main` only; it holds the signing secrets below.
+- **Settings → Rules → Rulesets → `main`**: no direct pushes, force-pushes or deletion; changes land through a squash-merged PR once **every CI job** has completed successfully:
+
+  | Required check                 | Workflow                                     |
+  | ------------------------------ | -------------------------------------------- |
+  | Lint, typecheck & test         | `ci.yml` (includes the SonarQube Cloud scan) |
+  | Detect native changes          | `ci.yml`                                     |
+  | Android build                  | `ci.yml` (a skipped run counts as passed)    |
+  | Conventional PR title          | `pr-title.yml`                               |
+  | CodeQL (javascript-typescript) | `codeql.yml`                                 |
+  | CodeQL (actions)               | `codeql.yml`                                 |
+  | CodeQL (code scanning result)  | GitHub Advanced Security                     |
+  | Dependency review              | `dependency-review.yml`                      |
+
+  Checks are pinned to the GitHub Actions / Advanced Security apps. **Renaming a job or workflow requires updating the ruleset**, otherwise PRs wait forever for the old name.
+
+> Note: PRs opened by the default `GITHUB_TOKEN` don't trigger other workflows, so no checks run on the release PR. Repository admins can bypass the ruleset when merging a PR: use that for the release PR, or switch release-please to a fine-grained PAT / GitHub App token (`token:` input) so CI runs on it.
 
 ### 2. Signing keystore
 
