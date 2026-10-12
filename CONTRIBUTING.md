@@ -5,7 +5,7 @@
 1. Branch from `main`: `feat/<short-topic>`, `fix/<short-topic>`, `chore/<short-topic>`.
 2. Commit using [Conventional Commits](https://www.conventionalcommits.org/) — enforced by commitlint in the `commit-msg` hook.
 3. Open a PR. Its **title must be a Conventional Commit** (checked in CI) because PRs are **squash-merged** and the title becomes the commit on `main`.
-4. CI must be green: lint, format, typecheck, tests, expo-doctor, and an Android build when dependencies, `app.config.ts` or assets change.
+4. CI must be green: lint, format, typecheck, tests, expo-doctor, CodeQL, dependency review, and an Android build when dependencies, `app.config.ts` or assets change.
 5. Squash-merge. Never push directly to `main`.
 
 ### Commit types and their release impact
@@ -28,6 +28,12 @@
 - **Tests**: colocated `*.test.ts(x)`; query by what the user sees (`getByText`, `getByRole`), not test IDs, when possible. Pure logic (e.g. the "what to eat" picker) gets unit tests.
 - **Accessibility**: every touchable has an accessible label/role.
 - Run `npm run check` before pushing.
+
+## Code quality (SonarQube Cloud)
+
+CI runs a [SonarQube Cloud](https://sonarcloud.io/project/overview?id=someoneinthe_dishes-cook) scan after the tests and uploads Jest coverage (`coverage/lcov.info`). Configuration lives in `sonar-project.properties`. Fix new issues reported on your PR before merging.
+
+The scan is skipped when `SONAR_TOKEN` isn't available (Dependabot and fork PRs).
 
 ## Upgrading the Expo SDK
 

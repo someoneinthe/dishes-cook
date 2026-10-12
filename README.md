@@ -1,5 +1,8 @@
 # Dishes Cook
 
+> [!WARNING]
+> **Draft project — not usable yet.** Only the project foundations (tooling, CI, release pipeline) exist; the app has no features so far.
+
 Mobile app that helps you decide what to eat, picking from the recipes you've saved.
 
 Android first (iOS later, same codebase). Built with Expo + React Native + TypeScript. Data stays on the device.
