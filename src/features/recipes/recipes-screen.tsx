@@ -6,8 +6,8 @@ import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
 import { getPagingProps } from '@/components/paging-props';
+import { SeasonLabel } from './components/season-label';
 import { useRecipePages } from './hooks/use-recipes';
-import { describeSeason } from './season';
 
 export function RecipesScreen() {
   const recipePages = useRecipePages();
@@ -51,7 +51,7 @@ export function RecipesScreen() {
           >
             <Text style={styles.title}>{item.title}</Text>
             <View style={styles.details}>
-              <Text style={styles.detail}>{describeSeason(item.season)}</Text>
+              <SeasonLabel season={item.season} />
               <Text style={styles.detail}>{describeIngredientCount(item.ingredientCount)}</Text>
             </View>
           </Pressable>
@@ -77,7 +77,9 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.textMuted,
   },
   details: {
+    alignItems: 'center',
     flexDirection: 'row',
+    gap: theme.gap(2),
     justifyContent: 'space-between',
   },
   list: {

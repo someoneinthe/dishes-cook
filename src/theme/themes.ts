@@ -34,13 +34,18 @@ const lightColors = {
   menuRecipes: '#15803D',
   menuSettings: '#57534E',
   onAction: '#FFFFFF',
+  // Season icons: a warm sun, a cold snowflake (contrast with the background ≥ 3:1).
+  seasonSummer: '#B45309',
+  seasonWinter: '#0369A1',
   surface: '#FAFAF9',
   text: '#1C1917',
   textMuted: '#57534E',
 };
 
+export type ColorToken = keyof typeof lightColors;
+
 // Every theme defines exactly the same color tokens (checked by TypeScript).
-type ThemeColors = Record<keyof typeof lightColors, string>;
+type ThemeColors = Record<ColorToken, string>;
 
 const darkColors: ThemeColors = {
   actionDanger: '#DC2626',
@@ -53,6 +58,8 @@ const darkColors: ThemeColors = {
   menuRecipes: '#4ADE80',
   menuSettings: '#A8A29E',
   onAction: '#FFFFFF',
+  seasonSummer: '#FBBF24',
+  seasonWinter: '#38BDF8',
   surface: '#1E1E1E',
   text: '#F5F5F4',
   textMuted: '#A8A29E',

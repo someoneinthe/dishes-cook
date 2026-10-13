@@ -21,8 +21,8 @@ type SeasonFilter = 'any' | NonNullable<RecipeFilters['season']>;
 
 const SEASON_FILTER_OPTION_LIST: readonly SegmentedOption<SeasonFilter>[] = [
   { label: 'Any', value: 'any' },
-  { icon: SEASON_ICONS.winter, label: 'Winter', value: 'winter' },
-  { icon: SEASON_ICONS.summer, label: 'Summer', value: 'summer' },
+  { ...SEASON_ICONS.winter, label: 'Winter', value: 'winter' },
+  { ...SEASON_ICONS.summer, label: 'Summer', value: 'summer' },
 ];
 
 // Picks a random recipe among those matching the filters.

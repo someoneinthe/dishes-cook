@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import type { ColorToken } from '@/theme/themes';
 import type { IconName } from './icon';
 import { Icon } from './icon';
 import { useIconSize } from './use-icon-size';
@@ -7,6 +8,8 @@ import { useIconSize } from './use-icon-size';
 export type SegmentedOption<T extends string> = Readonly<{
   // Shown before the label (e.g. a snowflake for winter).
   icon?: IconName;
+  // The icon's own color (text color by default); white on the selected option.
+  iconColor?: ColorToken;
   label: string;
   value: T;
 }>;
@@ -52,7 +55,9 @@ export function SegmentedControl<T extends string>({
             >
               {option.icon && (
                 <Icon
-                  color={isChecked ? theme.colors.onAction : theme.colors.text}
+                  color={
+                    isChecked ? theme.colors.onAction : theme.colors[option.iconColor ?? 'text']
+                  }
                   name={option.icon}
                   size={iconSize}
                 />
