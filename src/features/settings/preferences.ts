@@ -41,8 +41,9 @@ export function getPreferences(): Preferences {
 
 export function updatePreferences(changes: Partial<Preferences>): void {
   const next = { ...getPreferences(), ...changes };
-  state.current = next;
+  // Stored first: if the write throws, the app keeps showing what is saved.
   Storage.setItemSync(STORAGE_KEY, JSON.stringify(next));
+  state.current = next;
   if (changes.colorScheme) {
     applyColorScheme(next.colorScheme);
   }

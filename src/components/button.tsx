@@ -72,11 +72,7 @@ export function Button({
       style={({ pressed }) => [styles.button, (pressed || isDisabled) && styles.dimmed]}
     >
       {icon && <Icon color={contentColor} name={icon} size={iconSize} />}
-      {!isLabelHidden && (
-        <Text numberOfLines={1} style={styles.label}>
-          {label}
-        </Text>
-      )}
+      {!isLabelHidden && <Text style={styles.label}>{label}</Text>}
     </Pressable>
   );
 }

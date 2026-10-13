@@ -30,6 +30,18 @@ describe('preferences', () => {
     });
   });
 
+  it('keeps the saved preferences when they cannot be stored', () => {
+    const preferences = loadPreferences();
+    jest.spyOn(Storage, 'setItemSync').mockImplementationOnce(() => {
+      throw new Error('disk full');
+    });
+
+    expect(() => preferences.updatePreferences({ isShowingButtonLabels: true })).toThrow(
+      'disk full',
+    );
+    expect(preferences.getPreferences().isShowingButtonLabels).toBe(false);
+  });
+
   it('ignores unreadable or unknown stored values', () => {
     Storage.setItemSync('preferences', '{"colorScheme":"sepia"');
 
