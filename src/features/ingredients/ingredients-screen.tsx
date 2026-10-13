@@ -4,7 +4,7 @@ import { Alert, FlatList, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
-import { HeaderActions } from '@/components/header-actions';
+import { headerActions } from '@/components/header-actions';
 import { getPagingProps } from '@/components/paging-props';
 import { TextField } from '@/components/text-field';
 import { useDatabase } from '@/db/database-context';
@@ -60,17 +60,15 @@ export function IngredientsScreen() {
       <Drawer.Screen
         options={{
           // Adds what's typed in the search field (Enter does the same).
-          headerRight: () => (
-            <HeaderActions>
-              <Button
-                accessibilityHint="Adds the name typed in the search field"
-                accessibilityLabel="Add ingredient"
-                icon="plus"
-                isIconOnly
-                label="Add"
-                onPress={addIngredient}
-              />
-            </HeaderActions>
+          headerRight: headerActions(
+            <Button
+              accessibilityHint="Adds the name typed in the search field"
+              accessibilityLabel="Add ingredient"
+              icon="plus"
+              isIconOnly
+              label="Add"
+              onPress={addIngredient}
+            />,
           ),
         }}
       />

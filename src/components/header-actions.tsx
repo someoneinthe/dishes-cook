@@ -16,3 +16,11 @@ const styles = StyleSheet.create((theme) => ({
     paddingRight: theme.gap(3),
   },
 }));
+
+// `headerRight` option showing `children` at the top right of the header. Built here, outside the
+// screens, so screens don't define a component while rendering (Sonar S6478).
+export function headerActions(children: ReactNode) {
+  return function HeaderRight() {
+    return <HeaderActions>{children}</HeaderActions>;
+  };
+}

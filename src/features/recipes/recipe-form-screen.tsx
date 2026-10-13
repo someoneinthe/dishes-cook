@@ -6,7 +6,7 @@ import type { Season } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
-import { HeaderActions } from '@/components/header-actions';
+import { headerActions } from '@/components/header-actions';
 import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
 import { useDatabase } from '@/db/database-context';
@@ -83,17 +83,15 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
     >
       <Stack.Screen
         options={{
-          headerRight: () => (
-            <HeaderActions>
-              <Button
-                accessibilityHint="Saves the recipe and shows it"
-                accessibilityLabel="Save recipe"
-                icon="content-save"
-                isIconOnly
-                label="Save"
-                onPress={save}
-              />
-            </HeaderActions>
+          headerRight: headerActions(
+            <Button
+              accessibilityHint="Saves the recipe and shows it"
+              accessibilityLabel="Save recipe"
+              icon="content-save"
+              isIconOnly
+              label="Save"
+              onPress={save}
+            />,
           ),
           title: screenTitle,
         }}

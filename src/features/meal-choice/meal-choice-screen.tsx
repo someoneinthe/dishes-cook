@@ -8,7 +8,7 @@ import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import type { RecipeFilters } from '@/features/recipes/db/recipe-queries';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
-import { HeaderActions } from '@/components/header-actions';
+import { headerActions } from '@/components/header-actions';
 import { SegmentedControl } from '@/components/segmented-control';
 import { useDatabase } from '@/db/database-context';
 import { IngredientPicker } from '@/features/ingredients/components/ingredient-picker';
@@ -60,9 +60,7 @@ export function MealChoiceScreen() {
         onPress={() => setSuggestedId(pickRandomRecipeId(database, filters, suggestedId))}
       />
     );
-  const header = (
-    <Drawer.Screen options={{ headerRight: () => <HeaderActions>{headerButton}</HeaderActions> }} />
-  );
+  const header = <Drawer.Screen options={{ headerRight: headerActions(headerButton) }} />;
 
   if (recipeCount === 0) {
     return (

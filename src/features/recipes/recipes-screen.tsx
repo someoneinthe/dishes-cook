@@ -4,7 +4,7 @@ import { FlatList, Pressable, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
-import { HeaderActions } from '@/components/header-actions';
+import { headerActions } from '@/components/header-actions';
 import { getPagingProps } from '@/components/paging-props';
 import { useRecipePages } from './hooks/use-recipes';
 import { describeSeason } from './season';
@@ -17,17 +17,15 @@ export function RecipesScreen() {
     <>
       <Drawer.Screen
         options={{
-          headerRight: () => (
-            <HeaderActions>
-              <Button
-                accessibilityHint="Opens an empty recipe form"
-                accessibilityLabel="New recipe"
-                icon="plus"
-                isIconOnly
-                label="New"
-                onPress={addRecipe}
-              />
-            </HeaderActions>
+          headerRight: headerActions(
+            <Button
+              accessibilityHint="Opens an empty recipe form"
+              accessibilityLabel="New recipe"
+              icon="plus"
+              isIconOnly
+              label="New"
+              onPress={addRecipe}
+            />,
           ),
         }}
       />

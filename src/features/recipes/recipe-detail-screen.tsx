@@ -4,7 +4,7 @@ import { Alert, ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
-import { HeaderActions } from '@/components/header-actions';
+import { headerActions } from '@/components/header-actions';
 import { useDatabase } from '@/db/database-context';
 import { RecipeDetails } from './components/recipe-details';
 import { deleteRecipe } from './db/recipe-queries';
@@ -47,8 +47,8 @@ export function RecipeDetailScreen() {
     ]);
   };
 
-  const headerActions = (
-    <HeaderActions>
+  const headerButtons = (
+    <>
       <Button
         icon="pencil"
         isIconOnly
@@ -65,12 +65,12 @@ export function RecipeDetailScreen() {
         onPress={confirmDelete}
         variant="danger"
       />
-    </HeaderActions>
+    </>
   );
 
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
-      <Stack.Screen options={{ headerRight: () => headerActions, title: recipe.title }} />
+      <Stack.Screen options={{ headerRight: headerActions(headerButtons), title: recipe.title }} />
       <RecipeDetails recipe={recipe} />
     </ScrollView>
   );
