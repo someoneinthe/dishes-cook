@@ -25,12 +25,7 @@ export function SettingsScreen() {
         value={colorScheme}
       />
       <View style={styles.switchRow}>
-        <View style={styles.switchText}>
-          <Text style={styles.label}>Show button labels</Text>
-          <Text style={styles.description}>
-            Adds the text next to icon buttons (add, edit, delete, save…).
-          </Text>
-        </View>
+        <Text style={styles.label}>Show button labels</Text>
         <Switch
           accessibilityHint="Adds the text next to icon buttons"
           accessibilityLabel="Show button labels"
@@ -49,13 +44,10 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(6),
     padding: theme.gap(4),
   },
-  description: {
-    ...theme.typography.caption,
-    color: theme.colors.textMuted,
-  },
   label: {
     ...theme.typography.label,
     color: theme.colors.text,
+    flex: 1,
   },
   screen: {
     backgroundColor: theme.colors.background,
@@ -65,9 +57,5 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     flexDirection: 'row',
     gap: theme.gap(4),
-  },
-  switchText: {
-    flex: 1,
-    gap: theme.gap(1),
   },
 }));
