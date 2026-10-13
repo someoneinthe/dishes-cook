@@ -1,5 +1,5 @@
 import type { ColorValue } from 'react-native';
-import { Platform, Text, ToastAndroid, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { IconName } from './icon';
 import { Icon } from './icon';
@@ -53,11 +53,10 @@ export const headerTitleOptions = {
   headerTitleContainerStyle: { flex: 1 },
 } as const;
 
+// A dialog, not a toast: Android cuts toasts to two lines. The title is the dialog's message, which
+// scrolls when it's very long.
 function showFullTitle(title: string) {
-  // Android's equivalent of a tooltip. iOS will need its own.
-  if (Platform.OS === 'android') {
-    ToastAndroid.show(title, ToastAndroid.SHORT);
-  }
+  Alert.alert('', title);
 }
 
 const styles = StyleSheet.create((theme) => ({

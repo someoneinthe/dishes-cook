@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { Platform, ToastAndroid } from 'react-native';
+import { spyOnAlert } from '@/test/alert';
 import { renderedIconColorList } from '@/test/icons';
 import { HeaderTitle, headerTitleWithIcon } from './header-title';
 
@@ -16,14 +16,12 @@ describe('headerTitle', () => {
   });
 
   it('shows the full title on a long press', async () => {
-    // jest-expo runs as iOS; the toast is Android's.
-    jest.replaceProperty(Platform, 'OS', 'android');
-    const show = jest.spyOn(ToastAndroid, 'show').mockReturnValue();
+    const alert = spyOnAlert();
     await render(<HeaderTitle>{LONG_TITLE}</HeaderTitle>);
 
     await fireEvent(screen.getByRole('header'), 'longPress');
 
-    expect(show).toHaveBeenCalledWith(LONG_TITLE, ToastAndroid.SHORT);
+    expect(alert.spy).toHaveBeenCalledWith('', LONG_TITLE);
   });
 
   it('starts with the menu icon, in its menu color', async () => {
