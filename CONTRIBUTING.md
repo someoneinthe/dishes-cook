@@ -27,6 +27,7 @@
 - **Dependencies**: add with `npx expo install <pkg>` (SDK-compatible versions), not `npm install`. Prefer Expo modules over third-party ones.
 - **Styling**: [Unistyles 3](https://www.unistyl.es/) — `import { StyleSheet } from 'react-native-unistyles'` and `StyleSheet.create((theme) => ({ … }))`. Use theme tokens (`theme.colors.*`, `theme.gap(n)`, `theme.typography.*`, `theme.radius.*` from `src/theme/themes.ts`), never raw colors or magic numbers. Light/dark themes switch automatically with the system setting; add a color token to **both** themes (TypeScript enforces it). For non-style props (e.g. navigation options) read the theme with `useUnistyles()`.
 - **Tests**: colocated `*.test.ts(x)`; query by what the user sees (`getByText`, `getByRole`), not test IDs, when possible. Pure logic (e.g. the "what to eat" picker) gets unit tests.
+- **Behaviour specs (Gherkin)**: describe user-facing behaviour as scenarios in `<name>.feature` (plain English, no implementation details), next to `<name>.steps.test.tsx`, which implements the steps with [jest-cucumber](https://github.com/bencompton/jest-cucumber) (`loadFeature` + `defineFeature`) and React Native Testing Library. Feature and step files must match: a scenario or step without code fails the run with a suggested snippet. Reuse step functions across scenarios; keep low-level cases in regular `*.test.tsx`. Example: `src/features/loading/loading-screen.feature`.
 - **Accessibility**: every touchable has an accessible label/role.
 - Run `npm run check` before pushing.
 
