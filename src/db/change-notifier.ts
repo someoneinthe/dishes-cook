@@ -16,7 +16,12 @@ export function createChangeNotifier() {
   const notify = () => {
     isPending = false;
     for (const listener of listenerSet) {
-      listener();
+      // One failing listener must not keep the others (other screens) from refreshing.
+      try {
+        listener();
+      } catch (error) {
+        console.error('A database change listener failed', error);
+      }
     }
   };
 

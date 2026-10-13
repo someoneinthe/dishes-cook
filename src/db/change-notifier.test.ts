@@ -1,6 +1,10 @@
 import { createChangeNotifier } from './change-notifier';
 
 describe('createChangeNotifier', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   const flushMicrotasks = () => new Promise<void>((resolve) => setImmediate(resolve));
 
   it('notifies once after a batch of writes, not after reads', async () => {
@@ -24,6 +28,22 @@ describe('createChangeNotifier', () => {
     await flushMicrotasks();
 
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('still notifies the other listeners when one throws', async () => {
+    const { logger, subscribe } = createChangeNotifier();
+    const errorSpy = jest.spyOn(console, 'error').mockReturnValue(undefined);
+    const listener = jest.fn();
+    subscribe(() => {
+      throw new Error('broken screen');
+    });
+    subscribe(listener);
+
+    logger.logQuery('insert into "ingredients" ("name") values (?)');
+    await flushMicrotasks();
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
   });
 
   it('stops notifying after unsubscribe', async () => {
