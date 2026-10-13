@@ -39,14 +39,14 @@ CI=1 npx expo run:android --device Pixel_9a --no-bundler > run-android.log 2>&1
 - `--no-bundler`: Metro is started separately in step 4 (`CI=1` is fine for the build, not for Metro).
 - First build: ~30 min (downloads NDK, SDK platform, build-tools). Rebuilds: ~2–3 min.
 - Done when the log shows `BUILD SUCCESSFUL`. Watch for `BUILD FAILED`, `What went wrong`, `CommandError`.
-- Rebuild only after native changes (dependencies with native code, `app.config.ts`, assets used by the native splash). If the app is missing from the emulator but nothing native changed, reinstall the last build: `adb install -r android/app/build/outputs/apk/debug/app-debug.apk`.
+- Rebuild only after native changes (dependencies with native code, `app.config.ts`, assets used by the native splash). If the app is missing from the emulator but nothing native changed, reinstall the last build on the emulator (serial from `adb devices`, e.g. `emulator-5554`): `adb -s emulator-5554 install -r android/app/build/outputs/apk/debug/app-debug.apk`. With several devices connected, every `adb` command needs `-s <serial>`.
 
 ## 4. Start Metro in watch mode, then open the app
 
 **Never start Metro with `CI=1`**: it disables file watching ("Metro is running in CI mode, reloads are disabled"), so the app keeps running the code Metro saw at startup and your edits never reach it.
 
 ```bash
-npx expo start --dev-client < /dev/null > metro.log 2>&1   # run in background: non-interactive, still watches files
+npx expo start --dev-client < /dev/null > metro.log 2>&1 &   # background, non-interactive, still watches files
 until grep -q "Waiting on" metro.log; do sleep 1; done
 ADB=~/Library/Android/sdk/platform-tools/adb
 $ADB shell am force-stop io.github.someoneinthe.dishescook
