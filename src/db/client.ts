@@ -1,41 +1,12 @@
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { addDatabaseChangeListener, openDatabaseSync } from 'expo-sqlite';
+import { openDatabaseSync } from 'expo-sqlite';
 import type { DatabaseConnection } from './types';
+import { createChangeNotifier } from './change-notifier';
 
 const DATABASE_NAME = 'dishes-cook.db';
 
-export function createAppConnection(
-  database: ReturnType<typeof openAppDatabase>,
-): DatabaseConnection {
-  return {
-    db: database,
-    subscribe: (listener) => {
-      // sqlite3_update_hook reports every modified row: a recipe saved with 10 ingredients emits
-      // a dozen events. They are coalesced into one notification per table and per tick.
-      const changedTableSet = new Set<string>();
-      let flush: ReturnType<typeof setTimeout> | undefined;
-      const subscription = addDatabaseChangeListener(({ tableName }) => {
-        changedTableSet.add(tableName);
-        flush ??= setTimeout(() => {
-          flush = undefined;
-          const tableNameList = [...changedTableSet];
-          changedTableSet.clear();
-          for (const changedTableName of tableNameList) {
-            listener(changedTableName);
-          }
-        }, 0);
-      });
-      return () => {
-        subscription.remove();
-        clearTimeout(flush);
-      };
-    },
-  };
-}
-
-export function openAppDatabase() {
-  // The change listener (sqlite3_update_hook) powers the live queries.
-  const sqlite = openDatabaseSync(DATABASE_NAME, { enableChangeListener: true });
+export function openAppConnection() {
+  const sqlite = openDatabaseSync(DATABASE_NAME);
   // Foreign keys are off by default in SQLite and the setting is per connection: enabled on every
   // open, on its own, because a multi-statement exec stops at the first failing statement.
   sqlite.execSync('PRAGMA foreign_keys = ON;');
@@ -46,5 +17,6 @@ export function openAppDatabase() {
   } catch (error) {
     console.warn('Could not enable WAL, keeping the default journal mode', error);
   }
-  return drizzle(sqlite);
+  const { logger, subscribe } = createChangeNotifier();
+  return { db: drizzle(sqlite, { logger }), subscribe } satisfies DatabaseConnection;
 }

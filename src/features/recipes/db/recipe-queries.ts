@@ -14,6 +14,13 @@ export type Recipe = Readonly<{
   title: string;
 }>;
 
+export type RecipeFilters = Readonly<{
+  // Recipes made with ALL these ingredients.
+  ingredientIdList: readonly number[];
+  // A season also matches the recipes for both seasons; undefined = any season.
+  season?: Exclude<Season, 'both'>;
+}>;
+
 export type RecipeInput = Readonly<{
   ingredientIdList: readonly number[];
   instructions: string;
@@ -26,16 +33,6 @@ export type RecipeListItem = Readonly<{
   ingredientCount: number;
   season: Season;
   title: string;
-}>;
-
-// Tables read by the queries below, for live queries.
-export const RECIPE_TABLES = [recipes, recipeIngredients, ingredients];
-
-export type RecipeFilters = Readonly<{
-  // Recipes made with ALL these ingredients.
-  ingredientIdList: readonly number[];
-  // A season also matches the recipes for both seasons; undefined = any season.
-  season?: Exclude<Season, 'both'>;
 }>;
 
 // Its ingredient links are deleted by the foreign key's ON DELETE CASCADE.

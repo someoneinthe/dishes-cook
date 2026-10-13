@@ -3,7 +3,7 @@ import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
-import { createAppConnection, openAppDatabase } from './client';
+import { openAppConnection } from './client';
 import { DatabaseContext } from './database-context';
 import migrations from './migrations/migrations';
 
@@ -12,9 +12,8 @@ type DatabaseProviderProps = Readonly<{ children: ReactNode }>;
 // Opens the database, applies pending migrations, then renders the app. Nothing is rendered while
 // migrating: it takes milliseconds and the loading screen covers the app meanwhile.
 export function DatabaseProvider({ children }: DatabaseProviderProps) {
-  const [database] = useState(openAppDatabase);
-  const [connection] = useState(() => createAppConnection(database));
-  const { error, success: isMigrated } = useMigrations(database, migrations);
+  const [connection] = useState(openAppConnection);
+  const { error, success: isMigrated } = useMigrations(connection.db, migrations);
 
   if (error) {
     return (

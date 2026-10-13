@@ -5,8 +5,7 @@ import { useDatabase } from './database-context';
 import { DatabaseProvider } from './database-provider';
 
 jest.mock('./client', () => ({
-  createAppConnection: (database: unknown) => ({ db: database, subscribe: () => () => {} }),
-  openAppDatabase: () => ({ name: 'app database' }),
+  openAppConnection: () => ({ db: { name: 'app database' }, subscribe: () => () => {} }),
 }));
 jest.mock('drizzle-orm/expo-sqlite/migrator', () => ({ useMigrations: jest.fn() }));
 

@@ -4,8 +4,8 @@ import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 // drivers, so queries are written once against this common type.
 export type AppDatabase = BaseSQLiteDatabase<'sync', unknown>;
 
-// Called with the name of a table a write touched.
-export type DatabaseChangeListener = (tableName: string) => void;
+// Called after the data changed.
+export type DatabaseChangeListener = () => void;
 
 export type DatabaseConnection = Readonly<{
   db: AppDatabase;
