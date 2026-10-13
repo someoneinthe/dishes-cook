@@ -26,7 +26,7 @@ export default function DrawerLayout() {
       <Drawer.Screen
         name="ingredients"
         options={{
-          drawerIcon: drawerIcon('carrot'),
+          drawerIcon: drawerIcon('carrot', theme.colors.menuIngredients),
           drawerLabel: 'Ingredients',
           title: 'Ingredients',
         }}
@@ -34,7 +34,7 @@ export default function DrawerLayout() {
       <Drawer.Screen
         name="recipes"
         options={{
-          drawerIcon: drawerIcon('book-open-page-variant'),
+          drawerIcon: drawerIcon('book-open-page-variant', theme.colors.menuRecipes),
           drawerLabel: 'Recipes',
           title: 'Recipes',
         }}
@@ -42,7 +42,7 @@ export default function DrawerLayout() {
       <Drawer.Screen
         name="index"
         options={{
-          drawerIcon: drawerIcon('dice-multiple'),
+          drawerIcon: drawerIcon('dice-multiple', theme.colors.menuMealChoice),
           drawerLabel: 'Meal choice',
           title: 'Meal choice',
         }}
@@ -50,7 +50,7 @@ export default function DrawerLayout() {
       <Drawer.Screen
         name="settings"
         options={{
-          drawerIcon: drawerIcon('cog-outline'),
+          drawerIcon: drawerIcon('cog-outline', theme.colors.menuSettings),
           drawerLabel: 'Settings',
           title: 'Settings',
         }}

@@ -26,6 +26,11 @@ const lightColors = {
   border: '#E7E5E4',
   // Error text.
   danger: '#B91C1C',
+  // Menu entry icons, one color each (contrast with the background ≥ 3:1).
+  menuIngredients: '#C2410C',
+  menuMealChoice: '#1D4ED8',
+  menuRecipes: '#15803D',
+  menuSettings: '#57534E',
   onAction: '#FFFFFF',
   surface: '#FAFAF9',
   text: '#1C1917',
@@ -41,6 +46,10 @@ const darkColors: ThemeColors = {
   background: '#121212',
   border: '#3A3633',
   danger: '#F87171',
+  menuIngredients: '#FB923C',
+  menuMealChoice: '#60A5FA',
+  menuRecipes: '#4ADE80',
+  menuSettings: '#A8A29E',
   onAction: '#FFFFFF',
   surface: '#1E1E1E',
   text: '#F5F5F4',
