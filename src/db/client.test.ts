@@ -1,64 +1,93 @@
 import type { DatabaseChangeEvent } from 'expo-sqlite';
-import { addDatabaseChangeListener } from 'expo-sqlite';
-import type { openAppDatabase } from './client';
-import { createAppConnection } from './client';
+import { addDatabaseChangeListener, openDatabaseSync } from 'expo-sqlite';
+import { createAppConnection, openAppDatabase } from './client';
 
-jest.mock('expo-sqlite', () => ({ addDatabaseChangeListener: jest.fn() }));
+jest.mock('expo-sqlite', () => ({
+  addDatabaseChangeListener: jest.fn(),
+  openDatabaseSync: jest.fn(),
+}));
 jest.mock('drizzle-orm/expo-sqlite', () => ({ drizzle: jest.fn() }));
 
 const remove = jest.fn();
 
-describe('createAppConnection', () => {
-  let emit: (tableName: string) => void;
+describe('client', () => {
+  describe('openAppDatabase', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
 
-  beforeEach(() => {
-    jest.useFakeTimers();
-    jest.mocked(addDatabaseChangeListener).mockImplementation((listener) => {
-      emit = (tableName) => listener({ tableName } as DatabaseChangeEvent);
-      return { remove };
+    it('enables foreign keys even when WAL cannot be enabled', () => {
+      // First call: foreign keys; second call: WAL, which fails.
+      const execSync = jest
+        .fn()
+        .mockReturnValueOnce(undefined)
+        .mockImplementationOnce(() => {
+          throw new Error('SQLITE_BUSY');
+        });
+      jest
+        .mocked(openDatabaseSync)
+        .mockReturnValue({ execSync } as unknown as ReturnType<typeof openDatabaseSync>);
+      const warnSpy = jest.spyOn(console, 'warn').mockReturnValue(undefined);
+
+      expect(() => openAppDatabase()).not.toThrow();
+      expect(execSync).toHaveBeenNthCalledWith(1, 'PRAGMA foreign_keys = ON;');
+      expect(execSync).toHaveBeenNthCalledWith(2, 'PRAGMA journal_mode = WAL;');
+      expect(warnSpy).toHaveBeenCalledTimes(1);
     });
   });
 
-  afterEach(() => {
-    jest.useRealTimers();
-    jest.clearAllMocks();
-  });
+  describe('createAppConnection', () => {
+    let emit: (tableName: string) => void;
 
-  const subscribe = () => {
-    const listener = jest.fn();
-    const database = {} as ReturnType<typeof openAppDatabase>;
-    const unsubscribe = createAppConnection(database).subscribe(listener);
-    return { listener, unsubscribe };
-  };
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.mocked(addDatabaseChangeListener).mockImplementation((listener) => {
+        emit = (tableName) => listener({ tableName } as DatabaseChangeEvent);
+        return { remove };
+      });
+    });
 
-  it('reports each changed table once per tick, whatever the number of modified rows', () => {
-    const { listener } = subscribe();
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.clearAllMocks();
+    });
 
-    emit('recipes');
-    emit('recipe_ingredients');
-    emit('recipe_ingredients');
-    emit('recipe_ingredients');
+    const subscribe = () => {
+      const listener = jest.fn();
+      const database = {} as ReturnType<typeof openAppDatabase>;
+      const unsubscribe = createAppConnection(database).subscribe(listener);
+      return { listener, unsubscribe };
+    };
 
-    expect(listener).not.toHaveBeenCalled();
+    it('reports each changed table once per tick, whatever the number of modified rows', () => {
+      const { listener } = subscribe();
 
-    jest.runAllTimers();
+      emit('recipes');
+      emit('recipe_ingredients');
+      emit('recipe_ingredients');
+      emit('recipe_ingredients');
 
-    expect(listener.mock.calls).toStrictEqual([['recipes'], ['recipe_ingredients']]);
+      expect(listener).not.toHaveBeenCalled();
 
-    emit('recipes');
-    jest.runAllTimers();
+      jest.runAllTimers();
 
-    expect(listener).toHaveBeenCalledTimes(3);
-  });
+      expect(listener.mock.calls).toStrictEqual([['recipes'], ['recipe_ingredients']]);
 
-  it('stops listening and drops pending notifications on unsubscribe', () => {
-    const { listener, unsubscribe } = subscribe();
+      emit('recipes');
+      jest.runAllTimers();
 
-    emit('recipes');
-    unsubscribe();
-    jest.runAllTimers();
+      expect(listener).toHaveBeenCalledTimes(3);
+    });
 
-    expect(remove).toHaveBeenCalledTimes(1);
-    expect(listener).not.toHaveBeenCalled();
+    it('stops listening and drops pending notifications on unsubscribe', () => {
+      const { listener, unsubscribe } = subscribe();
+
+      emit('recipes');
+      unsubscribe();
+      jest.runAllTimers();
+
+      expect(remove).toHaveBeenCalledTimes(1);
+      expect(listener).not.toHaveBeenCalled();
+    });
   });
 });

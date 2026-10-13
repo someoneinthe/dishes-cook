@@ -36,8 +36,15 @@ export function createAppConnection(
 export function openAppDatabase() {
   // The change listener (sqlite3_update_hook) powers the live queries.
   const sqlite = openDatabaseSync(DATABASE_NAME, { enableChangeListener: true });
-  // WAL: faster writes, readers never blocked. Foreign keys are off by default in SQLite and the
-  // setting is per connection, so it's enabled on every open.
-  sqlite.execSync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+  // Foreign keys are off by default in SQLite and the setting is per connection: enabled on every
+  // open, on its own, because a multi-statement exec stops at the first failing statement.
+  sqlite.execSync('PRAGMA foreign_keys = ON;');
+  // WAL: faster writes, readers never blocked. Only a speed-up: keep the default journal if the
+  // switch fails (e.g. SQLITE_BUSY).
+  try {
+    sqlite.execSync('PRAGMA journal_mode = WAL;');
+  } catch (error) {
+    console.warn('Could not enable WAL, keeping the default journal mode', error);
+  }
   return drizzle(sqlite);
 }
