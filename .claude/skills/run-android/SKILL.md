@@ -54,11 +54,16 @@ for _ in $(seq 120); do
   kill -0 "$METRO_PID" 2>/dev/null || break
   sleep 1
 done
-grep -q "Waiting on" metro.log || { cat metro.log; echo "Metro did not start: fix the error above first."; }
 ADB=~/Library/Android/sdk/platform-tools/adb
-$ADB shell am force-stop io.github.someoneinthe.dishescook
-$ADB shell am start -a android.intent.action.VIEW \
-  -d "dishescook://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A8081"
+# Open the app only if Metro is ready (no `exit`: it would close an interactive shell).
+if grep -q "Waiting on" metro.log; then
+  $ADB shell am force-stop io.github.someoneinthe.dishescook
+  $ADB shell am start -a android.intent.action.VIEW \
+    -d "dishescook://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A8081"
+else
+  cat metro.log
+  echo "Metro did not start: fix the error above first." >&2
+fi
 ```
 
 Done when `metro.log` shows `Android Bundled … index.ts`. Runtime errors show up there as `ERROR` with a code frame.
