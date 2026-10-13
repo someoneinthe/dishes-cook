@@ -19,7 +19,12 @@ export function HeaderTitle({ children, icon, tintColor }: HeaderTitleProps) {
 
   return (
     <View style={styles.row}>
-      {icon && <Icon color={icon.color} name={icon.name} size={iconSize} />}
+      {icon && (
+        // Decoration: screen readers read the title only.
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <Icon color={icon.color} name={icon.name} size={iconSize} />
+        </View>
+      )}
       <Text
         accessibilityRole="header"
         numberOfLines={1}

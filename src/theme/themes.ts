@@ -26,6 +26,10 @@ const lightColors = {
   actionPrimary: '#1D4ED8',
   background: '#FFFFFF',
   border: '#E7E5E4',
+  // Course icons (contrast with the background ≥ 3:1).
+  courseDessert: '#BE185D',
+  courseMain: '#6D28D9',
+  courseStarter: '#047857',
   // Error text.
   danger: '#B91C1C',
   // Menu entry icons, one color each (contrast with the background ≥ 3:1).
@@ -52,6 +56,9 @@ const darkColors: ThemeColors = {
   actionPrimary: '#2563EB',
   background: '#121212',
   border: '#3A3633',
+  courseDessert: '#F472B6',
+  courseMain: '#A78BFA',
+  courseStarter: '#34D399',
   danger: '#F87171',
   menuIngredients: '#FB923C',
   menuMealChoice: '#60A5FA',

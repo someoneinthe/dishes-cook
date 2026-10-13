@@ -16,7 +16,8 @@ export function StackHeader({
       {...headerTitleOptions}
       back={back}
       headerLeft={
-        back ? (props) => <HeaderBackButton {...props} onPress={navigation.goBack} /> : undefined
+        options.headerLeft ??
+        (back ? (props) => <HeaderBackButton {...props} onPress={navigation.goBack} /> : undefined)
       }
       headerTitle={options.headerTitle ?? headerTitleOptions.headerTitle}
       title={getHeaderTitle(options, route.name)}

@@ -93,6 +93,25 @@ describe('recipeFormScreen', () => {
     expect(router.back).toHaveBeenCalledTimes(1);
   });
 
+  it('shows the saved course and clears it with None', async () => {
+    const id = saveRecipe(connection.db, {
+      course: 'starter',
+      ingredientIdList: [],
+      instructions: '',
+      season: 'summer',
+      title: 'Tomato salad',
+    });
+    jest.mocked(useLocalSearchParams).mockReturnValue({ id: String(id) });
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    expect(screen.getByRole('radio', { name: 'Starter' })).toBeChecked();
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'None' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+
+    expect(getRecipe(connection.db, id)?.course).toBeNull();
+  });
+
   it('tells when the recipe to edit no longer exists', async () => {
     jest.mocked(useLocalSearchParams).mockReturnValue({ id: '42' });
     await renderWithDatabase(<RecipeFormScreen />, connection);

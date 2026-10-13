@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Platform, ToastAndroid } from 'react-native';
+import { renderedIconColorList } from '@/test/icons';
 import { HeaderTitle, headerTitleWithIcon } from './header-title';
 
 const TITLE = 'Ingredients';
@@ -30,17 +31,7 @@ describe('headerTitle', () => {
 
     await render(<IngredientsTitle>{TITLE}</IngredientsTitle>);
 
-    expect(screen.toJSON()).toMatchObject({
-      children: [
-        {
-          props: {
-            style: expect.arrayContaining([
-              expect.objectContaining({ color: '#C2410C' }),
-            ]) as unknown,
-          },
-        },
-        { children: [TITLE] },
-      ],
-    });
+    expect(screen.getByRole('header', { name: TITLE })).toBeVisible();
+    expect(renderedIconColorList()).toStrictEqual(['#C2410C']);
   });
 });
