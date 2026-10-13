@@ -47,7 +47,14 @@ CI=1 npx expo run:android --device Pixel_9a --no-bundler > run-android.log 2>&1
 
 ```bash
 npx expo start --dev-client < /dev/null > metro.log 2>&1 &   # background, non-interactive, still watches files
-until grep -q "Waiting on" metro.log; do sleep 1; done
+METRO_PID=$!
+# Wait up to 2 min for Metro; stop early if it exits, and show why.
+for _ in $(seq 120); do
+  grep -q "Waiting on" metro.log && break
+  kill -0 "$METRO_PID" 2>/dev/null || break
+  sleep 1
+done
+grep -q "Waiting on" metro.log || { cat metro.log; echo "Metro did not start: fix the error above first."; }
 ADB=~/Library/Android/sdk/platform-tools/adb
 $ADB shell am force-stop io.github.someoneinthe.dishescook
 $ADB shell am start -a android.intent.action.VIEW \
