@@ -12,7 +12,7 @@
   - **Colors**: the primary action is blue with white text (`variant="primary"`, default); a deletion is red with white text and always an icon (`variant="danger"`, `icon="trash-can-outline"`, required by the types); other actions are outlined (`variant="secondary"`).
   - **Icon only when the icon speaks for itself** (+ add, ✏️ edit, 🗑 delete, ✓ save, ✕ cancel): `isIconOnly`, the `label` stays for screen readers. **Icon + text** when the icon alone isn't enough (e.g. 🎲 Suggest), **text only** when no icon fits.
   - **Screen actions go in the header**, top right: `<Stack.Screen>` / `<Drawer.Screen options={{ headerRight }}>` with `HeaderActions`. Actions on one item (a list row) stay in the row.
-  - Icons: `src/components/icon.tsx` (Material Design Icons); colors: `actionPrimary` / `actionDanger` / `onAction` tokens.
+  - Icons: `src/components/icon.tsx` (Material Design Icons); colors: `actionPrimary` / `actionDanger` / `onAction` tokens (selected controls — segmented choices, chips, active menu entry — use the same blue).
 - **Formatting is automatic**: a PostToolUse hook (`.claude/hooks/format-file.sh`) runs ESLint `--fix` + Prettier on every file you write/edit. Don't hand-format.
 - **Dependencies**: always `npx expo install <pkg>`; justify any new dependency in the PR description.
 - **Generated / release-owned files — never edit by hand**: `android/`, `ios/`, `CHANGELOG.md`, `.release-please-manifest.json`, and the `version` field in `package.json` (release-please owns them).

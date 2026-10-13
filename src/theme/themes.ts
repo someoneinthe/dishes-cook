@@ -18,7 +18,7 @@ const base = {
 } as const;
 
 const lightColors = {
-  // Buttons (CONTRIBUTING › Buttons): primary actions blue, deletions red, white text and icon.
+  // Buttons and selected controls (CONTRIBUTING › Buttons): blue; deletions red; white text/icons.
   // Contrast with white ≥ 4.5:1 in both themes.
   actionDanger: '#B91C1C',
   actionPrimary: '#1D4ED8',
@@ -27,8 +27,6 @@ const lightColors = {
   // Error text.
   danger: '#B91C1C',
   onAction: '#FFFFFF',
-  onPrimary: '#FFFFFF',
-  primary: '#C2410C',
   surface: '#FAFAF9',
   text: '#1C1917',
   textMuted: '#57534E',
@@ -44,8 +42,6 @@ const darkColors: ThemeColors = {
   border: '#3A3633',
   danger: '#F87171',
   onAction: '#FFFFFF',
-  onPrimary: '#1C1917',
-  primary: '#FB923C',
   surface: '#1E1E1E',
   text: '#F5F5F4',
   textMuted: '#A8A29E',

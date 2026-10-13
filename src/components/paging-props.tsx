@@ -2,7 +2,7 @@ import { ActivityIndicator } from 'react-native';
 import { withUnistyles } from 'react-native-unistyles';
 
 const ThemedActivityIndicator = withUnistyles(ActivityIndicator, (theme) => ({
-  color: theme.colors.primary,
+  color: theme.colors.actionPrimary,
 }));
 
 type PagedList = Readonly<{

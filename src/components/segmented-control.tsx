@@ -1,7 +1,15 @@
 import { Pressable, Text, View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import type { IconName } from './icon';
+import { Icon } from './icon';
+import { useIconSize } from './use-icon-size';
 
-export type SegmentedOption<T extends string> = Readonly<{ label: string; value: T }>;
+export type SegmentedOption<T extends string> = Readonly<{
+  // Shown before the label (e.g. a snowflake for winter).
+  icon?: IconName;
+  label: string;
+  value: T;
+}>;
 
 type SegmentedControlProps<T extends string> = Readonly<{
   label: string;
@@ -17,6 +25,10 @@ export function SegmentedControl<T extends string>({
   optionList,
   value,
 }: SegmentedControlProps<T>) {
+  // Icon colors are props, not styles.
+  const { theme } = useUnistyles();
+  const iconSize = useIconSize('sm');
+
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
@@ -38,6 +50,13 @@ export function SegmentedControl<T extends string>({
               onPress={() => onChange(option.value)}
               style={[styles.segment, isChecked && styles.checkedSegment]}
             >
+              {option.icon && (
+                <Icon
+                  color={isChecked ? theme.colors.onAction : theme.colors.text}
+                  name={option.icon}
+                  size={iconSize}
+                />
+              )}
               <Text style={[styles.segmentLabel, isChecked && styles.checkedLabel]}>
                 {option.label}
               </Text>
@@ -51,10 +70,10 @@ export function SegmentedControl<T extends string>({
 
 const styles = StyleSheet.create((theme) => ({
   checkedLabel: {
-    color: theme.colors.onPrimary,
+    color: theme.colors.onAction,
   },
   checkedSegment: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.actionPrimary,
   },
   field: {
     gap: theme.gap(1),
@@ -74,6 +93,8 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
     flex: 1,
+    flexDirection: 'row',
+    gap: theme.gap(1),
     justifyContent: 'center',
     minHeight: theme.size.touchTarget,
     paddingHorizontal: theme.gap(2),

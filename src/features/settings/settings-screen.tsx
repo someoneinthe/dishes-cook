@@ -6,9 +6,9 @@ import type { ColorSchemePreference } from './preferences';
 import { updatePreferences, usePreferences } from './preferences';
 
 const COLOR_SCHEME_OPTION_LIST: readonly SegmentedOption<ColorSchemePreference>[] = [
-  { label: 'System', value: 'system' },
-  { label: 'Light', value: 'light' },
-  { label: 'Dark', value: 'dark' },
+  { icon: 'cellphone', label: 'System', value: 'system' },
+  { icon: 'white-balance-sunny', label: 'Light', value: 'light' },
+  { icon: 'weather-night', label: 'Dark', value: 'dark' },
 ];
 
 export function SettingsScreen() {

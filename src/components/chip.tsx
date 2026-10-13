@@ -38,7 +38,7 @@ export function Chip({
       style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
     >
       <Icon
-        color={isSelected ? theme.colors.onPrimary : theme.colors.text}
+        color={isSelected ? theme.colors.onAction : theme.colors.text}
         name={icon}
         size={iconSize}
       />
@@ -61,7 +61,10 @@ const styles = StyleSheet.create((theme) => ({
     variants: {
       isSelected: {
         false: { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-        true: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+        true: {
+          backgroundColor: theme.colors.actionPrimary,
+          borderColor: theme.colors.actionPrimary,
+        },
       },
     },
   },
@@ -70,7 +73,7 @@ const styles = StyleSheet.create((theme) => ({
     variants: {
       isSelected: {
         false: { color: theme.colors.text },
-        true: { color: theme.colors.onPrimary },
+        true: { color: theme.colors.onAction },
       },
     },
   },

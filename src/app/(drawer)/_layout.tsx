@@ -15,7 +15,7 @@ export default function DrawerLayout() {
     <Drawer
       backBehavior="initialRoute"
       screenOptions={{
-        drawerActiveTintColor: theme.colors.primary,
+        drawerActiveTintColor: theme.colors.actionPrimary,
         drawerInactiveTintColor: theme.colors.text,
         drawerStyle: { backgroundColor: theme.colors.background },
         headerStyle: { backgroundColor: theme.colors.surface },
