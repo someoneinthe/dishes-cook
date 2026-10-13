@@ -6,7 +6,7 @@ import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, recipes } from '@/db/schema';
-import { cleanName, sortByText, toSortKey } from '@/lib/text';
+import { cleanName, toSortKey } from '@/lib/text';
 
 export type Recipe = Readonly<{
   id: number;
@@ -73,9 +73,10 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
     .from(recipeIngredients)
     .innerJoin(ingredients, eq(ingredients.id, recipeIngredients.ingredientId))
     .where(eq(recipeIngredients.recipeId, id))
+    .orderBy(asc(ingredients.sortKey), asc(ingredients.id))
     .all();
   // Not paginated: a recipe's own ingredients, bounded by what the form lets you add.
-  return { ...recipe, ingredientList: sortByText(ingredientList, (ingredient) => ingredient.name) };
+  return { ...recipe, ingredientList };
 }
 
 // One page (PAGE_SIZE) of the alphabetical recipe list. `instructions` (possibly long) is left out.

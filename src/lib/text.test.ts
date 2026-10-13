@@ -1,4 +1,4 @@
-import { cleanName, isMatchingSearch, sortByText, toNameKey } from './text';
+import { cleanName, toLikeContains, toNameKey, toSortKey } from './text';
 
 describe('text', () => {
   it('cleans the whitespace of a name', () => {
@@ -10,17 +10,12 @@ describe('text', () => {
     expect(toNameKey('pâte')).not.toBe(toNameKey('pâté'));
   });
 
-  it('searches without case or accents', () => {
-    expect(isMatchingSearch('Pommes de terre écrasées', 'ECRASE')).toBe(true);
-    expect(isMatchingSearch('Carotte', 'navet')).toBe(false);
+  it('builds a sort key without case or accents', () => {
+    expect(toSortKey('  Pommes de terre   Écrasées')).toBe('pommes de terre ecrasees');
   });
 
-  it('sorts names alphabetically, accented first letters included', () => {
-    expect(sortByText(['zucchini', 'Échalote', 'ail', 'Oignon'], (name) => name)).toStrictEqual([
-      'ail',
-      'Échalote',
-      'Oignon',
-      'zucchini',
-    ]);
+  it('builds a LIKE pattern matching the typed text literally', () => {
+    expect(toLikeContains('ÉCRASÉ')).toBe('%ecrase%');
+    expect(toLikeContains('100%_\\')).toBe(String.raw`%100\%\_\\%`);
   });
 });

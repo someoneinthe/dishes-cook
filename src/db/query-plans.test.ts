@@ -86,6 +86,8 @@ describe('query plans', () => {
     expect(lastPlan()).toStrictEqual([
       expect.stringMatching(/^SEARCH recipe_ingredients USING COVERING INDEX sqlite_autoindex/),
       expect.stringMatching(/^SEARCH ingredients USING INTEGER PRIMARY KEY/),
+      // Sorting one recipe's few ingredients by name: a small, bounded sort.
+      'USE TEMP B-TREE FOR ORDER BY',
     ]);
   });
 
