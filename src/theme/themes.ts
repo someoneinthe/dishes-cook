@@ -17,11 +17,15 @@ const base = {
 } as const;
 
 const lightColors = {
+  // Buttons (CONTRIBUTING › Buttons): primary actions blue, deletions red, white text and icon.
+  // Contrast with white ≥ 4.5:1 in both themes.
+  actionDanger: '#B91C1C',
+  actionPrimary: '#1D4ED8',
   background: '#FFFFFF',
   border: '#E7E5E4',
+  // Error text.
   danger: '#B91C1C',
-  // Text and icons on a `danger` background.
-  onDanger: '#FFFFFF',
+  onAction: '#FFFFFF',
   onPrimary: '#FFFFFF',
   primary: '#C2410C',
   surface: '#FAFAF9',
@@ -33,10 +37,12 @@ const lightColors = {
 type ThemeColors = Record<keyof typeof lightColors, string>;
 
 const darkColors: ThemeColors = {
+  actionDanger: '#DC2626',
+  actionPrimary: '#2563EB',
   background: '#121212',
   border: '#3A3633',
   danger: '#F87171',
-  onDanger: '#1C1917',
+  onAction: '#FFFFFF',
   onPrimary: '#1C1917',
   primary: '#FB923C',
   surface: '#1E1E1E',
