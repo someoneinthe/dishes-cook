@@ -58,33 +58,36 @@ defineFeature(feature, (test) => {
   const currentSuggestion = () =>
     RECIPE_TITLE_LIST.find((title) => screen.queryByRole('header', { name: title }));
 
-  const seeTheMatchCount = (count: string) => {
-    const text = count === '1' ? '1 recipe matches.' : `${count} recipes match.`;
+  // Assertions stay inline in each `then` (not in shared step functions) so Sonar sees them (S2699).
+  const matchCountText = (count: string) =>
+    count === '1' ? '1 recipe matches.' : `${count} recipes match.`;
 
-    expect(screen.getByText(text)).toBeOnTheScreen();
-  };
-
-  const theSuggestionIsOneOf = (titles: string) => {
-    const titleList = titles.split(', ');
-
-    expect(titleList.some((title) => screen.queryByRole('header', { name: title }))).toBe(true);
-  };
+  const isSuggestionOneOf = (titles: string) =>
+    titles.split(', ').some((title) => screen.queryByRole('header', { name: title }));
 
   test('Any recipe can be suggested without filters', ({ given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the meal choice', openTheMealChoice);
-    then(/^I see that (\d+) recipes match$/, seeTheMatchCount);
+    then(/^I see that (\d+) recipes match$/, (count: string) => {
+      expect(screen.getByText(matchCountText(count))).toBeOnTheScreen();
+    });
     when('I ask for a suggestion', askForSuggestion);
-    then(/^the suggestion is one of "(.*)"$/, theSuggestionIsOneOf);
+    then(/^the suggestion is one of "(.*)"$/, (titles: string) => {
+      expect(isSuggestionOneOf(titles)).toBe(true);
+    });
   });
 
   test('A season also includes the recipes for both seasons', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the meal choice', openTheMealChoice);
     and(/^I choose the "(.*)" season$/, chooseTheSeason);
-    then(/^I see that (\d+) recipes match$/, seeTheMatchCount);
+    then(/^I see that (\d+) recipes match$/, (count: string) => {
+      expect(screen.getByText(matchCountText(count))).toBeOnTheScreen();
+    });
     when('I ask for a suggestion', askForSuggestion);
-    then(/^the suggestion is one of "(.*)"$/, theSuggestionIsOneOf);
+    then(/^the suggestion is one of "(.*)"$/, (titles: string) => {
+      expect(isSuggestionOneOf(titles)).toBe(true);
+    });
   });
 
   test('Suggested recipes contain every selected ingredient', ({ and, given, then, when }) => {
@@ -92,9 +95,13 @@ defineFeature(feature, (test) => {
     when('I open the meal choice', openTheMealChoice);
     and(/^I select the ingredient "(.*)"$/, selectTheIngredient);
     and(/^I select the ingredient "(.*)"$/, selectTheIngredient);
-    then(/^I see that (\d+) recipe matches$/, seeTheMatchCount);
+    then(/^I see that (\d+) recipe matches$/, (count: string) => {
+      expect(screen.getByText(matchCountText(count))).toBeOnTheScreen();
+    });
     when('I ask for a suggestion', askForSuggestion);
-    then(/^the suggestion is one of "(.*)"$/, theSuggestionIsOneOf);
+    then(/^the suggestion is one of "(.*)"$/, (titles: string) => {
+      expect(isSuggestionOneOf(titles)).toBe(true);
+    });
   });
 
   test('Asking again suggests another recipe', ({ and, given, then, when }) => {

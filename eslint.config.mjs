@@ -234,6 +234,9 @@ export default defineConfig([
     // creates the describe block, and assertions live in step callbacks shared across scenarios.
     files: ['**/*.steps.test.ts', '**/*.steps.test.tsx'],
     rules: {
+      // Assertions are inline in each `then` (Sonar S2699 can't see them in shared step functions),
+      // and this rule counts every scenario of the feature as one test.
+      'jest/max-expects': 'off',
       'jest/no-standalone-expect': 'off',
       'jest/require-hook': 'off',
       'jest/require-top-level-describe': 'off',
