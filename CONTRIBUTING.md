@@ -56,7 +56,9 @@ React Native specifics:
 
 CI runs a [SonarQube Cloud](https://sonarcloud.io/project/overview?id=someoneinthe_dishes-cook) scan after the tests and uploads Jest coverage (`coverage/lcov.info`). Configuration lives in `sonar-project.properties`. Fix new issues reported on your PR before merging.
 
-The scan is skipped when `SONAR_TOKEN` isn't available (Dependabot and fork PRs).
+The scan waits for the quality gate (`sonar.qualitygate.wait`): a failing gate fails the required **Lint, typecheck & test** check. On a PR the gate only judges the lines the PR changes; on `main` it judges all new code. The scan is skipped when `SONAR_TOKEN` isn't available (Dependabot and fork PRs).
+
+Import images through `src/lib/assets.ts` (relative paths), not with `@/assets/…`: Sonar can't resolve that alias to an image file and reports it as an undeclared package (S4328).
 
 ## Dependency updates
 

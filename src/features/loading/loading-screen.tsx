@@ -3,7 +3,7 @@ import { hide as hideSplashScreen } from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { Animated } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
-import loadingImage from '@/assets/images/loading-screen.webp';
+import { loadingScreenImage } from '@/lib/assets';
 
 // How long the illustration stays fully visible once it's displayed.
 export const MIN_DISPLAY_MS = 1500;
@@ -53,7 +53,7 @@ export function LoadingScreen({ onFinish }: LoadingScreenProps) {
         onDisplay={() => setIsImageDisplayed(true)}
         // Never get stuck on the loading screen if the illustration fails to load.
         onError={() => setIsImageDisplayed(true)}
-        source={loadingImage}
+        source={loadingScreenImage}
         style={styles.image}
         testID="loading-screen-image"
       />
