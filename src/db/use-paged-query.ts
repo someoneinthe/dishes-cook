@@ -1,6 +1,6 @@
 import type { QueryKey } from '@tanstack/react-query';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import type { Page, PageRequest as PageRequest } from './pagination';
+import type { Page, PageRequest } from './pagination';
 import { MAX_PAGES } from './pagination';
 
 // A list loaded PAGE_SIZE rows at a time (infinite scroll), keeping at most MAX_PAGES in memory.
