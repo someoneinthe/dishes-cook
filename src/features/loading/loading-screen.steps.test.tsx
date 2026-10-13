@@ -30,10 +30,6 @@ defineFeature(feature, (test) => {
     });
   };
 
-  const theLoadingScreenIsFinished = () => {
-    expect(onFinish).toHaveBeenCalledTimes(1);
-  };
-
   test('The illustration replaces the native splash screen', ({ given, then, when }) => {
     given('the app is starting', theAppIsStarting);
     when('the loading screen is laid out', async () => {
@@ -52,7 +48,9 @@ defineFeature(feature, (test) => {
       await fireEvent(screen.getByTestId('loading-screen-image'), 'display');
     });
     when(/^(\d+) milliseconds have passed$/, millisecondsHavePassed);
-    then('the loading screen is finished', theLoadingScreenIsFinished);
+    then('the loading screen is finished', () => {
+      expect(onFinish).toHaveBeenCalledTimes(1);
+    });
   });
 
   test('The app still opens when the illustration fails to load', ({ and, given, then, when }) => {
@@ -63,6 +61,8 @@ defineFeature(feature, (test) => {
       });
     });
     when(/^(\d+) milliseconds have passed$/, millisecondsHavePassed);
-    then('the loading screen is finished', theLoadingScreenIsFinished);
+    then('the loading screen is finished', () => {
+      expect(onFinish).toHaveBeenCalledTimes(1);
+    });
   });
 });
