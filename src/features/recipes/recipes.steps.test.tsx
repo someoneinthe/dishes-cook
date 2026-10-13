@@ -1,6 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import type { DatabaseConnection } from '@/db/types';
+import type { NavigationMock } from '@/test/navigation-mock';
 import {
   findIngredientByName,
   findOrCreateIngredient,
@@ -12,7 +13,9 @@ import { RecipeFormScreen } from './recipe-form-screen';
 
 jest.mock('expo-router', () => ({
   router: { back: jest.fn(), replace: jest.fn() },
-  Stack: { Screen: () => null },
+  Stack: {
+    Screen: jest.requireActual<NavigationMock>('@/test/navigation-mock').ScreenWithHeaderButtons,
+  },
   useLocalSearchParams: () => ({}),
 }));
 

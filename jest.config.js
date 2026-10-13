@@ -17,6 +17,8 @@ module.exports = {
   preset: 'jest-expo',
   // Unistyles: native runtime mocked, then the app's themes registered (StyleSheet.configure).
   setupFiles: ['react-native-unistyles/mocks', '<rootDir>/src/theme/unistyles.ts'],
+  // Module mocks shared by every test (header buttons of screens).
+  setupFilesAfterEnv: ['<rootDir>/src/test/setup-after-environment.ts'],
   // Compile like the app: Metro enables the React Compiler (app.config.ts), jest-expo doesn't.
   // Without it, tests miss memoization bugs (a live query once returned stale data on device only).
   transform: {

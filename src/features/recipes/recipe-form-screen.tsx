@@ -6,6 +6,7 @@ import type { Season } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
+import { HeaderActions } from '@/components/header-actions';
 import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
 import { useDatabase } from '@/db/database-context';
@@ -19,6 +20,7 @@ import { SEASON_OPTION_LIST } from './season';
 type RecipeFormProps = Readonly<{
   // Undefined for a new recipe.
   initialRecipe: Recipe | undefined;
+  screenTitle: string;
 }>;
 
 // Creates a recipe (/recipe/new) or edits one (/recipe/[id]/edit).
@@ -40,15 +42,10 @@ export function RecipeFormScreen() {
       </View>
     );
   }
-  return (
-    <>
-      <Stack.Screen options={{ title: screenTitle }} />
-      <RecipeForm initialRecipe={initialRecipe} />
-    </>
-  );
+  return <RecipeForm initialRecipe={initialRecipe} screenTitle={screenTitle} />;
 }
 
-function RecipeForm({ initialRecipe }: RecipeFormProps) {
+function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
   const database = useDatabase();
   const [title, setTitle] = useState(initialRecipe?.title ?? '');
   const [season, setSeason] = useState<Season>(initialRecipe?.season ?? 'both');
@@ -84,6 +81,23 @@ function RecipeForm({ initialRecipe }: RecipeFormProps) {
       keyboardShouldPersistTaps="handled"
       style={styles.screen}
     >
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <HeaderActions>
+              <Button
+                accessibilityHint="Saves the recipe and shows it"
+                accessibilityLabel="Save recipe"
+                icon="content-save"
+                isIconOnly
+                label="Save"
+                onPress={save}
+              />
+            </HeaderActions>
+          ),
+          title: screenTitle,
+        }}
+      />
       <TextField
         error={titleError}
         label="Title"
@@ -117,7 +131,6 @@ function RecipeForm({ initialRecipe }: RecipeFormProps) {
         placeholder="Steps, quantities, cooking time…"
         value={instructions}
       />
-      <Button icon="content-save" label="Save recipe" onPress={save} />
     </ScrollView>
   );
 }

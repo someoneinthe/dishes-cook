@@ -4,6 +4,7 @@ import { Alert, ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
+import { HeaderActions } from '@/components/header-actions';
 import { useDatabase } from '@/db/database-context';
 import { RecipeDetails } from './components/recipe-details';
 import { deleteRecipe } from './db/recipe-queries';
@@ -46,31 +47,36 @@ export function RecipeDetailScreen() {
     ]);
   };
 
+  const headerActions = (
+    <HeaderActions>
+      <Button
+        icon="pencil"
+        isIconOnly
+        label="Edit"
+        onPress={() =>
+          router.push({ params: { id: String(recipe.id) }, pathname: '/recipe/[id]/edit' })
+        }
+        variant="secondary"
+      />
+      <Button
+        icon="trash-can-outline"
+        isIconOnly
+        label="Delete"
+        onPress={confirmDelete}
+        variant="danger"
+      />
+    </HeaderActions>
+  );
+
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
-      <Stack.Screen options={{ title: recipe.title }} />
+      <Stack.Screen options={{ headerRight: () => headerActions, title: recipe.title }} />
       <RecipeDetails recipe={recipe} />
-      <View style={styles.actions}>
-        <Button
-          icon="pencil"
-          label="Edit"
-          onPress={() =>
-            router.push({ params: { id: String(recipe.id) }, pathname: '/recipe/[id]/edit' })
-          }
-          variant="secondary"
-        />
-        <Button icon="trash-can-outline" label="Delete" onPress={confirmDelete} variant="danger" />
-      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create((theme) => ({
-  actions: {
-    flexDirection: 'row',
-    gap: theme.gap(2),
-    justifyContent: 'flex-end',
-  },
   content: {
     gap: theme.gap(6),
     padding: theme.gap(4),

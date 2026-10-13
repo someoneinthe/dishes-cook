@@ -1,6 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import type { DatabaseConnection } from '@/db/types';
+import type { NavigationMock } from '@/test/navigation-mock';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { spyOnAlert } from '@/test/alert';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
@@ -9,7 +10,9 @@ import { RecipeDetailScreen } from './recipe-detail-screen';
 
 jest.mock('expo-router', () => ({
   router: { back: jest.fn(), push: jest.fn() },
-  Stack: { Screen: () => null },
+  Stack: {
+    Screen: jest.requireActual<NavigationMock>('@/test/navigation-mock').ScreenWithHeaderButtons,
+  },
   useLocalSearchParams: jest.fn(),
 }));
 
