@@ -5,8 +5,9 @@ import {
   findIngredientByName,
   findOrCreateIngredient,
 } from '@/features/ingredients/db/ingredient-queries';
+import { firstRecipePage } from '@/test/queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
-import { getRecipe, listRecipes } from './db/recipe-queries';
+import { getRecipe } from './db/recipe-queries';
 import { RecipeFormScreen } from './recipe-form-screen';
 
 jest.mock('expo-router', () => ({
@@ -54,7 +55,7 @@ defineFeature(feature, (test) => {
     then(
       /^the recipe "(.*)" is saved for winter with "(.*)"$/,
       (title: string, ingredientNames: string) => {
-        const [{ id } = { id: -1 }] = listRecipes(connection.db);
+        const [{ id } = { id: -1 }] = firstRecipePage(connection.db);
 
         expect(getRecipe(connection.db, id)).toMatchObject({ season: 'winter', title });
         expect(
@@ -72,7 +73,7 @@ defineFeature(feature, (test) => {
     when('I save the recipe', saveTheRecipe);
     then('I am asked to give the recipe a title', () => {
       expect(screen.getByText('Give the recipe a title.')).toBeOnTheScreen();
-      expect(listRecipes(connection.db)).toStrictEqual([]);
+      expect(firstRecipePage(connection.db)).toStrictEqual([]);
     });
   });
 });

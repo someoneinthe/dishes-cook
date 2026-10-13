@@ -12,7 +12,9 @@ export function spyOnAlert() {
       if (!button?.onPress) {
         throw new Error(`No "${text}" button in the alert`);
       }
-      await act(() => button.onPress?.());
+      await act(() => {
+        button.onPress?.();
+      });
     },
     spy: alertSpy,
   };

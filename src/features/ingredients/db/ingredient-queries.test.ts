@@ -1,11 +1,12 @@
 import type { AppDatabase } from '@/db/types';
 import { saveRecipe } from '@/features/recipes/db/recipe-queries';
+import { firstIngredientPage } from '@/test/queries';
 import { createTestConnection } from '@/test/test-database';
 import {
   deleteIngredient,
   findOrCreateIngredient,
-  listIngredients,
   renameIngredient,
+  suggestIngredients,
 } from './ingredient-queries';
 
 describe('ingredient queries', () => {
@@ -21,14 +22,14 @@ describe('ingredient queries', () => {
 
     expect(created).toStrictEqual({ id: created.id, isNew: true, name: 'Œuf' });
     expect(again).toStrictEqual({ id: created.id, isNew: false, name: 'Œuf' });
-    expect(listIngredients(database)).toHaveLength(1);
+    expect(firstIngredientPage(database)).toHaveLength(1);
   });
 
   it('keeps accents significant', () => {
     findOrCreateIngredient(database, 'pâte');
     findOrCreateIngredient(database, 'pâté');
 
-    expect(listIngredients(database)).toHaveLength(2);
+    expect(firstIngredientPage(database)).toHaveLength(2);
   });
 
   it('refuses a blank name', () => {
@@ -52,9 +53,9 @@ describe('ingredient queries', () => {
       title: 'Salad',
     });
 
-    expect(listIngredients(database)).toStrictEqual([
-      { id: carrot.id, name: 'carrot', recipeCount: 2 },
-      { id: shallot.id, name: 'Échalote', recipeCount: 1 },
+    expect(firstIngredientPage(database)).toStrictEqual([
+      { id: carrot.id, name: 'carrot', recipeCount: 2, sortKey: 'carrot' },
+      { id: shallot.id, name: 'Échalote', recipeCount: 1, sortKey: 'echalote' },
       expect.objectContaining({ name: 'zucchini', recipeCount: 0 }),
     ]);
   });
@@ -67,7 +68,7 @@ describe('ingredient queries', () => {
     expect(renameIngredient(database, carrot.id, ' ')).toBe('blank');
     expect(renameIngredient(database, carrot.id, 'Carrot')).toBe('renamed');
     expect(renameIngredient(database, carrot.id, 'carrot')).toBe('renamed');
-    expect(listIngredients(database).map((ingredient) => ingredient.name)).toStrictEqual([
+    expect(firstIngredientPage(database).map((ingredient) => ingredient.name)).toStrictEqual([
       'carrot',
       'leek',
     ]);
@@ -85,8 +86,35 @@ describe('ingredient queries', () => {
 
     expect(deleteIngredient(database, carrot.id)).toBe('in-use');
     expect(deleteIngredient(database, leek.id)).toBe('deleted');
-    expect(listIngredients(database).map((ingredient) => ingredient.name)).toStrictEqual([
+    expect(firstIngredientPage(database).map((ingredient) => ingredient.name)).toStrictEqual([
       'carrot',
     ]);
+  });
+
+  it('suggests the exact name first, then the most used, without the excluded ones', () => {
+    const carrot = findOrCreateIngredient(database, 'carrot');
+    const carrotCake = findOrCreateIngredient(database, 'carrot cake spice');
+    const babyCarrot = findOrCreateIngredient(database, 'baby carrot');
+    findOrCreateIngredient(database, 'leek');
+    saveRecipe(database, {
+      ingredientIdList: [babyCarrot.id],
+      instructions: '',
+      season: 'both',
+      title: 'Soup',
+    });
+    const suggest = (options: Partial<Parameters<typeof suggestIngredients>[1]>) =>
+      suggestIngredients(database, {
+        excludeIdList: [],
+        isUsedOnly: false,
+        limit: 12,
+        search: 'carrot',
+        ...options,
+      }).map((ingredient) => ingredient.name);
+
+    expect(suggest({})).toStrictEqual(['carrot', 'baby carrot', 'carrot cake spice']);
+    expect(suggest({ excludeIdList: [carrot.id], limit: 1 })).toStrictEqual(['baby carrot']);
+    expect(suggest({ isUsedOnly: true })).toStrictEqual(['baby carrot']);
+    expect(suggest({ search: '' }).at(0)).toBe('baby carrot');
+    expect(carrotCake.isNew).toBe(true);
   });
 });

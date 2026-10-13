@@ -8,6 +8,7 @@ jest.mock('./client', () => ({
   openAppConnection: () => ({ db: { name: 'app database' }, subscribe: () => () => {} }),
 }));
 jest.mock('drizzle-orm/expo-sqlite/migrator', () => ({ useMigrations: jest.fn() }));
+jest.mock('./backfill-sort-keys', () => ({ backfillSortKeys: jest.fn() }));
 
 function DatabaseName() {
   const database = useDatabase() as unknown as { name: string };

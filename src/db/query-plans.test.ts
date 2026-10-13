@@ -1,19 +1,21 @@
 import { sql } from 'drizzle-orm';
 import {
   findOrCreateIngredient,
-  listIngredients,
+  listIngredientPage,
+  suggestIngredients,
 } from '@/features/ingredients/db/ingredient-queries';
 import {
-  findRecipeIds,
+  countRecipes,
   getRecipe,
-  listRecipes,
+  listRecipePage,
+  pickRandomRecipeId,
   saveRecipe,
 } from '@/features/recipes/db/recipe-queries';
 import { createTestConnection } from '@/test/test-database';
 import type { AppDatabase } from './types';
 
-// Guards the indexes the queries rely on (see docs/database.md): asks SQLite how it runs each
-// query and fails if a table is scanned where an index lookup is expected.
+const CURSOR = { id: 1, sortKey: 'm' };
+
 describe('query plans', () => {
   let database: AppDatabase;
   let queryList: string[];
@@ -36,57 +38,80 @@ describe('query plans', () => {
     queryList = [];
   });
 
-  // Plan of the last query run, one line per step. Parameters are replaced by literals: the plan
-  // doesn't depend on their values.
-  const lastQueryPlan = () => {
-    const query = queryList.at(-1) ?? '';
-    return database
+  const planOf = (query = '') =>
+    database
       .all<{ detail: string }>(sql.raw(`EXPLAIN QUERY PLAN ${query.replaceAll('?', '1')}`))
       .map((row) => row.detail);
-  };
 
-  it('counts ingredient usages with the ingredient index', () => {
-    listIngredients(database);
+  // The EXPLAIN queries are logged too: skip them.
+  const lastQuery = () => queryList.findLast((query) => !query.startsWith('EXPLAIN'));
+  const lastPlan = () => planOf(lastQuery());
+  const INGREDIENT_INDEX =
+    /^SEARCH recipe_ingredients USING COVERING INDEX recipe_ingredients_ingredient_recipe_idx/;
 
-    expect(lastQueryPlan()).toStrictEqual([
-      'SCAN ingredients',
-      expect.stringMatching(
-        /^SEARCH recipe_ingredients USING COVERING INDEX recipe_ingredients_ingredient_recipe_idx/,
-      ),
-    ]);
+  it.each([
+    ['the first page', null],
+    ['a page after a cursor', { after: CURSOR }],
+    ['a page before a cursor', { before: CURSOR }],
+  ])('reads %s of ingredients in index order, without sorting', (_, pageRequest) => {
+    listIngredientPage(database, { pageParam: pageRequest, search: 'ca' });
+    const planList = lastPlan();
+
+    expect(planList[0]).toMatch(
+      /^(SCAN|SEARCH) ingredients USING INDEX ingredients_sort_key_id_idx/,
+    );
+    expect(planList.join('\n')).not.toContain('TEMP B-TREE');
   });
 
-  it('counts recipe ingredients with the primary key', () => {
-    listRecipes(database);
+  it('counts ingredient usages with the ingredient index', () => {
+    listIngredientPage(database, { pageParam: null, search: '' });
 
-    expect(lastQueryPlan()).toStrictEqual([
-      'SCAN recipes',
+    expect(lastPlan()).toContainEqual(expect.stringMatching(INGREDIENT_INDEX));
+  });
+
+  it('reads recipe pages in index order and counts ingredients with the primary key', () => {
+    listRecipePage(database, { after: CURSOR });
+    const planList = lastPlan();
+
+    expect(planList[0]).toMatch(/^SEARCH recipes USING INDEX recipes_sort_key_id_idx/);
+    expect(planList).toContainEqual(
       expect.stringMatching(/^SEARCH recipe_ingredients USING COVERING INDEX sqlite_autoindex/),
-    ]);
+    );
+    expect(planList.join('\n')).not.toContain('TEMP B-TREE');
   });
 
   it('reads a recipe ingredients by primary key', () => {
     getRecipe(database, 1);
 
-    expect(lastQueryPlan()).toStrictEqual([
+    expect(lastPlan()).toStrictEqual([
       expect.stringMatching(/^SEARCH recipe_ingredients USING COVERING INDEX sqlite_autoindex/),
       expect.stringMatching(/^SEARCH ingredients USING INTEGER PRIMARY KEY/),
+      // Sorting one recipe's few ingredients by name: a small, bounded sort.
+      'USE TEMP B-TREE FOR ORDER BY',
     ]);
   });
 
-  it('filters recipes by ingredient from the ingredient index', () => {
-    findRecipeIds(database, { ingredientIdList: [1, 2], season: 'winter' });
+  it.each([
+    ['counts', () => countRecipes(database, { ingredientIdList: [1, 2], season: 'winter' })],
+    [
+      'picks',
+      () => pickRandomRecipeId(database, { ingredientIdList: [1], season: 'winter' }, 1, () => 0),
+    ],
+  ])('%s recipes filtered by ingredient from the ingredient index', (_, run) => {
+    run();
+    const planList = lastPlan();
 
-    const planList = lastQueryPlan();
-
-    expect(planList).toContainEqual(
-      expect.stringMatching(
-        /^SEARCH recipe_ingredients USING COVERING INDEX recipe_ingredients_ingredient_recipe_idx/,
-      ),
-    );
+    expect(planList).toContainEqual(expect.stringMatching(INGREDIENT_INDEX));
     expect(planList).toContainEqual(
       expect.stringMatching(/^SEARCH recipes USING INTEGER PRIMARY KEY/),
     );
     expect(planList).not.toContainEqual(expect.stringMatching(/^SCAN/));
+  });
+
+  it('ranks suggestions with the usage index (a bounded scan: every match is ranked)', () => {
+    suggestIngredients(database, { excludeIdList: [1], isUsedOnly: true, limit: 12, search: 'ca' });
+
+    expect(lastPlan()).toContainEqual(expect.stringMatching(INGREDIENT_INDEX));
+    expect(lastQuery()).toMatch(/limit \?$/);
   });
 });

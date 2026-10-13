@@ -1,10 +1,12 @@
 import type { SQL } from 'drizzle-orm';
-import { and, count, eq, inArray, notInArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
+import type { Page, PageRequest } from '@/db/pagination';
 import type { Season } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
+import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, recipes } from '@/db/schema';
-import { cleanName, sortByText } from '@/lib/text';
+import { cleanName, toSortKey } from '@/lib/text';
 
 export type Recipe = Readonly<{
   id: number;
@@ -32,41 +34,26 @@ export type RecipeListItem = Readonly<{
   id: number;
   ingredientCount: number;
   season: Season;
+  sortKey: string;
   title: string;
 }>;
+
+// Number of ingredients of the recipe, read from the (recipe_id, ingredient_id) primary key.
+// Written out qualified: Drizzle renders `${recipes.id}` as a bare "id" inside a select.
+const INGREDIENT_COUNT = sql<number>`(select count(*) from "recipe_ingredients" where "recipe_ingredients"."recipe_id" = "recipes"."id")`;
+
+// Number of recipes matching the filters (the meal choice shows it and picks among them).
+export function countRecipes(database: AppDatabase, filters: RecipeFilters): number {
+  return (
+    database.select({ count: count() }).from(recipes).where(filtersWhere(database, filters)).get()
+      ?.count ?? 0
+  );
+}
 
 // Its ingredient links are deleted by the foreign key's ON DELETE CASCADE.
 export function deleteRecipe(database: AppDatabase, id: number): void {
   database.delete(recipes).where(eq(recipes.id, id)).run();
 }
-
-// Ids of the recipes matching the filters, for the random pick. Only ids are read: the chosen
-// recipe is loaded afterwards. With ingredients, the plan starts from the (ingredient_id,
-// recipe_id) index, so only recipes containing a selected ingredient are visited.
-export function findRecipeIds(database: AppDatabase, filters: RecipeFilters): number[] {
-  const conditionList: SQL[] = [];
-  if (filters.season) {
-    conditionList.push(inArray(recipes.season, [filters.season, 'both']));
-  }
-  const ingredientIdList = [...new Set(filters.ingredientIdList)];
-  if (ingredientIdList.length > 0) {
-    // The primary key forbids duplicate links, so "all of them" = "as many links as ingredients".
-    const recipesWithAllIngredients = database
-      .select({ recipeId: recipeIngredients.recipeId })
-      .from(recipeIngredients)
-      .where(inArray(recipeIngredients.ingredientId, ingredientIdList))
-      .groupBy(recipeIngredients.recipeId)
-      .having(sql`count(*) = ${ingredientIdList.length}`);
-    conditionList.push(inArray(recipes.id, recipesWithAllIngredients));
-  }
-  return database
-    .select({ id: recipes.id })
-    .from(recipes)
-    .where(and(...conditionList))
-    .all()
-    .map((row) => row.id);
-}
-
 export function getRecipe(database: AppDatabase, id: number): Recipe | undefined {
   const recipe = database
     .select({
@@ -86,29 +73,62 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
     .from(recipeIngredients)
     .innerJoin(ingredients, eq(ingredients.id, recipeIngredients.ingredientId))
     .where(eq(recipeIngredients.recipeId, id))
+    .orderBy(asc(ingredients.sortKey), asc(ingredients.id))
     .all();
-  return { ...recipe, ingredientList: sortByText(ingredientList, (ingredient) => ingredient.name) };
+  // Not paginated: a recipe's own ingredients, bounded by what the form lets you add.
+  return { ...recipe, ingredientList };
 }
 
-export function hasAnyRecipe(database: AppDatabase): boolean {
-  return database.select({ id: recipes.id }).from(recipes).limit(1).get() !== undefined;
-}
-
-// Every recipe for the list screen. `instructions` (possibly long) is left out on purpose, and the
-// ingredient count is read from the (recipe_id, ingredient_id) primary key: no N+1 queries.
-export function listRecipes(database: AppDatabase): RecipeListItem[] {
+// One page (PAGE_SIZE) of the alphabetical recipe list. `instructions` (possibly long) is left out.
+// Plan: walk the (sort_key, id) index from the cursor, count links on the primary key.
+export function listRecipePage(
+  database: AppDatabase,
+  pageParameter: PageRequest,
+): Page<RecipeListItem> {
+  const order = isBackward(pageParameter) ? desc : asc;
   const rowList = database
     .select({
       id: recipes.id,
-      ingredientCount: count(recipeIngredients.ingredientId),
+      ingredientCount: INGREDIENT_COUNT,
       season: recipes.season,
+      sortKey: recipes.sortKey,
       title: recipes.title,
     })
     .from(recipes)
-    .leftJoin(recipeIngredients, eq(recipeIngredients.recipeId, recipes.id))
-    .groupBy(recipes.id)
+    .where(keysetWhere(recipes, pageParameter))
+    .orderBy(order(recipes.sortKey), order(recipes.id))
+    .limit(PAGE_SIZE + 1)
     .all();
-  return sortByText(rowList, (row) => row.title);
+  return toPage(rowList, pageParameter);
+}
+
+// A random recipe among those matching the filters, other than `excludedId` when possible (asking
+// again must change the suggestion). `random` returns a number in [0, 1).
+// Reads one id at a random offset instead of loading every matching id.
+export function pickRandomRecipeId(
+  database: AppDatabase,
+  filters: RecipeFilters,
+  excludedId?: number,
+  random: () => number = Math.random,
+): number | undefined {
+  const matchingWhere = filtersWhere(database, filters);
+  const otherWhere =
+    excludedId === undefined ? matchingWhere : and(matchingWhere, ne(recipes.id, excludedId));
+  const otherCount =
+    database.select({ count: count() }).from(recipes).where(otherWhere).get()?.count ?? 0;
+  // Only the excluded recipe matches: suggest it again.
+  const where = otherCount > 0 ? otherWhere : matchingWhere;
+  const candidateCount = otherCount > 0 ? otherCount : countRecipes(database, filters);
+  return candidateCount === 0
+    ? undefined
+    : database
+        .select({ id: recipes.id })
+        .from(recipes)
+        .where(where)
+        .orderBy(asc(recipes.id))
+        .limit(1)
+        .offset(Math.floor(random() * candidateCount))
+        .get()?.id;
 }
 
 // Creates (no id) or updates a recipe and its ingredients in one transaction; returns its id.
@@ -118,7 +138,12 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
   if (!title) {
     throw new Error('A recipe title cannot be blank');
   }
-  const values = { instructions: input.instructions.trim(), season: input.season, title };
+  const values = {
+    instructions: input.instructions.trim(),
+    season: input.season,
+    sortKey: toSortKey(title),
+    title,
+  };
   const ingredientIdList = [...new Set(input.ingredientIdList)];
 
   return database.transaction((tx) => {
@@ -145,10 +170,32 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
   });
 }
 
+// Recipes in the season (or for both seasons) and made with ALL the ingredients. With
+// ingredients, the plan starts from the (ingredient_id, recipe_id) index, so only recipes
+// containing a selected ingredient are visited.
+function filtersWhere(database: AppDatabase, filters: RecipeFilters): SQL | undefined {
+  const conditionList: SQL[] = [];
+  if (filters.season) {
+    conditionList.push(inArray(recipes.season, [filters.season, 'both']));
+  }
+  const ingredientIdList = [...new Set(filters.ingredientIdList)];
+  if (ingredientIdList.length > 0) {
+    // The primary key forbids duplicate links, so "all of them" = "as many links as ingredients".
+    const recipesWithAllIngredients = database
+      .select({ recipeId: recipeIngredients.recipeId })
+      .from(recipeIngredients)
+      .where(inArray(recipeIngredients.ingredientId, ingredientIdList))
+      .groupBy(recipeIngredients.recipeId)
+      .having(sql`count(*) = ${ingredientIdList.length}`);
+    conditionList.push(inArray(recipes.id, recipesWithAllIngredients));
+  }
+  return and(...conditionList);
+}
+
 function updateRecipe(
   tx: Pick<AppDatabase, 'update'>,
   id: number,
-  values: Readonly<{ instructions: string; season: Season; title: string }>,
+  values: Readonly<{ instructions: string; season: Season; sortKey: string; title: string }>,
 ): number {
   const updated = tx
     .update(recipes)

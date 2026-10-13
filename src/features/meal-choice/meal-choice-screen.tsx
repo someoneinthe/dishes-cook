@@ -8,14 +8,11 @@ import type { RecipeFilters } from '@/features/recipes/db/recipe-queries';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { SegmentedControl } from '@/components/segmented-control';
-import { useLiveQuery } from '@/db/use-live-query';
+import { useDatabase } from '@/db/database-context';
 import { IngredientPicker } from '@/features/ingredients/components/ingredient-picker';
-import { useIngredientList } from '@/features/ingredients/hooks/use-ingredient-list';
-import { sortByUsage } from '@/features/ingredients/sort-by-usage';
 import { RecipeDetails } from '@/features/recipes/components/recipe-details';
-import { findRecipeIds } from '@/features/recipes/db/recipe-queries';
-import { useHasAnyRecipe, useRecipe } from '@/features/recipes/hooks/use-recipes';
-import { pickRandomId } from './pick-random-id';
+import { pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
+import { useRecipe, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
 
 type SeasonFilter = 'any' | NonNullable<RecipeFilters['season']>;
 
@@ -31,23 +28,17 @@ export function MealChoiceScreen() {
   const [selectedIngredientList, setSelectedIngredientList] = useState<Ingredient[]>([]);
   const [suggestedId, setSuggestedId] = useState<number>();
 
-  // Only ingredients some recipe uses can narrow the choice; the most used are suggested first.
-  const usedIngredientList = sortByUsage(
-    useIngredientList().filter((ingredient) => ingredient.recipeCount > 0),
-  );
-  // Just the ids (cheap, index-only): the full recipe is read once one is picked.
-  const matchingIdList = useLiveQuery(
-    (database) =>
-      findRecipeIds(database, {
-        ingredientIdList: selectedIngredientList.map((ingredient) => ingredient.id),
-        season: season === 'any' ? undefined : season,
-      }),
-    [season, selectedIngredientList],
-  );
-  const hasRecipes = useHasAnyRecipe();
+  const database = useDatabase();
+  const filters = {
+    ingredientIdList: selectedIngredientList.map((ingredient) => ingredient.id),
+    season: season === 'any' ? undefined : season,
+  };
+  // Counts only: a recipe is read when one is picked.
+  const matchCount = useRecipeCount(filters);
+  const recipeCount = useRecipeCount({ ingredientIdList: [] });
   const suggestion = useRecipe(suggestedId);
 
-  if (!hasRecipes) {
+  if (recipeCount === 0) {
     return (
       <View style={styles.screen}>
         <EmptyState
@@ -76,8 +67,8 @@ export function MealChoiceScreen() {
         value={season}
       />
       <IngredientPicker
-        availableList={usedIngredientList}
         emptyMessage="No ingredient is used by a recipe yet."
+        isUsedOnly
         label="With ingredients"
         onChange={(ingredientList) => {
           setSelectedIngredientList(ingredientList);
@@ -86,12 +77,12 @@ export function MealChoiceScreen() {
         selectedList={selectedIngredientList}
       />
       <Text accessibilityLiveRegion="polite" style={styles.matchCount}>
-        {describeMatchCount(matchingIdList.length)}
+        {describeMatchCount(matchCount)}
       </Text>
       <Button
-        isDisabled={matchingIdList.length === 0}
+        isDisabled={matchCount === 0}
         label={suggestion ? 'Suggest another one' : 'Suggest a recipe'}
-        onPress={() => setSuggestedId(pickRandomId(matchingIdList, suggestedId))}
+        onPress={() => setSuggestedId(pickRandomRecipeId(database, filters, suggestedId))}
       />
       {suggestion && (
         <View style={styles.suggestion}>

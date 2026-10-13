@@ -11,8 +11,6 @@ import { TextField } from '@/components/text-field';
 import { useDatabase } from '@/db/database-context';
 import { IngredientPicker } from '@/features/ingredients/components/ingredient-picker';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
-import { useIngredientList } from '@/features/ingredients/hooks/use-ingredient-list';
-import { sortByUsage } from '@/features/ingredients/sort-by-usage';
 import { cleanName } from '@/lib/text';
 import type { Recipe } from './db/recipe-queries';
 import { getRecipe, saveRecipe } from './db/recipe-queries';
@@ -59,7 +57,6 @@ function RecipeForm({ initialRecipe }: RecipeFormProps) {
   );
   const [instructions, setInstructions] = useState(initialRecipe?.instructions ?? '');
   const [titleError, setTitleError] = useState<string>();
-  const ingredientList = sortByUsage(useIngredientList());
 
   const save = () => {
     if (!cleanName(title)) {
@@ -104,7 +101,6 @@ function RecipeForm({ initialRecipe }: RecipeFormProps) {
         value={season}
       />
       <IngredientPicker
-        availableList={ingredientList}
         emptyMessage="Type an ingredient to add it."
         label="Ingredients"
         onChange={setSelectedIngredientList}

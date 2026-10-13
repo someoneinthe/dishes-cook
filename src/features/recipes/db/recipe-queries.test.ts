@@ -1,11 +1,12 @@
 import type { AppDatabase } from '@/db/types';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
+import { firstRecipePage } from '@/test/queries';
 import { createTestConnection } from '@/test/test-database';
 import {
+  countRecipes,
   deleteRecipe,
-  findRecipeIds,
   getRecipe,
-  listRecipes,
+  pickRandomRecipeId,
   type RecipeFilters,
   type RecipeInput,
   saveRecipe,
@@ -74,14 +75,14 @@ describe('recipe queries', () => {
     expect(() => saveRecipe(database, { ...soupInput, ingredientIdList: [carrotId, 999] })).toThrow(
       'FOREIGN KEY',
     );
-    expect(listRecipes(database)).toStrictEqual([]);
+    expect(firstRecipePage(database)).toStrictEqual([]);
   });
 
   it('lists recipes by title with their ingredient count', () => {
     saveRecipe(database, { ...soupInput, ingredientIdList: [carrotId, leekId], title: 'Soup' });
     saveRecipe(database, { ...soupInput, season: 'summer', title: 'Été salad' });
 
-    expect(listRecipes(database)).toStrictEqual([
+    expect(firstRecipePage(database)).toStrictEqual([
       expect.objectContaining({ ingredientCount: 0, season: 'summer', title: 'Été salad' }),
       expect.objectContaining({ ingredientCount: 2, season: 'winter', title: 'Soup' }),
     ]);
@@ -93,14 +94,18 @@ describe('recipe queries', () => {
     deleteRecipe(database, id);
 
     expect(getRecipe(database, id)).toBeUndefined();
-    expect(findRecipeIds(database, { ingredientIdList: [carrotId] })).toStrictEqual([]);
+    expect(countRecipes(database, { ingredientIdList: [carrotId] })).toBe(0);
     expect(findOrCreateIngredient(database, 'carrot').isNew).toBe(false);
   });
 
-  describe('findRecipeIds', () => {
-    // The order of the ids doesn't matter (one is picked at random).
-    const findSortedIds = (filters: RecipeFilters) =>
-      [...findRecipeIds(database, filters)].sort((left, right) => left - right);
+  describe('filters and random pick', () => {
+    // Every id the pick can return, in id order: one random value per offset.
+    const findSortedIds = (filters: RecipeFilters) => {
+      const total = countRecipes(database, filters);
+      return Array.from({ length: total }, (_, index) =>
+        pickRandomRecipeId(database, filters, undefined, () => index / total),
+      );
+    };
 
     let winterSoupId: number;
     let summerSaladId: number;
@@ -157,6 +162,27 @@ describe('recipe queries', () => {
       expect(findSortedIds({ ingredientIdList: [leekId], season: 'summer' })).toStrictEqual([
         allYearStewId,
       ]);
+    });
+
+    it('never picks the excluded recipe when another one matches', () => {
+      const winterFilters = { ingredientIdList: [], season: 'winter' } as const;
+
+      expect(pickRandomRecipeId(database, winterFilters, winterSoupId, () => 0)).toBe(
+        allYearStewId,
+      );
+      expect(pickRandomRecipeId(database, winterFilters, allYearStewId, () => 0.99)).toBe(
+        winterSoupId,
+      );
+    });
+
+    it('picks the excluded recipe again when it is the only match', () => {
+      const filters = { ingredientIdList: [leekId], season: 'summer' } as const;
+
+      expect(pickRandomRecipeId(database, filters, allYearStewId)).toBe(allYearStewId);
+    });
+
+    it('picks nothing when no recipe matches', () => {
+      expect(pickRandomRecipeId(database, { ingredientIdList: [leekId, 999] })).toBeUndefined();
     });
   });
 });

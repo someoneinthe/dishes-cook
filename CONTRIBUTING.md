@@ -30,6 +30,8 @@
 - **Tests**: colocated `*.test.ts(x)`; query by what the user sees (`getByText`, `getByRole`), not test IDs, when possible. Pure logic (e.g. the "what to eat" picker) gets unit tests.
 - **Behaviour specs (Gherkin)**: describe user-facing behaviour as scenarios in `<name>.feature` (plain English, no implementation details), next to `<name>.steps.test.tsx`, which implements the steps with [jest-cucumber](https://github.com/bencompton/jest-cucumber) (`loadFeature` + `defineFeature`) and React Native Testing Library. Feature and step files must match: a scenario or step without code fails the run with a suggested snippet. Reuse step functions across scenarios; keep low-level cases in regular `*.test.tsx`. Example: `src/features/loading/loading-screen.feature`.
 - **Accessibility**: every touchable has an accessible label/role.
+- **Sorting, filtering, ordering in the data layer only**: done in SQL by the query functions (`src/features/*/db`), later by the API, never in screens, hooks or components (no `.sort()` / `.filter()` / search on fetched rows). Text sorts and searches on `sort_key` columns (no case, no accents), since SQLite can't fold accents.
+- **Lists**: a query never returns more than 50 rows (`PAGE_SIZE`). Long lists page with `usePagedQuery` (keyset pagination on a `(sort_key, id)` index, infinite scroll, at most `MAX_PAGES` pages in memory); short ones (suggestions) use `LIMIT`. Count, filter and pick in SQL rather than loading rows to do it in JS. Screens read data with TanStack Query hooks (`src/features/*/hooks`); every write made through Drizzle invalidates them.
 - Run `npm run check` before pushing.
 
 ## Linting

@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
+    "@tanstack/react-query": "^5.104.1",
     "drizzle-orm": "^0.45.3",
     "eslint": "^10",
     "expo": "~57.0.27",
@@ -33,6 +34,7 @@
     "@commitlint/config-conventional": "^21.2.3",
     "@eslint/compat": "^2.1.1",
     "@react-native/eslint-plugin": "~0.86.3",
+    "@tanstack/eslint-plugin-query": "^5.104.1",
     "@testing-library/react-native": "^14.1.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/jest": "^29.5.14",

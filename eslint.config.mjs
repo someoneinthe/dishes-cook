@@ -1,6 +1,7 @@
 // https://docs.expo.dev/guides/using-eslint/
 import { fixupConfigRules, fixupPluginRules } from '@eslint/compat';
 import reactNativeOfficial from '@react-native/eslint-plugin';
+import tanstackQuery from '@tanstack/eslint-plugin-query';
 import expoConfig from 'eslint-config-expo/flat.js';
 import prettierConfig from 'eslint-config-prettier/flat';
 import jest from 'eslint-plugin-jest';
@@ -177,6 +178,9 @@ export default defineConfig([
       ],
     },
   },
+
+  // TanStack Query: query keys list what the query depends on, stable query clients…
+  ...tanstackQuery.configs['flat/recommended'],
 
   // React / React Native
   reactYouMightNotNeedAnEffect.configs.strict,
