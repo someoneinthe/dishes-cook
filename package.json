@@ -3,6 +3,7 @@
   "main": "index.ts",
   "version": "0.1.0",
   "dependencies": {
+    "drizzle-orm": "^0.45.3",
     "eslint": "^10",
     "expo": "~57.0.27",
     "expo-constants": "~57.0.21",
@@ -11,6 +12,7 @@
     "expo-linking": "~57.0.12",
     "expo-router": "~57.0.25",
     "expo-splash-screen": "~57.0.9",
+    "expo-sqlite": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.4",
     "react": "19.2.3",
@@ -30,9 +32,13 @@
     "@eslint/compat": "^2.1.1",
     "@react-native/eslint-plugin": "~0.86.3",
     "@testing-library/react-native": "^14.1.0",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
+    "babel-plugin-inline-import": "^3.0.0",
     "babel-preset-expo": "~57.0.0",
+    "better-sqlite3": "^13.0.3",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^10.12.0",
     "eslint-config-expo": "^57.0.2",
     "eslint-config-prettier": "^10.1.8",
@@ -67,7 +73,8 @@
     "test:ci": "jest --ci --coverage",
     "doctor": "EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1 expo-doctor && node scripts/check-expo-dependencies.mjs",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run test",
-    "prepare": "husky"
+    "prepare": "husky",
+    "db:generate": "drizzle-kit generate"
   },
   "private": true,
   "engines": {
