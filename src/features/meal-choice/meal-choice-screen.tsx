@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { Drawer } from 'expo-router/drawer';
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
@@ -7,6 +8,7 @@ import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import type { RecipeFilters } from '@/features/recipes/db/recipe-queries';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
+import { HeaderActions } from '@/components/header-actions';
 import { SegmentedControl } from '@/components/segmented-control';
 import { useDatabase } from '@/db/database-context';
 import { IngredientPicker } from '@/features/ingredients/components/ingredient-picker';
@@ -38,15 +40,38 @@ export function MealChoiceScreen() {
   const recipeCount = useRecipeCount({ ingredientIdList: [] });
   const suggestion = useRecipe(suggestedId);
 
+  const headerButton =
+    recipeCount === 0 ? (
+      <Button
+        accessibilityHint="Opens an empty recipe form"
+        accessibilityLabel="Add a recipe"
+        icon="plus"
+        isIconOnly
+        label="New"
+        onPress={() => router.push('/recipe/new')}
+      />
+    ) : (
+      <Button
+        accessibilityHint="Picks a random recipe among the matching ones"
+        accessibilityLabel={suggestion ? 'Suggest another one' : 'Suggest a recipe'}
+        icon="dice-multiple"
+        isDisabled={matchCount === 0}
+        label="Suggest"
+        onPress={() => setSuggestedId(pickRandomRecipeId(database, filters, suggestedId))}
+      />
+    );
+  const header = (
+    <Drawer.Screen options={{ headerRight: () => <HeaderActions>{headerButton}</HeaderActions> }} />
+  );
+
   if (recipeCount === 0) {
     return (
       <View style={styles.screen}>
+        {header}
         <EmptyState
           message="Add a few recipes, then come back to let chance decide what to eat."
           title="No recipes yet"
-        >
-          <Button icon="plus" label="Add a recipe" onPress={() => router.push('/recipe/new')} />
-        </EmptyState>
+        />
       </View>
     );
   }
@@ -57,6 +82,7 @@ export function MealChoiceScreen() {
       keyboardShouldPersistTaps="handled"
       style={styles.screen}
     >
+      {header}
       <SegmentedControl
         label="Season"
         onChange={(value) => {
@@ -79,12 +105,6 @@ export function MealChoiceScreen() {
       <Text accessibilityLiveRegion="polite" style={styles.matchCount}>
         {describeMatchCount(matchCount)}
       </Text>
-      <Button
-        icon="dice-multiple"
-        isDisabled={matchCount === 0}
-        label={suggestion ? 'Suggest another one' : 'Suggest a recipe'}
-        onPress={() => setSuggestedId(pickRandomRecipeId(database, filters, suggestedId))}
-      />
       {suggestion && (
         <View style={styles.suggestion}>
           <RecipeDetails recipe={suggestion} />

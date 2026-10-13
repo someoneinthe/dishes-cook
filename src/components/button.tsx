@@ -9,19 +9,28 @@ type ButtonProps = Readonly<
     // Defaults to the visible label.
     accessibilityLabel?: string;
     isDisabled?: boolean;
+    // Read by screen readers; shown unless `isIconOnly`.
     label: string;
     onPress: () => void;
   } & (
     | {
         // Deletions always show an icon (e.g. `trash-can-outline`).
         icon: IconName;
+        isIconOnly?: boolean;
         // Destructive actions (delete): red.
         variant: 'danger';
       }
     | {
         // Shown before the label (CONTRIBUTING › Buttons): when it helps, on primary actions.
         icon?: IconName;
+        isIconOnly?: false;
         // `primary`: the main action of a screen (blue); `secondary`: other actions (outlined).
+        variant?: 'primary' | 'secondary';
+      }
+    | {
+        icon: IconName;
+        // Only the icon is shown (edit, delete…): the label stays for screen readers.
+        isIconOnly: true;
         variant?: 'primary' | 'secondary';
       }
   )
@@ -32,11 +41,12 @@ export function Button({
   accessibilityLabel,
   icon,
   isDisabled = false,
+  isIconOnly = false,
   label,
   onPress,
   variant = 'primary',
 }: ButtonProps) {
-  styles.useVariants({ variant });
+  styles.useVariants({ isIconOnly, variant });
   // The icon's color is a prop, not a style: read from the theme like the label's.
   const { theme } = useUnistyles();
   const contentColor = {
@@ -56,7 +66,7 @@ export function Button({
       style={({ pressed }) => [styles.button, (pressed || isDisabled) && styles.dimmed]}
     >
       {icon && <Icon color={contentColor} name={icon} size={theme.iconSize.md} />}
-      <Text style={styles.label}>{label}</Text>
+      {!isIconOnly && <Text style={styles.label}>{label}</Text>}
     </Pressable>
   );
 }
@@ -73,6 +83,10 @@ const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: theme.gap(4),
     paddingVertical: theme.gap(2),
     variants: {
+      // A square as tall as the other buttons.
+      isIconOnly: {
+        true: { minWidth: theme.size.touchTarget, paddingHorizontal: theme.gap(2) },
+      },
       variant: {
         danger: {
           backgroundColor: theme.colors.actionDanger,
