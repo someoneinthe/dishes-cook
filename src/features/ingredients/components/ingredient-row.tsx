@@ -47,6 +47,7 @@ export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
         />
         <View style={styles.actions}>
           <Button
+            icon="close"
             label="Cancel"
             onPress={() => {
               setDraftName(undefined);
@@ -54,7 +55,7 @@ export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
             }}
             variant="secondary"
           />
-          <Button label="Save" onPress={save} />
+          <Button icon="check" label="Save" onPress={save} />
         </View>
       </View>
     );
@@ -71,6 +72,7 @@ export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
         <Button
           accessibilityHint="Lets you edit its name"
           accessibilityLabel={`Rename ${ingredient.name}`}
+          icon="pencil"
           label="Rename"
           onPress={() => setDraftName(ingredient.name)}
           variant="secondary"
@@ -80,6 +82,7 @@ export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
           <Button
             accessibilityHint="Asks for confirmation first"
             accessibilityLabel={`Delete ${ingredient.name}`}
+            icon="trash-can-outline"
             label="Delete"
             onPress={() => onDelete(ingredient)}
             variant="danger"

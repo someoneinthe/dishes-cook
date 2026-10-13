@@ -2,6 +2,7 @@
 const base = {
   borderWidth: 1,
   gap: (multiplier: number) => multiplier * 4,
+  iconSize: { md: 20, sm: 16 },
   opacity: { disabled: 0.5, pressed: 0.6 },
   radius: { lg: 16, md: 8, sm: 4 },
   // Heights: 44 = minimum touch target (Material/Apple guidelines).
@@ -19,6 +20,8 @@ const lightColors = {
   background: '#FFFFFF',
   border: '#E7E5E4',
   danger: '#B91C1C',
+  // Text and icons on a `danger` background.
+  onDanger: '#FFFFFF',
   onPrimary: '#FFFFFF',
   primary: '#C2410C',
   surface: '#FAFAF9',
@@ -33,6 +36,7 @@ const darkColors: ThemeColors = {
   background: '#121212',
   border: '#3A3633',
   danger: '#F87171',
+  onDanger: '#1C1917',
   onPrimary: '#1C1917',
   primary: '#FB923C',
   surface: '#1E1E1E',

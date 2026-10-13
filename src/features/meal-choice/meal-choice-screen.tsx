@@ -45,7 +45,7 @@ export function MealChoiceScreen() {
           message="Add a few recipes, then come back to let chance decide what to eat."
           title="No recipes yet"
         >
-          <Button label="Add a recipe" onPress={() => router.push('/recipe/new')} />
+          <Button icon="plus" label="Add a recipe" onPress={() => router.push('/recipe/new')} />
         </EmptyState>
       </View>
     );
@@ -80,6 +80,7 @@ export function MealChoiceScreen() {
         {describeMatchCount(matchCount)}
       </Text>
       <Button
+        icon="dice-multiple"
         isDisabled={matchCount === 0}
         label={suggestion ? 'Suggest another one' : 'Suggest a recipe'}
         onPress={() => setSuggestedId(pickRandomRecipeId(database, filters, suggestedId))}
