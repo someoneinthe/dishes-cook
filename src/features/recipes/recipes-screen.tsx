@@ -3,17 +3,18 @@ import { FlatList, Pressable, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
-import { useRecipeList } from './hooks/use-recipes';
+import { getPagingProps } from '@/components/paging-props';
+import { useRecipePages } from './hooks/use-recipes';
 import { describeSeason } from './season';
 
 export function RecipesScreen() {
-  const recipeList = useRecipeList();
+  const recipePages = useRecipePages();
   const addRecipe = () => router.push('/recipe/new');
 
   return (
     <FlatList
       contentContainerStyle={styles.content}
-      data={recipeList}
+      data={recipePages.itemList}
       keyExtractor={(recipe) => String(recipe.id)}
       ListEmptyComponent={
         <EmptyState
@@ -38,6 +39,7 @@ export function RecipesScreen() {
         </Pressable>
       )}
       style={styles.list}
+      {...getPagingProps(recipePages)}
     />
   );
 }

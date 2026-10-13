@@ -1,15 +1,22 @@
-import { and, count, eq, ne } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, ne, notInArray, sql } from 'drizzle-orm';
+import type { Page, PageRequest } from '@/db/pagination';
 import type { AppDatabase } from '@/db/types';
+import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, recipeIngredients } from '@/db/schema';
-import { cleanName, sortByText, toNameKey } from '@/lib/text';
+import { cleanName, toLikeContains, toNameKey, toSortKey } from '@/lib/text';
 
 export type DeleteResult = 'deleted' | 'in-use';
 
 export type Ingredient = Readonly<{ id: number; name: string }>;
 
-export type IngredientListItem = Ingredient & Readonly<{ recipeCount: number }>;
+export type IngredientListItem = Ingredient & Readonly<{ recipeCount: number; sortKey: string }>;
 
 export type RenameResult = 'blank' | 'duplicate' | 'renamed';
+
+// Number of recipes using the ingredient, read from the (ingredient_id, recipe_id) index. Written
+// out qualified: Drizzle renders `${ingredients.id}` as a bare "id" inside a select.
+const RECIPE_COUNT = sql<number>`(select count(*) from "recipe_ingredients" where "recipe_ingredients"."ingredient_id" = "ingredients"."id")`;
 
 // Deletes an unused ingredient. The foreign key is ON DELETE RESTRICT, so usage is checked first
 // instead of catching a driver-specific error.
@@ -47,7 +54,7 @@ export function findOrCreateIngredient(
   }
   const created = database
     .insert(ingredients)
-    .values({ name: cleanedName, nameKey: toNameKey(cleanedName) })
+    .values({ name: cleanedName, nameKey: toNameKey(cleanedName), sortKey: toSortKey(cleanedName) })
     .onConflictDoNothing({ target: ingredients.nameKey })
     .returning({ id: ingredients.id, name: ingredients.name })
     .get();
@@ -61,21 +68,28 @@ export function findOrCreateIngredient(
   return { ...existing, isNew: false };
 }
 
-// Every ingredient with the number of recipes using it, sorted by name.
-// Plan: scan ingredients, then count each one's links on the (ingredient_id, recipe_id) index.
-export function listIngredients(database: AppDatabase): IngredientListItem[] {
+// One page (PAGE_SIZE) of the alphabetical ingredient list with usage counts, optionally filtered
+// by a search (accent- and case-insensitive "contains").
+// Plan: walk the (sort_key, id) index from the cursor, count links on the ingredient index.
+export function listIngredientPage(
+  database: AppDatabase,
+  options: Readonly<{ pageParam: PageRequest; search: string }>,
+): Page<IngredientListItem> {
+  const { pageParam, search } = options;
+  const order = isBackward(pageParam) ? desc : asc;
   const rowList = database
     .select({
       id: ingredients.id,
       name: ingredients.name,
-      recipeCount: count(recipeIngredients.recipeId),
+      recipeCount: RECIPE_COUNT,
+      sortKey: ingredients.sortKey,
     })
     .from(ingredients)
-    .leftJoin(recipeIngredients, eq(recipeIngredients.ingredientId, ingredients.id))
-    .groupBy(ingredients.id)
+    .where(and(searchWhere(search), keysetWhere(ingredients, pageParam)))
+    .orderBy(order(ingredients.sortKey), order(ingredients.id))
+    .limit(PAGE_SIZE + 1)
     .all();
-  // Sorted in JS: SQLite can't collate accents ("Échalote" would come after "zucchini").
-  return sortByText(rowList, (row) => row.name);
+  return toPage(rowList, pageParam);
 }
 
 export function renameIngredient(database: AppDatabase, id: number, name: string): RenameResult {
@@ -94,8 +108,46 @@ export function renameIngredient(database: AppDatabase, id: number, name: string
   }
   database
     .update(ingredients)
-    .set({ name: cleanedName, nameKey })
+    .set({ name: cleanedName, nameKey, sortKey: toSortKey(cleanedName) })
     .where(eq(ingredients.id, id))
     .run();
   return 'renamed';
+}
+
+// A few ingredients to pick from: the exact name first, then the most used, then alphabetical.
+export function suggestIngredients(
+  database: AppDatabase,
+  options: Readonly<{
+    excludeIdList: readonly number[];
+    // Only ingredients some recipe uses (to filter recipes by them).
+    isUsedOnly: boolean;
+    limit: number;
+    search: string;
+  }>,
+): Ingredient[] {
+  const { excludeIdList, isUsedOnly, limit, search } = options;
+  const searchedNameKey = toNameKey(search);
+  return database
+    .select({ id: ingredients.id, name: ingredients.name })
+    .from(ingredients)
+    .where(
+      and(
+        searchWhere(search),
+        excludeIdList.length > 0 ? notInArray(ingredients.id, [...excludeIdList]) : undefined,
+        isUsedOnly ? sql`${RECIPE_COUNT} > 0` : undefined,
+      ),
+    )
+    .orderBy(
+      desc(eq(ingredients.nameKey, searchedNameKey)),
+      desc(RECIPE_COUNT),
+      asc(ingredients.sortKey),
+    )
+    .limit(limit)
+    .all();
+}
+
+function searchWhere(search: string): SQL | undefined {
+  return cleanName(search)
+    ? sql`${ingredients.sortKey} like ${toLikeContains(search)} escape '\\'`
+    : undefined;
 }

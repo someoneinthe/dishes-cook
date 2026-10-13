@@ -30,11 +30,16 @@ export const ingredients = sqliteTable(
     // Uniqueness key computed by `toNameKey` (trimmed, single spaces, lower case). SQLite's
     // NOCASE only folds ASCII, so "Œuf" and "œuf" are folded in JS instead.
     nameKey: text('name_key').notNull(),
+    // Sort and search key computed by `toSortKey` (no case, no accents: "Échalote" -> "echalote").
+    // Lists are sorted and paginated by it in SQL, which can't strip accents itself.
+    sortKey: text('sort_key').notNull().default(''),
   },
   (table) => [
     check('ingredients_name_not_blank', sql`length(trim(${table.name})) > 0`),
     // Enforces "one ingredient per name" and serves lookups by name.
     uniqueIndex('ingredients_name_key_unique').on(table.nameKey),
+    // Pages of the alphabetical list: `(sort_key, id) > (last one)` then LIMIT, read in index order.
+    index('ingredients_sort_key_id_idx').on(table.sortKey, table.id),
   ],
 );
 
@@ -46,6 +51,8 @@ export const recipes = sqliteTable(
     // The recipe itself (steps, quantities…). Never selected by list queries: it can be long.
     instructions: text('instructions').notNull().default(''),
     season: text('season', { enum: SEASON_LIST }).notNull().default('both'),
+    // Sort and search key of the title, see ingredients.sortKey.
+    sortKey: text('sort_key').notNull().default(''),
     title: text('title').notNull(),
     updatedAt: integer('updated_at').notNull().default(NOW_MS),
   },
@@ -53,6 +60,8 @@ export const recipes = sqliteTable(
     check('recipes_title_not_blank', sql`length(trim(${table.title})) > 0`),
     check('recipes_season_valid', sql`${table.season} in (${sql.raw(SEASON_SQL_LIST)})`),
     // No index on season: 3 values, so an index can't beat a scan of the (small) table.
+    // Pages of the alphabetical list, see ingredients_sort_key_id_idx.
+    index('recipes_sort_key_id_idx').on(table.sortKey, table.id),
   ],
 );
 

@@ -3,23 +3,22 @@ import { Alert, FlatList, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
+import { getPagingProps } from '@/components/paging-props';
 import { TextField } from '@/components/text-field';
 import { useDatabase } from '@/db/database-context';
-import { cleanName, isMatchingSearch } from '@/lib/text';
+import { cleanName } from '@/lib/text';
 import type { IngredientListItem } from './db/ingredient-queries';
 import { IngredientRow } from './components/ingredient-row';
 import { deleteIngredient, findOrCreateIngredient } from './db/ingredient-queries';
-import { useIngredientList } from './hooks/use-ingredient-list';
+import { useIngredientPages } from './hooks/use-ingredients';
 
 // The ingredient catalog: one field both filters the list and adds a new ingredient.
 export function IngredientsScreen() {
   const database = useDatabase();
-  const ingredientList = useIngredientList();
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string>();
-  const visibleList = ingredientList.filter((ingredient) =>
-    isMatchingSearch(ingredient.name, search),
-  );
+  // Filtered in SQL, PAGE_SIZE rows at a time.
+  const ingredientPages = useIngredientPages(search);
 
   const addIngredient = () => {
     const name = cleanName(search);
@@ -57,7 +56,7 @@ export function IngredientsScreen() {
   return (
     <FlatList
       contentContainerStyle={styles.content}
-      data={visibleList}
+      data={ingredientPages.itemList}
       keyboardShouldPersistTaps="handled"
       keyExtractor={(ingredient) => String(ingredient.id)}
       ListEmptyComponent={
@@ -90,6 +89,7 @@ export function IngredientsScreen() {
       }
       renderItem={({ item }) => <IngredientRow ingredient={item} onDelete={confirmDelete} />}
       style={styles.list}
+      {...getPagingProps(ingredientPages)}
     />
   );
 }

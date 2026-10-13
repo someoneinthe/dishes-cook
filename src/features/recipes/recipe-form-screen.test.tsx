@@ -2,8 +2,9 @@ import { fireEvent, screen } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import type { DatabaseConnection } from '@/db/types';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
+import { firstRecipePage } from '@/test/queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
-import { getRecipe, listRecipes, saveRecipe } from './db/recipe-queries';
+import { getRecipe, saveRecipe } from './db/recipe-queries';
 import { RecipeFormScreen } from './recipe-form-screen';
 
 jest.mock('expo-router', () => ({
@@ -35,7 +36,7 @@ describe('recipeFormScreen', () => {
     await fireEvent.changeText(screen.getByLabelText('Recipe'), 'Simmer.');
     await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
 
-    const [{ id: savedId } = { id: -1 }] = listRecipes(connection.db);
+    const [{ id: savedId } = { id: -1 }] = firstRecipePage(connection.db);
 
     expect(getRecipe(connection.db, savedId)).toStrictEqual({
       id: savedId,
@@ -59,7 +60,7 @@ describe('recipeFormScreen', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
 
     expect(screen.getByText('Give the recipe a title.')).toBeOnTheScreen();
-    expect(listRecipes(connection.db)).toStrictEqual([]);
+    expect(firstRecipePage(connection.db)).toStrictEqual([]);
   });
 
   it('edits an existing recipe', async () => {

@@ -3,16 +3,17 @@ import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Chip } from '@/components/chip';
 import { TextField } from '@/components/text-field';
-import { cleanName, isMatchingSearch, toNameKey } from '@/lib/text';
+import { cleanName, toNameKey } from '@/lib/text';
 import type { Ingredient } from '../db/ingredient-queries';
+import { useIngredientSuggestions } from '../hooks/use-ingredients';
 
 // Enough to pick from at a glance without rendering hundreds of chips.
 export const MAX_SUGGESTIONS = 12;
 
 type IngredientPickerProps = Readonly<{
-  // Candidates, in suggestion order (e.g. the most used first).
-  availableList: readonly Ingredient[];
   emptyMessage: string;
+  // Only suggest ingredients some recipe uses.
+  isUsedOnly?: boolean;
   label: string;
   onChange: (selectedList: Ingredient[]) => void;
   // When given, a typed name that matches no ingredient can be created.
@@ -21,8 +22,8 @@ type IngredientPickerProps = Readonly<{
 }>;
 
 export function IngredientPicker({
-  availableList,
   emptyMessage,
+  isUsedOnly = false,
   label,
   onChange,
   onCreate,
@@ -30,16 +31,21 @@ export function IngredientPicker({
 }: IngredientPickerProps) {
   const [search, setSearch] = useState('');
   const selectedIds = new Set(selectedList.map((ingredient) => ingredient.id));
-  const suggestionList = availableList
-    .filter(
-      (ingredient) => !selectedIds.has(ingredient.id) && isMatchingSearch(ingredient.name, search),
-    )
-    .slice(0, MAX_SUGGESTIONS);
+  // Exact name first, then the most used: the likeliest picks before typing.
+  const suggestionList = useIngredientSuggestions({
+    excludeIdList: [...selectedIds],
+    isUsedOnly,
+    limit: MAX_SUGGESTIONS,
+    search,
+  });
   const typedName = cleanName(search);
+  const isSameName = (ingredient: Ingredient) =>
+    toNameKey(ingredient.name) === toNameKey(typedName);
   const canCreate =
     onCreate !== undefined &&
     typedName !== '' &&
-    availableList.every((ingredient) => toNameKey(ingredient.name) !== toNameKey(typedName));
+    suggestionList.every((ingredient) => !isSameName(ingredient)) &&
+    selectedList.every((ingredient) => !isSameName(ingredient));
 
   const select = (ingredient: Ingredient) => {
     if (!selectedIds.has(ingredient.id)) {

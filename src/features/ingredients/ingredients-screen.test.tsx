@@ -2,8 +2,9 @@ import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import type { DatabaseConnection } from '@/db/types';
 import { deleteRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { spyOnAlert } from '@/test/alert';
+import { firstIngredientPage } from '@/test/queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
-import { findOrCreateIngredient, listIngredients } from './db/ingredient-queries';
+import { findOrCreateIngredient } from './db/ingredient-queries';
 import { IngredientsScreen } from './ingredients-screen';
 
 describe('ingredientsScreen', () => {
@@ -70,7 +71,7 @@ describe('ingredientsScreen', () => {
     await fireEvent(screen.getByLabelText('Search or add an ingredient'), 'submitEditing');
 
     expect(screen.getByText('“Carrot” already exists.')).toBeOnTheScreen();
-    expect(listIngredients(connection.db)).toHaveLength(1);
+    expect(firstIngredientPage(connection.db)).toHaveLength(1);
   });
 
   it('filters the list while typing, ignoring accents', async () => {
@@ -115,7 +116,7 @@ describe('ingredientsScreen', () => {
 
     await waitFor(() => expect(screen.queryByText('Leek')).not.toBeOnTheScreen());
 
-    expect(listIngredients(connection.db).map((ingredient) => ingredient.name)).toStrictEqual([
+    expect(firstIngredientPage(connection.db).map((ingredient) => ingredient.name)).toStrictEqual([
       'Carrot',
     ]);
   });
