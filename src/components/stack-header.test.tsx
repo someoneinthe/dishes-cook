@@ -41,6 +41,6 @@ describe('stackHeader', () => {
 
     await act(() => Promise.resolve(router.push('/recipe/new')));
 
-    expect(screen.getByRole('button', { name: /back/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Go back' })).toBeVisible();
   });
 });

@@ -37,7 +37,7 @@ export const ingredients = sqliteTable(
     nameKey: text('name_key').notNull(),
     // Sort and search key computed by `toSortKey` (no case, no accents: "Échalote" -> "echalote").
     // Lists are sorted and paginated by it in SQL, which can't strip accents itself.
-    sortKey: text('sort_key').notNull().default(''),
+    sortKey: text('sort_key').notNull(),
   },
   (table) => [
     check('ingredients_name_not_blank', sql`length(trim(${table.name})) > 0`),
@@ -59,7 +59,7 @@ export const recipes = sqliteTable(
     instructions: text('instructions').notNull().default(''),
     season: text('season', { enum: SEASON_LIST }).notNull().default('both'),
     // Sort and search key of the title, see ingredients.sortKey.
-    sortKey: text('sort_key').notNull().default(''),
+    sortKey: text('sort_key').notNull(),
     title: text('title').notNull(),
     updatedAt: integer('updated_at').notNull().default(NOW_MS),
   },
