@@ -4,6 +4,7 @@
 
 - **Product**: an Android-first app (iOS later) that suggests what to eat from the recipes the user has saved. Data is local-only for now; don't introduce a backend, accounts or network calls without asking.
 - **Before saying a task is done**: run `npm run check`. Run `npm run doctor` too after touching dependencies or `app.config.ts`.
+- **Check every user-facing change on a device before shipping it** (before opening the PR or calling it done): run it with `/run-android` and go through the changed flows: create, edit, delete, navigate away and back. A launch alone doesn't count. Jest runs on Node, not Hermes: `Array.prototype.toSorted` passed every test and crashed the app on launch. Report what you checked on the device, and anything you couldn't check.
 - **Formatting is automatic**: a PostToolUse hook (`.claude/hooks/format-file.sh`) runs ESLint `--fix` + Prettier on every file you write/edit. Don't hand-format.
 - **Dependencies**: always `npx expo install <pkg>`; justify any new dependency in the PR description.
 - **Generated / release-owned files — never edit by hand**: `android/`, `ios/`, `CHANGELOG.md`, `.release-please-manifest.json`, and the `version` field in `package.json` (release-please owns them).
