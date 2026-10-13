@@ -1,8 +1,10 @@
+import { Drawer } from 'expo-router/drawer';
 import { useState } from 'react';
 import { Alert, FlatList, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
+import { headerActions } from '@/components/header-actions';
 import { getPagingProps } from '@/components/paging-props';
 import { TextField } from '@/components/text-field';
 import { useDatabase } from '@/db/database-context';
@@ -54,43 +56,59 @@ export function IngredientsScreen() {
   };
 
   return (
-    <FlatList
-      contentContainerStyle={styles.content}
-      data={ingredientPages.itemList}
-      keyboardShouldPersistTaps="handled"
-      keyExtractor={(ingredient) => String(ingredient.id)}
-      ListEmptyComponent={
-        search ? (
-          <Text style={styles.noMatch}>{`No ingredient matches “${search}”.`}</Text>
-        ) : (
-          <EmptyState
-            message="Add the ingredients you cook with, here or while writing a recipe."
-            title="No ingredients yet"
-          />
-        )
-      }
-      ListHeaderComponent={
-        <View style={styles.header}>
-          <TextField
-            error={error}
-            label="Search or add an ingredient"
-            onChangeText={(text) => {
-              setSearch(text);
-              setError(undefined);
-            }}
-            onSubmitEditing={addIngredient}
-            placeholder="e.g. Carrot"
-            returnKeyType="done"
-            submitBehavior="submit"
-            value={search}
-          />
-          <Button icon="plus" label="Add ingredient" onPress={addIngredient} />
-        </View>
-      }
-      renderItem={({ item }) => <IngredientRow ingredient={item} onDelete={confirmDelete} />}
-      style={styles.list}
-      {...getPagingProps(ingredientPages)}
-    />
+    <>
+      <Drawer.Screen
+        options={{
+          // Adds what's typed in the search field (Enter does the same).
+          headerRight: headerActions(
+            <Button
+              accessibilityHint="Adds the name typed in the search field"
+              accessibilityLabel="Add ingredient"
+              icon="plus"
+              isIconOnly
+              label="Add"
+              onPress={addIngredient}
+            />,
+          ),
+        }}
+      />
+      <FlatList
+        contentContainerStyle={styles.content}
+        data={ingredientPages.itemList}
+        keyboardShouldPersistTaps="handled"
+        keyExtractor={(ingredient) => String(ingredient.id)}
+        ListEmptyComponent={
+          search ? (
+            <Text style={styles.noMatch}>{`No ingredient matches “${search}”.`}</Text>
+          ) : (
+            <EmptyState
+              message="Add the ingredients you cook with, here or while writing a recipe."
+              title="No ingredients yet"
+            />
+          )
+        }
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <TextField
+              error={error}
+              label="Search or add an ingredient"
+              onChangeText={(text) => {
+                setSearch(text);
+                setError(undefined);
+              }}
+              onSubmitEditing={addIngredient}
+              placeholder="e.g. Carrot"
+              returnKeyType="done"
+              submitBehavior="submit"
+              value={search}
+            />
+          </View>
+        }
+        renderItem={({ item }) => <IngredientRow ingredient={item} onDelete={confirmDelete} />}
+        style={styles.list}
+        {...getPagingProps(ingredientPages)}
+      />
+    </>
   );
 }
 
