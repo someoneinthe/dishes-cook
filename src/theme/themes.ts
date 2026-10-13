@@ -2,7 +2,7 @@
 const base = {
   borderWidth: 1,
   gap: (multiplier: number) => multiplier * 4,
-  iconSize: { md: 20, sm: 16 },
+  iconSize: { lg: 24, md: 20, sm: 16 },
   opacity: { disabled: 0.5, pressed: 0.6 },
   radius: { lg: 16, md: 8, sm: 4 },
   // Heights: 44 = minimum touch target (Material/Apple guidelines).
@@ -11,6 +11,8 @@ const base = {
   typography: {
     body: { fontSize: 16, lineHeight: 24 },
     caption: { fontSize: 13, lineHeight: 18 },
+    // Android's header title.
+    headerTitle: { fontSize: 20, fontWeight: '500', lineHeight: 28 },
     label: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
     subtitle: { fontSize: 18, fontWeight: '600', lineHeight: 24 },
     title: { fontSize: 22, fontWeight: '700', lineHeight: 28 },
