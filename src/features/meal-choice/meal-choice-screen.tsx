@@ -15,13 +15,14 @@ import { IngredientPicker } from '@/features/ingredients/components/ingredient-p
 import { RecipeDetails } from '@/features/recipes/components/recipe-details';
 import { pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
 import { useRecipe, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
+import { SEASON_ICONS } from '@/features/recipes/season';
 
 type SeasonFilter = 'any' | NonNullable<RecipeFilters['season']>;
 
 const SEASON_FILTER_OPTION_LIST: readonly SegmentedOption<SeasonFilter>[] = [
   { label: 'Any', value: 'any' },
-  { label: 'Winter', value: 'winter' },
-  { label: 'Summer', value: 'summer' },
+  { icon: SEASON_ICONS.winter, label: 'Winter', value: 'winter' },
+  { icon: SEASON_ICONS.summer, label: 'Summer', value: 'summer' },
 ];
 
 // Picks a random recipe among those matching the filters.

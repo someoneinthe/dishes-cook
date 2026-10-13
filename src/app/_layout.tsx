@@ -6,10 +6,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { DatabaseProvider } from '@/db/database-provider';
 import { LoadingScreen } from '@/features/loading/loading-screen';
+import { applyColorScheme, getPreferences } from '@/features/settings/preferences';
 
 // Keep the native splash screen until the loading illustration is rendered. Called at module
 // scope without awaiting, as Expo recommends (Metro doesn't support top-level await).
 void preventAutoHideAsync();
+
+// The saved light/dark choice, before the first screen renders.
+applyColorScheme(getPreferences().colorScheme);
 
 export default function RootLayout() {
   const [isLoadingScreenVisible, setIsLoadingScreenVisible] = useState(true);

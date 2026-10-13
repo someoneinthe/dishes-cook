@@ -15,7 +15,7 @@ export default function DrawerLayout() {
     <Drawer
       backBehavior="initialRoute"
       screenOptions={{
-        drawerActiveTintColor: theme.colors.primary,
+        drawerActiveTintColor: theme.colors.actionPrimary,
         drawerInactiveTintColor: theme.colors.text,
         drawerStyle: { backgroundColor: theme.colors.background },
         headerStyle: { backgroundColor: theme.colors.surface },
@@ -44,7 +44,15 @@ export default function DrawerLayout() {
         options={{
           drawerIcon: drawerIcon('dice-multiple'),
           drawerLabel: 'Meal choice',
-          title: 'What should we eat?',
+          title: 'Meal choice',
+        }}
+      />
+      <Drawer.Screen
+        name="settings"
+        options={{
+          drawerIcon: drawerIcon('cog-outline'),
+          drawerLabel: 'Settings',
+          title: 'Settings',
         }}
       />
     </Drawer>

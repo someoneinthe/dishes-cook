@@ -1,7 +1,9 @@
 import { Pressable, Text } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import { usePreferences } from '@/features/settings/preferences';
 import type { IconName } from './icon';
 import { Icon } from './icon';
+import { useIconSize } from './use-icon-size';
 
 type ButtonProps = Readonly<
   {
@@ -46,9 +48,13 @@ export function Button({
   onPress,
   variant = 'primary',
 }: ButtonProps) {
-  styles.useVariants({ isIconOnly, variant });
+  // Settings › "Show button labels" brings the text back on icon-only buttons.
+  const { isShowingButtonLabels } = usePreferences();
+  const isLabelHidden = isIconOnly && !isShowingButtonLabels;
+  styles.useVariants({ isIconOnly: isLabelHidden, variant });
   // The icon's color is a prop, not a style: read from the theme like the label's.
   const { theme } = useUnistyles();
+  const iconSize = useIconSize('md');
   const contentColor = {
     danger: theme.colors.onAction,
     primary: theme.colors.onAction,
@@ -65,8 +71,8 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [styles.button, (pressed || isDisabled) && styles.dimmed]}
     >
-      {icon && <Icon color={contentColor} name={icon} size={theme.iconSize.md} />}
-      {!isIconOnly && <Text style={styles.label}>{label}</Text>}
+      {icon && <Icon color={contentColor} name={icon} size={iconSize} />}
+      {!isLabelHidden && <Text style={styles.label}>{label}</Text>}
     </Pressable>
   );
 }

@@ -2,6 +2,7 @@ import { Pressable, Text } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { IconName } from './icon';
 import { Icon } from './icon';
+import { useIconSize } from './use-icon-size';
 
 type ChipProps = Readonly<{
   accessibilityHint?: string;
@@ -25,6 +26,7 @@ export function Chip({
   styles.useVariants({ isSelected });
   // The icon's color is a prop, not a style: read from the theme like the label's.
   const { theme } = useUnistyles();
+  const iconSize = useIconSize('sm');
 
   return (
     <Pressable
@@ -36,9 +38,9 @@ export function Chip({
       style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
     >
       <Icon
-        color={isSelected ? theme.colors.onPrimary : theme.colors.text}
+        color={isSelected ? theme.colors.onAction : theme.colors.text}
         name={icon}
-        size={theme.iconSize.sm}
+        size={iconSize}
       />
       <Text style={styles.label}>{label}</Text>
     </Pressable>
@@ -59,7 +61,10 @@ const styles = StyleSheet.create((theme) => ({
     variants: {
       isSelected: {
         false: { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-        true: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+        true: {
+          backgroundColor: theme.colors.actionPrimary,
+          borderColor: theme.colors.actionPrimary,
+        },
       },
     },
   },
@@ -68,7 +73,7 @@ const styles = StyleSheet.create((theme) => ({
     variants: {
       isSelected: {
         false: { color: theme.colors.text },
-        true: { color: theme.colors.onPrimary },
+        true: { color: theme.colors.onAction },
       },
     },
   },
