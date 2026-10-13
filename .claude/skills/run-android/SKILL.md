@@ -7,10 +7,13 @@ Verified on macOS with Android Studio installed. Run from the repo root.
 
 ## 1. Pick an emulator and boot it
 
+adb reads the target device from `ANDROID_SERIAL`, so commands don't fail with `more than one device/emulator` when a phone or another emulator is connected. Set it in every shell that runs `adb` (the snippets below do).
+
 ```bash
 SDK=~/Library/Android/sdk
 $SDK/emulator/emulator -list-avds                     # e.g. Pixel_9a
 $SDK/emulator/emulator -avd Pixel_9a -no-snapshot-save -no-boot-anim   # run in background
+export ANDROID_SERIAL=emulator-5554   # its serial (`adb devices`): every adb command targets it
 # wait for boot
 until [ "$($SDK/platform-tools/adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do sleep 2; done
 ```
@@ -39,7 +42,7 @@ CI=1 npx expo run:android --device Pixel_9a --no-bundler > run-android.log 2>&1
 - `--no-bundler`: Metro is started separately in step 4 (`CI=1` is fine for the build, not for Metro).
 - First build: ~30 min (downloads NDK, SDK platform, build-tools). Rebuilds: ~2–3 min.
 - Done when the log shows `BUILD SUCCESSFUL`. Watch for `BUILD FAILED`, `What went wrong`, `CommandError`.
-- Rebuild only after native changes (dependencies with native code, `app.config.ts`, assets used by the native splash). If the app is missing from the emulator but nothing native changed, reinstall the last build on the emulator (serial from `adb devices`, e.g. `emulator-5554`): `adb -s emulator-5554 install -r android/app/build/outputs/apk/debug/app-debug.apk`. With several devices connected, every `adb` command needs `-s <serial>`.
+- Rebuild only after native changes (dependencies with native code, `app.config.ts`, assets used by the native splash). If the app is missing from the emulator but nothing native changed, reinstall the last build: `ANDROID_SERIAL=emulator-5554 adb install -r android/app/build/outputs/apk/debug/app-debug.apk`.
 
 ## 4. Start Metro in watch mode, then open the app
 
@@ -55,6 +58,7 @@ for _ in $(seq 120); do
   sleep 1
 done
 ADB=~/Library/Android/sdk/platform-tools/adb
+export ANDROID_SERIAL=emulator-5554   # the emulator from step 1
 # Open the app only if Metro is ready (no `exit`: it would close an interactive shell).
 if grep -q "Waiting on" metro.log; then
   $ADB shell am force-stop io.github.someoneinthe.dishescook
@@ -85,9 +89,10 @@ If it's not there, restart Metro (`pkill -f "expo start"`, then the commands abo
 
 ```bash
 ADB=~/Library/Android/sdk/platform-tools/adb
+export ANDROID_SERIAL=emulator-5554   # the emulator from step 1
 $ADB exec-out screencap -p > screen.png                 # then look at the image
 $ADB shell uiautomator dump /sdcard/ui.xml && $ADB shell cat /sdcard/ui.xml   # view hierarchy
-$ADB logcat -d -s ReactNativeJS | tail -50              # console.log/warn/error from JS
+$ADB logcat -d -s ReactNativeJS | tail -50              # console.log/warn/error from JS (-s here is a log tag filter)
 ```
 
 - **Tap elements by their accessibility label**, not by coordinates guessed from a screenshot. Find the element in the `uiautomator` dump and tap the center of its `bounds`. Match on `content-desc` first: a field's visible label is a separate `Text` node with the same `text`.
