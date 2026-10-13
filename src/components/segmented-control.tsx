@@ -88,6 +88,9 @@ const styles = StyleSheet.create((theme) => ({
     borderRadius: theme.radius.md,
     borderWidth: theme.borderWidth,
     flexDirection: 'row',
+    // Options that don't fit side by side (long labels, large fonts) go on another line instead of
+    // being cut.
+    flexWrap: 'wrap',
     overflow: 'hidden',
   },
   label: {
@@ -97,8 +100,10 @@ const styles = StyleSheet.create((theme) => ({
   segment: {
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    flex: 1,
+    // As wide as its content, sharing the rest of the line.
+    flexBasis: 'auto',
     flexDirection: 'row',
+    flexGrow: 1,
     gap: theme.gap(1),
     justifyContent: 'center',
     minHeight: theme.size.touchTarget,

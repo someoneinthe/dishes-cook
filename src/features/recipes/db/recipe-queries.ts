@@ -1,7 +1,7 @@
 import type { SQL } from 'drizzle-orm';
 import { and, asc, count, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import type { Page, PageRequest } from '@/db/pagination';
-import type { Season } from '@/db/schema';
+import type { Course, Season } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
@@ -9,6 +9,7 @@ import { ingredients, NOW_MS, recipeIngredients, recipes } from '@/db/schema';
 import { cleanName, toSortKey } from '@/lib/text';
 
 export type Recipe = Readonly<{
+  course: Course | null;
   id: number;
   ingredientList: Ingredient[];
   instructions: string;
@@ -17,6 +18,8 @@ export type Recipe = Readonly<{
 }>;
 
 export type RecipeFilters = Readonly<{
+  // Recipes of this course (not those without one); undefined = any course.
+  course?: Course;
   // Recipes made with ALL these ingredients.
   ingredientIdList: readonly number[];
   // A season also matches the recipes for both seasons; undefined = any season.
@@ -24,6 +27,8 @@ export type RecipeFilters = Readonly<{
 }>;
 
 export type RecipeInput = Readonly<{
+  // No course when left out.
+  course?: Course | null;
   ingredientIdList: readonly number[];
   instructions: string;
   season: Season;
@@ -31,6 +36,7 @@ export type RecipeInput = Readonly<{
 }>;
 
 export type RecipeListItem = Readonly<{
+  course: Course | null;
   id: number;
   ingredientCount: number;
   season: Season;
@@ -57,6 +63,7 @@ export function deleteRecipe(database: AppDatabase, id: number): void {
 export function getRecipe(database: AppDatabase, id: number): Recipe | undefined {
   const recipe = database
     .select({
+      course: recipes.course,
       id: recipes.id,
       instructions: recipes.instructions,
       season: recipes.season,
@@ -88,6 +95,7 @@ export function listRecipePage(
   const order = isBackward(pageParameter) ? desc : asc;
   const rowList = database
     .select({
+      course: recipes.course,
       id: recipes.id,
       ingredientCount: INGREDIENT_COUNT,
       season: recipes.season,
@@ -139,6 +147,7 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
     throw new Error('A recipe title cannot be blank');
   }
   const values = {
+    course: input.course ?? null,
     instructions: input.instructions.trim(),
     season: input.season,
     sortKey: toSortKey(title),
@@ -170,13 +179,16 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
   });
 }
 
-// Recipes in the season (or for both seasons) and made with ALL the ingredients. With
+// Recipes in the season (or for both seasons), of the course, and made with ALL the ingredients. With
 // ingredients, the plan starts from the (ingredient_id, recipe_id) index, so only recipes
 // containing a selected ingredient are visited.
 function filtersWhere(database: AppDatabase, filters: RecipeFilters): SQL | undefined {
   const conditionList: SQL[] = [];
   if (filters.season) {
     conditionList.push(inArray(recipes.season, [filters.season, 'both']));
+  }
+  if (filters.course) {
+    conditionList.push(eq(recipes.course, filters.course));
   }
   const ingredientIdList = [...new Set(filters.ingredientIdList)];
   if (ingredientIdList.length > 0) {
@@ -195,7 +207,13 @@ function filtersWhere(database: AppDatabase, filters: RecipeFilters): SQL | unde
 function updateRecipe(
   tx: Pick<AppDatabase, 'update'>,
   id: number,
-  values: Readonly<{ instructions: string; season: Season; sortKey: string; title: string }>,
+  values: Readonly<{
+    course: Course | null;
+    instructions: string;
+    season: Season;
+    sortKey: string;
+    title: string;
+  }>,
 ): number {
   const updated = tx
     .update(recipes)

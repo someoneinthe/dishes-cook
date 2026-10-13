@@ -19,12 +19,12 @@ export function useRecipe(id: number | undefined) {
 
 export function useRecipeCount(filters: RecipeFilters) {
   const database = useDatabase();
-  const { ingredientIdList, season } = filters;
-  const count = () => countRecipes(database, { ingredientIdList, season });
+  const { course, ingredientIdList, season } = filters;
+  const count = () => countRecipes(database, { course, ingredientIdList, season });
   const { data } = useQuery({
     initialData: count,
     queryFn: count,
-    queryKey: ['recipes', 'count', { ingredientIdList, season }],
+    queryKey: ['recipes', 'count', { course, ingredientIdList, season }],
   });
   return data;
 }

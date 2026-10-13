@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react-native';
 import { UnistylesRuntime } from 'react-native-unistyles';
-import { SeasonLabel } from './season-label';
+import { SeasonLabel } from './recipe-labels';
 
-describe('seasonLabel', () => {
+describe('recipe labels', () => {
   const colors = () => UnistylesRuntime.getTheme().colors;
   const iconWithColor = (color: string) => ({
     props: { style: expect.arrayContaining([expect.objectContaining({ color })]) as unknown },

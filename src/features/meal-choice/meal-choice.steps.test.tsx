@@ -1,6 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 import { defineFeature, loadFeature } from 'jest-cucumber';
-import type { Season } from '@/db/schema';
+import type { Course, Season } from '@/db/schema';
 import type { DatabaseConnection } from '@/db/types';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { saveRecipe } from '@/features/recipes/db/recipe-queries';
@@ -13,7 +13,13 @@ const feature = loadFeature('./meal-choice.feature', { loadRelativePath: true })
 
 const RECIPE_TITLE_LIST = ['Pumpkin soup', 'Tomato salad', 'Omelette'];
 
-type RecipeRow = Readonly<{ ingredients: string; season: Season; title: string }>;
+// An empty course cell is a recipe without a course.
+type RecipeRow = Readonly<{
+  course: '' | Course;
+  ingredients: string;
+  season: Season;
+  title: string;
+}>;
 
 defineFeature(feature, (test) => {
   let connection: DatabaseConnection;
@@ -30,6 +36,7 @@ defineFeature(feature, (test) => {
         .split(',')
         .map((name) => findOrCreateIngredient(connection.db, name).id);
       saveRecipe(connection.db, {
+        course: row.course || null,
         ingredientIdList,
         instructions: '',
         season: row.season,
@@ -42,8 +49,9 @@ defineFeature(feature, (test) => {
     await renderWithDatabase(<MealChoiceScreen />, connection);
   };
 
-  const chooseTheSeason = async (season: string) => {
-    await fireEvent.press(screen.getByRole('radio', { name: season }));
+  // A season or a course.
+  const chooseTheOption = async (option: string) => {
+    await fireEvent.press(screen.getByRole('radio', { name: option }));
   };
 
   const selectTheIngredient = async (name: string) => {
@@ -80,8 +88,21 @@ defineFeature(feature, (test) => {
   test('A season also includes the recipes for both seasons', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the meal choice', openTheMealChoice);
-    and(/^I choose the "(.*)" season$/, chooseTheSeason);
+    and(/^I choose the "(.*)" season$/, chooseTheOption);
     then(/^I see that (\d+) recipes match$/, (count: string) => {
+      expect(screen.getByText(matchCountText(count))).toBeOnTheScreen();
+    });
+    when('I ask for a suggestion', askForSuggestion);
+    then(/^the suggestion is one of "(.*)"$/, (titles: string) => {
+      expect(isSuggestionOneOf(titles)).toBe(true);
+    });
+  });
+
+  test('A course keeps only the recipes of that course', ({ and, given, then, when }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the meal choice', openTheMealChoice);
+    and(/^I choose the "(.*)" course$/, chooseTheOption);
+    then(/^I see that (\d+) recipe matches$/, (count: string) => {
       expect(screen.getByText(matchCountText(count))).toBeOnTheScreen();
     });
     when('I ask for a suggestion', askForSuggestion);
@@ -107,7 +128,7 @@ defineFeature(feature, (test) => {
   test('Asking again suggests another recipe', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the meal choice', openTheMealChoice);
-    and(/^I choose the "(.*)" season$/, chooseTheSeason);
+    and(/^I choose the "(.*)" season$/, chooseTheOption);
     and('I ask for a suggestion', async () => {
       await askForSuggestion();
       previousSuggestion = currentSuggestion();
@@ -122,7 +143,7 @@ defineFeature(feature, (test) => {
   test('Nothing can be suggested when no recipe matches', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the meal choice', openTheMealChoice);
-    and(/^I choose the "(.*)" season$/, chooseTheSeason);
+    and(/^I choose the "(.*)" season$/, chooseTheOption);
     and(/^I select the ingredient "(.*)"$/, selectTheIngredient);
     then('I see that no recipe matches', () => {
       expect(screen.getByText('No recipe matches these filters.')).toBeOnTheScreen();

@@ -2,7 +2,8 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
-import type { Season } from '@/db/schema';
+import type { SegmentedOption } from '@/components/segmented-control';
+import type { Course, Season } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
@@ -14,8 +15,17 @@ import { IngredientPicker } from '@/features/ingredients/components/ingredient-p
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { cleanName } from '@/lib/text';
 import type { Recipe } from './db/recipe-queries';
+import { COURSE_OPTION_LIST } from './course';
 import { getRecipe, saveRecipe } from './db/recipe-queries';
 import { SEASON_OPTION_LIST } from './season';
+
+// The course is optional.
+type CourseChoice = 'none' | Course;
+
+const COURSE_CHOICE_OPTION_LIST: readonly SegmentedOption<CourseChoice>[] = [
+  { label: 'None', value: 'none' },
+  ...COURSE_OPTION_LIST,
+];
 
 type RecipeFormProps = Readonly<{
   // Undefined for a new recipe.
@@ -49,6 +59,7 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
   const database = useDatabase();
   const [title, setTitle] = useState(initialRecipe?.title ?? '');
   const [season, setSeason] = useState<Season>(initialRecipe?.season ?? 'both');
+  const [course, setCourse] = useState<CourseChoice>(initialRecipe?.course ?? 'none');
   const [selectedIngredientList, setSelectedIngredientList] = useState<Ingredient[]>(
     initialRecipe?.ingredientList ?? [],
   );
@@ -61,6 +72,7 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
       return;
     }
     const input = {
+      course: course === 'none' ? null : course,
       ingredientIdList: selectedIngredientList.map((ingredient) => ingredient.id),
       instructions,
       season,
@@ -87,7 +99,7 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
             <Button
               accessibilityHint="Saves the recipe and shows it"
               accessibilityLabel="Save recipe"
-              icon="content-save"
+              icon="check"
               isIconOnly
               label="Save"
               onPress={save}
@@ -111,6 +123,12 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
         onChange={setSeason}
         optionList={SEASON_OPTION_LIST}
         value={season}
+      />
+      <SegmentedControl
+        label="Course"
+        onChange={setCourse}
+        optionList={COURSE_CHOICE_OPTION_LIST}
+        value={course}
       />
       <IngredientPicker
         emptyMessage="Type an ingredient to add it."

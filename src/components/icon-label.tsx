@@ -1,20 +1,23 @@
 import { Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
-import type { Season } from '@/db/schema';
-import { Icon } from '@/components/icon';
-import { useIconSize } from '@/components/use-icon-size';
-import { describeSeason, SEASON_ICONS } from '../season';
+import type { ColorToken } from '@/theme/themes';
+import type { IconName } from './icon';
+import { Icon } from './icon';
+import { useIconSize } from './use-icon-size';
 
-type SeasonLabelProps = Readonly<{ season: Season }>;
+export type LabelIcon = Readonly<{
+  icon: IconName;
+  // Muted like the text by default.
+  iconColor?: ColorToken;
+}>;
 
-// The season of a recipe, after its icon (both icons for "winter & summer").
-export function SeasonLabel({ season }: SeasonLabelProps) {
+type IconLabelProps = Readonly<{ iconList: readonly LabelIcon[]; label: string }>;
+
+// A short muted detail (season, course…) after its icons.
+export function IconLabel({ iconList, label }: IconLabelProps) {
   // Icon colors are props, not styles.
   const { theme } = useUnistyles();
   const iconSize = useIconSize('sm');
-  const iconList =
-    season === 'both' ? [SEASON_ICONS.winter, SEASON_ICONS.summer] : [SEASON_ICONS[season]];
-  const label = describeSeason(season);
 
   return (
     <View style={styles.row}>
@@ -24,7 +27,7 @@ export function SeasonLabel({ season }: SeasonLabelProps) {
         importantForAccessibility="no-hide-descendants"
         style={styles.row}
       >
-        {iconList.map(({ icon, iconColor }) => (
+        {iconList.map(({ icon, iconColor = 'textMuted' }) => (
           <Icon color={theme.colors[iconColor]} key={icon} name={icon} size={iconSize} />
         ))}
       </View>

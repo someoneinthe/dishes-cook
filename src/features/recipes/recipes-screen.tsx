@@ -6,7 +6,7 @@ import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
 import { getPagingProps } from '@/components/paging-props';
-import { SeasonLabel } from './components/season-label';
+import { CourseLabel, SeasonLabel } from './components/recipe-labels';
 import { useRecipePages } from './hooks/use-recipes';
 
 export function RecipesScreen() {
@@ -51,7 +51,10 @@ export function RecipesScreen() {
           >
             <Text style={styles.title}>{item.title}</Text>
             <View style={styles.details}>
-              <SeasonLabel season={item.season} />
+              <View style={styles.labels}>
+                <SeasonLabel season={item.season} />
+                {item.course && <CourseLabel course={item.course} />}
+              </View>
               <Text style={styles.detail}>{describeIngredientCount(item.ingredientCount)}</Text>
             </View>
           </Pressable>
@@ -81,6 +84,13 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     gap: theme.gap(2),
     justifyContent: 'space-between',
+  },
+  labels: {
+    columnGap: theme.gap(3),
+    flexDirection: 'row',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    rowGap: theme.gap(1),
   },
   list: {
     backgroundColor: theme.colors.background,

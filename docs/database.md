@@ -12,7 +12,8 @@ name        TEXT               recipe_id      (ON DELETE CASCADE) ---> id       
 name_key    TEXT UNIQUE        PK (recipe_id, ingredient_id)           title        TEXT
 sort_key    TEXT               INDEX (ingredient_id, recipe_id)        sort_key     TEXT
 created_at  INTEGER (ms)                                               season       'winter' | 'summer' | 'both'
-INDEX (sort_key, id)                                                   instructions TEXT
+INDEX (sort_key, id)                                                   course       'starter' | 'main' | 'dessert' | NULL
+                                                                       instructions TEXT
                                                                        created_at, updated_at INTEGER (ms)
                                                                        INDEX (sort_key, id)
 ```
@@ -20,9 +21,10 @@ INDEX (sort_key, id)                                                   instructi
 - **Ingredients are unique** by `name_key` (trimmed, single spaces, lower case, computed by `toNameKey` in `src/lib/text.ts`). Case is ignored, accents are not (`pâte` ≠ `pâté`). The key is computed in JS because SQLite's `NOCASE` only folds ASCII (`Œuf` vs `œuf`).
 - **Many-to-many** through `recipe_ingredients`: its composite primary key forbids duplicate links and serves "ingredients of a recipe"; the reverse index serves "recipes using an ingredient". Both cover their queries (no table lookup).
 - **Deleting**: a recipe cascades to its links; an ingredient still used by a recipe can't be deleted (`RESTRICT`, and the UI hides the button).
-- **Constraints in the database**, not only in the UI: `CHECK` on the season values and on non-blank names/titles, `NOT NULL`, foreign keys (`PRAGMA foreign_keys = ON` on every connection, since SQLite disables them by default).
+- **Constraints in the database**, not only in the UI: `CHECK` on the season and course values and on non-blank names/titles, `NOT NULL`, foreign keys (`PRAGMA foreign_keys = ON` on every connection, since SQLite disables them by default).
 - **Integer primary keys** are SQLite's rowid: the fastest lookups and joins. If sync between devices comes later, add a UUID column then.
-- **No index on `season`**: with 3 values, an index can't beat scanning the table.
+- **No index on `season` or `course`**: with 3 values each, an index can't beat scanning the table.
+- **The course is optional** (`NULL`); filtering by a course leaves out the recipes without one.
 
 ## Performance choices
 
@@ -43,7 +45,9 @@ INDEX (sort_key, id)                                                   instructi
 
 1. Edit `src/db/schema.ts`.
 2. `npm run db:generate` — writes a new SQL migration, its snapshot, and updates `src/db/migrations/migrations.js`. Commit all of them; never edit a migration that has shipped.
+   - **Read the generated SQL.** For changes SQLite's `ALTER TABLE` can't express (a table-level `CHECK`, for instance), drizzle-kit rebuilds the table: copy, `DROP TABLE`, rename, wrapped in `PRAGMA foreign_keys=OFF`. Migrations run inside a transaction, where that pragma has no effect, so dropping `recipes` would cascade-delete every `recipe_ingredients` row. When an `ALTER TABLE … ADD` can do it, hand-write that instead before the migration ships (see `0002_course.sql`), and add a test in `src/db/migrations.test.ts` that existing rows survive.
 3. Migrations run at startup (`DatabaseProvider`), before any screen renders.
+   - Metro inlines the `.sql` files into `migrations.js` and caches the result by `migrations.js`, not by the SQL files. After editing a migration file, restart Metro with `npx expo start --dev-client --clear`, or the app keeps running the old SQL.
 
 Drinks (planned) will likely reuse `recipes` with a `kind` column (`'dish' | 'drink'`) so they share ingredients, live queries and the random pick.
 

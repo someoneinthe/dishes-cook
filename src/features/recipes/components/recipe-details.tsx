@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { Recipe } from '../db/recipe-queries';
-import { SeasonLabel } from './season-label';
+import { CourseLabel, SeasonLabel } from './recipe-labels';
 
 type RecipeDetailsProps = Readonly<{ recipe: Recipe }>;
 
@@ -12,7 +12,10 @@ export function RecipeDetails({ recipe }: RecipeDetailsProps) {
       <Text accessibilityRole="header" style={styles.title}>
         {recipe.title}
       </Text>
-      <SeasonLabel season={recipe.season} />
+      <View style={styles.labels}>
+        <SeasonLabel season={recipe.season} />
+        {recipe.course && <CourseLabel course={recipe.course} />}
+      </View>
 
       <Text accessibilityRole="header" style={styles.heading}>
         Ingredients
@@ -47,6 +50,12 @@ const styles = StyleSheet.create((theme) => ({
     ...theme.typography.subtitle,
     color: theme.colors.text,
     marginTop: theme.gap(2),
+  },
+  labels: {
+    columnGap: theme.gap(4),
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: theme.gap(1),
   },
   muted: {
     ...theme.typography.body,

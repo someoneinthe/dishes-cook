@@ -13,11 +13,18 @@ import { SegmentedControl } from '@/components/segmented-control';
 import { useDatabase } from '@/db/database-context';
 import { IngredientPicker } from '@/features/ingredients/components/ingredient-picker';
 import { RecipeDetails } from '@/features/recipes/components/recipe-details';
+import { COURSE_OPTION_LIST } from '@/features/recipes/course';
 import { pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
 import { useRecipe, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
 import { SEASON_ICONS } from '@/features/recipes/season';
 
+type CourseFilter = 'any' | NonNullable<RecipeFilters['course']>;
 type SeasonFilter = 'any' | NonNullable<RecipeFilters['season']>;
+
+const COURSE_FILTER_OPTION_LIST: readonly SegmentedOption<CourseFilter>[] = [
+  { label: 'Any', value: 'any' },
+  ...COURSE_OPTION_LIST,
+];
 
 const SEASON_FILTER_OPTION_LIST: readonly SegmentedOption<SeasonFilter>[] = [
   { label: 'Any', value: 'any' },
@@ -28,11 +35,13 @@ const SEASON_FILTER_OPTION_LIST: readonly SegmentedOption<SeasonFilter>[] = [
 // Picks a random recipe among those matching the filters.
 export function MealChoiceScreen() {
   const [season, setSeason] = useState<SeasonFilter>('any');
+  const [course, setCourse] = useState<CourseFilter>('any');
   const [selectedIngredientList, setSelectedIngredientList] = useState<Ingredient[]>([]);
   const [suggestedId, setSuggestedId] = useState<number>();
 
   const database = useDatabase();
   const filters = {
+    course: course === 'any' ? undefined : course,
     ingredientIdList: selectedIngredientList.map((ingredient) => ingredient.id),
     season: season === 'any' ? undefined : season,
   };
@@ -90,6 +99,15 @@ export function MealChoiceScreen() {
         }}
         optionList={SEASON_FILTER_OPTION_LIST}
         value={season}
+      />
+      <SegmentedControl
+        label="Course"
+        onChange={(value) => {
+          setCourse(value);
+          setSuggestedId(undefined);
+        }}
+        optionList={COURSE_FILTER_OPTION_LIST}
+        value={course}
       />
       <IngredientPicker
         emptyMessage="No ingredient is used by a recipe yet."
