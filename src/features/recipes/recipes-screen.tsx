@@ -6,6 +6,9 @@ import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
 import { getPagingProps } from '@/components/paging-props';
+import type { RecipeListItem } from './db/recipe-queries';
+import { CourseLabel, SeasonLabel } from './components/recipe-labels';
+import { COURSE_LABELS } from './course';
 import { useRecipePages } from './hooks/use-recipes';
 import { describeSeason } from './season';
 
@@ -42,7 +45,7 @@ export function RecipesScreen() {
         renderItem={({ item }) => (
           <Pressable
             accessibilityHint="Opens the recipe"
-            accessibilityLabel={item.title}
+            accessibilityLabel={describeRecipeRow(item)}
             accessibilityRole="button"
             onPress={() =>
               router.push({ params: { id: String(item.id) }, pathname: '/recipe/[id]' })
@@ -51,7 +54,10 @@ export function RecipesScreen() {
           >
             <Text style={styles.title}>{item.title}</Text>
             <View style={styles.details}>
-              <Text style={styles.detail}>{describeSeason(item.season)}</Text>
+              <View style={styles.labels}>
+                <SeasonLabel season={item.season} />
+                {item.course && <CourseLabel course={item.course} />}
+              </View>
               <Text style={styles.detail}>{describeIngredientCount(item.ingredientCount)}</Text>
             </View>
           </Pressable>
@@ -67,6 +73,12 @@ function describeIngredientCount(count: number): string {
   return count === 1 ? '1 ingredient' : `${count} ingredients`;
 }
 
+// What a screen reader announces for a row: its labels, read as one.
+function describeRecipeRow(item: RecipeListItem): string {
+  const course = item.course ? `, ${COURSE_LABELS[item.course]}` : '';
+  return `${item.title}, ${describeSeason(item.season)}${course}`;
+}
+
 const styles = StyleSheet.create((theme) => ({
   content: {
     gap: theme.gap(2),
@@ -77,8 +89,20 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.textMuted,
   },
   details: {
+    alignItems: 'center',
+    columnGap: theme.gap(2),
     flexDirection: 'row',
+    // The ingredient count goes below the labels when they don't fit side by side.
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
+    rowGap: theme.gap(1),
+  },
+  labels: {
+    columnGap: theme.gap(3),
+    flexDirection: 'row',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    rowGap: theme.gap(1),
   },
   list: {
     backgroundColor: theme.colors.background,

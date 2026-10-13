@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { DatabaseConnection } from './types';
-import { backfillSortKeys } from './backfill-sort-keys';
 import { openAppConnection } from './client';
 import { createQueryClient, DataProvider } from './data-provider';
 import migrations from './migrations/migrations';
@@ -32,11 +31,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
 }
 
 function MigratedData({ children, connection }: MigratedDataProps) {
-  // Once, before the first screen renders (screens sort by sort_key), then the query cache.
-  const [queryClient] = useState(() => {
-    backfillSortKeys(connection.db);
-    return createQueryClient();
-  });
+  const [queryClient] = useState(createQueryClient);
 
   return (
     <DataProvider connection={connection} queryClient={queryClient}>

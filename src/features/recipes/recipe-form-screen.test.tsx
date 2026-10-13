@@ -42,6 +42,7 @@ describe('recipeFormScreen', () => {
     const [{ id: savedId } = { id: -1 }] = firstRecipePage(connection.db);
 
     expect(getRecipe(connection.db, savedId)).toStrictEqual({
+      course: null,
       id: savedId,
       ingredientList: [
         { id: carrot.id, name: 'Carrot' },
@@ -81,10 +82,34 @@ describe('recipeFormScreen', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Remove Carrot' }));
     await fireEvent.press(screen.getByRole('radio', { name: 'Both' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Dessert' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
 
-    expect(getRecipe(connection.db, id)).toMatchObject({ ingredientList: [], season: 'both' });
+    expect(getRecipe(connection.db, id)).toMatchObject({
+      course: 'dessert',
+      ingredientList: [],
+      season: 'both',
+    });
     expect(router.back).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the saved course and clears it with None', async () => {
+    const id = saveRecipe(connection.db, {
+      course: 'starter',
+      ingredientIdList: [],
+      instructions: '',
+      season: 'summer',
+      title: 'Tomato salad',
+    });
+    jest.mocked(useLocalSearchParams).mockReturnValue({ id: String(id) });
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    expect(screen.getByRole('radio', { name: 'Starter' })).toBeChecked();
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'None' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+
+    expect(getRecipe(connection.db, id)?.course).toBeNull();
   });
 
   it('tells when the recipe to edit no longer exists', async () => {

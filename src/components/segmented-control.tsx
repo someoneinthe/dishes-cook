@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import type { ColorToken } from '@/theme/themes';
 import type { IconName } from './icon';
 import { Icon } from './icon';
 import { useIconSize } from './use-icon-size';
@@ -7,6 +8,8 @@ import { useIconSize } from './use-icon-size';
 export type SegmentedOption<T extends string> = Readonly<{
   // Shown before the label (e.g. a snowflake for winter).
   icon?: IconName;
+  // The icon's own color (text color by default); white on the selected option.
+  iconColor?: ColorToken;
   label: string;
   value: T;
 }>;
@@ -52,7 +55,9 @@ export function SegmentedControl<T extends string>({
             >
               {option.icon && (
                 <Icon
-                  color={isChecked ? theme.colors.onAction : theme.colors.text}
+                  color={
+                    isChecked ? theme.colors.onAction : theme.colors[option.iconColor ?? 'text']
+                  }
                   name={option.icon}
                   size={iconSize}
                 />
@@ -83,6 +88,9 @@ const styles = StyleSheet.create((theme) => ({
     borderRadius: theme.radius.md,
     borderWidth: theme.borderWidth,
     flexDirection: 'row',
+    // Options that don't fit side by side (long labels, large fonts) go on another line instead of
+    // being cut.
+    flexWrap: 'wrap',
     overflow: 'hidden',
   },
   label: {
@@ -92,8 +100,10 @@ const styles = StyleSheet.create((theme) => ({
   segment: {
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    flex: 1,
+    // As wide as its content, sharing the rest of the line.
+    flexBasis: 'auto',
     flexDirection: 'row',
+    flexGrow: 1,
     gap: theme.gap(1),
     justifyContent: 'center',
     minHeight: theme.size.touchTarget,

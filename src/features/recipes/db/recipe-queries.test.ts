@@ -36,6 +36,7 @@ describe('recipe queries', () => {
     const id = saveRecipe(database, { ...soupInput, ingredientIdList: [leekId, carrotId, leekId] });
 
     expect(getRecipe(database, id)).toStrictEqual({
+      course: null,
       id,
       ingredientList: [
         { id: carrotId, name: 'carrot' },
@@ -64,6 +65,20 @@ describe('recipe queries', () => {
       season: 'both',
       title: 'Leek soup',
     });
+  });
+
+  it('sets, changes and clears the course', () => {
+    const id = saveRecipe(database, { ...soupInput, course: 'starter' });
+
+    expect(getRecipe(database, id)?.course).toBe('starter');
+
+    saveRecipe(database, { ...soupInput, course: 'main' }, id);
+
+    expect(firstRecipePage(database)).toStrictEqual([expect.objectContaining({ course: 'main' })]);
+
+    saveRecipe(database, { ...soupInput, course: null }, id);
+
+    expect(getRecipe(database, id)?.course).toBeNull();
   });
 
   it('refuses a blank title and an unknown recipe', () => {
@@ -119,11 +134,13 @@ describe('recipe queries', () => {
       });
       summerSaladId = saveRecipe(database, {
         ...soupInput,
+        course: 'starter',
         ingredientIdList: [carrotId, tomatoId],
         season: 'summer',
       });
       allYearStewId = saveRecipe(database, {
         ...soupInput,
+        course: 'main',
         ingredientIdList: [carrotId, leekId, tomatoId],
         season: 'both',
       });
@@ -142,6 +159,16 @@ describe('recipe queries', () => {
         winterSoupId,
         allYearStewId,
       ]);
+    });
+
+    it('keeps the recipes of the course, not those without one', () => {
+      expect(findSortedIds({ course: 'main', ingredientIdList: [] })).toStrictEqual([
+        allYearStewId,
+      ]);
+      expect(
+        findSortedIds({ course: 'starter', ingredientIdList: [tomatoId], season: 'summer' }),
+      ).toStrictEqual([summerSaladId]);
+      expect(findSortedIds({ course: 'dessert', ingredientIdList: [] })).toStrictEqual([]);
     });
 
     it('keeps the recipes containing all the selected ingredients', () => {

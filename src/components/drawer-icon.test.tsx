@@ -2,10 +2,10 @@ import { render, screen } from '@testing-library/react-native';
 import { drawerIcon } from './drawer-icon';
 
 describe('drawerIcon', () => {
-  it('renders an icon with the color and size of the menu entry', async () => {
-    const CarrotIcon = drawerIcon('carrot');
+  it('renders an icon in its own color, at the size of the menu entry', async () => {
+    const CarrotIcon = drawerIcon('carrot', '#C2410C');
 
-    await render(<CarrotIcon color="#C2410C" size={24} />);
+    await render(<CarrotIcon size={24} />);
 
     expect(screen.toJSON()).toMatchObject({
       props: {

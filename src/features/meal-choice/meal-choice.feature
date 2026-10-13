@@ -1,13 +1,13 @@
 Feature: Meal choice
   The app suggests a random recipe among the saved ones, narrowed down by
-  season and by the ingredients the recipe must contain.
+  season, by course and by the ingredients the recipe must contain.
 
   Background:
     Given these recipes:
-      | title         | season | ingredients            |
-      | Pumpkin soup  | winter | pumpkin, onion, cream  |
-      | Tomato salad  | summer | tomato, onion          |
-      | Omelette      | both   | egg, cream             |
+      | title         | season | course  | ingredients            |
+      | Pumpkin soup  | winter |         | pumpkin, onion, cream  |
+      | Tomato salad  | summer | starter | tomato, onion          |
+      | Omelette      | both   | main    | egg, cream             |
 
   Scenario: Any recipe can be suggested without filters
     When I open the meal choice
@@ -21,6 +21,13 @@ Feature: Meal choice
     Then I see that 2 recipes match
     When I ask for a suggestion
     Then the suggestion is one of "Tomato salad, Omelette"
+
+  Scenario: A course keeps only the recipes of that course
+    When I open the meal choice
+    And I choose the "Main course" course
+    Then I see that 1 recipe matches
+    When I ask for a suggestion
+    Then the suggestion is one of "Omelette"
 
   Scenario: Suggested recipes contain every selected ingredient
     When I open the meal choice

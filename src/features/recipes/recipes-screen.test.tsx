@@ -29,9 +29,10 @@ describe('recipesScreen', () => {
     expect(router.push).toHaveBeenCalledWith('/recipe/new');
   });
 
-  it('lists the recipes with their season and ingredient count, and opens one', async () => {
+  it('lists the recipes with their season, course and ingredient count, and opens one', async () => {
     const carrotId = findOrCreateIngredient(connection.db, 'carrot').id;
     const id = saveRecipe(connection.db, {
+      course: 'starter',
       ingredientIdList: [carrotId],
       instructions: '',
       season: 'both',
@@ -40,9 +41,13 @@ describe('recipesScreen', () => {
     await renderWithDatabase(<RecipesScreen />, connection);
 
     expect(screen.getByText('Winter & summer')).toBeOnTheScreen();
+    expect(screen.getByText('Starter')).toBeOnTheScreen();
     expect(screen.getByText('1 ingredient')).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Carrot soup' }));
+    // Screen readers announce the row's labels with its title.
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Carrot soup, Winter & summer, Starter' }),
+    );
 
     expect(router.push).toHaveBeenCalledWith({
       params: { id: String(id) },

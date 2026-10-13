@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "157613fa-62b4-498d-9da9-2171e234f150",
+  "id": "7155841f-200a-43f4-bc1a-d27eba0ff03b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "ingredients": {
@@ -35,13 +35,30 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "sort_key": {
+          "name": "sort_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         }
       },
       "indexes": {
         "ingredients_name_key_unique": {
           "name": "ingredients_name_key_unique",
-          "columns": ["name_key"],
+          "columns": [
+            "name_key"
+          ],
           "isUnique": true
+        },
+        "ingredients_sort_key_id_idx": {
+          "name": "ingredients_sort_key_id_idx",
+          "columns": [
+            "sort_key",
+            "id"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -75,7 +92,10 @@
       "indexes": {
         "recipe_ingredients_ingredient_recipe_idx": {
           "name": "recipe_ingredients_ingredient_recipe_idx",
-          "columns": ["ingredient_id", "recipe_id"],
+          "columns": [
+            "ingredient_id",
+            "recipe_id"
+          ],
           "isUnique": false
         }
       },
@@ -84,8 +104,12 @@
           "name": "recipe_ingredients_ingredient_id_ingredients_id_fk",
           "tableFrom": "recipe_ingredients",
           "tableTo": "ingredients",
-          "columnsFrom": ["ingredient_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
@@ -93,15 +117,22 @@
           "name": "recipe_ingredients_recipe_id_recipes_id_fk",
           "tableFrom": "recipe_ingredients",
           "tableTo": "recipes",
-          "columnsFrom": ["recipe_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "recipe_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "recipe_ingredients_recipe_id_ingredient_id_pk": {
-          "columns": ["recipe_id", "ingredient_id"],
+          "columns": [
+            "recipe_id",
+            "ingredient_id"
+          ],
           "name": "recipe_ingredients_recipe_id_ingredient_id_pk"
         }
       },
@@ -111,6 +142,13 @@
     "recipes": {
       "name": "recipes",
       "columns": {
+        "course": {
+          "name": "course",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "integer",
@@ -142,6 +180,13 @@
           "autoincrement": false,
           "default": "'both'"
         },
+        "sort_key": {
+          "name": "sort_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "title": {
           "name": "title",
           "type": "text",
@@ -158,7 +203,16 @@
           "default": "(cast(unixepoch('subsec') * 1000 as integer))"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "recipes_sort_key_id_idx": {
+          "name": "recipes_sort_key_id_idx",
+          "columns": [
+            "sort_key",
+            "id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -170,6 +224,10 @@
         "recipes_season_valid": {
           "name": "recipes_season_valid",
           "value": "\"recipes\".\"season\" in ('winter', 'summer', 'both')"
+        },
+        "recipes_course_valid": {
+          "name": "recipes_course_valid",
+          "value": "\"recipes\".\"course\" in ('starter', 'main', 'dessert')"
         }
       }
     }

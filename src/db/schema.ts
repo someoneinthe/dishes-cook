@@ -16,6 +16,11 @@ export const SEASON_LIST = ['winter', 'summer', 'both'] as const;
 export type Season = (typeof SEASON_LIST)[number];
 const SEASON_SQL_LIST = SEASON_LIST.map((season) => `'${season}'`).join(', ');
 
+// Optional: a recipe can have no course.
+export const COURSE_LIST = ['starter', 'main', 'dessert'] as const;
+export type Course = (typeof COURSE_LIST)[number];
+const COURSE_SQL_LIST = COURSE_LIST.map((course) => `'${course}'`).join(', ');
+
 // Milliseconds since the epoch, set by SQLite so every writer agrees.
 export const NOW_MS = sql`(cast(unixepoch('subsec') * 1000 as integer))`;
 
@@ -32,7 +37,7 @@ export const ingredients = sqliteTable(
     nameKey: text('name_key').notNull(),
     // Sort and search key computed by `toSortKey` (no case, no accents: "Échalote" -> "echalote").
     // Lists are sorted and paginated by it in SQL, which can't strip accents itself.
-    sortKey: text('sort_key').notNull().default(''),
+    sortKey: text('sort_key').notNull(),
   },
   (table) => [
     check('ingredients_name_not_blank', sql`length(trim(${table.name})) > 0`),
@@ -46,20 +51,23 @@ export const ingredients = sqliteTable(
 export const recipes = sqliteTable(
   'recipes',
   {
+    // Starter, main course or dessert; null when not set.
+    course: text('course', { enum: COURSE_LIST }),
     createdAt: integer('created_at').notNull().default(NOW_MS),
     id: integer('id').primaryKey(),
     // The recipe itself (steps, quantities…). Never selected by list queries: it can be long.
     instructions: text('instructions').notNull().default(''),
     season: text('season', { enum: SEASON_LIST }).notNull().default('both'),
     // Sort and search key of the title, see ingredients.sortKey.
-    sortKey: text('sort_key').notNull().default(''),
+    sortKey: text('sort_key').notNull(),
     title: text('title').notNull(),
     updatedAt: integer('updated_at').notNull().default(NOW_MS),
   },
   (table) => [
     check('recipes_title_not_blank', sql`length(trim(${table.title})) > 0`),
     check('recipes_season_valid', sql`${table.season} in (${sql.raw(SEASON_SQL_LIST)})`),
-    // No index on season: 3 values, so an index can't beat a scan of the (small) table.
+    check('recipes_course_valid', sql`${table.course} in (${sql.raw(COURSE_SQL_LIST)})`),
+    // No index on season or course: 3 values each, so an index can't beat a scan of the (small) table.
     // Pages of the alphabetical list, see ingredients_sort_key_id_idx.
     index('recipes_sort_key_id_idx').on(table.sortKey, table.id),
   ],

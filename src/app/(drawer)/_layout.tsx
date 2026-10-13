@@ -1,6 +1,7 @@
 import { Drawer } from 'expo-router/drawer';
 import { useUnistyles } from 'react-native-unistyles';
-import { drawerIcon } from '@/components/drawer-icon';
+import { headerTitleOptions } from '@/components/header-title';
+import { MENU_ICONS, menuEntryOptions } from '@/components/menu-entry-options';
 
 // Opening the app lands on the meal choice, whatever the menu order.
 // eslint-disable-next-line @typescript-eslint/naming-convention -- name required by Expo Router.
@@ -15,6 +16,7 @@ export default function DrawerLayout() {
     <Drawer
       backBehavior="initialRoute"
       screenOptions={{
+        ...headerTitleOptions,
         drawerActiveTintColor: theme.colors.actionPrimary,
         drawerInactiveTintColor: theme.colors.text,
         drawerStyle: { backgroundColor: theme.colors.background },
@@ -25,35 +27,27 @@ export default function DrawerLayout() {
     >
       <Drawer.Screen
         name="ingredients"
-        options={{
-          drawerIcon: drawerIcon('carrot'),
-          drawerLabel: 'Ingredients',
-          title: 'Ingredients',
-        }}
+        options={menuEntryOptions(
+          'Ingredients',
+          MENU_ICONS.ingredients,
+          theme.colors.menuIngredients,
+        )}
       />
       <Drawer.Screen
         name="recipes"
-        options={{
-          drawerIcon: drawerIcon('book-open-page-variant'),
-          drawerLabel: 'Recipes',
-          title: 'Recipes',
-        }}
+        options={menuEntryOptions('Recipes', MENU_ICONS.recipes, theme.colors.menuRecipes)}
       />
       <Drawer.Screen
         name="index"
-        options={{
-          drawerIcon: drawerIcon('dice-multiple'),
-          drawerLabel: 'Meal choice',
-          title: 'Meal choice',
-        }}
+        options={menuEntryOptions(
+          'Meal choice',
+          MENU_ICONS.mealChoice,
+          theme.colors.menuMealChoice,
+        )}
       />
       <Drawer.Screen
         name="settings"
-        options={{
-          drawerIcon: drawerIcon('cog-outline'),
-          drawerLabel: 'Settings',
-          title: 'Settings',
-        }}
+        options={menuEntryOptions('Settings', MENU_ICONS.settings, theme.colors.menuSettings)}
       />
     </Drawer>
   );

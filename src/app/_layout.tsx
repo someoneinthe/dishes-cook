@@ -4,6 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import { headerTitleWithIcon } from '@/components/header-title';
+import { MENU_ICONS } from '@/components/menu-entry-options';
+import { StackHeader } from '@/components/stack-header';
 import { DatabaseProvider } from '@/db/database-provider';
 import { LoadingScreen } from '@/features/loading/loading-screen';
 import { applyColorScheme, getPreferences } from '@/features/settings/preferences';
@@ -27,8 +30,11 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             contentStyle: { backgroundColor: theme.colors.background },
+            header: StackHeader,
             headerStyle: { backgroundColor: theme.colors.surface },
             headerTintColor: theme.colors.text,
+            // The screens over the menu are all recipe screens (detail, new, edit).
+            headerTitle: headerTitleWithIcon(MENU_ICONS.recipes, theme.colors.menuRecipes),
           }}
         >
           {/* The drawer (burger menu) has its own header. */}
