@@ -44,7 +44,15 @@ export default function DrawerLayout() {
         options={{
           drawerIcon: drawerIcon('dice-multiple'),
           drawerLabel: 'Meal choice',
-          title: 'What should we eat?',
+          title: 'Meal choice',
+        }}
+      />
+      <Drawer.Screen
+        name="settings"
+        options={{
+          drawerIcon: drawerIcon('cog-outline'),
+          drawerLabel: 'Settings',
+          title: 'Settings',
         }}
       />
     </Drawer>

@@ -128,11 +128,15 @@ const styles = StyleSheet.create((theme) => ({
     borderRadius: theme.radius.md,
     borderWidth: theme.borderWidth,
     flexDirection: 'row',
+    // Large fonts or button labels: the buttons go under the name rather than squeezing it.
+    flexWrap: 'wrap',
     gap: theme.gap(2),
+    justifyContent: 'flex-end',
     padding: theme.gap(3),
   },
   text: {
-    flex: 1,
+    flexBasis: theme.size.minText,
+    flexGrow: 1,
     gap: theme.gap(0.5),
   },
   usage: {

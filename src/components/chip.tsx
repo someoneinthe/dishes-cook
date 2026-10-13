@@ -2,6 +2,7 @@ import { Pressable, Text } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { IconName } from './icon';
 import { Icon } from './icon';
+import { useIconSize } from './use-icon-size';
 
 type ChipProps = Readonly<{
   accessibilityHint?: string;
@@ -25,6 +26,7 @@ export function Chip({
   styles.useVariants({ isSelected });
   // The icon's color is a prop, not a style: read from the theme like the label's.
   const { theme } = useUnistyles();
+  const iconSize = useIconSize('sm');
 
   return (
     <Pressable
@@ -38,7 +40,7 @@ export function Chip({
       <Icon
         color={isSelected ? theme.colors.onPrimary : theme.colors.text}
         name={icon}
-        size={theme.iconSize.sm}
+        size={iconSize}
       />
       <Text style={styles.label}>{label}</Text>
     </Pressable>

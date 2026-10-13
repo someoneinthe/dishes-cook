@@ -6,7 +6,8 @@ const base = {
   opacity: { disabled: 0.5, pressed: 0.6 },
   radius: { lg: 16, md: 8, sm: 4 },
   // Heights: 44 = minimum touch target (Material/Apple guidelines).
-  size: { chip: 36, multilineInput: 160, touchTarget: 44 },
+  // minText: width under which a row's text gives its line to the row's buttons.
+  size: { chip: 36, minText: 160, multilineInput: 160, touchTarget: 44 },
   typography: {
     body: { fontSize: 16, lineHeight: 24 },
     caption: { fontSize: 13, lineHeight: 18 },

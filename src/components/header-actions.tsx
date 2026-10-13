@@ -12,6 +12,8 @@ export function HeaderActions({ children }: HeaderActionsProps) {
 const styles = StyleSheet.create((theme) => ({
   row: {
     flexDirection: 'row',
+    // The title is truncated first: buttons keep their size, even with large system fonts.
+    flexShrink: 0,
     gap: theme.gap(2),
     paddingRight: theme.gap(3),
   },
