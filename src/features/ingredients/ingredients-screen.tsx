@@ -84,7 +84,7 @@ export function IngredientsScreen() {
             submitBehavior="submit"
             value={search}
           />
-          <Button label="Add ingredient" onPress={addIngredient} />
+          <Button icon="plus" label="Add ingredient" onPress={addIngredient} />
         </View>
       }
       renderItem={({ item }) => <IngredientRow ingredient={item} onDelete={confirmDelete} />}

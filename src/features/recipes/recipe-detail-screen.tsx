@@ -52,13 +52,14 @@ export function RecipeDetailScreen() {
       <RecipeDetails recipe={recipe} />
       <View style={styles.actions}>
         <Button
+          icon="pencil"
           label="Edit"
           onPress={() =>
             router.push({ params: { id: String(recipe.id) }, pathname: '/recipe/[id]/edit' })
           }
           variant="secondary"
         />
-        <Button label="Delete" onPress={confirmDelete} variant="danger" />
+        <Button icon="trash-can-outline" label="Delete" onPress={confirmDelete} variant="danger" />
       </View>
     </ScrollView>
   );

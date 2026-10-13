@@ -63,9 +63,10 @@ export function IngredientPicker({
             <Chip
               accessibilityHint="Removes it from the selection"
               accessibilityLabel={`Remove ${ingredient.name}`}
+              icon="close"
               isSelected
               key={ingredient.id}
-              label={`${ingredient.name}  ✕`}
+              label={ingredient.name}
               onPress={() => onChange(selectedList.filter((item) => item.id !== ingredient.id))}
             />
           ))}
@@ -93,6 +94,7 @@ export function IngredientPicker({
           <Chip
             accessibilityHint="Adds it to the selection"
             accessibilityLabel={`Add ${ingredient.name}`}
+            icon="plus"
             key={ingredient.id}
             label={ingredient.name}
             onPress={() => select(ingredient)}
@@ -102,7 +104,8 @@ export function IngredientPicker({
           <Chip
             accessibilityHint="Creates the ingredient and adds it to the selection"
             accessibilityLabel={`Create ${typedName}`}
-            label={`+ New: ${typedName}`}
+            icon="plus-circle-outline"
+            label={`New: ${typedName}`}
             onPress={() => select(onCreate(typedName))}
           />
         )}

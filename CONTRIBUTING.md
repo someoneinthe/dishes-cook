@@ -32,6 +32,7 @@
 - **Accessibility**: every touchable has an accessible label/role.
 - **Sorting, filtering, ordering in the data layer only**: done in SQL by the query functions (`src/features/*/db`), later by the API, never in screens, hooks or components (no `.sort()` / `.filter()` / search on fetched rows). Text sorts and searches on `sort_key` columns (no case, no accents), since SQLite can't fold accents.
 - **Lists**: a query never returns more than 50 rows (`PAGE_SIZE`). Long lists page with `usePagedQuery` (keyset pagination on a `(sort_key, id)` index, infinite scroll, at most `MAX_PAGES` pages in memory); short ones (suggestions) use `LIMIT`. Count, filter and pick in SQL rather than loading rows to do it in JS. Screens read data with TanStack Query hooks (`src/features/*/hooks`); every write made through Drizzle invalidates them.
+- **Buttons**: always the `Button` component. Primary action (`variant="primary"`, default): blue background (`actionPrimary`), white text (`onAction`), an icon when relevant. Deletion (`variant="danger"`): red background (`actionDanger`), white text, and always an icon (`trash-can-outline`; required by the types). Other actions: `variant="secondary"` (outlined). Icons: `src/components/icon.tsx`. Native confirmation dialogs (`Alert`) can't be styled.
 - Run `npm run check` before pushing.
 
 ## Linting

@@ -22,7 +22,7 @@ export function RecipesScreen() {
           title="No recipes yet"
         />
       }
-      ListHeaderComponent={<Button label="New recipe" onPress={addRecipe} />}
+      ListHeaderComponent={<Button icon="plus" label="New recipe" onPress={addRecipe} />}
       renderItem={({ item }) => (
         <Pressable
           accessibilityHint="Opens the recipe"

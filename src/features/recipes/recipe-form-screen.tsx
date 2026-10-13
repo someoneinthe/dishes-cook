@@ -117,7 +117,7 @@ function RecipeForm({ initialRecipe }: RecipeFormProps) {
         placeholder="Steps, quantities, cooking time…"
         value={instructions}
       />
-      <Button label="Save recipe" onPress={save} />
+      <Button icon="content-save" label="Save recipe" onPress={save} />
     </ScrollView>
   );
 }
