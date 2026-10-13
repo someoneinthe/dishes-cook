@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import type { DatabaseConnection } from '@/db/types';
-import { saveRecipe } from '@/features/recipes/db/recipe-queries';
+import { deleteRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { spyOnAlert } from '@/test/alert';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { findOrCreateIngredient, listIngredients } from './db/ingredient-queries';
@@ -35,6 +35,27 @@ describe('ingredientsScreen', () => {
 
     await expect(screen.findByText('Carrot')).resolves.toBeOnTheScreen();
     expect(screen.getByLabelText('Search or add an ingredient')).toHaveDisplayValue('');
+  });
+
+  it('refreshes when recipes change elsewhere, cascading deletes included', async () => {
+    const carrot = findOrCreateIngredient(connection.db, 'Carrot');
+    await renderWithDatabase(<IngredientsScreen />, connection);
+
+    expect(screen.getByText('Not used yet')).toBeOnTheScreen();
+
+    const recipeId = saveRecipe(connection.db, {
+      ingredientIdList: [carrot.id],
+      instructions: '',
+      season: 'both',
+      title: 'Soup',
+    });
+
+    await expect(screen.findByText('Used in 1 recipe')).resolves.toBeOnTheScreen();
+
+    // Only "recipes" is written; its links go through ON DELETE CASCADE.
+    deleteRecipe(connection.db, recipeId);
+
+    await expect(screen.findByText('Not used yet')).resolves.toBeOnTheScreen();
   });
 
   it('refuses a duplicate or a blank name', async () => {

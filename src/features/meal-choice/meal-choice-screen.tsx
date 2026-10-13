@@ -13,7 +13,7 @@ import { IngredientPicker } from '@/features/ingredients/components/ingredient-p
 import { useIngredientList } from '@/features/ingredients/hooks/use-ingredient-list';
 import { sortByUsage } from '@/features/ingredients/sort-by-usage';
 import { RecipeDetails } from '@/features/recipes/components/recipe-details';
-import { findRecipeIds, RECIPE_TABLES } from '@/features/recipes/db/recipe-queries';
+import { findRecipeIds } from '@/features/recipes/db/recipe-queries';
 import { useHasAnyRecipe, useRecipe } from '@/features/recipes/hooks/use-recipes';
 import { pickRandomId } from './pick-random-id';
 
@@ -43,7 +43,6 @@ export function MealChoiceScreen() {
         season: season === 'any' ? undefined : season,
       }),
     [season, selectedIngredientList],
-    RECIPE_TABLES,
   );
   const hasRecipes = useHasAnyRecipe();
   const suggestion = useRecipe(suggestedId);

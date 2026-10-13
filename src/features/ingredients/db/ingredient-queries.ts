@@ -9,9 +9,6 @@ export type Ingredient = Readonly<{ id: number; name: string }>;
 
 export type IngredientListItem = Ingredient & Readonly<{ recipeCount: number }>;
 
-// Tables read by listIngredients, for live queries.
-export const INGREDIENT_LIST_TABLES = [ingredients, recipeIngredients];
-
 export type RenameResult = 'blank' | 'duplicate' | 'renamed';
 
 // Deletes an unused ingredient. The foreign key is ON DELETE RESTRICT, so usage is checked first

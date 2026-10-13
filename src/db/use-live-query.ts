@@ -1,34 +1,24 @@
-import type { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import type { DependencyList } from 'react';
-import { getTableName } from 'drizzle-orm';
 import { useEffect, useState } from 'react';
 import type { AppDatabase } from './types';
 import { useDatabaseConnection } from './database-context';
 
-// Runs a synchronous query and re-runs it when one of `tableList` is written to.
-//
-// Unlike Drizzle's useLiveQuery, it listens to every table the query reads (joins and subqueries
-// included, not only the FROM table), returns data on the first render (no empty flash), and
-// re-runs once per write instead of once per modified row.
+// Runs a synchronous query and re-runs it after every write to the database (see
+// change-notifier.ts). Data is there on the first render: no loading state, no empty flash.
 //
 // `dependencies` are the query's inputs, like useMemo's.
 export function useLiveQuery<T>(
   query: (database: AppDatabase) => T,
   dependencies: DependencyList,
-  tableList: readonly SQLiteTable[],
 ): T {
+  // Opted out of the React Compiler: it assumes functions are pure and memoizes `query(db)` by its
+  // arguments, which don't change after a write, so the second write onwards returned stale data.
+  // Components using this hook are still compiled; tests run with the compiler (jest.config.js).
+  'use no memo';
   const { db, subscribe } = useDatabaseConnection();
   const [version, setVersion] = useState(0);
-  const tablesKey = tableList.map((table) => getTableName(table)).join(',');
 
-  useEffect(() => {
-    const watchedTables = new Set(tablesKey.split(','));
-    return subscribe((tableName) => {
-      if (watchedTables.has(tableName)) {
-        setVersion((current) => current + 1);
-      }
-    });
-  }, [subscribe, tablesKey]);
+  useEffect(() => subscribe(() => setVersion((current) => current + 1)), [subscribe]);
 
   // Re-runs the query when its inputs change or after a write (`version`), during render so the
   // new data shows in the same render (React's "adjust state when a prop changes" pattern).

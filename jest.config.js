@@ -1,3 +1,8 @@
+const expoPreset = require('jest-expo/jest-preset');
+
+const JS_TRANSFORM = String.raw`\.[jt]sx?$`;
+const [babelJest, babelOptions] = expoPreset.transform[JS_TRANSFORM];
+
 /**
 @type {import('jest').Config}
 */
@@ -12,4 +17,16 @@ module.exports = {
   preset: 'jest-expo',
   // Unistyles: native runtime mocked, then the app's themes registered (StyleSheet.configure).
   setupFiles: ['react-native-unistyles/mocks', '<rootDir>/src/theme/unistyles.ts'],
+  // Compile like the app: Metro enables the React Compiler (app.config.ts), jest-expo doesn't.
+  // Without it, tests miss memoization bugs (a live query once returned stale data on device only).
+  transform: {
+    ...expoPreset.transform,
+    [JS_TRANSFORM]: [
+      babelJest,
+      {
+        ...babelOptions,
+        caller: { ...babelOptions.caller, platform: 'android', supportsReactCompiler: true },
+      },
+    ],
+  },
 };
