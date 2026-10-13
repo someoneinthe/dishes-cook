@@ -1,0 +1,101 @@
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import type { DatabaseConnection } from '@/db/types';
+import { saveRecipe } from '@/features/recipes/db/recipe-queries';
+import { spyOnAlert } from '@/test/alert';
+import { createTestConnection, renderWithDatabase } from '@/test/test-database';
+import { findOrCreateIngredient, listIngredients } from './db/ingredient-queries';
+import { IngredientsScreen } from './ingredients-screen';
+
+describe('ingredientsScreen', () => {
+  let connection: DatabaseConnection;
+
+  beforeEach(() => {
+    connection = createTestConnection();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const typeInSearch = async (text: string) => {
+    await fireEvent.changeText(screen.getByLabelText('Search or add an ingredient'), text);
+  };
+
+  it('invites to add the first ingredient', async () => {
+    await renderWithDatabase(<IngredientsScreen />, connection);
+
+    expect(screen.getByRole('header', { name: 'No ingredients yet' })).toBeOnTheScreen();
+  });
+
+  it('adds an ingredient and shows it in the list', async () => {
+    await renderWithDatabase(<IngredientsScreen />, connection);
+
+    await typeInSearch('  Carrot ');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add ingredient' }));
+
+    await expect(screen.findByText('Carrot')).resolves.toBeOnTheScreen();
+    expect(screen.getByLabelText('Search or add an ingredient')).toHaveDisplayValue('');
+  });
+
+  it('refuses a duplicate or a blank name', async () => {
+    findOrCreateIngredient(connection.db, 'Carrot');
+    await renderWithDatabase(<IngredientsScreen />, connection);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Add ingredient' }));
+
+    expect(screen.getByText('Type the name of the ingredient to add.')).toBeOnTheScreen();
+
+    await typeInSearch('CARROT');
+    await fireEvent(screen.getByLabelText('Search or add an ingredient'), 'submitEditing');
+
+    expect(screen.getByText('“Carrot” already exists.')).toBeOnTheScreen();
+    expect(listIngredients(connection.db)).toHaveLength(1);
+  });
+
+  it('filters the list while typing, ignoring accents', async () => {
+    findOrCreateIngredient(connection.db, 'Échalote');
+    findOrCreateIngredient(connection.db, 'Carrot');
+    await renderWithDatabase(<IngredientsScreen />, connection);
+
+    await typeInSearch('echa');
+
+    expect(screen.getByText('Échalote')).toBeOnTheScreen();
+    expect(screen.queryByText('Carrot')).not.toBeOnTheScreen();
+  });
+
+  it('renames an ingredient', async () => {
+    findOrCreateIngredient(connection.db, 'Carot');
+    await renderWithDatabase(<IngredientsScreen />, connection);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Rename Carot' }));
+    await fireEvent.changeText(screen.getByLabelText('Rename Carot'), 'Carrot');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save' }));
+
+    await expect(screen.findByText('Carrot')).resolves.toBeOnTheScreen();
+  });
+
+  it('shows the usage of an ingredient and only lets delete unused ones', async () => {
+    const carrot = findOrCreateIngredient(connection.db, 'Carrot');
+    findOrCreateIngredient(connection.db, 'Leek');
+    saveRecipe(connection.db, {
+      ingredientIdList: [carrot.id],
+      instructions: '',
+      season: 'both',
+      title: 'Soup',
+    });
+    const alert = spyOnAlert();
+    await renderWithDatabase(<IngredientsScreen />, connection);
+
+    expect(screen.getByText('Used in 1 recipe')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Delete Carrot' })).not.toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete Leek' }));
+    await alert.press('Delete');
+
+    await waitFor(() => expect(screen.queryByText('Leek')).not.toBeOnTheScreen());
+
+    expect(listIngredients(connection.db).map((ingredient) => ingredient.name)).toStrictEqual([
+      'Carrot',
+    ]);
+  });
+});

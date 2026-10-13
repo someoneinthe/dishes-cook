@@ -5,7 +5,7 @@
 | Framework          | **Expo SDK 57** + React Native 0.86 (New Architecture)                                                                                                                                         | One TypeScript codebase for Android now and iOS later; managed native config (CNG).                                                                                                                           |
 | Language           | **TypeScript** (strict, `noUncheckedIndexedAccess`)                                                                                                                                            | Type safety; same language as the tooling.                                                                                                                                                                    |
 | Navigation         | **Expo Router** (file-based, typed routes)                                                                                                                                                     | Expo default; deep links for free.                                                                                                                                                                            |
-| Local storage      | **expo-sqlite** + **Drizzle ORM** _(added with the first data feature)_                                                                                                                        | Relational data (recipes ↔ ingredients ↔ tags), typed queries, versioned migrations, live queries.                                                                                                            |
+| Local storage      | **expo-sqlite** + **Drizzle ORM** — see [database.md](database.md)                                                                                                                             | Relational data (recipes ↔ ingredients ↔ tags), typed queries, versioned migrations, live queries.                                                                                                            |
 | Small key/value    | expo-sqlite `kv-store` or `expo-secure-store` for secrets                                                                                                                                      | Avoid an extra dependency for preferences.                                                                                                                                                                    |
 | UI state           | React state/context; Zustand only if it gets complex                                                                                                                                           | Server-state libraries aren't needed while data is local.                                                                                                                                                     |
 | Styling            | **Unistyles 3** (`react-native-unistyles` + `react-native-nitro-modules`)                                                                                                                      | `StyleSheet`-compatible, light/dark themes via tokens, computed natively (no runtime class parsing), React Compiler friendly. No component kit: own small components. Needs a development build (no Expo Go). |
@@ -34,8 +34,9 @@ src/
       db/         # queries for this feature
       *.test.ts(x) colocated with the code
   components/     # shared, feature-agnostic UI
-  db/             # Drizzle schema, client, migrations
+  db/             # Drizzle schema, client, migrations, live queries
   lib/            # shared utilities
+  test/           # test helpers (in-memory database, alert spy)
 assets/           # icons, splash, fonts
 ```
 
