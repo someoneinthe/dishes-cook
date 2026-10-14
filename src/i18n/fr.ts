@@ -34,7 +34,10 @@ export const fr: Messages = {
   },
   filters: {
     any: 'Indifférent',
+    hideHint: 'Masque les filtres, qui restent appliqués',
     noUsedIngredient: 'Aucun ingrédient n’est encore utilisé dans une recette.',
+    showHint: 'Affiche les filtres de saison, de type de plat et d’ingrédients',
+    toggle: (activeCount) => (activeCount > 0 ? `Filtres (${activeCount})` : 'Filtres'),
     withIngredients: 'Avec les ingrédients',
   },
   ingredientPicker: {

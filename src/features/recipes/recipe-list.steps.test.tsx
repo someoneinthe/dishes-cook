@@ -45,6 +45,10 @@ defineFeature(feature, (test) => {
     await renderWithDatabase(<RecipesScreen />, connection);
   };
 
+  const showTheFilters = async () => {
+    await fireEvent.press(screen.getByRole('button', { name: /^Filters/ }));
+  };
+
   // A season or a course.
   const chooseTheOption = async (option: string) => {
     await fireEvent.press(screen.getByRole('radio', { name: option }));
@@ -76,6 +80,7 @@ defineFeature(feature, (test) => {
   test('A season also includes the recipes for both seasons', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the recipe list', openTheRecipeList);
+    and('I show the filters', showTheFilters);
     and(/^I choose the "(.*)" season$/, chooseTheOption);
     then(/^I see that (\d+) recipes match$/, (count: string) => {
       expect(screen.getByText(matchCountText(count))).toBeOnTheScreen();
@@ -88,6 +93,7 @@ defineFeature(feature, (test) => {
   test('A course keeps only the recipes of that course', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the recipe list', openTheRecipeList);
+    and('I show the filters', showTheFilters);
     and(/^I choose the "(.*)" course$/, chooseTheOption);
     then(/^I see that (\d+) recipe matches$/, (count: string) => {
       expect(screen.getByText(matchCountText(count))).toBeOnTheScreen();
@@ -100,6 +106,7 @@ defineFeature(feature, (test) => {
   test('Listed recipes contain every selected ingredient', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the recipe list', openTheRecipeList);
+    and('I show the filters', showTheFilters);
     and(/^I select the ingredient "(.*)"$/, selectTheIngredient);
     and(/^I select the ingredient "(.*)"$/, selectTheIngredient);
     then(/^I see that (\d+) recipe matches$/, (count: string) => {
@@ -138,6 +145,7 @@ defineFeature(feature, (test) => {
   test('The title search and the filters add up', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the recipe list', openTheRecipeList);
+    and('I show the filters', showTheFilters);
     and(/^I search for "(.*)"$/, searchFor);
     and(/^I choose the "(.*)" season$/, chooseTheOption);
     then(/^I see that (\d+) recipes match$/, (count: string) => {
@@ -151,10 +159,33 @@ defineFeature(feature, (test) => {
   test('Nothing is listed when no recipe matches', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the recipe list', openTheRecipeList);
+    and('I show the filters', showTheFilters);
     and(/^I choose the "(.*)" season$/, chooseTheOption);
     and(/^I select the ingredient "(.*)"$/, selectTheIngredient);
     then('I see that no recipe matches', () => {
       expect(screen.getByText('No recipe matches these filters.')).toBeOnTheScreen();
+    });
+    and(/^the list shows "(.*)"$/, (titles: string) => {
+      expect(listedTitles()).toBe(titles);
+    });
+  });
+
+  test('Filters are hidden at first and stay applied once hidden', ({ and, given, then, when }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the recipe list', openTheRecipeList);
+    then('only the title search is shown', () => {
+      expect(screen.getByLabelText('Search recipes')).toBeOnTheScreen();
+      expect(screen.queryByRole('radio')).not.toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Filters' })).not.toBeExpanded();
+    });
+    when('I show the filters', showTheFilters);
+    and(/^I choose the "(.*)" season$/, chooseTheOption);
+    and('I hide the filters', async () => {
+      await fireEvent.press(screen.getByRole('button', { name: /^Filters/ }));
+    });
+    then(/^the filters button tells that (\d+) filter is on$/, (count: string) => {
+      expect(screen.getByRole('button', { name: `Filters (${count})` })).not.toBeExpanded();
+      expect(screen.queryByRole('radio')).not.toBeOnTheScreen();
     });
     and(/^the list shows "(.*)"$/, (titles: string) => {
       expect(listedTitles()).toBe(titles);

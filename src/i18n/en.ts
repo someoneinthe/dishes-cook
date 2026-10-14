@@ -32,7 +32,11 @@ export const en = {
   },
   filters: {
     any: 'Any',
+    hideHint: 'Hides the filters; they stay applied',
     noUsedIngredient: 'No ingredient is used by a recipe yet.',
+    showHint: 'Shows the season, course and ingredient filters',
+    // The show / hide button, with how many filters are on: "Filters (2)".
+    toggle: (activeCount: number) => (activeCount > 0 ? `Filters (${activeCount})` : 'Filters'),
     withIngredients: 'With ingredients',
   },
   ingredientPicker: {

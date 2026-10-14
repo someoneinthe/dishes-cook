@@ -29,8 +29,17 @@ type RecipeFiltersProps = Readonly<{
   values: RecipeFilterValues;
 }>;
 
+// How many filters are on (each selected ingredient counts).
+export function countFilters(values: RecipeFilterValues): number {
+  return (
+    (values.season === 'any' ? 0 : 1) +
+    (values.course === 'any' ? 0 : 1) +
+    values.ingredientList.length
+  );
+}
+
 export function hasFilters(values: RecipeFilterValues): boolean {
-  return values.season !== 'any' || values.course !== 'any' || values.ingredientList.length > 0;
+  return countFilters(values) > 0;
 }
 
 // Season, course and ingredients the recipes must have. The list is narrowed in SQL

@@ -12,7 +12,13 @@ import { TextField } from '@/components/text-field';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { RecipeFilterValues } from './components/recipe-filters';
 import type { RecipeListItem } from './db/recipe-queries';
-import { hasFilters, NO_FILTERS, RecipeFilters, toQueryFilters } from './components/recipe-filters';
+import {
+  countFilters,
+  hasFilters,
+  NO_FILTERS,
+  RecipeFilters,
+  toQueryFilters,
+} from './components/recipe-filters';
 import { CourseLabel, SeasonLabel } from './components/recipe-labels';
 import { useRecipeCount, useRecipePages } from './hooks/use-recipes';
 import { describeSeason } from './season';
@@ -21,6 +27,8 @@ export function RecipesScreen() {
   const t = useMessages();
   const [search, setSearch] = useState('');
   const [filterValues, setFilterValues] = useState<RecipeFilterValues>(NO_FILTERS);
+  // Only the title search shows at first; hidden filters stay applied.
+  const [isFiltersShown, setIsFiltersShown] = useState(false);
   const queryFilters = toQueryFilters(filterValues, search);
   // Filtered in SQL, PAGE_SIZE rows at a time; counts in SQL too.
   const recipePages = useRecipePages(queryFilters);
@@ -65,15 +73,27 @@ export function RecipesScreen() {
           // No search or filters before the first recipe: there's nothing to narrow yet.
           recipeCount > 0 ? (
             <View style={styles.header}>
-              <TextField
-                isLabelHidden
-                label={t.recipes.search}
-                onChangeText={setSearch}
-                placeholder={t.recipes.searchPlaceholder}
-                returnKeyType="search"
-                value={search}
-              />
-              <RecipeFilters onChange={setFilterValues} values={filterValues} />
+              <View style={styles.searchRow}>
+                <View style={styles.searchField}>
+                  <TextField
+                    isLabelHidden
+                    label={t.recipes.search}
+                    onChangeText={setSearch}
+                    placeholder={t.recipes.searchPlaceholder}
+                    returnKeyType="search"
+                    value={search}
+                  />
+                </View>
+                <Button
+                  accessibilityHint={isFiltersShown ? t.filters.hideHint : t.filters.showHint}
+                  icon={isFiltersShown ? 'filter-variant-remove' : 'filter-variant'}
+                  isExpanded={isFiltersShown}
+                  label={t.filters.toggle(countFilters(filterValues))}
+                  onPress={() => setIsFiltersShown(!isFiltersShown)}
+                  variant="secondary"
+                />
+              </View>
+              {isFiltersShown && <RecipeFilters onChange={setFilterValues} values={filterValues} />}
               {isFiltering && (
                 <Text accessibilityLiveRegion="polite" style={styles.matchCount}>
                   {matchText}
@@ -164,6 +184,18 @@ const styles = StyleSheet.create((theme) => ({
     borderWidth: theme.borderWidth,
     gap: theme.gap(1),
     padding: theme.gap(3),
+  },
+  // The field takes the room; the Filters button goes under it when the text is large.
+  searchField: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: theme.size.minText,
+  },
+  searchRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.gap(2),
   },
   title: {
     ...theme.typography.body,

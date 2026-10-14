@@ -11,6 +11,8 @@ type ButtonProps = Readonly<
     // Defaults to the visible label.
     accessibilityLabel?: string;
     isDisabled?: boolean;
+    // For a button that shows or hides a section: read as expanded or collapsed.
+    isExpanded?: boolean;
     // Read by screen readers; shown unless `isIconOnly`.
     label: string;
     onPress: () => void;
@@ -43,6 +45,7 @@ export function Button({
   accessibilityLabel,
   icon,
   isDisabled = false,
+  isExpanded,
   isIconOnly = false,
   label,
   onPress,
@@ -66,7 +69,7 @@ export function Button({
       accessibilityHint={accessibilityHint}
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
-      accessibilityState={{ disabled: isDisabled }}
+      accessibilityState={{ disabled: isDisabled, expanded: isExpanded }}
       disabled={isDisabled}
       onPress={onPress}
       style={({ pressed }) => [styles.button, (pressed || isDisabled) && styles.dimmed]}
