@@ -118,8 +118,8 @@ function List({ list }: Readonly<{ list: Tokens.List }>) {
   const start = typeof list.start === 'number' ? list.start : 1;
   return (
     <View accessibilityRole="list" style={styles.list}>
-      {list.items.map((item, index) => (
-        <View key={index} style={styles.listItem}>
+      {withKeys(list.items, (item) => item.raw).map(([key, item], index) => (
+        <View key={key} style={styles.listItem}>
           <Text style={styles.text}>{listMarker(list, item, start + index)}</Text>
           <View style={styles.listItemContent}>{renderBlockList(item.tokens)}</View>
         </View>
@@ -136,13 +136,15 @@ function listMarker(list: Tokens.List, item: Tokens.ListItem, number: number): s
 }
 
 function renderBlockList(tokenList: readonly Token[]): ReactNode[] {
-  // Tokens have no id; their position is stable for a given text.
-
-  return tokenList.map((token, index) => <Block key={index} token={token} />);
+  return withKeys(tokenList, (token) => token.raw).map(([key, token]) => (
+    <Block key={key} token={token} />
+  ));
 }
 
 function renderInlineList(tokenList: readonly Token[]): ReactNode[] {
-  return tokenList.map((token, index) => <Inline key={index} token={token} />);
+  return withKeys(tokenList, (token) => token.raw).map(([key, token]) => (
+    <Inline key={key} token={token} />
+  ));
 }
 
 function Table({ table }: Readonly<{ table: Tokens.Table }>) {
@@ -150,11 +152,13 @@ function Table({ table }: Readonly<{ table: Tokens.Table }>) {
     // Wide tables scroll sideways: cells keep a readable width at any font size.
     <ScrollView horizontal>
       <View style={styles.table}>
-        {[table.header, ...table.rows].map((row, rowIndex) => (
-          <View key={rowIndex} style={[styles.tableRow, rowIndex > 0 && styles.tableRowDivider]}>
-            {row.map((cell, cellIndex) => (
+        {withKeys([table.header, ...table.rows], (row) =>
+          row.map((cell) => cell.text).join('|'),
+        ).map(([rowKey, row], rowIndex) => (
+          <View key={rowKey} style={[styles.tableRow, rowIndex > 0 && styles.tableRowDivider]}>
+            {withKeys(row, (cell) => cell.text).map(([cellKey, cell]) => (
               <Text
-                key={cellIndex}
+                key={cellKey}
                 selectable
                 style={[styles.text, styles.tableCell, cell.header && styles.strong]}
               >
@@ -247,3 +251,15 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.text,
   },
 }));
+
+// React keys for parsed content, which has no ids: an item's source text, numbered when the same
+// text comes back among its siblings (two identical rows), so keys are unique and stable.
+function withKeys<T>(itemList: readonly T[], toText: (item: T) => string): [string, T][] {
+  const countByText = new Map<string, number>();
+  return itemList.map((item) => {
+    const text = toText(item);
+    const count = countByText.get(text) ?? 0;
+    countByText.set(text, count + 1);
+    return [`${count}:${text}`, item];
+  });
+}

@@ -2,6 +2,10 @@ import { render, screen } from '@testing-library/react-native';
 import { Markdown } from './markdown';
 
 describe('markdown', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('shows headings and emphasis', async () => {
     await render(<Markdown text={'# Soup\n\nCook **slowly**, *gently*.'} />);
 
@@ -76,5 +80,19 @@ describe('markdown', () => {
     expect(screen.getByText('200 g flour')).toBeOnTheScreen();
     expect(screen.getByText('Qty')).toBeOnTheScreen();
     expect(screen.getByText('Egg')).toBeOnTheScreen();
+  });
+
+  it('shows repeated lines, items and rows, each once', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error');
+    await render(
+      <Markdown
+        text={'Stir.\n\nStir.\n\n- Salt\n- Salt\n\n| A | A |\n|---|---|\n| 1 | 1 |\n| 1 | 1 |'}
+      />,
+    );
+
+    expect(screen.getAllByText('Stir.')).toHaveLength(2);
+    expect(screen.getAllByText('Salt')).toHaveLength(2);
+    expect(screen.getAllByText('1')).toHaveLength(4);
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });
