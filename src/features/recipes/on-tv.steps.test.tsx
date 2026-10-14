@@ -38,14 +38,6 @@ defineFeature(feature, (test) => {
     // A new database is empty.
   };
 
-  const noButtons = () => {
-    expect(screen.queryByRole('button')).not.toBeOnTheScreen();
-  };
-
-  const toldRecipesAreWrittenOnPhone = () => {
-    expect(screen.getByText(ON_PHONE_MESSAGE)).toBeOnTheScreen();
-  };
-
   test('A recipe is shown without edit or delete', ({ and, given, then, when }) => {
     given(/^the recipe "(.*)" exists$/, (title: string) => {
       const id = saveRecipe(connection.db, {
@@ -64,7 +56,9 @@ defineFeature(feature, (test) => {
       expect(screen.getByRole('header', { name: title })).toBeOnTheScreen();
       expect(screen.getByText('Simmer for 30 minutes.')).toBeOnTheScreen();
     });
-    and("it can't be edited or deleted", noButtons);
+    and("it can't be edited or deleted", () => {
+      expect(screen.queryByRole('button')).not.toBeOnTheScreen();
+    });
   });
 
   test("Recipes can't be added on the TV", ({ and, given, then, when }) => {
@@ -72,11 +66,12 @@ defineFeature(feature, (test) => {
     when('I open the recipe list on the TV', async () => {
       await renderWithDatabase(<RecipesScreen />, connection);
     });
-    then(
-      'I am told that recipes are written in the app on a phone, to sync with the TV',
-      toldRecipesAreWrittenOnPhone,
-    );
-    and('no recipe can be added', noButtons);
+    then('I am told that recipes are written in the app on a phone, to sync with the TV', () => {
+      expect(screen.getByText(ON_PHONE_MESSAGE)).toBeOnTheScreen();
+    });
+    and('no recipe can be added', () => {
+      expect(screen.queryByRole('button')).not.toBeOnTheScreen();
+    });
   });
 
   test("The meal choice doesn't offer to add a recipe on the TV", ({ and, given, then, when }) => {
@@ -84,10 +79,11 @@ defineFeature(feature, (test) => {
     when('I open the meal choice on the TV', async () => {
       await renderWithDatabase(<MealChoiceScreen />, connection);
     });
-    then(
-      'I am told that recipes are written in the app on a phone, to sync with the TV',
-      toldRecipesAreWrittenOnPhone,
-    );
-    and('no recipe can be added', noButtons);
+    then('I am told that recipes are written in the app on a phone, to sync with the TV', () => {
+      expect(screen.getByText(ON_PHONE_MESSAGE)).toBeOnTheScreen();
+    });
+    and('no recipe can be added', () => {
+      expect(screen.queryByRole('button')).not.toBeOnTheScreen();
+    });
   });
 });
