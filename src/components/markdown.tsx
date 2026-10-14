@@ -1,17 +1,15 @@
 import type { MarkedToken, Token, Tokens } from 'marked';
 import type { ReactNode } from 'react';
-import * as Linking from 'expo-linking';
 import { lexer } from 'marked';
-import { Alert, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
-import { isSafeLink } from '@/lib/links';
 
 type MarkdownProps = Readonly<{ text: string }>;
 
 // Renders Markdown written by the user with native components only (no WebView, no HTML):
 // - raw HTML is shown as typed, never interpreted;
 // - images are never loaded (no network request), their description is shown instead;
-// - only web and e-mail links open (see isSafeLink), after the user confirms the full address.
+// - links don't open (for now): only their text is shown.
 // Line breaks are kept as typed, like the plain text recipes were shown before.
 export function Markdown({ text }: MarkdownProps) {
   return <View style={styles.container}>{renderBlockList(lexer(text))}</View>;
@@ -72,19 +70,6 @@ function Block({ token }: Readonly<{ token: Token }>) {
   }
 }
 
-// The full address is shown: the link's text can say anything.
-function confirmOpenLink(href: string) {
-  Alert.alert('Open this link?', href, [
-    { style: 'cancel', text: 'Cancel' },
-    {
-      onPress: () => {
-        void openLink(href);
-      },
-      text: 'Open',
-    },
-  ]);
-}
-
 // Every case returns an element (fragments for plain text) so it nests in its parent `Text`.
 function Inline({ token }: Readonly<{ token: Token }>) {
   const markedToken = token as MarkedToken;
@@ -113,7 +98,8 @@ function Inline({ token }: Readonly<{ token: Token }>) {
       );
     }
     case 'link': {
-      return <Link link={markedToken} />;
+      // Links don't open for now: their text only.
+      return <>{renderInlineList(markedToken.tokens)}</>;
     }
     case 'strong': {
       return <Text style={styles.strong}>{renderInlineList(markedToken.tokens)}</Text>;
@@ -126,25 +112,6 @@ function Inline({ token }: Readonly<{ token: Token }>) {
       return <>{token.raw}</>;
     }
   }
-}
-
-function Link({ link }: Readonly<{ link: Tokens.Link }>) {
-  const contentList = renderInlineList(link.tokens);
-  if (!isSafeLink(link.href)) {
-    return <>{contentList}</>;
-  }
-  return (
-    <Text
-      accessibilityHint="Opens outside the app"
-      accessibilityRole="link"
-      onPress={() => {
-        confirmOpenLink(link.href);
-      }}
-      style={styles.link}
-    >
-      {contentList}
-    </Text>
-  );
 }
 
 function List({ list }: Readonly<{ list: Tokens.List }>) {
@@ -168,14 +135,6 @@ function listMarker(list: Tokens.List, item: Tokens.ListItem, number: number): s
   return list.ordered ? `${number}.` : '•';
 }
 
-async function openLink(href: string) {
-  try {
-    await Linking.openURL(href);
-  } catch {
-    Alert.alert('Can’t open this link', 'No app on this phone can open it.');
-  }
-}
-
 function renderBlockList(tokenList: readonly Token[]): ReactNode[] {
   // Tokens have no id; their position is stable for a given text.
 
@@ -188,28 +147,31 @@ function renderInlineList(tokenList: readonly Token[]): ReactNode[] {
 
 function Table({ table }: Readonly<{ table: Tokens.Table }>) {
   return (
-    <View style={styles.table}>
-      {[table.header, ...table.rows].map((row, rowIndex) => (
-        <View key={rowIndex} style={[styles.tableRow, rowIndex > 0 && styles.tableRowDivider]}>
-          {row.map((cell, cellIndex) => (
-            <Text
-              key={cellIndex}
-              selectable
-              style={[styles.text, styles.tableCell, cell.header && styles.strong]}
-            >
-              {renderInlineList(cell.tokens)}
-            </Text>
-          ))}
-        </View>
-      ))}
-    </View>
+    // Wide tables scroll sideways: cells keep a readable width at any font size.
+    <ScrollView horizontal>
+      <View style={styles.table}>
+        {[table.header, ...table.rows].map((row, rowIndex) => (
+          <View key={rowIndex} style={[styles.tableRow, rowIndex > 0 && styles.tableRowDivider]}>
+            {row.map((cell, cellIndex) => (
+              <Text
+                key={cellIndex}
+                selectable
+                style={[styles.text, styles.tableCell, cell.header && styles.strong]}
+              >
+                {renderInlineList(cell.tokens)}
+              </Text>
+            ))}
+          </View>
+        ))}
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create((theme) => ({
   code: {
     backgroundColor: theme.colors.surface,
-    fontFamily: 'monospace',
+    fontFamily: theme.fontFamily.mono,
   },
   codeBlock: {
     ...theme.typography.body,
@@ -218,7 +180,7 @@ const styles = StyleSheet.create((theme) => ({
     borderRadius: theme.radius.md,
     borderWidth: theme.borderWidth,
     color: theme.colors.text,
-    fontFamily: 'monospace',
+    fontFamily: theme.fontFamily.mono,
     padding: theme.gap(3),
   },
   container: {
@@ -235,10 +197,6 @@ const styles = StyleSheet.create((theme) => ({
     ...theme.typography.body,
     color: theme.colors.text,
     fontWeight: '700',
-  },
-  link: {
-    color: theme.colors.link,
-    textDecorationLine: 'underline',
   },
   list: {
     gap: theme.gap(1),
@@ -257,7 +215,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   quote: {
     borderLeftColor: theme.colors.border,
-    borderLeftWidth: theme.gap(1),
+    borderLeftWidth: theme.borderWidthThick,
     gap: theme.gap(2),
     paddingLeft: theme.gap(3),
   },
@@ -274,8 +232,8 @@ const styles = StyleSheet.create((theme) => ({
     borderWidth: theme.borderWidth,
   },
   tableCell: {
-    flex: 1,
     padding: theme.gap(2),
+    width: theme.size.tableCell,
   },
   tableRow: {
     flexDirection: 'row',

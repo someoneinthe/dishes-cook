@@ -41,8 +41,8 @@ export function TextField({
     <View style={styles.field}>
       {!isLabelHidden && <Text style={styles.label}>{label}</Text>}
       <ThemedTextInput
-        // The error, if any, is read after the label.
-        accessibilityHint={error}
+        // Read after the label: the error if any, else the help shown under the field.
+        accessibilityHint={error ?? hint}
         accessibilityLabel={label}
         multiline={multiline}
         style={[styles.input, multiline && styles.multiline, error !== undefined && styles.invalid]}

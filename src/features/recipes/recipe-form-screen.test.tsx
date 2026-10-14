@@ -36,7 +36,7 @@ describe('recipeFormScreen', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Add Carrot' }));
     await fireEvent.changeText(screen.getByLabelText('Search ingredients'), 'Ginger');
     await fireEvent.press(screen.getByRole('button', { name: 'Create Ginger' }));
-    await fireEvent.changeText(screen.getByLabelText('Recipe'), 'Simmer.');
+    await fireEvent.changeText(screen.getByLabelText('Recipe text'), 'Simmer.');
     await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
 
     const [{ id: savedId } = { id: -1 }] = firstRecipePage(connection.db);
@@ -71,6 +71,14 @@ describe('recipeFormScreen', () => {
     await renderWithDatabase(<RecipeFormScreen />, connection);
 
     expect(screen.getByText(/^Format it with Markdown: # Heading, \*\*bold\*\*/)).toBeOnTheScreen();
+  });
+
+  it('has nothing to preview while the recipe is empty', async () => {
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'Preview' }));
+
+    expect(screen.getByText('Nothing to preview yet.')).toBeOnTheScreen();
   });
 
   it('edits an existing recipe', async () => {

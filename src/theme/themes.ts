@@ -1,13 +1,16 @@
 // Design tokens. Backgrounds match the native splash screen (app.config.ts) so startup has no flash.
 const base = {
   borderWidth: 1,
+  // Quote bars.
+  borderWidthThick: 4,
+  fontFamily: { mono: 'monospace' },
   gap: (multiplier: number) => multiplier * 4,
   iconSize: { lg: 24, md: 20, sm: 16 },
   opacity: { disabled: 0.5, pressed: 0.6 },
   radius: { lg: 16, md: 8, sm: 4 },
   // Heights: 44 = minimum touch target (Material/Apple guidelines).
   // minText: width under which a row's text gives its line to the row's buttons.
-  size: { chip: 36, minText: 160, multilineInput: 160, touchTarget: 44 },
+  size: { chip: 36, minText: 160, multilineInput: 160, tableCell: 160, touchTarget: 44 },
   typography: {
     body: { fontSize: 16, lineHeight: 24 },
     caption: { fontSize: 13, lineHeight: 18 },
@@ -32,8 +35,6 @@ const lightColors = {
   courseStarter: '#047857',
   // Error text.
   danger: '#B91C1C',
-  // Links in recipe text (contrast with the background ≥ 4.5:1).
-  link: '#1D4ED8',
   // Menu entry icons, one color each (contrast with the background ≥ 3:1).
   menuIngredients: '#C2410C',
   menuMealChoice: '#1D4ED8',
@@ -62,7 +63,6 @@ const darkColors: ThemeColors = {
   courseMain: '#A78BFA',
   courseStarter: '#34D399',
   danger: '#F87171',
-  link: '#60A5FA',
   menuIngredients: '#FB923C',
   menuMealChoice: '#60A5FA',
   menuRecipes: '#4ADE80',

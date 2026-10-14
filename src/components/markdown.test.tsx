@@ -1,16 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import * as Linking from 'expo-linking';
-import { spyOnAlert } from '@/test/alert';
+import { render, screen } from '@testing-library/react-native';
 import { Markdown } from './markdown';
 
-jest.mock('expo-linking', () => ({ openURL: jest.fn() }));
-
 describe('markdown', () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
-    jest.clearAllMocks();
-  });
-
   it('shows headings and emphasis', async () => {
     await render(<Markdown text={'# Soup\n\nCook **slowly**, *gently*.'} />);
 
@@ -48,48 +39,31 @@ describe('markdown', () => {
     expect(JSON.stringify(screen.toJSON())).not.toContain('example.com');
   });
 
-  it('opens a web link after confirming its full address', async () => {
-    jest.mocked(Linking.openURL).mockResolvedValue(true);
-    const alert = spyOnAlert();
-    await render(<Markdown text={'See [the video](https://example.com/soup).'} />);
+  it.each([
+    ['a web link', '[the video](https://example.com/soup)', 'the video'],
+    ['a script link', '[the video](javascript:alert(1))', 'the video'],
+    ['a bare address', 'www.example.com', 'www.example.com'],
+    ['a reference link', '[the video][1]\n\n[1]: https://example.com/soup', 'the video'],
+  ])('shows %s as plain text, which opens nothing', async (_kind, text, shown) => {
+    await render(<Markdown text={text} />);
 
-    await fireEvent.press(screen.getByRole('link', { name: 'the video' }));
-
-    expect(alert.spy).toHaveBeenCalledWith(
-      'Open this link?',
-      'https://example.com/soup',
-      expect.any(Array),
-    );
-    expect(Linking.openURL).not.toHaveBeenCalled();
-
-    await alert.press('Open');
-
-    expect(Linking.openURL).toHaveBeenCalledWith('https://example.com/soup');
+    expect(screen.getByText(shown)).not.toHaveProp('onPress');
+    expect(screen.queryByRole('link')).not.toBeOnTheScreen();
   });
 
-  it('tells when no app can open a link', async () => {
-    jest.mocked(Linking.openURL).mockRejectedValue(new Error('No activity'));
-    const alert = spyOnAlert();
-    await render(<Markdown text={'[Write to me](mailto:chef@example.com)'} />);
+  it('numbers a list from its first number', async () => {
+    await render(<Markdown text={'3. Bake\n4. Rest'} />);
 
-    await fireEvent.press(screen.getByRole('link', { name: 'Write to me' }));
-    await alert.press('Open');
-
-    expect(alert.spy).toHaveBeenLastCalledWith(
-      'Can’t open this link',
-      'No app on this phone can open it.',
-    );
+    expect(screen.getByText('3.')).toBeOnTheScreen();
+    expect(screen.getByText('4.')).toBeOnTheScreen();
   });
 
-  it.each(['javascript:alert(1)', 'intent://scan#Intent;end', 'dishescook://recipe/1'])(
-    'shows a %s link as plain text',
-    async (href) => {
-      await render(<Markdown text={`[Click me](${href})`} />);
+  it('shows quotes', async () => {
+    await render(<Markdown text={'> Add cream at the end\n\n---\n\nServe.'} />);
 
-      expect(screen.getByText('Click me')).toBeOnTheScreen();
-      expect(screen.queryByRole('link')).not.toBeOnTheScreen();
-    },
-  );
+    expect(screen.getByText('Add cream at the end')).toBeOnTheScreen();
+    expect(screen.getByText('Serve.')).toBeOnTheScreen();
+  });
 
   it('shows code and tables', async () => {
     await render(

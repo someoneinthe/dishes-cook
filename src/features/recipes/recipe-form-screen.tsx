@@ -15,6 +15,7 @@ import { IngredientPicker } from '@/features/ingredients/components/ingredient-p
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { cleanName } from '@/lib/text';
 import type { Recipe } from './db/recipe-queries';
+import { InstructionsField } from './components/instructions-field';
 import { COURSE_OPTION_LIST } from './course';
 import { getRecipe, saveRecipe } from './db/recipe-queries';
 import { SEASON_OPTION_LIST } from './season';
@@ -26,10 +27,6 @@ const COURSE_CHOICE_OPTION_LIST: readonly SegmentedOption<CourseChoice>[] = [
   { label: 'None', value: 'none' },
   ...COURSE_OPTION_LIST,
 ];
-
-const INSTRUCTIONS_HINT =
-  'Format it with Markdown: # Heading, **bold**, *italic*, - list item, 1. numbered step, ' +
-  '[link text](https://…). Line breaks are kept.';
 
 type RecipeFormProps = Readonly<{
   // Undefined for a new recipe.
@@ -144,14 +141,7 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
         }}
         selectedList={selectedIngredientList}
       />
-      <TextField
-        hint={INSTRUCTIONS_HINT}
-        label="Recipe"
-        multiline
-        onChangeText={setInstructions}
-        placeholder="Steps, quantities, cooking time…"
-        value={instructions}
-      />
+      <InstructionsField onChange={setInstructions} value={instructions} />
     </ScrollView>
   );
 }

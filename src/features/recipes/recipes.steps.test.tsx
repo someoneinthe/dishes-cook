@@ -79,4 +79,25 @@ defineFeature(feature, (test) => {
       expect(firstRecipePage(connection.db)).toStrictEqual([]);
     });
   });
+
+  test('A recipe written in Markdown is previewed formatted', ({ given, then, when }) => {
+    given('I am writing a new recipe', startNewRecipe);
+    when(/^I write "(.*)" as the recipe$/, async (text: string) => {
+      await fireEvent.changeText(screen.getByLabelText('Recipe text'), text);
+    });
+    when(/^I switch to "(.*)"$/, async (mode: string) => {
+      await fireEvent.press(screen.getByRole('radio', { name: mode }));
+    });
+    then(/^I see "(.*)" with "(.*)" in bold$/, (text: string, boldText: string) => {
+      expect(screen.getByText(text)).toBeOnTheScreen();
+      expect(screen.getByText(boldText)).toHaveStyle({ fontWeight: '700' });
+      expect(screen.queryByLabelText('Recipe text')).not.toBeOnTheScreen();
+    });
+    when(/^I switch to "(.*)"$/, async (mode: string) => {
+      await fireEvent.press(screen.getByRole('radio', { name: mode }));
+    });
+    then(/^the recipe text is still "(.*)"$/, (text: string) => {
+      expect(screen.getByLabelText('Recipe text')).toHaveDisplayValue(text);
+    });
+  });
 });

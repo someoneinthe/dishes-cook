@@ -32,7 +32,16 @@ module.exports = {
     ],
   },
   // marked ships ES modules only: compile it like the app's code (Metro does).
-  transformIgnorePatterns: expoPreset.transformIgnorePatterns.map((pattern) =>
-    pattern.replace('(?!(', '(?!(marked|'),
-  ),
+  transformIgnorePatterns: withTransformedPackages(expoPreset.transformIgnorePatterns, ['marked']),
 };
+
+// Adds packages to the preset's "node_modules except …" pattern; fails loudly if it changes shape.
+function withTransformedPackages(patternList, packageList) {
+  const EXCEPT = '(?!(';
+  if (patternList.every((pattern) => !pattern.includes(EXCEPT))) {
+    throw new Error('jest-expo transformIgnorePatterns changed: update jest.config.js');
+  }
+  return patternList.map((pattern) =>
+    pattern.replace(EXCEPT, () => `${EXCEPT}${packageList.join('|')}|`),
+  );
+}
