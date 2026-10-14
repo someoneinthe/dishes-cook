@@ -4,19 +4,47 @@ Local-only SQLite (`expo-sqlite`) accessed through Drizzle ORM. The schema lives
 
 ## Schema
 
+<!-- db-diagram:start -->
+<!-- Generated from src/db/schema.ts by `npm run db:diagram`: don't edit by hand. -->
+
+```mermaid
+erDiagram
+  ingredients {
+    integer id PK
+    integer created_at
+    text name
+    text name_key UK
+    text sort_key
+  }
+  recipe_ingredients {
+    integer ingredient_id PK, FK
+    integer recipe_id PK, FK
+  }
+  recipes {
+    integer id PK
+    text course "starter / main / dessert, nullable"
+    integer created_at
+    text instructions
+    text season "winter / summer / both"
+    text sort_key
+    text title
+    integer updated_at
+  }
+  ingredients ||--o{ recipe_ingredients : "ingredient_id, on delete restrict"
+  recipes ||--o{ recipe_ingredients : "recipe_id, on delete cascade"
 ```
-ingredients                    recipe_ingredients                 recipes
------------                    ------------------                 -------
-id          INTEGER PK  <----  ingredient_id  (ON DELETE RESTRICT)
-name        TEXT               recipe_id      (ON DELETE CASCADE) ---> id           INTEGER PK
-name_key    TEXT UNIQUE        PK (recipe_id, ingredient_id)           title        TEXT
-sort_key    TEXT               INDEX (ingredient_id, recipe_id)        sort_key     TEXT
-created_at  INTEGER (ms)                                               season       'winter' | 'summer' | 'both'
-INDEX (sort_key, id)                                                   course       'starter' | 'main' | 'dessert' | NULL
-                                                                       instructions TEXT
-                                                                       created_at, updated_at INTEGER (ms)
-                                                                       INDEX (sort_key, id)
-```
+
+Integer primary keys are SQLite rowids.
+
+| Table                | Index                                      | Columns                      | Unique |
+| -------------------- | ------------------------------------------ | ---------------------------- | ------ |
+| `ingredients`        | `ingredients_name_key_unique`              | `name_key`                   | yes    |
+| `ingredients`        | `ingredients_sort_key_id_idx`              | `sort_key`, `id`             |        |
+| `recipe_ingredients` | primary key                                | `recipe_id`, `ingredient_id` | yes    |
+| `recipe_ingredients` | `recipe_ingredients_ingredient_recipe_idx` | `ingredient_id`, `recipe_id` |        |
+| `recipes`            | `recipes_sort_key_id_idx`                  | `sort_key`, `id`             |        |
+
+<!-- db-diagram:end -->
 
 - **Ingredients are unique** by `name_key` (trimmed, single spaces, lower case, computed by `toNameKey` in `src/lib/text.ts`). Case is ignored, accents are not (`pâte` ≠ `pâté`). The key is computed in JS because SQLite's `NOCASE` only folds ASCII (`Œuf` vs `œuf`).
 - **Many-to-many** through `recipe_ingredients`: its composite primary key forbids duplicate links and serves "ingredients of a recipe"; the reverse index serves "recipes using an ingredient". Both cover their queries (no table lookup).
@@ -46,7 +74,7 @@ INDEX (sort_key, id)                                                   course   
 **Until the first release, there are no users and no data to keep**: the schema has a single migration, `0000_init.sql`, regenerated on every change.
 
 1. Edit `src/db/schema.ts`.
-2. Delete `src/db/migrations/` and run `npm run db:generate -- --name init`. Commit the result.
+2. Delete `src/db/migrations/` and run `npm run db:generate -- --name init`. It also regenerates the diagram above (`npm run db:diagram`; CI fails if it's out of date). Commit the result.
 3. Reset the app's data on your device or emulator (`adb shell pm clear io.github.someoneinthe.dishescook`): an existing database already has the old `0000` applied.
 4. Restart Metro with `npx expo start --dev-client --clear`: it caches the inlined `.sql` files by `migrations.js`, so it would keep serving the old SQL.
 
