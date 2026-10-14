@@ -68,7 +68,11 @@ defineFeature(feature, (test) => {
 
   test('Data is kept on the phone only at first', ({ given, then }) => {
     given('the settings are open', theSettingsAreOpen);
-    then('my data is kept on this phone only', dataIsKeptOnThisPhoneOnly);
+    then('my data is kept on this phone only', async () => {
+      await dataIsKeptOnThisPhoneOnly();
+
+      expect(getSyncState().connection).toBeUndefined();
+    });
   });
 
   test("Connecting to a server merges its recipes with the phone's", ({

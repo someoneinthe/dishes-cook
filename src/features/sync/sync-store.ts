@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import { deleteItemAsync, getItem, setItem } from 'expo-secure-store';
 import Storage from 'expo-sqlite/kv-store';
 import { useSyncExternalStore } from 'react';
 import type { AppDatabase } from '@/db/types';
@@ -44,7 +44,7 @@ export async function connect(
   options: Readonly<{ email: string; password: string; serverUrl: string }>,
 ): Promise<void> {
   const token = await signIn(options);
-  SecureStore.setItem(TOKEN_KEY, token);
+  setItem(TOKEN_KEY, token);
   write({
     cursors: INITIAL_CURSORS,
     email: options.email.trim(),
@@ -58,7 +58,7 @@ export async function connect(
 // Back to the phone's data only. The recipes stay on the phone, and on the server.
 export async function disconnect(): Promise<void> {
   Storage.removeItemSync(STORAGE_KEY);
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
+  await deleteItemAsync(TOKEN_KEY);
   state.error = undefined;
   publish();
 }
@@ -114,7 +114,7 @@ function read(): StoredSync | undefined {
 
 async function runSync(database: AppDatabase): Promise<void> {
   const stored = read();
-  const token = SecureStore.getItem(TOKEN_KEY);
+  const token = getItem(TOKEN_KEY);
   if (!stored || !token) {
     return;
   }
@@ -124,7 +124,7 @@ async function runSync(database: AppDatabase): Promise<void> {
     // Renewed first, on every sync: the server treats a refused token as a guest, whose reads
     // come back empty instead of failing. Renewing it fails clearly (and keeps it valid a year).
     const currentToken = await createSyncApi({ serverUrl: stored.serverUrl, token }).refreshToken();
-    SecureStore.setItem(TOKEN_KEY, currentToken);
+    setItem(TOKEN_KEY, currentToken);
     const api = createSyncApi({ serverUrl: stored.serverUrl, token: currentToken });
     const cursors = await synchronize(database, api, stored.cursors);
     // Disconnected while syncing: nothing to save.

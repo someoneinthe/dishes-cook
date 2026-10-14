@@ -1,15 +1,15 @@
-import { act, cleanup } from '@testing-library/react-native';
+import { act, cleanup, renderHook } from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import type { DatabaseConnection } from '@/db/types';
 import { saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
-import { createTestConnection, renderWithDatabase } from '@/test/test-database';
-import { AutoSync, WRITE_SYNC_DELAY_MS } from './auto-sync';
+import { createDataWrapper, createTestConnection } from '@/test/test-database';
 import * as syncStore from './sync-store';
+import { useAutoSync, WRITE_SYNC_DELAY_MS } from './use-auto-sync';
 
 const ACCOUNT = { email: 'home@example.org', password: 'test-password' };
 
-describe('autoSync', () => {
+describe('useAutoSync', () => {
   let connection: DatabaseConnection;
   let syncSpy: jest.SpyInstance;
 
@@ -29,7 +29,7 @@ describe('autoSync', () => {
     await syncStore.connect(connection.db, { ...ACCOUNT, serverUrl: 'https://sync.example.org' });
     syncSpy = jest.spyOn(syncStore, 'syncNow');
     jest.useFakeTimers();
-    await renderWithDatabase(<AutoSync />, connection);
+    await renderHook(() => useAutoSync(), { wrapper: createDataWrapper(connection) });
   };
   const addRecipe = async (title: string) => {
     await act(() => {
@@ -39,7 +39,7 @@ describe('autoSync', () => {
 
   it('does nothing while not connected', async () => {
     syncSpy = jest.spyOn(syncStore, 'syncNow');
-    await renderWithDatabase(<AutoSync />, connection);
+    await renderHook(() => useAutoSync(), { wrapper: createDataWrapper(connection) });
     await addRecipe('Soup');
 
     expect(syncSpy).not.toHaveBeenCalled();

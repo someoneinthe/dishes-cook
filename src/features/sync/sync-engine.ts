@@ -233,9 +233,10 @@ function isValidRow(row: ServerRow): boolean {
   );
 }
 
-// The later of two server times ("2026-10-14 18:03:59.794Z" strings sort in time order).
+// The later of two server times: "2026-10-14 18:03:59.794Z" strings of the same length sort in
+// time order, digit by digit.
 function latest(time: string, other: unknown): string {
-  return typeof other === 'string' && other > time ? other : time;
+  return typeof other === 'string' && other.localeCompare(time) > 0 ? other : time;
 }
 
 // Replaces the recipe's ingredients with the pulled ones; those not here (yet) are left out.
@@ -285,11 +286,14 @@ async function pushDeletions(database: AppDatabase, api: SyncApi): Promise<void>
       .orderBy(asc(syncDeletions.deletedAt))
       .limit(PAGE_SIZE)
       .all();
-    for (const deletion of deletionList) {
-      // Missing on the server (never pushed) or changed there later: nothing more to tell.
-      await api.sendDeletion(deletion.tableName, deletion.syncId, deletion.deletedAt);
-      forgetDeletion(database, deletion.tableName, deletion.syncId);
-    }
+    // A page's rows are independent: sent together. Each deletion is forgotten once sent; when
+    // it's missing on the server (never pushed) or changed there later, there's nothing more to tell.
+    await Promise.all(
+      deletionList.map(async (deletion) => {
+        await api.sendDeletion(deletion.tableName, deletion.syncId, deletion.deletedAt);
+        forgetDeletion(database, deletion.tableName, deletion.syncId);
+      }),
+    );
     if (deletionList.length < PAGE_SIZE) {
       return;
     }
@@ -315,13 +319,15 @@ async function pushIngredients(
       .orderBy(asc(ingredients.updatedAt), asc(ingredients.id))
       .limit(PAGE_SIZE)
       .all();
-    for (const row of rowList) {
-      await api.upsert('ingredients', row.syncId, {
-        deleted: 0,
-        modified: row.updatedAt,
-        name: row.name,
-      });
-    }
+    await Promise.all(
+      rowList.map((row) =>
+        api.upsert('ingredients', row.syncId, {
+          deleted: 0,
+          modified: row.updatedAt,
+          name: row.name,
+        }),
+      ),
+    );
     cursor = rowList.at(-1);
     if (rowList.length < PAGE_SIZE) {
       return;
@@ -369,17 +375,19 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
       syncIdList.push(link.syncId);
       ingredientSyncIdsByRecipe.set(link.recipeId, syncIdList);
     }
-    for (const row of rowList) {
-      await api.upsert('recipes', row.syncId, {
-        course: row.course,
-        deleted: 0,
-        ingredients: ingredientSyncIdsByRecipe.get(row.id) ?? [],
-        instructions: row.instructions,
-        modified: row.updatedAt,
-        season: row.season,
-        title: row.title,
-      });
-    }
+    await Promise.all(
+      rowList.map((row) =>
+        api.upsert('recipes', row.syncId, {
+          course: row.course,
+          deleted: 0,
+          ingredients: ingredientSyncIdsByRecipe.get(row.id) ?? [],
+          instructions: row.instructions,
+          modified: row.updatedAt,
+          season: row.season,
+          title: row.title,
+        }),
+      ),
+    );
     cursor = rowList.at(-1);
     if (rowList.length < PAGE_SIZE) {
       return;
