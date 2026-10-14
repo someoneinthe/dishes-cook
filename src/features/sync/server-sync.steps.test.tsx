@@ -52,9 +52,9 @@ defineFeature(feature, (test) => {
     await fireEvent.changeText(screen.getByLabelText('Password'), password);
     await fireEvent.press(screen.getByRole('button', { name: 'Connect' }));
   };
-  const recipesAreKeptOnThisPhoneOnly = async () => {
+  const dataIsKeptOnThisPhoneOnly = async () => {
     await expect(
-      screen.findByText('Recipes are kept on this phone only.'),
+      screen.findByText('Your data is kept on this phone only.'),
     ).resolves.toBeOnTheScreen();
     expect(screen.getByRole('radio', { name: 'This phone only' })).toBeChecked();
   };
@@ -66,9 +66,9 @@ defineFeature(feature, (test) => {
       .all()
       .map(({ title }) => title);
 
-  test('Recipes are kept on the phone only at first', ({ given, then }) => {
+  test('Data is kept on the phone only at first', ({ given, then }) => {
     given('the settings are open', theSettingsAreOpen);
-    then('recipes are kept on this phone only', recipesAreKeptOnThisPhoneOnly);
+    then('my data is kept on this phone only', dataIsKeptOnThisPhoneOnly);
   });
 
   test("Connecting to a server merges its recipes with the phone's", ({
@@ -134,7 +134,7 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('Stopping the sync keeps the recipes', ({ and, given, then, when }) => {
+  test('Stopping the sync keeps the data', ({ and, given, then, when }) => {
     given(/^the recipe "(.*)" on this phone$/, theRecipeOnThisPhone);
     and('the phone is synced with the server', thePhoneIsSyncedWithTheServer);
     when('I stop syncing with the server', async () => {
@@ -142,7 +142,7 @@ defineFeature(feature, (test) => {
       await fireEvent.press(screen.getByRole('radio', { name: 'This phone only' }));
       await alert.press('Stop syncing');
     });
-    then('recipes are kept on this phone only', recipesAreKeptOnThisPhoneOnly);
+    then('my data is kept on this phone only', dataIsKeptOnThisPhoneOnly);
     and(/^the phone has the recipe "(.*)"$/, (title: string) => {
       expect(phoneTitles()).toStrictEqual([title]);
     });

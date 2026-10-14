@@ -1,10 +1,10 @@
 Feature: Server sync
-  Recipes are kept on the phone. They can also be synced with your own server, to share them
-  between phones: each phone keeps working without it, and catches up when it reaches it.
+  Your data (recipes and ingredients today) is kept on the phone. It can also be synced with your
+  own server, to share it between phones: each phone keeps working without it, and catches up when it reaches it.
 
-  Scenario: Recipes are kept on the phone only at first
+  Scenario: Data is kept on the phone only at first
     Given the settings are open
-    Then recipes are kept on this phone only
+    Then my data is kept on this phone only
 
   Scenario: Connecting to a server merges its recipes with the phone's
     Given the recipe "Leek soup" on this phone
@@ -27,9 +27,9 @@ Feature: Server sync
     When I ask for a sync
     Then I am told that the server doesn't answer
 
-  Scenario: Stopping the sync keeps the recipes
+  Scenario: Stopping the sync keeps the data
     Given the recipe "Leek soup" on this phone
     And the phone is synced with the server
     When I stop syncing with the server
-    Then recipes are kept on this phone only
+    Then my data is kept on this phone only
     And the phone has the recipe "Leek soup"

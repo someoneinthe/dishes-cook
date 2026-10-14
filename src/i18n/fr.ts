@@ -168,7 +168,7 @@ export const fr: Messages = {
     system: 'Système',
   },
   sync: {
-    chooseStorage: 'Recettes',
+    chooseStorage: 'Stockage des données',
     connect: 'Se connecter',
     connectedAs: (server: string, email: string) =>
       `Synchronisé avec ${server} en tant que ${email}.`,
@@ -181,16 +181,16 @@ export const fr: Messages = {
     lastSynced: (time: number) =>
       `Dernière synchronisation${NARROW_SPACE}: ${new Date(time).toLocaleString('fr', { day: 'numeric', hour: '2-digit', minute: '2-digit', month: 'short' })}.`,
     localOnly: 'Ce téléphone uniquement',
-    localOnlyDescription: 'Les recettes sont gardées sur ce téléphone uniquement.',
+    localOnlyDescription: 'Vos données sont gardées sur ce téléphone uniquement.',
     missingAccount: 'Saisissez l’e-mail et le mot de passe de votre compte sur le serveur.',
     notSyncedYet: 'Pas encore synchronisé.',
     password: 'Mot de passe',
     serverAddress: 'Adresse du serveur',
     serverAddressHint: 'Par exemple recettes.exemple.fr',
     signInDescription:
-      'Connectez-vous avec le compte créé sur votre serveur. Le téléphone garde ses recettes et les fusionne avec celles du serveur.',
+      'Connectez-vous avec le compte créé sur votre serveur. Le téléphone garde ses données et les fusionne avec celles du serveur.',
     stopSyncing: 'Arrêter',
-    stopSyncingMessage: 'Les recettes restent sur ce téléphone et sur le serveur.',
+    stopSyncingMessage: 'Vos données restent sur ce téléphone et sur le serveur.',
     stopSyncingTitle: `Arrêter la synchronisation avec le serveur${NARROW_SPACE}?`,
     syncing: 'Synchronisation…',
     syncNow: 'Synchroniser',

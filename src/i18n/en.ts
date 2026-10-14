@@ -171,7 +171,7 @@ export const en = {
     system: 'System',
   },
   sync: {
-    chooseStorage: 'Recipes',
+    chooseStorage: 'Data storage',
     connect: 'Connect',
     connectedAs: (server: string, email: string) => `Synced with ${server} as ${email}.`,
     connecting: 'Connecting…',
@@ -185,16 +185,16 @@ export const en = {
     lastSynced: (time: number) =>
       `Last sync: ${new Date(time).toLocaleString('en', { day: 'numeric', hour: '2-digit', minute: '2-digit', month: 'short' })}.`,
     localOnly: 'This phone only',
-    localOnlyDescription: 'Recipes are kept on this phone only.',
+    localOnlyDescription: 'Your data is kept on this phone only.',
     missingAccount: 'Enter the email and password of your server account.',
     notSyncedYet: 'Not synced yet.',
     password: 'Password',
     serverAddress: 'Server address',
     serverAddressHint: 'For example recipes.example.org',
     signInDescription:
-      'Sign in with the account created on your server. The phone keeps its recipes and merges them with the server’s.',
+      'Sign in with the account created on your server. The phone keeps its data and merges it with the server’s.',
     stopSyncing: 'Stop syncing',
-    stopSyncingMessage: 'Recipes stay on this phone and on the server.',
+    stopSyncingMessage: 'Your data stays on this phone and on the server.',
     stopSyncingTitle: 'Stop syncing with the server?',
     syncing: 'Syncing…',
     syncNow: 'Sync now',

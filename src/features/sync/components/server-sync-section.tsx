@@ -15,7 +15,7 @@ import { connect, disconnect, syncNow, useSyncState } from '../sync-store';
 
 type Storage = 'local' | 'server';
 
-// Settings › Recipes: on this phone only, or synced with a server (address + account).
+// Settings › Data storage: on this phone only, or synced with a server (address + account).
 export function ServerSyncSection() {
   const t = useMessages();
   const database = useDatabase();
