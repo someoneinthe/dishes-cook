@@ -121,7 +121,10 @@ The same APK runs on Android TV, read-only (`isTv`), driven with the D-pad. Chec
 - **Emulator**: AVD `Television_1080p` (Android TV 14, arm64; created with `avdmanager create avd -n Television_1080p -k "system-images;android-34;android-tv;arm64-v8a" -d tv_1080p`). Boot it on its own port so it never takes another emulator's serial: `emulator -avd Television_1080p -port 5580 …`, then `export ANDROID_SERIAL=emulator-5580`.
 - **Open the app**: `adb shell am start -n io.github.someoneinthe.dishescook/.MainActivity` (`monkey -p …` doesn't start it on TV).
 - **D-pad**: `adb shell input keyevent <code>`, the code being `19` (up), `20` (down), `21` (left), `22` (right), `23` (OK) or `4` (Back); several codes in one command press them in turn (`adb shell input keyevent 20 20 23`). The focused element is the node with `focused="true"` in the `uiautomator` dump. Every focused control must show the focus ring (screenshot), and Back must bring the focus back to what opened the screen.
-- **Recipes on the TV**: it can't add any (read-only). On a debug build, write them in the database: stop the app, `adb exec-out run-as io.github.someoneinthe.dishescook cat files/SQLite/dishes-cook.db > db`, insert rows with `sqlite3`, then push it back through `/data/local/tmp` and `run-as … sh -c 'cat … > files/SQLite/dishes-cook.db'` (delete the `-wal`/`-shm` files).
+- **Recipes on the TV**: it can't add any (read-only): sync it with a server, or, on a debug build, write them in the database:
+  1. Stop the app, then copy the database **with its WAL**, which can hold committed changes: for each of `dishes-cook.db`, `dishes-cook.db-wal` and `dishes-cook.db-shm`, `adb exec-out run-as io.github.someoneinthe.dishescook cat files/SQLite/<file> > <file>`.
+  2. Checkpoint the copy so the WAL's changes are in the `.db` file: `sqlite3 dishes-cook.db "PRAGMA wal_checkpoint(TRUNCATE)"`, then insert rows with `sqlite3`.
+  3. Push `dishes-cook.db` back through `/data/local/tmp` (`run-as … sh -c 'cat /data/local/tmp/… > files/SQLite/dishes-cook.db'`) and delete the device's `-wal`/`-shm`: their changes are already in the pushed file, and a leftover WAL would be replayed over it.
 - **Real TV** (32-bit ARM, Android 11; adb debugging over the network): `adb connect <tv-ip>:5555`, then build a standalone APK for its ABI only and install it:
 
   ```bash
