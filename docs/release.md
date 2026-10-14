@@ -8,6 +8,7 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 2. When you want to ship, **merge the release PR**.
 3. release-please creates the tag `vX.Y.Z` and the GitHub Release with the changelog.
 4. The same workflow then prebuilds the Android project, runs `gradlew assembleRelease`, signs the APK with the upload keystore, and attaches `dishes-cook-vX.Y.Z.apk` to the release.
+5. It also attaches the database diagram as images (`database-diagram.png` / `.svg`), rendered from `docs/database.md` with Mermaid's CLI by `scripts/render-database-diagram.sh` (run it locally with Chrome installed). CI renders it on PRs that change the diagram (artifact `database-diagram`), so the release never meets a broken rendering.
 
 `versionCode` is derived from the version (`1.2.3` → `1002003`), so every release installs over the previous one.
 
