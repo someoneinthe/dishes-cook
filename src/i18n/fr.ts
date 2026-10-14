@@ -107,6 +107,7 @@ export const fr: Messages = {
     ingredients: 'Ingrédients',
     mealChoice: 'Choix du repas',
     open: 'Ouvrir le menu',
+    openScreenHint: 'Ouvre cet écran',
     recipes: 'Recettes',
     settings: 'Paramètres',
   },
@@ -116,6 +117,9 @@ export const fr: Messages = {
     editRecipe: 'Modifier la recette',
     emptyMessage:
       'Enregistrez les plats que vous aimez cuisiner, puis laissez le hasard en choisir un pour vous.',
+    // On a TV, read-only: recipes can't be added there.
+    emptyMessageOnTv:
+      'Les recettes s’écrivent dans l’application, sur un téléphone. Pour les voir ici, synchronisez cette télé avec votre serveur dans les Paramètres.',
     emptyTitle: 'Aucune recette pour l’instant',
     formatHint:
       `Mise en forme en Markdown${NARROW_SPACE}: #\u{A0}Titre, **gras**, *italique*, ` +
@@ -175,22 +179,22 @@ export const fr: Messages = {
     connecting: 'Connexion…',
     email: 'E-mail',
     errorFailed: 'Le serveur a refusé la demande. Réessayez plus tard.',
-    errorUnauthorized: `Le serveur a refusé la connexion. Choisissez ${quote('Ce téléphone uniquement')}, puis reconnectez-vous.`,
-    errorUnreachable: `Le serveur ne répond pas. Le téléphone doit être sur le réseau de la maison${NARROW_SPACE}: il se resynchronise tout seul.`,
+    errorUnauthorized: `Le serveur a refusé la connexion. Choisissez ${quote('Cet appareil uniquement')}, puis reconnectez-vous.`,
+    errorUnreachable: `Le serveur ne répond pas. L’appareil doit être sur le réseau de la maison${NARROW_SPACE}: il se resynchronise tout seul.`,
     invalidAddress: 'Saisissez l’adresse du serveur, comme recettes.exemple.fr.',
     lastSynced: (time: number) =>
       `Dernière synchronisation${NARROW_SPACE}: ${new Date(time).toLocaleString('fr', { day: 'numeric', hour: '2-digit', minute: '2-digit', month: 'short' })}.`,
-    localOnly: 'Ce téléphone uniquement',
-    localOnlyDescription: 'Vos données sont gardées sur ce téléphone uniquement.',
+    localOnly: 'Cet appareil uniquement',
+    localOnlyDescription: 'Vos données sont gardées sur cet appareil uniquement.',
     missingAccount: 'Saisissez l’e-mail et le mot de passe de votre compte sur le serveur.',
     notSyncedYet: 'Pas encore synchronisé.',
     password: 'Mot de passe',
     serverAddress: 'Adresse du serveur',
     serverAddressHint: 'Par exemple recettes.exemple.fr',
     signInDescription:
-      'Connectez-vous avec le compte créé sur votre serveur. Le téléphone garde ses données et les fusionne avec celles du serveur.',
+      'Connectez-vous avec le compte créé sur votre serveur. L’appareil garde ses données et les fusionne avec celles du serveur.',
     stopSyncing: 'Arrêter',
-    stopSyncingMessage: 'Vos données restent sur ce téléphone et sur le serveur.',
+    stopSyncingMessage: 'Vos données restent sur cet appareil et sur le serveur.',
     stopSyncingTitle: `Arrêter la synchronisation avec le serveur${NARROW_SPACE}?`,
     syncing: 'Synchronisation…',
     syncNow: 'Synchroniser',

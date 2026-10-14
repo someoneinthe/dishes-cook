@@ -3,7 +3,9 @@ import { useUnistyles } from 'react-native-unistyles';
 import { drawerToggle } from '@/components/drawer-toggle';
 import { headerTitleOptions } from '@/components/header-title';
 import { MENU_ICONS, menuEntryOptions } from '@/components/menu-entry-options';
+import { noMenuButton, tvMenu, useTvMenuWidth } from '@/components/tv-menu';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isTv } from '@/lib/device';
 
 // Opening the app lands on the meal choice, whatever the menu order.
 // eslint-disable-next-line @typescript-eslint/naming-convention -- name required by Expo Router.
@@ -14,16 +16,24 @@ export default function DrawerLayout() {
   // Navigation options aren't styles, so the theme is read here; it updates on light/dark changes.
   const { theme } = useUnistyles();
   const t = useMessages();
+  const tvMenuWidth = useTvMenuWidth();
 
   return (
     <Drawer
       backBehavior="initialRoute"
+      drawerContent={isTv ? tvMenu : undefined}
       screenOptions={{
         ...headerTitleOptions,
         drawerActiveTintColor: theme.colors.actionPrimary,
         drawerInactiveTintColor: theme.colors.text,
-        drawerStyle: { backgroundColor: theme.colors.background },
-        headerLeft: drawerToggle(t.menu.open),
+        drawerStyle: {
+          backgroundColor: theme.colors.background,
+          ...(isTv && { width: tvMenuWidth }),
+        },
+        // On a TV, the menu stays on the left of the screen: the remote moves between it and the
+        // screen (a menu that slides in would leave its entries in the remote's way when closed).
+        drawerType: isTv ? 'permanent' : 'front',
+        headerLeft: isTv ? noMenuButton : drawerToggle(t.menu.open),
         headerStyle: { backgroundColor: theme.colors.surface },
         headerTintColor: theme.colors.text,
         overlayAccessibilityLabel: t.menu.close,
@@ -36,11 +46,15 @@ export default function DrawerLayout() {
       />
       <Drawer.Screen
         name="ingredients"
-        options={menuEntryOptions(
-          t.menu.ingredients,
-          MENU_ICONS.ingredients,
-          theme.colors.menuIngredients,
-        )}
+        options={{
+          ...menuEntryOptions(
+            t.menu.ingredients,
+            MENU_ICONS.ingredients,
+            theme.colors.menuIngredients,
+          ),
+          // Read-only on a TV: the ingredient list is only there to manage ingredients.
+          drawerItemStyle: isTv ? { display: 'none' } : undefined,
+        }}
       />
       <Drawer.Screen
         name="index"

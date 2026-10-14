@@ -16,6 +16,7 @@ import {
 import { pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
 import { useRecipe, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isTv } from '@/lib/device';
 import { SuggestionCard } from './components/suggestion-card';
 
 // A main course unless asked otherwise; any season. The ingredients are filtered in the recipe list.
@@ -42,16 +43,20 @@ export function MealChoiceScreen() {
     setSuggestedId(pick(values));
   };
 
+  // Read-only on a TV: recipes are written on the phone, so there's nothing to add there.
+  const newRecipeButton = isTv ? null : (
+    <Button
+      accessibilityHint={t.recipes.newHint}
+      accessibilityLabel={t.mealChoice.addRecipe}
+      icon="plus"
+      isIconOnly
+      label={t.recipes.new}
+      onPress={() => router.push('/recipe/new')}
+    />
+  );
   const headerButton =
     recipeCount === 0 ? (
-      <Button
-        accessibilityHint={t.recipes.newHint}
-        accessibilityLabel={t.mealChoice.addRecipe}
-        icon="plus"
-        isIconOnly
-        label={t.recipes.new}
-        onPress={() => router.push('/recipe/new')}
-      />
+      newRecipeButton
     ) : (
       <Button
         accessibilityHint={t.mealChoice.suggestHint}
@@ -62,13 +67,20 @@ export function MealChoiceScreen() {
         onPress={suggestAnother}
       />
     );
-  const header = <Drawer.Screen options={{ headerRight: headerActions(headerButton) }} />;
+  const header = (
+    <Drawer.Screen
+      options={{ headerRight: headerButton ? headerActions(headerButton) : undefined }}
+    />
+  );
 
   if (recipeCount === 0) {
     return (
       <View style={styles.screen}>
         {header}
-        <EmptyState message={t.mealChoice.emptyMessage} title={t.recipes.emptyTitle} />
+        <EmptyState
+          message={isTv ? t.recipes.emptyMessageOnTv : t.mealChoice.emptyMessage}
+          title={t.recipes.emptyTitle}
+        />
       </View>
     );
   }
@@ -98,8 +110,12 @@ export function MealChoiceScreen() {
 
 const styles = StyleSheet.create((theme) => ({
   content: {
+    // Centered on wide screens (TV).
+    alignSelf: 'center',
     gap: theme.gap(5),
+    maxWidth: theme.size.maxContent,
     padding: theme.gap(4),
+    width: '100%',
   },
   noMatch: {
     ...theme.typography.body,

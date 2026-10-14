@@ -8,6 +8,7 @@ import { headerActions } from '@/components/header-actions';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useDatabase } from '@/db/database-context';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isTv } from '@/lib/device';
 import { RecipeDetails } from './components/recipe-details';
 import { deleteRecipe } from './db/recipe-queries';
 import { useRecipe } from './hooks/use-recipes';
@@ -71,7 +72,13 @@ export function RecipeDetailScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
-      <Stack.Screen options={{ headerRight: headerActions(headerButtons), title: recipe.title }} />
+      <Stack.Screen
+        options={{
+          // Read-only on a TV: recipes are edited on the phone.
+          headerRight: isTv ? undefined : headerActions(headerButtons),
+          title: recipe.title,
+        }}
+      />
       <RecipeDetails recipe={recipe} />
     </ScrollView>
   );
@@ -79,8 +86,12 @@ export function RecipeDetailScreen() {
 
 const styles = StyleSheet.create((theme) => ({
   content: {
+    // Centered on wide screens (TV).
+    alignSelf: 'center',
     gap: theme.gap(6),
+    maxWidth: theme.size.maxContent,
     padding: theme.gap(4),
+    width: '100%',
   },
   screen: {
     backgroundColor: theme.colors.background,

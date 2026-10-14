@@ -2,6 +2,7 @@ import { Pressable, Text } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { IconName } from './icon';
 import { Icon } from './icon';
+import { useFocusRing } from './use-focus-ring';
 import { useIconSize } from './use-icon-size';
 
 type ChipProps = Readonly<{
@@ -27,6 +28,7 @@ export function Chip({
   // The icon's color is a prop, not a style: read from the theme like the label's.
   const { theme } = useUnistyles();
   const iconSize = useIconSize('sm');
+  const { focusProps, focusStyle } = useFocusRing();
 
   return (
     <Pressable
@@ -35,7 +37,8 @@ export function Chip({
       accessibilityRole="button"
       accessibilityState={{ selected: isSelected }}
       onPress={onPress}
-      style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+      {...focusProps}
+      style={({ pressed }) => [styles.chip, pressed && styles.pressed, focusStyle]}
     >
       <Icon
         color={isSelected ? theme.colors.onAction : theme.colors.text}

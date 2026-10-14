@@ -49,6 +49,8 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
       // The sync server's sign-in token, encrypted. The plugin keeps it out of Android Auto Backup
       // (a restored copy couldn't be decrypted anyway: the Keystore key stays on the device).
       'expo-secure-store',
+      // Android TV: TV launcher entry with its banner (from assets/source/app-icon.jpg), landscape.
+      ['./plugins/with-android-tv.js', { banner: './assets/images/tv-banner.png' }],
       [
         'expo-splash-screen',
         // Android 12+ only allows a centered icon: the app icon's plate and cutlery.

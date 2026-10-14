@@ -4,6 +4,7 @@ import type { ColorToken } from '@/theme/themes';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { IconName } from './icon';
 import { Icon } from './icon';
+import { useFocusRing } from './use-focus-ring';
 import { useIconSize } from './use-icon-size';
 
 export type SegmentedOption<T extends string> = Readonly<{
@@ -22,6 +23,13 @@ type SegmentedControlProps<T extends string> = Readonly<{
   value: T;
 }>;
 
+type SegmentProps<T extends string> = Readonly<{
+  groupLabel: string;
+  isChecked: boolean;
+  onPress: () => void;
+  option: SegmentedOption<T>;
+}>;
+
 // A single choice among a few options, shown side by side (radio group semantics).
 export function SegmentedControl<T extends string>({
   label,
@@ -29,9 +37,6 @@ export function SegmentedControl<T extends string>({
   optionList,
   value,
 }: SegmentedControlProps<T>) {
-  // Icon colors are props, not styles.
-  const { theme } = useUnistyles();
-  const iconSize = useIconSize('sm');
   const t = useMessages();
 
   return (
@@ -43,35 +48,48 @@ export function SegmentedControl<T extends string>({
         accessibilityRole="radiogroup"
         style={styles.group}
       >
-        {optionList.map((option) => {
-          const isChecked = option.value === value;
-          return (
-            <Pressable
-              accessibilityHint={t.common.setsChoice(label, option.label)}
-              accessibilityLabel={option.label}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: isChecked }}
-              key={option.value}
-              onPress={() => onChange(option.value)}
-              style={[styles.segment, isChecked && styles.checkedSegment]}
-            >
-              {option.icon && (
-                <Icon
-                  color={
-                    isChecked ? theme.colors.onAction : theme.colors[option.iconColor ?? 'text']
-                  }
-                  name={option.icon}
-                  size={iconSize}
-                />
-              )}
-              <Text style={[styles.segmentLabel, isChecked && styles.checkedLabel]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {optionList.map((option) => (
+          <Segment
+            groupLabel={label}
+            isChecked={option.value === value}
+            key={option.value}
+            onPress={() => onChange(option.value)}
+            option={option}
+          />
+        ))}
       </View>
     </View>
+  );
+}
+
+// One option of the group.
+function Segment<T extends string>({ groupLabel, isChecked, onPress, option }: SegmentProps<T>) {
+  // Icon colors are props, not styles.
+  const { theme } = useUnistyles();
+  const iconSize = useIconSize('sm');
+  const t = useMessages();
+  // Inside the option: the group clips its rounded corners.
+  const { focusProps, focusStyle } = useFocusRing({ isInset: true, isOnAction: isChecked });
+
+  return (
+    <Pressable
+      accessibilityHint={t.common.setsChoice(groupLabel, option.label)}
+      accessibilityLabel={option.label}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: isChecked }}
+      onPress={onPress}
+      {...focusProps}
+      style={[styles.segment, isChecked && styles.checkedSegment, focusStyle]}
+    >
+      {option.icon && (
+        <Icon
+          color={isChecked ? theme.colors.onAction : theme.colors[option.iconColor ?? 'text']}
+          name={option.icon}
+          size={iconSize}
+        />
+      )}
+      <Text style={[styles.segmentLabel, isChecked && styles.checkedLabel]}>{option.label}</Text>
+    </Pressable>
   );
 }
 
@@ -106,6 +124,8 @@ const styles = StyleSheet.create((theme) => ({
     flexBasis: 'auto',
     flexDirection: 'row',
     flexGrow: 1,
+    // Never narrower than its content: an option that doesn't fit goes on the next line.
+    flexShrink: 0,
     gap: theme.gap(1),
     justifyContent: 'center',
     minHeight: theme.size.touchTarget,
