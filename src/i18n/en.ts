@@ -126,6 +126,9 @@ export const en = {
     preview: 'Preview',
     recipe: 'Recipe',
     recipeText: 'Recipe text',
+    // What screen readers say for a row of the recipe list: "Pumpkin soup, Winter, Starter".
+    rowLabel: (title: string, season: string, course?: string) =>
+      [title, season, course].filter(Boolean).join(', '),
     saveHint: 'Saves the recipe and shows it',
     saveRecipe: 'Save recipe',
     season: 'Season',

@@ -127,6 +127,7 @@ export const fr: Messages = {
     preview: 'Aperçu',
     recipe: 'Recette',
     recipeText: 'Texte de la recette',
+    rowLabel: (title, season, course) => [title, season, course].filter(Boolean).join(', '),
     saveHint: 'Enregistre la recette et l’affiche',
     saveRecipe: 'Enregistrer la recette',
     season: 'Saison',

@@ -70,8 +70,11 @@ export function RecipesScreen() {
 
 // What a screen reader announces for a row: its labels, read as one.
 function describeRecipeRow(item: RecipeListItem, t: Messages): string {
-  const course = item.course ? `, ${t.courses[item.course]}` : '';
-  return `${item.title}, ${describeSeason(item.season, t)}${course}`;
+  return t.recipes.rowLabel(
+    item.title,
+    describeSeason(item.season, t),
+    item.course ? t.courses[item.course] : undefined,
+  );
 }
 
 const styles = StyleSheet.create((theme) => ({
