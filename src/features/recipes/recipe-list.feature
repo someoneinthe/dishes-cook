@@ -32,6 +32,17 @@ Feature: Recipe list
     Then I see that 1 recipe matches
     And the list shows "Pumpkin soup"
 
+  Scenario: The title search ignores case and accents
+    When I open the recipe list
+    And I search for "OMÉLETTE"
+    Then the list shows "Omelette"
+
+  Scenario: A title search can match nothing
+    When I open the recipe list
+    And I search for "pizza"
+    Then I see that no recipe is titled "pizza"
+    And the list shows ""
+
   Scenario: The title search and the filters add up
     When I open the recipe list
     And I search for "o"

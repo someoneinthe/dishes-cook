@@ -110,12 +110,35 @@ defineFeature(feature, (test) => {
     });
   });
 
+  const searchFor = async (search: string) => {
+    await fireEvent.changeText(screen.getByLabelText('Search recipes'), search);
+  };
+
+  test('The title search ignores case and accents', ({ and, given, then, when }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the recipe list', openTheRecipeList);
+    and(/^I search for "(.*)"$/, searchFor);
+    then(/^the list shows "(.*)"$/, (titles: string) => {
+      expect(listedTitles()).toBe(titles);
+    });
+  });
+
+  test('A title search can match nothing', ({ and, given, then, when }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the recipe list', openTheRecipeList);
+    and(/^I search for "(.*)"$/, searchFor);
+    then(/^I see that no recipe is titled "(.*)"$/, (search: string) => {
+      expect(screen.getByText(`No recipe matches “${search}”.`)).toBeOnTheScreen();
+    });
+    and(/^the list shows "(.*)"$/, (titles: string) => {
+      expect(listedTitles()).toBe(titles);
+    });
+  });
+
   test('The title search and the filters add up', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the recipe list', openTheRecipeList);
-    and(/^I search for "(.*)"$/, async (search: string) => {
-      await fireEvent.changeText(screen.getByLabelText('Search recipes'), search);
-    });
+    and(/^I search for "(.*)"$/, searchFor);
     and(/^I choose the "(.*)" season$/, chooseTheOption);
     then(/^I see that (\d+) recipes match$/, (count: string) => {
       expect(screen.getByText(matchCountText(count))).toBeOnTheScreen();
