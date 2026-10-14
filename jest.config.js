@@ -31,4 +31,8 @@ module.exports = {
       },
     ],
   },
+  // marked ships ES modules only: compile it like the app's code (Metro does).
+  transformIgnorePatterns: expoPreset.transformIgnorePatterns.map((pattern) =>
+    pattern.replace('(?!(', '(?!(marked|'),
+  ),
 };

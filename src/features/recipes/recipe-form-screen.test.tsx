@@ -67,6 +67,12 @@ describe('recipeFormScreen', () => {
     expect(firstRecipePage(connection.db)).toStrictEqual([]);
   });
 
+  it('explains that the recipe can be written in Markdown', async () => {
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    expect(screen.getByText(/^Format it with Markdown: # Heading, \*\*bold\*\*/)).toBeOnTheScreen();
+  });
+
   it('edits an existing recipe', async () => {
     const carrot = findOrCreateIngredient(connection.db, 'Carrot');
     const id = saveRecipe(connection.db, {

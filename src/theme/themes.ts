@@ -32,6 +32,8 @@ const lightColors = {
   courseStarter: '#047857',
   // Error text.
   danger: '#B91C1C',
+  // Links in recipe text (contrast with the background ≥ 4.5:1).
+  link: '#1D4ED8',
   // Menu entry icons, one color each (contrast with the background ≥ 3:1).
   menuIngredients: '#C2410C',
   menuMealChoice: '#1D4ED8',
@@ -60,6 +62,7 @@ const darkColors: ThemeColors = {
   courseMain: '#A78BFA',
   courseStarter: '#34D399',
   danger: '#F87171',
+  link: '#60A5FA',
   menuIngredients: '#FB923C',
   menuMealChoice: '#60A5FA',
   menuRecipes: '#4ADE80',

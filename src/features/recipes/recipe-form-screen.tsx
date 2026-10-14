@@ -27,6 +27,10 @@ const COURSE_CHOICE_OPTION_LIST: readonly SegmentedOption<CourseChoice>[] = [
   ...COURSE_OPTION_LIST,
 ];
 
+const INSTRUCTIONS_HINT =
+  'Format it with Markdown: # Heading, **bold**, *italic*, - list item, 1. numbered step, ' +
+  '[link text](https://…). Line breaks are kept.';
+
 type RecipeFormProps = Readonly<{
   // Undefined for a new recipe.
   initialRecipe: Recipe | undefined;
@@ -141,6 +145,7 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
         selectedList={selectedIngredientList}
       />
       <TextField
+        hint={INSTRUCTIONS_HINT}
         label="Recipe"
         multiline
         onChangeText={setInstructions}
