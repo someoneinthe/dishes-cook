@@ -28,6 +28,8 @@ jobs:
       - uses: ./.github/actions/setup-node-deps
       - run: npm run lint -- --max-warnings=0
       - run: npm run format:check
+      - name: Database diagram up to date
+        run: npm run db:diagram -- --check
       - run: npm run typecheck
       - run: npm run test:ci
       - run: npm run doctor
