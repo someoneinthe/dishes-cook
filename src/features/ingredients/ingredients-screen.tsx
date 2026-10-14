@@ -21,7 +21,12 @@ import { useIngredientPages } from './hooks/use-ingredients';
 // Read-only on a TV: the catalog only manages ingredients, so a link to it (it isn't in the TV's
 // menu) leads to the meal choice.
 export function IngredientsScreen() {
-  return isTv ? <Redirect href="/" /> : <IngredientCatalog />;
+  // Sonar (S100) only sees a component when it returns a JSX element, not a ternary.
+  // eslint-disable-next-line unicorn/prefer-ternary
+  if (isTv) {
+    return <Redirect href="/" />;
+  }
+  return <IngredientCatalog />;
 }
 
 // The ingredient catalog: one field both filters the list and adds a new ingredient.

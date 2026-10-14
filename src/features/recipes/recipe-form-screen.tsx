@@ -29,7 +29,12 @@ type RecipeFormProps = Readonly<{
 
 // Read-only on a TV: a link to the form (/recipe/new, /recipe/[id]/edit) leads to the meal choice.
 export function RecipeFormScreen() {
-  return isTv ? <Redirect href="/" /> : <RecipeFormRoute />;
+  // Sonar (S100) only sees a component when it returns a JSX element, not a ternary.
+  // eslint-disable-next-line unicorn/prefer-ternary
+  if (isTv) {
+    return <Redirect href="/" />;
+  }
+  return <RecipeFormRoute />;
 }
 
 function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
