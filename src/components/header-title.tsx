@@ -1,6 +1,7 @@
 import type { ColorValue } from 'react-native';
 import { Alert, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import { useMessages } from '@/i18n/i18n-provider';
 import type { IconName } from './icon';
 import { Icon } from './icon';
 import { useIconSize } from './use-icon-size';
@@ -16,6 +17,7 @@ type HeaderTitleProps = Readonly<{
 // read it in full; a long press shows it in full.
 export function HeaderTitle({ children, icon, tintColor }: HeaderTitleProps) {
   const iconSize = useIconSize('lg');
+  const t = useMessages();
 
   return (
     <View style={styles.row}>
@@ -28,7 +30,7 @@ export function HeaderTitle({ children, icon, tintColor }: HeaderTitleProps) {
       <Text
         accessibilityRole="header"
         numberOfLines={1}
-        onLongPress={() => showFullTitle(children)}
+        onLongPress={() => showFullTitle(children, t.common.ok)}
         style={[styles.title, tintColor === undefined ? undefined : { color: tintColor }]}
       >
         {children}
@@ -55,8 +57,8 @@ export const headerTitleOptions = {
 
 // A dialog, not a toast: Android cuts toasts to two lines. The title is the dialog's message, which
 // scrolls when it's very long.
-function showFullTitle(title: string) {
-  Alert.alert('', title);
+function showFullTitle(title: string, okLabel: string) {
+  Alert.alert('', title, [{ text: okLabel }]);
 }
 
 const styles = StyleSheet.create((theme) => ({

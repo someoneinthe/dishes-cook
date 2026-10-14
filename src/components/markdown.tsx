@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { lexer } from 'marked';
 import { ScrollView, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import { useMessages } from '@/i18n/i18n-provider';
 
 type MarkdownProps = Readonly<{ text: string }>;
 
@@ -70,6 +71,11 @@ function Block({ token }: Readonly<{ token: Token }>) {
   }
 }
 
+function ImageDescription({ description }: Readonly<{ description: string }>) {
+  const t = useMessages();
+  return <Text style={styles.muted}>{t.markdown.image(description)}</Text>;
+}
+
 // Every case returns an element (fragments for plain text) so it nests in its parent `Text`.
 function Inline({ token }: Readonly<{ token: Token }>) {
   const markedToken = token as MarkedToken;
@@ -91,11 +97,7 @@ function Inline({ token }: Readonly<{ token: Token }>) {
     }
     case 'image': {
       // Never loaded: a remote image would tell its server when the recipe is read.
-      return (
-        <Text style={styles.muted}>
-          {markedToken.text ? `Image: ${markedToken.text}` : 'Image'}
-        </Text>
-      );
+      return <ImageDescription description={markedToken.text} />;
     }
     case 'link': {
       // Links don't open for now: their text only.

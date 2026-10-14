@@ -1,7 +1,9 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import type { DatabaseConnection } from '@/db/types';
 import { deleteRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
+import { updatePreferences } from '@/features/settings/preferences';
 import { spyOnAlert } from '@/test/alert';
+import { AppLanguage } from '@/test/app-language';
 import { firstIngredientPage } from '@/test/queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { findOrCreateIngredient } from './db/ingredient-queries';
@@ -12,6 +14,7 @@ describe('ingredientsScreen', () => {
 
   beforeEach(() => {
     connection = createTestConnection();
+    updatePreferences({ language: 'system' });
   });
 
   afterEach(() => {
@@ -118,6 +121,27 @@ describe('ingredientsScreen', () => {
 
     expect(firstIngredientPage(connection.db).map((ingredient) => ingredient.name)).toStrictEqual([
       'Carrot',
+    ]);
+  });
+
+  it('speaks French, its delete question included, when the app is in French', async () => {
+    updatePreferences({ language: 'fr' });
+    findOrCreateIngredient(connection.db, 'Poireau');
+    const alert = spyOnAlert();
+    await renderWithDatabase(
+      <AppLanguage>
+        <IngredientsScreen />
+      </AppLanguage>,
+      connection,
+    );
+
+    expect(screen.getByText('Pas encore utilisé')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer Poireau' }));
+
+    expect(alert.spy).toHaveBeenCalledWith('Supprimer «\u{A0}Poireau\u{A0}»\u{202F}?', undefined, [
+      { style: 'cancel', text: 'Annuler' },
+      expect.objectContaining({ style: 'destructive', text: 'Supprimer' }),
     ]);
   });
 });

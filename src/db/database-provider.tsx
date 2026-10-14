@@ -3,6 +3,7 @@ import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import { useMessages } from '@/i18n/i18n-provider';
 import type { DatabaseConnection } from './types';
 import { openAppConnection } from './client';
 import { createQueryClient, DataProvider } from './data-provider';
@@ -15,6 +16,7 @@ type MigratedDataProps = Readonly<{ children: ReactNode; connection: DatabaseCon
 // Opens the database, applies pending migrations, then renders the app. Nothing is rendered while
 // migrating: it takes milliseconds and the loading screen covers the app meanwhile.
 export function DatabaseProvider({ children }: DatabaseProviderProps) {
+  const t = useMessages();
   const [connection] = useState(openAppConnection);
   const { error, success: isMigrated } = useMigrations(connection.db, migrations);
 
@@ -22,7 +24,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     return (
       <View style={styles.error}>
         <Text accessibilityRole="alert" style={styles.errorText}>
-          {`The recipes database could not be opened: ${error.message}`}
+          {t.database.openFailed(error.message)}
         </Text>
       </View>
     );

@@ -2,6 +2,8 @@ import Storage from 'expo-sqlite/kv-store';
 import { useSyncExternalStore } from 'react';
 import { Appearance } from 'react-native';
 import { UnistylesRuntime } from 'react-native-unistyles';
+import type { LanguagePreference } from '@/i18n/languages';
+import { LANGUAGE_PREFERENCE_LIST } from '@/i18n/languages';
 
 // User preferences, kept in expo-sqlite's key-value store (synchronous reads: applied before the
 // first screen renders).
@@ -13,10 +15,16 @@ export type Preferences = Readonly<{
   colorScheme: ColorSchemePreference;
   // Show the text of icon-only buttons too.
   isShowingButtonLabels: boolean;
+  // The phone's language ('system') or one chosen for the app.
+  language: LanguagePreference;
 }>;
 
 const STORAGE_KEY = 'preferences';
-const DEFAULT_PREFERENCES: Preferences = { colorScheme: 'system', isShowingButtonLabels: false };
+const DEFAULT_PREFERENCES: Preferences = {
+  colorScheme: 'system',
+  isShowingButtonLabels: false,
+  language: 'system',
+};
 
 // Read once from storage, then kept in memory.
 const state: { current?: Preferences } = {};
@@ -67,6 +75,9 @@ function parse(stored: null | string): Preferences {
         ? (parsed.colorScheme as ColorSchemePreference)
         : DEFAULT_PREFERENCES.colorScheme,
       isShowingButtonLabels: parsed.isShowingButtonLabels === true,
+      language: LANGUAGE_PREFERENCE_LIST.includes(parsed.language as LanguagePreference)
+        ? (parsed.language as LanguagePreference)
+        : DEFAULT_PREFERENCES.language,
     };
   } catch {
     // Unreadable (e.g. written by a future version): start from the defaults.

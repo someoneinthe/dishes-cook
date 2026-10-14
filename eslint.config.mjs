@@ -4,6 +4,7 @@ import reactNativeOfficial from '@react-native/eslint-plugin';
 import tanstackQuery from '@tanstack/eslint-plugin-query';
 import expoConfig from 'eslint-config-expo/flat.js';
 import prettierConfig from 'eslint-config-prettier/flat';
+import i18next from 'eslint-plugin-i18next';
 import jest from 'eslint-plugin-jest';
 import perfectionist from 'eslint-plugin-perfectionist';
 import reactNative from 'eslint-plugin-react-native';
@@ -18,6 +19,22 @@ import tseslint from 'typescript-eslint';
 
 const TS_FILES = ['**/*.ts', '**/*.tsx'];
 const TEST_FILES = ['**/*.test.ts', '**/*.test.tsx'];
+// Text rules (no-restricted-syntax below): what users read comes from the dictionaries.
+const TRANSLATE = 'text shown to users comes from the i18n dictionaries (useMessages).';
+const WORD_PATTERN = '/[A-Za-z]{2,}/';
+const SENTENCE_PATTERN = String.raw`/[A-Za-z\u00C0-\u017F]{2,}\s+[A-Za-z\u00C0-\u017F]{2,}/`;
+// Props whose text users see or hear: translated, never written in JSX.
+const USER_TEXT_PROPS = [
+  'accessibilityHint',
+  'accessibilityLabel',
+  'emptyMessage',
+  'error',
+  'hint',
+  'label',
+  'message',
+  'placeholder',
+  'title',
+];
 
 // eslint-config-expo already registers the @typescript-eslint plugin and parser, so only the
 // *rules* of typescript-eslint's full recommended + type-aware preset are taken (registering the
@@ -204,6 +221,70 @@ export default defineConfig([
       'react-native/no-unused-styles': 'error',
       // Android-first; switch to the `all` preset when iOS is added.
       ...reactNativeA11y.configs.android.rules,
+    },
+  },
+
+  // UI text comes from the dictionaries (src/i18n/en.ts, fr.ts…), never written in JSX: text in
+  // JSX, and the props users see or hear (labels, hints, placeholders, messages).
+  {
+    files: ['src/**/*.tsx'],
+    ignores: [...TEST_FILES, 'src/test/**'],
+    plugins: { i18next },
+    rules: {
+      'i18next/no-literal-string': [
+        'error',
+        {
+          'jsx-attributes': { include: USER_TEXT_PROPS },
+          message: 'Text shown to users comes from the i18n dictionaries (useMessages).',
+          mode: 'jsx-only',
+        },
+      ],
+    },
+  },
+
+  // Every deletion asks first, the same way (CONTRIBUTING › Deleting); and every text users see or
+  // hear comes from the dictionaries (CONTRIBUTING › Text shown to users is translated), not only
+  // JSX text (i18next/no-literal-string above): dialogs, option lists, navigation options and
+  // strings built in helpers too. Names and counts go through the dictionaries' functions.
+  {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: [
+      'src/components/use-confirm-delete.ts',
+      // The dictionaries themselves.
+      'src/i18n/en.ts',
+      'src/i18n/fr.ts',
+      // Tests check the rendered text.
+      ...TEST_FILES,
+      'src/test/**',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          message:
+            'Ask with useConfirmDelete (src/components/use-confirm-delete.ts): every deletion is confirmed the same way.',
+          selector: "Literal[value='destructive']",
+        },
+        {
+          message: `Dialog text: ${TRANSLATE}`,
+          selector: `CallExpression[callee.property.name='alert'] > Literal[value=${WORD_PATTERN}]`,
+        },
+        {
+          message: `Text in a user-facing property: ${TRANSLATE}`,
+          selector: `Property[key.name=/^(${[...USER_TEXT_PROPS, 'drawerLabel', 'headerTitle', 'text'].join('|')})$/] > Literal[value=${WORD_PATTERN}]`,
+        },
+        {
+          // Sentences (two words or more): never identifiers, icon names, routes or option values. SQL run
+          // with exec…() and developer messages (errors, console) excepted.
+          message: `Sentence in code: ${TRANSLATE}`,
+          selector: `Literal[value=${SENTENCE_PATTERN}]:not(NewExpression > Literal):not(CallExpression[callee.object.name='console'] > Literal):not(CallExpression[callee.property.name=/^exec/] > Literal)`,
+        },
+        {
+          // Template strings with words in them, SQL (sql`…`) excepted.
+          message: `Template string with words: ${TRANSLATE}`,
+          selector: `TemplateLiteral:not(TaggedTemplateExpression > TemplateLiteral):not(NewExpression > TemplateLiteral):has(TemplateElement[value.raw=${WORD_PATTERN}])`,
+        },
+      ],
     },
   },
 

@@ -5,44 +5,41 @@ import type { SegmentedOption } from '@/components/segmented-control';
 import { Markdown } from '@/components/markdown';
 import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
-
-type Mode = 'preview' | 'write';
-
-const MODE_OPTION_LIST: readonly SegmentedOption<Mode>[] = [
-  { icon: 'pencil-outline', label: 'Write', value: 'write' },
-  { icon: 'eye-outline', label: 'Preview', value: 'preview' },
-];
-
-const FORMAT_HINT =
-  'Format it with Markdown: # Heading, **bold**, *italic*, - list item, 1. numbered step. ' +
-  'Line breaks are kept.';
+import { useMessages } from '@/i18n/i18n-provider';
 
 type InstructionsFieldProps = Readonly<{
   onChange: (instructions: string) => void;
   value: string;
 }>;
 
+type Mode = 'preview' | 'write';
+
 // The recipe text, written in Markdown: "Write" edits it as typed, "Preview" shows it formatted
 // like on the recipe screen.
 export function InstructionsField({ onChange, value }: InstructionsFieldProps) {
+  const t = useMessages();
   const [mode, setMode] = useState<Mode>('write');
+  const modeOptionList: readonly SegmentedOption<Mode>[] = [
+    { icon: 'pencil-outline', label: t.recipes.write, value: 'write' },
+    { icon: 'eye-outline', label: t.recipes.preview, value: 'preview' },
+  ];
 
   return (
     <View style={styles.field}>
       <SegmentedControl
-        label="Recipe"
+        label={t.recipes.recipe}
         onChange={setMode}
-        optionList={MODE_OPTION_LIST}
+        optionList={modeOptionList}
         value={mode}
       />
       {mode === 'write' ? (
         <TextField
-          hint={FORMAT_HINT}
+          hint={t.recipes.formatHint}
           isLabelHidden
-          label="Recipe text"
+          label={t.recipes.recipeText}
           multiline
           onChangeText={onChange}
-          placeholder="Steps, quantities, cooking time…"
+          placeholder={t.recipes.instructionsPlaceholder}
           value={value}
         />
       ) : (
@@ -50,7 +47,7 @@ export function InstructionsField({ onChange, value }: InstructionsFieldProps) {
           {value.trim() ? (
             <Markdown text={value} />
           ) : (
-            <Text style={styles.muted}>Nothing to preview yet.</Text>
+            <Text style={styles.muted}>{t.recipes.nothingToPreview}</Text>
           )}
         </View>
       )}

@@ -3,6 +3,7 @@ import { hide as hideSplashScreen } from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { Animated } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import { useMessages } from '@/i18n/i18n-provider';
 import { loadingScreenImage } from '@/lib/assets';
 
 // How long the illustration stays fully visible once it's displayed.
@@ -17,6 +18,7 @@ type LoadingScreenProps = Readonly<{
 // Full-screen illustration shown over the app at startup: it replaces the native splash screen (the
 // plate) as soon as it's laid out, stays MIN_DISPLAY_MS once the image is displayed, then fades out.
 export function LoadingScreen({ onFinish }: LoadingScreenProps) {
+  const t = useMessages();
   const [opacity] = useState(() => new Animated.Value(1));
   const [isImageDisplayed, setIsImageDisplayed] = useState(false);
 
@@ -36,8 +38,8 @@ export function LoadingScreen({ onFinish }: LoadingScreenProps) {
 
   return (
     <Animated.View
-      accessibilityHint="The app opens automatically once it has loaded"
-      accessibilityLabel="Loading Dishes Cook"
+      accessibilityHint={t.loading.hint}
+      accessibilityLabel={t.loading.label}
       accessibilityRole="progressbar"
       accessible
       // Hide the native splash as soon as this screen is laid out, not when the image is

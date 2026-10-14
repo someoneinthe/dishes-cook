@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { ColorToken } from '@/theme/themes';
+import { useMessages } from '@/i18n/i18n-provider';
 import type { IconName } from './icon';
 import { Icon } from './icon';
 import { useIconSize } from './use-icon-size';
@@ -31,12 +32,13 @@ export function SegmentedControl<T extends string>({
   // Icon colors are props, not styles.
   const { theme } = useUnistyles();
   const iconSize = useIconSize('sm');
+  const t = useMessages();
 
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <View
-        accessibilityHint="Choose one option"
+        accessibilityHint={t.common.chooseOneOption}
         accessibilityLabel={label}
         accessibilityRole="radiogroup"
         style={styles.group}
@@ -45,7 +47,7 @@ export function SegmentedControl<T extends string>({
           const isChecked = option.value === value;
           return (
             <Pressable
-              accessibilityHint={`Sets ${label.toLowerCase()} to ${option.label.toLowerCase()}`}
+              accessibilityHint={t.common.setsChoice(label, option.label)}
               accessibilityLabel={option.label}
               accessibilityRole="radio"
               accessibilityState={{ checked: isChecked }}

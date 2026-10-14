@@ -21,7 +21,7 @@ describe('headerTitle', () => {
 
     await fireEvent(screen.getByRole('header'), 'longPress');
 
-    expect(alert.spy).toHaveBeenCalledWith('', LONG_TITLE);
+    expect(alert.spy).toHaveBeenCalledWith('', LONG_TITLE, [{ text: 'OK' }]);
   });
 
   it('starts with the menu icon, in its menu color', async () => {

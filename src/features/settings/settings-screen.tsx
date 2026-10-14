@@ -1,34 +1,39 @@
 import { ScrollView, Switch, Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { SegmentedOption } from '@/components/segmented-control';
+import type { Messages } from '@/i18n/en';
+import type { LanguagePreference } from '@/i18n/languages';
 import { SegmentedControl } from '@/components/segmented-control';
+import { useMessages } from '@/i18n/i18n-provider';
+import { LANGUAGE_LIST, LANGUAGE_NAMES } from '@/i18n/languages';
 import type { ColorSchemePreference } from './preferences';
 import { updatePreferences, usePreferences } from './preferences';
 
-const COLOR_SCHEME_OPTION_LIST: readonly SegmentedOption<ColorSchemePreference>[] = [
-  { icon: 'cellphone', label: 'System', value: 'system' },
-  { icon: 'white-balance-sunny', label: 'Light', value: 'light' },
-  { icon: 'weather-night', label: 'Dark', value: 'dark' },
-];
-
 export function SettingsScreen() {
-  const { colorScheme, isShowingButtonLabels } = usePreferences();
+  const t = useMessages();
+  const { colorScheme, isShowingButtonLabels, language } = usePreferences();
   // Switch colors are props, not styles.
   const { theme } = useUnistyles();
 
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
       <SegmentedControl
-        label="Appearance"
+        label={t.settings.appearance}
         onChange={(value) => updatePreferences({ colorScheme: value })}
-        optionList={COLOR_SCHEME_OPTION_LIST}
+        optionList={colorSchemeOptionList(t)}
         value={colorScheme}
       />
+      <SegmentedControl
+        label={t.settings.language}
+        onChange={(value) => updatePreferences({ language: value })}
+        optionList={languageOptionList(t)}
+        value={language}
+      />
       <View style={styles.switchRow}>
-        <Text style={styles.label}>Show button labels</Text>
+        <Text style={styles.label}>{t.settings.showButtonLabels}</Text>
         <Switch
-          accessibilityHint="Adds the text next to icon buttons"
-          accessibilityLabel="Show button labels"
+          accessibilityHint={t.settings.showButtonLabelsHint}
+          accessibilityLabel={t.settings.showButtonLabels}
           onValueChange={(value) => updatePreferences({ isShowingButtonLabels: value })}
           thumbColor={theme.colors.surface}
           trackColor={{ false: theme.colors.border, true: theme.colors.actionPrimary }}
@@ -37,6 +42,22 @@ export function SettingsScreen() {
       </View>
     </ScrollView>
   );
+}
+
+function colorSchemeOptionList(t: Messages): readonly SegmentedOption<ColorSchemePreference>[] {
+  return [
+    { icon: 'cellphone', label: t.settings.system, value: 'system' },
+    { icon: 'white-balance-sunny', label: t.settings.light, value: 'light' },
+    { icon: 'weather-night', label: t.settings.dark, value: 'dark' },
+  ];
+}
+
+// "System" follows the phone's language; the others are named in their own language.
+function languageOptionList(t: Messages): readonly SegmentedOption<LanguagePreference>[] {
+  return [
+    { icon: 'cellphone', label: t.settings.system, value: 'system' },
+    ...LANGUAGE_LIST.map((language) => ({ label: LANGUAGE_NAMES[language], value: language })),
+  ];
 }
 
 const styles = StyleSheet.create((theme) => ({

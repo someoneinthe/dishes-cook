@@ -2,17 +2,19 @@ import { router } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import type { Messages } from '@/i18n/en';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
 import { getPagingProps } from '@/components/paging-props';
+import { useMessages } from '@/i18n/i18n-provider';
 import type { RecipeListItem } from './db/recipe-queries';
 import { CourseLabel, SeasonLabel } from './components/recipe-labels';
-import { COURSE_LABELS } from './course';
 import { useRecipePages } from './hooks/use-recipes';
 import { describeSeason } from './season';
 
 export function RecipesScreen() {
+  const t = useMessages();
   const recipePages = useRecipePages();
   const addRecipe = () => router.push('/recipe/new');
 
@@ -22,11 +24,11 @@ export function RecipesScreen() {
         options={{
           headerRight: headerActions(
             <Button
-              accessibilityHint="Opens an empty recipe form"
-              accessibilityLabel="New recipe"
+              accessibilityHint={t.recipes.newHint}
+              accessibilityLabel={t.recipes.newRecipe}
               icon="plus"
               isIconOnly
-              label="New"
+              label={t.recipes.new}
               onPress={addRecipe}
             />,
           ),
@@ -37,15 +39,12 @@ export function RecipesScreen() {
         data={recipePages.itemList}
         keyExtractor={(recipe) => String(recipe.id)}
         ListEmptyComponent={
-          <EmptyState
-            message="Save the dishes you like to cook, then let the meal choice pick one for you."
-            title="No recipes yet"
-          />
+          <EmptyState message={t.recipes.emptyMessage} title={t.recipes.emptyTitle} />
         }
         renderItem={({ item }) => (
           <Pressable
-            accessibilityHint="Opens the recipe"
-            accessibilityLabel={describeRecipeRow(item)}
+            accessibilityHint={t.recipes.openHint}
+            accessibilityLabel={describeRecipeRow(item, t)}
             accessibilityRole="button"
             onPress={() =>
               router.push({ params: { id: String(item.id) }, pathname: '/recipe/[id]' })
@@ -58,7 +57,7 @@ export function RecipesScreen() {
                 <SeasonLabel season={item.season} />
                 {item.course && <CourseLabel course={item.course} />}
               </View>
-              <Text style={styles.detail}>{describeIngredientCount(item.ingredientCount)}</Text>
+              <Text style={styles.detail}>{t.recipes.ingredientCount(item.ingredientCount)}</Text>
             </View>
           </Pressable>
         )}
@@ -69,14 +68,13 @@ export function RecipesScreen() {
   );
 }
 
-function describeIngredientCount(count: number): string {
-  return count === 1 ? '1 ingredient' : `${count} ingredients`;
-}
-
 // What a screen reader announces for a row: its labels, read as one.
-function describeRecipeRow(item: RecipeListItem): string {
-  const course = item.course ? `, ${COURSE_LABELS[item.course]}` : '';
-  return `${item.title}, ${describeSeason(item.season)}${course}`;
+function describeRecipeRow(item: RecipeListItem, t: Messages): string {
+  return t.recipes.rowLabel(
+    item.title,
+    describeSeason(item.season, t),
+    item.course ? t.courses[item.course] : undefined,
+  );
 }
 
 const styles = StyleSheet.create((theme) => ({

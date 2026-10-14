@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Chip } from '@/components/chip';
 import { TextField } from '@/components/text-field';
+import { useMessages } from '@/i18n/i18n-provider';
 import { cleanName, toNameKey } from '@/lib/text';
 import type { Ingredient } from '../db/ingredient-queries';
 import { useIngredientSuggestions } from '../hooks/use-ingredients';
@@ -29,6 +30,7 @@ export function IngredientPicker({
   onCreate,
   selectedList,
 }: IngredientPickerProps) {
+  const t = useMessages();
   const [search, setSearch] = useState('');
   const selectedIds = new Set(selectedList.map((ingredient) => ingredient.id));
   // Exact name first, then the most used: the likeliest picks before typing.
@@ -61,8 +63,8 @@ export function IngredientPicker({
         <View style={styles.chipList}>
           {selectedList.map((ingredient) => (
             <Chip
-              accessibilityHint="Removes it from the selection"
-              accessibilityLabel={`Remove ${ingredient.name}`}
+              accessibilityHint={t.ingredientPicker.removeHint}
+              accessibilityLabel={t.ingredientPicker.removeLabel(ingredient.name)}
               icon="close"
               isSelected
               key={ingredient.id}
@@ -75,7 +77,7 @@ export function IngredientPicker({
       <TextField
         autoCapitalize="none"
         isLabelHidden
-        label={`Search ${label.toLowerCase()}`}
+        label={t.ingredientPicker.searchLabel(label)}
         onChangeText={setSearch}
         onSubmitEditing={() => {
           if (suggestionList[0]) {
@@ -84,7 +86,9 @@ export function IngredientPicker({
             select(onCreate(typedName));
           }
         }}
-        placeholder={onCreate ? 'Search or add an ingredient' : 'Search an ingredient'}
+        placeholder={
+          onCreate ? t.ingredientPicker.placeholderWithCreate : t.ingredientPicker.placeholder
+        }
         returnKeyType="done"
         submitBehavior="submit"
         value={search}
@@ -92,8 +96,8 @@ export function IngredientPicker({
       <View style={styles.chipList}>
         {suggestionList.map((ingredient) => (
           <Chip
-            accessibilityHint="Adds it to the selection"
-            accessibilityLabel={`Add ${ingredient.name}`}
+            accessibilityHint={t.ingredientPicker.addHint}
+            accessibilityLabel={t.ingredientPicker.addLabel(ingredient.name)}
             icon="plus"
             key={ingredient.id}
             label={ingredient.name}
@@ -102,16 +106,16 @@ export function IngredientPicker({
         ))}
         {canCreate && (
           <Chip
-            accessibilityHint="Creates the ingredient and adds it to the selection"
-            accessibilityLabel={`Create ${typedName}`}
+            accessibilityHint={t.ingredientPicker.createHint}
+            accessibilityLabel={t.ingredientPicker.createLabel(typedName)}
             icon="plus-circle-outline"
-            label={`New: ${typedName}`}
+            label={t.ingredientPicker.createChip(typedName)}
             onPress={() => select(onCreate(typedName))}
           />
         )}
       </View>
       {suggestionList.length === 0 && !canCreate && (
-        <Text style={styles.hint}>{search ? 'No matching ingredient.' : emptyMessage}</Text>
+        <Text style={styles.hint}>{search ? t.ingredientPicker.noMatch : emptyMessage}</Text>
       )}
     </View>
   );

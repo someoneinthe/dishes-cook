@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Markdown } from '@/components/markdown';
+import { useMessages } from '@/i18n/i18n-provider';
 import type { Recipe } from '../db/recipe-queries';
 import { CourseLabel, SeasonLabel } from './recipe-labels';
 
@@ -8,6 +9,7 @@ type RecipeDetailsProps = Readonly<{ recipe: Recipe }>;
 
 // The content of a recipe, shared by the recipe screen and the meal choice suggestion.
 export function RecipeDetails({ recipe }: RecipeDetailsProps) {
+  const t = useMessages();
   return (
     <View style={styles.container}>
       <Text accessibilityRole="header" style={styles.title}>
@@ -19,7 +21,7 @@ export function RecipeDetails({ recipe }: RecipeDetailsProps) {
       </View>
 
       <Text accessibilityRole="header" style={styles.heading}>
-        Ingredients
+        {t.recipes.ingredients}
       </Text>
       {recipe.ingredientList.length > 0 ? (
         <View accessibilityRole="list">
@@ -30,16 +32,16 @@ export function RecipeDetails({ recipe }: RecipeDetailsProps) {
           ))}
         </View>
       ) : (
-        <Text style={styles.muted}>No ingredients listed.</Text>
+        <Text style={styles.muted}>{t.recipes.noIngredients}</Text>
       )}
 
       <Text accessibilityRole="header" style={styles.heading}>
-        Recipe
+        {t.recipes.recipe}
       </Text>
       {recipe.instructions ? (
         <Markdown text={recipe.instructions} />
       ) : (
-        <Text style={styles.muted}>No instructions written yet.</Text>
+        <Text style={styles.muted}>{t.recipes.noInstructions}</Text>
       )}
     </View>
   );

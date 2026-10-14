@@ -4,6 +4,7 @@ import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { TextField } from '@/components/text-field';
 import { useDatabase } from '@/db/database-context';
+import { useMessages } from '@/i18n/i18n-provider';
 import type { IngredientListItem } from '../db/ingredient-queries';
 import { renameIngredient } from '../db/ingredient-queries';
 
@@ -12,13 +13,9 @@ type IngredientRowProps = Readonly<{
   onDelete: (ingredient: IngredientListItem) => void;
 }>;
 
-const RENAME_ERRORS = {
-  blank: 'The name cannot be empty.',
-  duplicate: 'Another ingredient already has this name.',
-};
-
 export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
   const database = useDatabase();
+  const t = useMessages();
   const [draftName, setDraftName] = useState<string>();
   const [error, setError] = useState<string>();
 
@@ -28,7 +25,7 @@ export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
       if (result === 'renamed') {
         setDraftName(undefined);
       } else {
-        setError(RENAME_ERRORS[result]);
+        setError(result === 'blank' ? t.ingredients.nameBlank : t.ingredients.nameTaken);
       }
     };
     return (
@@ -36,7 +33,7 @@ export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
         <TextField
           autoFocus
           error={error}
-          label={`Rename ${ingredient.name}`}
+          label={t.ingredients.renameLabel(ingredient.name)}
           onChangeText={(text) => {
             setDraftName(text);
             setError(undefined);
@@ -49,14 +46,14 @@ export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
           <Button
             icon="close"
             isIconOnly
-            label="Cancel"
+            label={t.common.cancel}
             onPress={() => {
               setDraftName(undefined);
               setError(undefined);
             }}
             variant="secondary"
           />
-          <Button icon="check" isIconOnly label="Save" onPress={save} />
+          <Button icon="check" isIconOnly label={t.common.save} onPress={save} />
         </View>
       </View>
     );
@@ -67,26 +64,26 @@ export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
     <View style={styles.row}>
       <View style={styles.text}>
         <Text style={styles.name}>{ingredient.name}</Text>
-        <Text style={styles.usage}>{describeUsage(ingredient.recipeCount)}</Text>
+        <Text style={styles.usage}>{t.ingredients.usage(ingredient.recipeCount)}</Text>
       </View>
       <View style={styles.actions}>
         <Button
-          accessibilityHint="Lets you edit its name"
-          accessibilityLabel={`Rename ${ingredient.name}`}
+          accessibilityHint={t.ingredients.renameHint}
+          accessibilityLabel={t.ingredients.renameLabel(ingredient.name)}
           icon="pencil"
           isIconOnly
-          label="Rename"
+          label={t.ingredients.rename}
           onPress={() => setDraftName(ingredient.name)}
           variant="secondary"
         />
         {/* An ingredient used by recipes can't be deleted (the database refuses it too). */}
         {!isUsed && (
           <Button
-            accessibilityHint="Asks for confirmation first"
-            accessibilityLabel={`Delete ${ingredient.name}`}
+            accessibilityHint={t.common.deleteHint}
+            accessibilityLabel={t.ingredients.deleteLabel(ingredient.name)}
             icon="trash-can-outline"
             isIconOnly
-            label="Delete"
+            label={t.common.delete}
             onPress={() => onDelete(ingredient)}
             variant="danger"
           />
@@ -94,13 +91,6 @@ export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
       </View>
     </View>
   );
-}
-
-function describeUsage(recipeCount: number): string {
-  if (recipeCount === 0) {
-    return 'Not used yet';
-  }
-  return recipeCount === 1 ? 'Used in 1 recipe' : `Used in ${recipeCount} recipes`;
 }
 
 const styles = StyleSheet.create((theme) => ({
