@@ -74,7 +74,7 @@ Integer primary keys are SQLite rowids.
 **Until the first release, there are no users and no data to keep**: the schema has a single migration, `0000_init.sql`, regenerated on every change.
 
 1. Edit `src/db/schema.ts`.
-2. Delete `src/db/migrations/` and run `npm run db:generate -- --name init`. It also regenerates the diagram above (`npm run db:diagram`; CI fails if it's out of date). Commit the result.
+2. Delete `src/db/migrations/` and run `npm run db:generate -- --name init`. It also regenerates the diagram above (`npm run db:diagram`; CI fails if it's out of date, and attaches it as an image to each release). Commit the result.
 3. Reset the app's data on your device or emulator (`adb shell pm clear io.github.someoneinthe.dishescook`): an existing database already has the old `0000` applied.
 4. Restart Metro with `npx expo start --dev-client --clear`: it caches the inlined `.sql` files by `migrations.js`, so it would keep serving the old SQL.
 
