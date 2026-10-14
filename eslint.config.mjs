@@ -19,6 +19,10 @@ import tseslint from 'typescript-eslint';
 
 const TS_FILES = ['**/*.ts', '**/*.tsx'];
 const TEST_FILES = ['**/*.test.ts', '**/*.test.tsx'];
+// Text rules (no-restricted-syntax below): what users read comes from the dictionaries.
+const TRANSLATE = 'text shown to users comes from the i18n dictionaries (useMessages).';
+const WORD_PATTERN = '/[A-Za-z]{2,}/';
+const SENTENCE_PATTERN = String.raw`/[A-Za-z\u00C0-\u017F]{2,}\s+[A-Za-z\u00C0-\u017F]{2,}/`;
 // Props whose text users see or hear: translated, never written in JSX.
 const USER_TEXT_PROPS = [
   'accessibilityHint',
@@ -238,13 +242,21 @@ export default defineConfig([
     },
   },
 
-  // Every deletion asks first, the same way (CONTRIBUTING › Deleting); and i18next/no-literal-string
-  // doesn't see template strings: text in them is flagged here (names and counts go through the
-  // dictionaries' functions).
+  // Every deletion asks first, the same way (CONTRIBUTING › Deleting); and every text users see or
+  // hear comes from the dictionaries (CONTRIBUTING › Text shown to users is translated), not only
+  // JSX text (i18next/no-literal-string above): dialogs, option lists, navigation options and
+  // strings built in helpers too. Names and counts go through the dictionaries' functions.
   {
-    files: TS_FILES,
-    // Tests check the dialog's buttons and the rendered text.
-    ignores: ['src/components/use-confirm-delete.ts', ...TEST_FILES, 'src/test/**'],
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: [
+      'src/components/use-confirm-delete.ts',
+      // The dictionaries themselves.
+      'src/i18n/en.ts',
+      'src/i18n/fr.ts',
+      // Tests check the rendered text.
+      ...TEST_FILES,
+      'src/test/**',
+    ],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -254,13 +266,23 @@ export default defineConfig([
           selector: "Literal[value='destructive']",
         },
         {
-          message: 'Text shown to users comes from the i18n dictionaries (useMessages).',
-          selector:
-            'JSXElement > JSXExpressionContainer > TemplateLiteral:has(TemplateElement[value.raw=/[A-Za-z]/])',
+          message: `Dialog text: ${TRANSLATE}`,
+          selector: `CallExpression[callee.property.name='alert'] > Literal[value=${WORD_PATTERN}]`,
         },
         {
-          message: 'Text shown to users comes from the i18n dictionaries (useMessages).',
-          selector: `JSXAttribute[name.name=/^(${USER_TEXT_PROPS.join('|')})$/] > JSXExpressionContainer > TemplateLiteral:has(TemplateElement[value.raw=/[A-Za-z]/])`,
+          message: `Text in a user-facing property: ${TRANSLATE}`,
+          selector: `Property[key.name=/^(${[...USER_TEXT_PROPS, 'drawerLabel', 'headerTitle', 'text'].join('|')})$/] > Literal[value=${WORD_PATTERN}]`,
+        },
+        {
+          // Sentences (two words or more): never identifiers, icon names, routes or option values. SQL run
+          // with exec…() and developer messages (errors, console) excepted.
+          message: `Sentence in code: ${TRANSLATE}`,
+          selector: `Literal[value=${SENTENCE_PATTERN}]:not(NewExpression > Literal):not(CallExpression[callee.object.name='console'] > Literal):not(CallExpression[callee.property.name=/^exec/] > Literal)`,
+        },
+        {
+          // Template strings with words in them, SQL (sql`…`) excepted.
+          message: `Template string with words: ${TRANSLATE}`,
+          selector: `TemplateLiteral:not(TaggedTemplateExpression > TemplateLiteral):not(NewExpression > TemplateLiteral):has(TemplateElement[value.raw=${WORD_PATTERN}])`,
         },
       ],
     },
