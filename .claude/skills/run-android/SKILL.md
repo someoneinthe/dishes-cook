@@ -1,9 +1,11 @@
 ---
 name: run-android
-description: Build, install and run the dishes-cook app on an Android emulator (or device), then screenshot and inspect it. Use when asked to run, launch, start or screenshot the app, or to check a change on Android.
+description: Build, install and run the dishes-cook app on Android phone and TV emulators (or devices), then screenshot and inspect it. Use when asked to run, launch, start or screenshot the app, or to check a change on Android: every user-facing change is checked end to end on a phone and on a TV.
 ---
 
 Verified on macOS with Android Studio installed. Run from the repo root.
+
+Every user-facing change is checked end to end on **both** a phone (steps 1–6) and a TV (step 7), each on an emulator or a real device. Report what was checked on each, and what couldn't be.
 
 ## 1. Pick an emulator and boot it
 

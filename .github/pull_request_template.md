@@ -10,5 +10,5 @@
 
 - [ ] PR title follows Conventional Commits (`feat: …`, `fix: …`) — it becomes the squash commit
 - [ ] `npm run check` passes locally
-- [ ] Checked on an Android emulator/device: the changed flows, not just the launch
+- [ ] Checked end to end on a phone and on an Android TV (emulator or real device each): the changed flows, not just the launch
 - [ ] Tests added/updated for new behaviour
