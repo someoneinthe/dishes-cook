@@ -1,6 +1,8 @@
 import type { TextInputProps } from 'react-native';
 import { Text, TextInput, View } from 'react-native';
 import { StyleSheet, withUnistyles } from 'react-native-unistyles';
+import { isTv } from '@/lib/device';
+import { useFocusRing } from './use-focus-ring';
 
 // TextInput's placeholder color isn't a style: Unistyles maps it from the theme.
 const ThemedTextInput = withUnistyles(TextInput, (theme) => ({
@@ -43,6 +45,8 @@ export function TextField({
   multiline,
   ...inputProps
 }: TextFieldProps) {
+  const { focusProps, focusStyle } = useFocusRing();
+
   return (
     <View style={styles.field}>
       {!isLabelHidden && <Text style={styles.label}>{label}</Text>}
@@ -51,8 +55,15 @@ export function TextField({
         accessibilityHint={error ?? hint}
         accessibilityLabel={label}
         multiline={multiline}
-        style={[styles.input, multiline && styles.multiline, error !== undefined && styles.invalid]}
+        style={[
+          styles.input,
+          multiline && styles.multiline,
+          error !== undefined && styles.invalid,
+          // On a TV, the remote's focus ring; a phone shows the cursor and the keyboard instead.
+          isTv && focusStyle,
+        ]}
         textAlignVertical={multiline ? 'top' : 'center'}
+        {...focusProps}
         {...inputProps}
       />
       {hint !== undefined && <Text style={styles.hint}>{hint}</Text>}

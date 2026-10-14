@@ -4,7 +4,7 @@ The phone's database is the source of truth: the app works the same without a se
 
 ## In the app
 
-**Settings › Data storage**: _This phone only_ (the default) or _Synced with a server_. To connect, type the server's address and the email and password of an account created on the server. The phone signs in and keeps only the sign-in token (in `expo-secure-store`), never the password.
+**Settings › Data storage**: _This device only_ (the default) or _Synced with a server_. To connect, type the server's address and the email and password of an account created on the server. The phone signs in and keeps only the sign-in token (in `expo-secure-store`), never the password.
 
 - **First sync merges**: the phone's recipes and the server's are combined. An ingredient with the same name on both is one ingredient (see [ids](#ids)).
 - **When it syncs**: when the app starts or comes back to the foreground, 5 seconds after the last change (a burst of edits makes one sync), and with _Sync now_. Code: `src/features/sync/use-auto-sync.ts`.

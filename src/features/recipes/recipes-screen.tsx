@@ -9,7 +9,9 @@ import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
 import { getPagingProps } from '@/components/paging-props';
 import { TextField } from '@/components/text-field';
+import { useFocusRing } from '@/components/use-focus-ring';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isTv } from '@/lib/device';
 import type { RecipeFilterValues } from './components/recipe-filters';
 import type { RecipeListItem } from './db/recipe-queries';
 import {
@@ -22,6 +24,8 @@ import {
 import { CourseLabel, SeasonLabel } from './components/recipe-labels';
 import { useRecipeCount, useRecipePages } from './hooks/use-recipes';
 import { describeSeason } from './season';
+
+type RecipeRowProps = Readonly<{ recipe: RecipeListItem }>;
 
 export function RecipesScreen() {
   const t = useMessages();
@@ -40,22 +44,12 @@ export function RecipesScreen() {
     matchCount === 0 && !hasFilters(filterValues)
       ? t.recipes.noMatch(search)
       : t.recipes.matchCount(matchCount);
-  const addRecipe = () => router.push('/recipe/new');
 
   return (
     <>
       <Drawer.Screen
         options={{
-          headerRight: headerActions(
-            <Button
-              accessibilityHint={t.recipes.newHint}
-              accessibilityLabel={t.recipes.newRecipe}
-              icon="plus"
-              isIconOnly
-              label={t.recipes.new}
-              onPress={addRecipe}
-            />,
-          ),
+          headerRight: newRecipeHeaderAction,
         }}
       />
       <FlatList
@@ -66,7 +60,10 @@ export function RecipesScreen() {
         ListEmptyComponent={
           // Before the first recipe; while filtering, the header tells there's no match.
           recipeCount === 0 ? (
-            <EmptyState message={t.recipes.emptyMessage} title={t.recipes.emptyTitle} />
+            <EmptyState
+              message={isTv ? t.recipes.emptyMessageOnTv : t.recipes.emptyMessage}
+              title={t.recipes.emptyTitle}
+            />
           ) : null
         }
         ListHeaderComponent={
@@ -106,26 +103,7 @@ export function RecipesScreen() {
             </View>
           ) : null
         }
-        renderItem={({ item }) => (
-          <Pressable
-            accessibilityHint={t.recipes.openHint}
-            accessibilityLabel={describeRecipeRow(item, t)}
-            accessibilityRole="button"
-            onPress={() =>
-              router.push({ params: { id: String(item.id) }, pathname: '/recipe/[id]' })
-            }
-            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-          >
-            <Text style={styles.title}>{item.title}</Text>
-            <View style={styles.details}>
-              <View style={styles.labels}>
-                <SeasonLabel season={item.season} />
-                <CourseLabel course={item.course} />
-              </View>
-              <Text style={styles.detail}>{t.recipes.ingredientCount(item.ingredientCount)}</Text>
-            </View>
-          </Pressable>
-        )}
+        renderItem={({ item }) => <RecipeRow recipe={item} />}
         style={styles.list}
         {...getPagingProps(recipePages)}
       />
@@ -138,10 +116,59 @@ function describeRecipeRow(item: RecipeListItem, t: Messages): string {
   return t.recipes.rowLabel(item.title, describeSeason(item.season, t), t.courses[item.course]);
 }
 
+// Read-only on a TV: recipes are written on the phone.
+const newRecipeHeaderAction = isTv ? undefined : headerActions(<NewRecipeButton />);
+
+// Opens the form of a new recipe.
+function NewRecipeButton() {
+  const t = useMessages();
+
+  return (
+    <Button
+      accessibilityHint={t.recipes.newHint}
+      accessibilityLabel={t.recipes.newRecipe}
+      icon="plus"
+      isIconOnly
+      label={t.recipes.new}
+      onPress={() => router.push('/recipe/new')}
+    />
+  );
+}
+
+// A recipe of the list: opens it.
+function RecipeRow({ recipe }: RecipeRowProps) {
+  const t = useMessages();
+  const { focusProps, focusStyle } = useFocusRing();
+
+  return (
+    <Pressable
+      accessibilityHint={t.recipes.openHint}
+      accessibilityLabel={describeRecipeRow(recipe, t)}
+      accessibilityRole="button"
+      onPress={() => router.push({ params: { id: String(recipe.id) }, pathname: '/recipe/[id]' })}
+      {...focusProps}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed, focusStyle]}
+    >
+      <Text style={styles.title}>{recipe.title}</Text>
+      <View style={styles.details}>
+        <View style={styles.labels}>
+          <SeasonLabel season={recipe.season} />
+          <CourseLabel course={recipe.course} />
+        </View>
+        <Text style={styles.detail}>{t.recipes.ingredientCount(recipe.ingredientCount)}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create((theme) => ({
   content: {
+    // Centered on wide screens (TV).
+    alignSelf: 'center',
     gap: theme.gap(2),
+    maxWidth: theme.size.maxContent,
     padding: theme.gap(4),
+    width: '100%',
   },
   detail: {
     ...theme.typography.caption,

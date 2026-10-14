@@ -14,7 +14,7 @@
 
 Mobile app that helps you decide what to eat, picking from the recipes you've saved.
 
-Android first (iOS later, same codebase). Built with Expo + React Native + TypeScript. Data lives on the device; it can optionally be synced with your own self-hosted [PocketBase](https://pocketbase.io) server to share recipes between phones ([how](docs/sync.md)).
+Android first (iOS later, same codebase); the same app runs on Android TV, read-only, to pick and show recipes on the big screen. Built with Expo + React Native + TypeScript. Data lives on the device; it can optionally be synced with your own self-hosted [PocketBase](https://pocketbase.io) server to share recipes between phones ([how](docs/sync.md)).
 
 ## Getting started
 

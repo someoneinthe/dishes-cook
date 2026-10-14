@@ -1,6 +1,8 @@
 // Design tokens. Backgrounds match the native splash screen (app.config.ts) so startup has no flash.
 const base = {
   borderWidth: 1,
+  // The ring around the control focused with a TV remote or a keyboard.
+  borderWidthFocus: 3,
   // Quote bars.
   borderWidthThick: 4,
   fontFamily: { mono: 'monospace' },
@@ -10,7 +12,17 @@ const base = {
   radius: { lg: 16, md: 8, sm: 4 },
   // Heights: 44 = minimum touch target (Material/Apple guidelines).
   // minText: width under which a row's text gives its line to the row's buttons.
-  size: { chip: 36, minText: 160, multilineInput: 160, tableCell: 160, touchTarget: 44 },
+  // maxContent: width of a screen's content on wide screens (TV), centered, so lines stay readable.
+  size: {
+    chip: 36,
+    maxContent: 720,
+    minText: 160,
+    multilineInput: 160,
+    tableCell: 160,
+    touchTarget: 44,
+    // The menu, always shown on the left of a TV screen.
+    tvMenu: 240,
+  },
   typography: {
     body: { fontSize: 16, lineHeight: 24 },
     caption: { fontSize: 13, lineHeight: 18 },
@@ -38,6 +50,8 @@ const lightColors = {
   courseStarter: '#047857',
   // Error text.
   danger: '#B91C1C',
+  // Ring around the control focused with a TV remote (contrast with the background ≥ 3:1).
+  focus: '#1D4ED8',
   // Menu entry icons, one color each (contrast with the background ≥ 3:1).
   menuIngredients: '#C2410C',
   menuMealChoice: '#1D4ED8',
@@ -68,6 +82,7 @@ const darkColors: ThemeColors = {
   courseMain: '#A78BFA',
   courseStarter: '#34D399',
   danger: '#F87171',
+  focus: '#60A5FA',
   menuIngredients: '#FB923C',
   menuMealChoice: '#60A5FA',
   menuRecipes: '#4ADE80',

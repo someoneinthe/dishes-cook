@@ -7,6 +7,7 @@ import { SegmentedControl } from '@/components/segmented-control';
 import { ServerSyncSection } from '@/features/sync/components/server-sync-section';
 import { useMessages } from '@/i18n/i18n-provider';
 import { LANGUAGE_LIST, LANGUAGE_NAMES } from '@/i18n/languages';
+import { isTv } from '@/lib/device';
 import type { ColorSchemePreference } from './preferences';
 import { updatePreferences, usePreferences } from './preferences';
 
@@ -50,9 +51,12 @@ export function SettingsScreen() {
   );
 }
 
+// "System": the device's own setting, a phone or a TV.
+const SYSTEM_ICON = isTv ? 'television' : 'cellphone';
+
 function colorSchemeOptionList(t: Messages): readonly SegmentedOption<ColorSchemePreference>[] {
   return [
-    { icon: 'cellphone', label: t.settings.system, value: 'system' },
+    { icon: SYSTEM_ICON, label: t.settings.system, value: 'system' },
     { icon: 'white-balance-sunny', label: t.settings.light, value: 'light' },
     { icon: 'weather-night', label: t.settings.dark, value: 'dark' },
   ];
@@ -61,15 +65,19 @@ function colorSchemeOptionList(t: Messages): readonly SegmentedOption<ColorSchem
 // "System" follows the phone's language; the others are named in their own language.
 function languageOptionList(t: Messages): readonly SegmentedOption<LanguagePreference>[] {
   return [
-    { icon: 'cellphone', label: t.settings.system, value: 'system' },
+    { icon: SYSTEM_ICON, label: t.settings.system, value: 'system' },
     ...LANGUAGE_LIST.map((language) => ({ label: LANGUAGE_NAMES[language], value: language })),
   ];
 }
 
 const styles = StyleSheet.create((theme) => ({
   content: {
+    // Centered on wide screens (TV).
+    alignSelf: 'center',
     gap: theme.gap(6),
+    maxWidth: theme.size.maxContent,
     padding: theme.gap(4),
+    width: '100%',
   },
   label: {
     ...theme.typography.label,

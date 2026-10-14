@@ -54,9 +54,9 @@ defineFeature(feature, (test) => {
   };
   const dataIsKeptOnThisPhoneOnly = async () => {
     await expect(
-      screen.findByText('Your data is kept on this phone only.'),
+      screen.findByText('Your data is kept on this device only.'),
     ).resolves.toBeOnTheScreen();
-    expect(screen.getByRole('radio', { name: 'This phone only' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'This device only' })).toBeChecked();
   };
   const phoneTitles = () =>
     connection.db
@@ -143,7 +143,7 @@ defineFeature(feature, (test) => {
     and('the phone is synced with the server', thePhoneIsSyncedWithTheServer);
     when('I stop syncing with the server', async () => {
       const alert = spyOnAlert();
-      await fireEvent.press(screen.getByRole('radio', { name: 'This phone only' }));
+      await fireEvent.press(screen.getByRole('radio', { name: 'This device only' }));
       await alert.press('Stop syncing');
     });
     then('my data is kept on this phone only', dataIsKeptOnThisPhoneOnly);

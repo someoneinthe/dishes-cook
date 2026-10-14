@@ -106,6 +106,7 @@ export const en = {
     ingredients: 'Ingredients',
     mealChoice: 'Meal choice',
     open: 'Show navigation menu',
+    openScreenHint: 'Opens this screen',
     recipes: 'Recipes',
     settings: 'Settings',
   },
@@ -114,6 +115,9 @@ export const en = {
     deleteMessage: 'Its ingredients stay in your list.',
     editRecipe: 'Edit recipe',
     emptyMessage: 'Save the dishes you like to cook, then let the meal choice pick one for you.',
+    // On a TV, read-only: recipes can't be added there.
+    emptyMessageOnTv:
+      'Recipes are written in the app on a phone. To see them here, sync this TV with your server in Settings.',
     emptyTitle: 'No recipes yet',
     // No-break spaces keep each example on one line ("-" never ends a line alone).
     formatHint:
@@ -178,23 +182,23 @@ export const en = {
     email: 'Email',
     errorFailed: 'The server refused the request. Try again later.',
     errorUnauthorized:
-      'The server refused the sign-in. Choose “This phone only”, then connect again.',
+      'The server refused the sign-in. Choose “This device only”, then connect again.',
     errorUnreachable:
-      'The server doesn’t answer. The phone must be on the home network: it syncs again by itself.',
+      'The server doesn’t answer. The device must be on the home network: it syncs again by itself.',
     invalidAddress: 'Enter the server’s address, like recipes.example.org.',
     lastSynced: (time: number) =>
       `Last sync: ${new Date(time).toLocaleString('en', { day: 'numeric', hour: '2-digit', minute: '2-digit', month: 'short' })}.`,
-    localOnly: 'This phone only',
-    localOnlyDescription: 'Your data is kept on this phone only.',
+    localOnly: 'This device only',
+    localOnlyDescription: 'Your data is kept on this device only.',
     missingAccount: 'Enter the email and password of your server account.',
     notSyncedYet: 'Not synced yet.',
     password: 'Password',
     serverAddress: 'Server address',
     serverAddressHint: 'For example recipes.example.org',
     signInDescription:
-      'Sign in with the account created on your server. The phone keeps its data and merges it with the server’s.',
+      'Sign in with the account created on your server. The device keeps its data and merges it with the server’s.',
     stopSyncing: 'Stop syncing',
-    stopSyncingMessage: 'Your data stays on this phone and on the server.',
+    stopSyncingMessage: 'Your data stays on this device and on the server.',
     stopSyncingTitle: 'Stop syncing with the server?',
     syncing: 'Syncing…',
     syncNow: 'Sync now',

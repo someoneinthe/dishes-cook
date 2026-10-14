@@ -8,6 +8,7 @@ import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
 import { useDatabase } from '@/db/database-context';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isTv } from '@/lib/device';
 import type { SyncErrorKind } from '../sync-api';
 import type { SyncState } from '../sync-store';
 import { normalizeServerUrl, serverHost, SyncError } from '../sync-api';
@@ -15,7 +16,7 @@ import { connect, disconnect, syncNow, useSyncState } from '../sync-store';
 
 type Storage = 'local' | 'server';
 
-// Settings › Data storage: on this phone only, or synced with a server (address + account).
+// Settings › Data storage: on this device only, or synced with a server (address + account).
 export function ServerSyncSection() {
   const t = useMessages();
   const database = useDatabase();
@@ -144,7 +145,7 @@ function errorMessage(t: Messages, kind: SyncErrorKind): string {
 
 function storageOptionList(t: Messages): readonly SegmentedOption<Storage>[] {
   return [
-    { icon: 'cellphone', label: t.sync.localOnly, value: 'local' },
+    { icon: isTv ? 'television' : 'cellphone', label: t.sync.localOnly, value: 'local' },
     { icon: 'cloud-sync-outline', label: t.sync.withServer, value: 'server' },
   ];
 }

@@ -2,6 +2,7 @@ import type { ColorValue } from 'react-native';
 import { Alert, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isTv } from '@/lib/device';
 import type { IconName } from './icon';
 import { Icon } from './icon';
 import { useIconSize } from './use-icon-size';
@@ -30,7 +31,8 @@ export function HeaderTitle({ children, icon, tintColor }: HeaderTitleProps) {
       <Text
         accessibilityRole="header"
         numberOfLines={1}
-        onLongPress={() => showFullTitle(children, t.common.ok)}
+        // Not on a TV: it would make the title a stop for the remote's focus, for a title that fits.
+        onLongPress={isTv ? undefined : () => showFullTitle(children, t.common.ok)}
         style={[styles.title, tintColor === undefined ? undefined : { color: tintColor }]}
       >
         {children}

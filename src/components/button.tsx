@@ -3,6 +3,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { usePreferences } from '@/features/settings/preferences';
 import type { IconName } from './icon';
 import { Icon } from './icon';
+import { useFocusRing } from './use-focus-ring';
 import { useIconSize } from './use-icon-size';
 
 type ButtonProps = Readonly<
@@ -59,6 +60,7 @@ export function Button({
   // The icon's color is a prop, not a style: read from the theme like the label's.
   const { theme } = useUnistyles();
   const iconSize = useIconSize('md');
+  const { focusProps, focusStyle } = useFocusRing();
   const contentColor = {
     active: theme.colors.onActionSoft,
     danger: theme.colors.onAction,
@@ -74,7 +76,8 @@ export function Button({
       accessibilityState={{ disabled: isDisabled, expanded: isExpanded }}
       disabled={isDisabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, (pressed || isDisabled) && styles.dimmed]}
+      {...focusProps}
+      style={({ pressed }) => [styles.button, (pressed || isDisabled) && styles.dimmed, focusStyle]}
     >
       {icon && <Icon color={contentColor} name={icon} size={iconSize} />}
       {!isLabelHidden && <Text style={styles.label}>{label}</Text>}

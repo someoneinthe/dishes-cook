@@ -4,6 +4,7 @@ import { lexer } from 'marked';
 import { ScrollView, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isTv } from '@/lib/device';
 
 type MarkdownProps = Readonly<{ text: string }>;
 
@@ -15,6 +16,10 @@ type MarkdownProps = Readonly<{ text: string }>;
 export function Markdown({ text }: MarkdownProps) {
   return <View style={styles.container}>{renderBlockList(lexer(text))}</View>;
 }
+
+// Text can be selected to copy it, except on a TV: there, selectable text takes the remote's focus
+// and its arrows move a cursor in the text instead of scrolling the recipe.
+const isSelectable = !isTv;
 
 // Checkboxes are drawn by their list item, link definitions by their links.
 const HIDDEN_BLOCK_TYPE_SET = new Set(['checkbox', 'def', 'space']);
@@ -31,14 +36,14 @@ function Block({ token }: Readonly<{ token: Token }>) {
     }
     case 'code': {
       return (
-        <Text selectable style={styles.codeBlock}>
+        <Text selectable={isSelectable} style={styles.codeBlock}>
           {markedToken.text}
         </Text>
       );
     }
     case 'heading': {
       return (
-        <Text accessibilityRole="header" selectable style={styles.heading}>
+        <Text accessibilityRole="header" selectable={isSelectable} style={styles.heading}>
           {renderInlineList(markedToken.tokens)}
         </Text>
       );
@@ -52,7 +57,7 @@ function Block({ token }: Readonly<{ token: Token }>) {
     case 'paragraph':
     case 'text': {
       return (
-        <Text selectable style={styles.text}>
+        <Text selectable={isSelectable} style={styles.text}>
           {markedToken.tokens ? renderInlineList(markedToken.tokens) : markedToken.text}
         </Text>
       );
@@ -63,7 +68,7 @@ function Block({ token }: Readonly<{ token: Token }>) {
     default: {
       // Raw HTML and anything else: the text as typed.
       return (
-        <Text selectable style={styles.text}>
+        <Text selectable={isSelectable} style={styles.text}>
           {token.raw.trimEnd()}
         </Text>
       );
@@ -161,7 +166,7 @@ function Table({ table }: Readonly<{ table: Tokens.Table }>) {
             {withKeys(row, (cell) => cell.text).map(([cellKey, cell]) => (
               <Text
                 key={cellKey}
-                selectable
+                selectable={isSelectable}
                 style={[styles.text, styles.tableCell, cell.header && styles.strong]}
               >
                 {renderInlineList(cell.tokens)}

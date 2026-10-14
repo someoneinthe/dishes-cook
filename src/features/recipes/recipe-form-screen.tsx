@@ -1,4 +1,4 @@
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
@@ -13,6 +13,7 @@ import { useDatabase } from '@/db/database-context';
 import { IngredientPicker } from '@/features/ingredients/components/ingredient-picker';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isTv } from '@/lib/device';
 import { cleanName } from '@/lib/text';
 import type { Recipe } from './db/recipe-queries';
 import { InstructionsField } from './components/instructions-field';
@@ -26,27 +27,14 @@ type RecipeFormProps = Readonly<{
   screenTitle: string;
 }>;
 
-// Creates a recipe (/recipe/new) or edits one (/recipe/[id]/edit).
+// Read-only on a TV: a link to the form (/recipe/new, /recipe/[id]/edit) leads to the meal choice.
 export function RecipeFormScreen() {
-  const database = useDatabase();
-  const { id } = useLocalSearchParams<{ id?: string }>();
-  const recipeId = id === undefined ? undefined : Number(id);
-  // The form starts from the saved recipe; reads are synchronous, so it's ready on first render.
-  const [initialRecipe] = useState(() =>
-    recipeId === undefined ? undefined : getRecipe(database, recipeId),
-  );
-  const t = useMessages();
-  const screenTitle = recipeId === undefined ? t.recipes.newRecipe : t.recipes.editRecipe;
-
-  if (recipeId !== undefined && !initialRecipe) {
-    return (
-      <View style={styles.screen}>
-        <Stack.Screen options={{ title: screenTitle }} />
-        <EmptyState message={t.recipes.notFoundMessage} title={t.recipes.notFoundTitle} />
-      </View>
-    );
+  // Sonar (S100) only sees a component when it returns a JSX element, not a ternary.
+  // eslint-disable-next-line unicorn/prefer-ternary
+  if (isTv) {
+    return <Redirect href="/" />;
   }
-  return <RecipeForm initialRecipe={initialRecipe} screenTitle={screenTitle} />;
+  return <RecipeFormRoute />;
 }
 
 function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
@@ -139,6 +127,29 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
       <InstructionsField onChange={setInstructions} value={instructions} />
     </ScrollView>
   );
+}
+
+// Creates a recipe (/recipe/new) or edits one (/recipe/[id]/edit).
+function RecipeFormRoute() {
+  const database = useDatabase();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const recipeId = id === undefined ? undefined : Number(id);
+  // The form starts from the saved recipe; reads are synchronous, so it's ready on first render.
+  const [initialRecipe] = useState(() =>
+    recipeId === undefined ? undefined : getRecipe(database, recipeId),
+  );
+  const t = useMessages();
+  const screenTitle = recipeId === undefined ? t.recipes.newRecipe : t.recipes.editRecipe;
+
+  if (recipeId !== undefined && !initialRecipe) {
+    return (
+      <View style={styles.screen}>
+        <Stack.Screen options={{ title: screenTitle }} />
+        <EmptyState message={t.recipes.notFoundMessage} title={t.recipes.notFoundTitle} />
+      </View>
+    );
+  }
+  return <RecipeForm initialRecipe={initialRecipe} screenTitle={screenTitle} />;
 }
 
 const styles = StyleSheet.create((theme) => ({

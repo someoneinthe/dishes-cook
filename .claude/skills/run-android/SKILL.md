@@ -1,9 +1,11 @@
 ---
 name: run-android
-description: Build, install and run the dishes-cook app on an Android emulator (or device), then screenshot and inspect it. Use when asked to run, launch, start or screenshot the app, or to check a change on Android.
+description: Build, install and run the dishes-cook app on Android phone and TV emulators (or devices), then screenshot and inspect it. Use when asked to run, launch, start or screenshot the app, or to check a change on Android: every user-facing change is checked end to end on a phone and on a TV.
 ---
 
 Verified on macOS with Android Studio installed. Run from the repo root.
+
+Every user-facing change is checked end to end on **both** a phone (steps 1–6) and a TV (step 7), each on an emulator or a real device. Report what was checked on each, and what couldn't be.
 
 ## 1. Pick an emulator and boot it
 
@@ -111,6 +113,33 @@ $ADB logcat -d -s ReactNativeJS | tail -50              # console.log/warn/error
 - **After a schema change** (single init migration until the first release): `$ADB shell pm clear io.github.someoneinthe.dishescook`, then restart Metro with `--clear` (it caches the inlined SQL).
 
 Expected startup: native splash (plate on white / `#121212` in dark mode) → full illustration (~1.5 s) → home screen. The illustration is short: take screenshots in a quick loop to catch it.
+
+## 7. Android TV (emulator, then a real TV)
+
+The same APK runs on Android TV, read-only (`isTv`), driven with the D-pad. Check TV-facing changes on the TV emulator first, then on the real TV.
+
+- **Emulator**: AVD `Television_1080p` (Android TV 14, arm64; created with `avdmanager create avd -n Television_1080p -k "system-images;android-34;android-tv;arm64-v8a" -d tv_1080p`). Boot it on its own port so it never takes another emulator's serial: `emulator -avd Television_1080p -port 5580 …`, then `export ANDROID_SERIAL=emulator-5580`.
+- **Open the app**: `adb shell am start -n io.github.someoneinthe.dishescook/.MainActivity` (`monkey -p …` doesn't start it on TV).
+- **D-pad**: `adb shell input keyevent <code>`, the code being `19` (up), `20` (down), `21` (left), `22` (right), `23` (OK) or `4` (Back); several codes in one command press them in turn (`adb shell input keyevent 20 20 23`). The focused element is the node with `focused="true"` in the `uiautomator` dump. Every focused control must show the focus ring (screenshot), and Back must bring the focus back to what opened the screen.
+- **Recipes on the TV**: it can't add any (read-only): sync it with a server, or, on a debug build, write them in the database:
+  1. Stop the app, then copy the database **with its WAL**, which can hold committed changes: for each of `dishes-cook.db`, `dishes-cook.db-wal` and `dishes-cook.db-shm`, `adb exec-out run-as io.github.someoneinthe.dishescook cat files/SQLite/<file> > <file>`.
+  2. Checkpoint the copy so the WAL's changes are in the `.db` file: `sqlite3 dishes-cook.db "PRAGMA wal_checkpoint(TRUNCATE)"`, then insert rows with `sqlite3`.
+  3. Push `dishes-cook.db` back through `/data/local/tmp` (`run-as … sh -c 'cat /data/local/tmp/… > files/SQLite/dishes-cook.db'`) and delete the device's `-wal`/`-shm`: their changes are already in the pushed file, and a leftover WAL would be replayed over it.
+- **Real TV** (32-bit ARM, Android 11; adb debugging over the network): `adb connect <tv-ip>:5555`, then build a standalone APK for its ABI only and install it:
+
+  ```bash
+  (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=armeabi-v7a)
+  adb -s <tv-ip>:5555 install -r android/app/build/outputs/apk/release/app-release.apk
+  ```
+
+  The local release build is signed with the debug key: uninstall it before installing a GitHub release APK (different signature).
+
+- **Two Metro servers** (another worktree serving 8081): start this one with `--port 8082`. Emulators reach the Mac's 8081 directly (`10.0.2.2`), so `adb reverse` isn't enough: point the debug app at the other port once, before opening it:
+
+  ```bash
+  adb shell "run-as io.github.someoneinthe.dishescook sh -c 'mkdir -p shared_prefs && echo \"<map><string name=\\\"debug_http_host\\\">localhost:8082</string></map>\" > shared_prefs/io.github.someoneinthe.dishescook_preferences.xml'"
+  adb reverse tcp:8082 tcp:8082
+  ```
 
 ## Troubleshooting
 
