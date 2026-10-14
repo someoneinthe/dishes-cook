@@ -21,6 +21,8 @@ type TextFieldProps = Readonly<
     | 'value'
   > & {
     error?: string;
+    // Help shown under the field (e.g. the accepted format).
+    hint?: string;
     // Hidden labels are still read by screen readers.
     isLabelHidden?: boolean;
     label: string;
@@ -29,6 +31,7 @@ type TextFieldProps = Readonly<
 
 export function TextField({
   error,
+  hint,
   isLabelHidden = false,
   label,
   multiline,
@@ -38,14 +41,15 @@ export function TextField({
     <View style={styles.field}>
       {!isLabelHidden && <Text style={styles.label}>{label}</Text>}
       <ThemedTextInput
-        // The error, if any, is read after the label.
-        accessibilityHint={error}
+        // Read after the label: the error if any, else the help shown under the field.
+        accessibilityHint={error ?? hint}
         accessibilityLabel={label}
         multiline={multiline}
         style={[styles.input, multiline && styles.multiline, error !== undefined && styles.invalid]}
         textAlignVertical={multiline ? 'top' : 'center'}
         {...inputProps}
       />
+      {hint !== undefined && <Text style={styles.hint}>{hint}</Text>}
       {error !== undefined && (
         <Text accessibilityLiveRegion="polite" accessibilityRole="alert" style={styles.error}>
           {error}
@@ -62,6 +66,10 @@ const styles = StyleSheet.create((theme) => ({
   },
   field: {
     gap: theme.gap(1),
+  },
+  hint: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
   },
   input: {
     ...theme.typography.body,

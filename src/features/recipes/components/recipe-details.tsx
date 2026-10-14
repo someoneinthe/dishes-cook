@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import { Markdown } from '@/components/markdown';
 import type { Recipe } from '../db/recipe-queries';
 import { CourseLabel, SeasonLabel } from './recipe-labels';
 
@@ -35,9 +36,11 @@ export function RecipeDetails({ recipe }: RecipeDetailsProps) {
       <Text accessibilityRole="header" style={styles.heading}>
         Recipe
       </Text>
-      <Text selectable style={recipe.instructions ? styles.text : styles.muted}>
-        {recipe.instructions || 'No instructions written yet.'}
-      </Text>
+      {recipe.instructions ? (
+        <Markdown text={recipe.instructions} />
+      ) : (
+        <Text style={styles.muted}>No instructions written yet.</Text>
+      )}
     </View>
   );
 }

@@ -16,3 +16,11 @@ Feature: Recipes
     Given I am writing a new recipe
     When I save the recipe
     Then I am asked to give the recipe a title
+
+  Scenario: A recipe written in Markdown is previewed formatted
+    Given I am writing a new recipe
+    When I write "**Roast** the pumpkin" as the recipe
+    And I switch to "Preview"
+    Then I see "Roast the pumpkin" with "Roast" in bold
+    When I switch to "Write"
+    Then the recipe text is still "**Roast** the pumpkin"

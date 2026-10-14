@@ -15,6 +15,7 @@ import { IngredientPicker } from '@/features/ingredients/components/ingredient-p
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { cleanName } from '@/lib/text';
 import type { Recipe } from './db/recipe-queries';
+import { InstructionsField } from './components/instructions-field';
 import { COURSE_OPTION_LIST } from './course';
 import { getRecipe, saveRecipe } from './db/recipe-queries';
 import { SEASON_OPTION_LIST } from './season';
@@ -140,13 +141,7 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
         }}
         selectedList={selectedIngredientList}
       />
-      <TextField
-        label="Recipe"
-        multiline
-        onChangeText={setInstructions}
-        placeholder="Steps, quantities, cooking time…"
-        value={instructions}
-      />
+      <InstructionsField onChange={setInstructions} value={instructions} />
     </ScrollView>
   );
 }
