@@ -48,6 +48,7 @@ The first native build downloads the Android NDK, SDK platform and build-tools (
 
 ## Docs
 
+- [Features](docs/features.md): what the app does, generated from the behaviour specs
 - [Tech stack & decisions](docs/tech-stack.md)
 - [Contributing: workflow & conventions](CONTRIBUTING.md)
 - [Release process](docs/release.md)

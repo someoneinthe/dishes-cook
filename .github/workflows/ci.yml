@@ -30,6 +30,8 @@ jobs:
       - run: npm run format:check
       - name: Database diagram up to date
         run: npm run db:diagram -- --check
+      - name: Features page up to date
+        run: npm run docs:features -- --check
       - run: npm run typecheck
       - run: npm run test:ci
       - run: npm run doctor

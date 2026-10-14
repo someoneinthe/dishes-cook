@@ -83,7 +83,8 @@
     "prepare": "husky",
     "db:generate": "drizzle-kit generate",
     "postdb:generate": "npm run db:diagram",
-    "db:diagram": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/database-diagram.mjs"
+    "db:diagram": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/database-diagram.mjs",
+    "docs:features": "node scripts/features-document.mjs"
   },
   "private": true,
   "engines": {
