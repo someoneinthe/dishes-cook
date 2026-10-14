@@ -4,6 +4,7 @@ import type { SegmentedOption } from '@/components/segmented-control';
 import type { Messages } from '@/i18n/en';
 import type { LanguagePreference } from '@/i18n/languages';
 import { SegmentedControl } from '@/components/segmented-control';
+import { ServerSyncSection } from '@/features/sync/components/server-sync-section';
 import { useMessages } from '@/i18n/i18n-provider';
 import { LANGUAGE_LIST, LANGUAGE_NAMES } from '@/i18n/languages';
 import type { ColorSchemePreference } from './preferences';
@@ -16,7 +17,11 @@ export function SettingsScreen() {
   const { theme } = useUnistyles();
 
   return (
-    <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
+    <ScrollView
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      style={styles.screen}
+    >
       <SegmentedControl
         label={t.settings.appearance}
         onChange={(value) => updatePreferences({ colorScheme: value })}
@@ -40,6 +45,7 @@ export function SettingsScreen() {
           value={isShowingButtonLabels}
         />
       </View>
+      <ServerSyncSection />
     </ScrollView>
   );
 }

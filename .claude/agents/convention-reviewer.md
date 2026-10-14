@@ -12,7 +12,7 @@ Get the change set with `git diff main...HEAD` (or the files you were given). Ch
 2. **Expo usage**: dependencies added via `npx expo install` (versions match the SDK), no edits to `android/`/`ios/`, native config in `app.config.ts`, no APIs removed or deprecated in the installed SDK.
 3. **TypeScript**: no `any`, `import type` for types, no non-null assertions hiding real nullability.
 4. **React**: React Compiler is on, so flag unnecessary `useMemo`/`useCallback`; no state derived via effects; lists use `FlatList`/`FlashList` for unbounded data.
-5. **Data**: local-only; no network calls, analytics or accounts introduced without being asked.
+5. **Data**: local-first; the only network code is the optional server sync (`src/features/sync`, `docs/sync.md`). No other network calls, analytics or accounts introduced without being asked.
 6. **Tests**: new logic and screens have colocated tests that query by visible text/role.
 7. **Accessibility & theming**: touchables have `accessibilityRole`/label; styles use Unistyles theme tokens (no raw colors/magic numbers), tokens exist in both light and dark themes.
 8. **Translations & deletions**: no user-facing text written in code: it comes from `useMessages()`, with the entry in both `src/i18n/en.ts` and `fr.ts` (French typography: narrow no-break space before `?`/`:`, « » quotes); names and counts go through dictionary functions. Every deletion asks first through `useConfirmDelete`. ESLint enforces most of it: report what it can't see (wording, a missing French nuance, text built in a helper from single words).

@@ -11,13 +11,19 @@ type TextFieldProps = Readonly<
   Pick<
     TextInputProps,
     | 'autoCapitalize'
+    | 'autoComplete'
+    | 'autoCorrect'
     | 'autoFocus'
+    | 'editable'
+    | 'keyboardType'
     | 'multiline'
     | 'onChangeText'
     | 'onSubmitEditing'
     | 'placeholder'
     | 'returnKeyType'
+    | 'secureTextEntry'
     | 'submitBehavior'
+    | 'textContentType'
     | 'value'
   > & {
     error?: string;

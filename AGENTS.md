@@ -31,7 +31,7 @@ See `CONTRIBUTING.md` (code conventions, commits) and `docs/tech-stack.md` (stac
 
 - Routes in `src/app/` are thin re-exports of screens in `src/features/<feature>/`. Never put tests or helpers in `src/app/`.
 - Conventional Commits; PRs are squash-merged and the PR title is the commit.
-- Data is local-only (expo-sqlite + Drizzle).
+- Data is local-first (expo-sqlite + Drizzle), with an optional sync to a self-hosted PocketBase server (`docs/sync.md`).
 
 ## Navigation & Routing
 

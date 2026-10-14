@@ -46,6 +46,9 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
       ],
       // One NDK for every native module (see the plugin).
       './plugins/with-uniform-ndk.js',
+      // The sync server's sign-in token, encrypted. The plugin keeps it out of Android Auto Backup
+      // (a restored copy couldn't be decrypted anyway: the Keystore key stays on the device).
+      'expo-secure-store',
       [
         'expo-splash-screen',
         // Android 12+ only allows a centered icon: the app icon's plate and cutlery.

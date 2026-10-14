@@ -1,6 +1,6 @@
 # Database
 
-Local-only SQLite (`expo-sqlite`) accessed through Drizzle ORM. The schema lives in `src/db/schema.ts`; migrations are generated into `src/db/migrations/` and applied at startup.
+Local SQLite (`expo-sqlite`) accessed through Drizzle ORM: the phone's data, optionally synced with a server (see [sync.md](sync.md)). The schema lives in `src/db/schema.ts`; migrations are generated into `src/db/migrations/` and applied at startup.
 
 ## Schema
 
@@ -15,6 +15,8 @@ erDiagram
     text name
     text name_key UK
     text sort_key
+    text sync_id UK
+    integer updated_at
   }
   recipe_ingredients {
     integer ingredient_id PK, FK
@@ -27,8 +29,14 @@ erDiagram
     text instructions
     text season "winter / summer / both"
     text sort_key
+    text sync_id UK
     text title
     integer updated_at
+  }
+  sync_deletions {
+    text sync_id PK
+    text table_name PK "ingredients / recipes"
+    integer deleted_at
   }
   ingredients ||--o{ recipe_ingredients : "ingredient_id, on delete restrict"
   recipes ||--o{ recipe_ingredients : "recipe_id, on delete cascade"
@@ -38,11 +46,16 @@ Integer primary keys are SQLite rowids.
 
 | Table                | Index                                      | Columns                      | Unique |
 | -------------------- | ------------------------------------------ | ---------------------------- | ------ |
+| `ingredients`        | `ingredients_sync_id_unique`               | `sync_id`                    | yes    |
+| `ingredients`        | `ingredients_updated_at_id_idx`            | `updated_at`, `id`           |        |
 | `ingredients`        | `ingredients_name_key_unique`              | `name_key`                   | yes    |
 | `ingredients`        | `ingredients_sort_key_id_idx`              | `sort_key`, `id`             |        |
 | `recipe_ingredients` | primary key                                | `recipe_id`, `ingredient_id` | yes    |
 | `recipe_ingredients` | `recipe_ingredients_ingredient_recipe_idx` | `ingredient_id`, `recipe_id` |        |
+| `recipes`            | `recipes_sync_id_unique`                   | `sync_id`                    | yes    |
+| `recipes`            | `recipes_updated_at_id_idx`                | `updated_at`, `id`           |        |
 | `recipes`            | `recipes_sort_key_id_idx`                  | `sort_key`, `id`             |        |
+| `sync_deletions`     | primary key                                | `table_name`, `sync_id`      | yes    |
 
 <!-- db-diagram:end -->
 
@@ -50,7 +63,8 @@ Integer primary keys are SQLite rowids.
 - **Many-to-many** through `recipe_ingredients`: its composite primary key forbids duplicate links and serves "ingredients of a recipe"; the reverse index serves "recipes using an ingredient". Both cover their queries (no table lookup).
 - **Deleting**: a recipe cascades to its links; an ingredient still used by a recipe can't be deleted (`RESTRICT`, and the UI hides the button).
 - **Constraints in the database**, not only in the UI: `CHECK` on the season and course values and on non-blank names/titles, `NOT NULL`, foreign keys (`PRAGMA foreign_keys = ON` on every connection, since SQLite disables them by default).
-- **Integer primary keys** are SQLite's rowid: the fastest lookups and joins. If sync between devices comes later, add a UUID column then.
+- **Integer primary keys** are SQLite's rowid: the fastest lookups and joins. They stay on the phone: across devices and on the server a row is its `sync_id` (15 characters of `[0-9a-f]`, the server's id format): random for recipes, derived from the name for ingredients, so the same ingredient added on two phones is one row (see [sync.md](sync.md)).
+- **Sync bookkeeping**: `updated_at` on both tables (newer rows are pushed, the newest change wins), and `sync_deletions`, written by the delete queries in the same transaction, until the server is told.
 - **No index on `season` or `course`**: with 3 values each, an index can't beat scanning the table.
 - **Every recipe has a course** (`NOT NULL`, `'main'` by default): a recipe always matches a course filter of its own course, and the form offers no "none".
 

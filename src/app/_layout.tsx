@@ -10,6 +10,7 @@ import { stackHeader } from '@/components/stack-header';
 import { DatabaseProvider } from '@/db/database-provider';
 import { LoadingScreen } from '@/features/loading/loading-screen';
 import { applyColorScheme, getPreferences, usePreferences } from '@/features/settings/preferences';
+import { useAutoSync } from '@/features/sync/use-auto-sync';
 import { I18nProvider, useMessages } from '@/i18n/i18n-provider';
 
 // Keep the native splash screen until the loading illustration is rendered. Called at module
@@ -44,6 +45,8 @@ function RootStack() {
   // Navigation options aren't styles, so the theme is read here; it updates on light/dark changes.
   const { theme } = useUnistyles();
   const t = useMessages();
+  // Inside the database provider: syncs with the server set in Settings, if any.
+  useAutoSync();
 
   return (
     <Stack

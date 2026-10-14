@@ -7,8 +7,22 @@ jest.mock('expo-sqlite/kv-store', () => {
     default: {
       clear: () => store.clear(),
       getItemSync: (key: string) => store.get(key) ?? null,
+      removeItemSync: (key: string) => store.delete(key),
       setItemSync: (key: string, value: string) => store.set(key, value),
     },
+  };
+});
+
+// expo-secure-store is native (Android Keystore): an in-memory one for tests.
+jest.mock('expo-secure-store', () => {
+  const store = new Map<string, string>();
+  return {
+    deleteItemAsync: (key: string) => {
+      store.delete(key);
+      return Promise.resolve();
+    },
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => store.set(key, value),
   };
 });
 

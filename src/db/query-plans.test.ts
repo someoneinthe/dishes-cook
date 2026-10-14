@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import type { SyncApi } from '@/features/sync/sync-api';
 import {
   findOrCreateIngredient,
   listIngredientPage,
@@ -11,6 +12,7 @@ import {
   pickRandomRecipeId,
   saveRecipe,
 } from '@/features/recipes/db/recipe-queries';
+import { synchronize } from '@/features/sync/sync-engine';
 import { createTestConnection } from '@/test/test-database';
 import type { AppDatabase } from './types';
 
@@ -136,4 +138,27 @@ describe('query plans', () => {
     expect(lastPlan()).toContainEqual(expect.stringMatching(INGREDIENT_INDEX));
     expect(lastQuery()).toMatch(/limit \?$/);
   });
+
+  it.each(['ingredients', 'recipes'])(
+    'finds the %s to push with their (updated_at, id) index, in its order',
+    async (table) => {
+      // A server with nothing new, that accepts everything.
+      const api: SyncApi = {
+        listChanges: () => Promise.resolve([]),
+        refreshToken: () => Promise.resolve('token'),
+        sendDeletion: () => Promise.resolve('saved'),
+        upsert: () => Promise.resolve('saved'),
+      };
+      await synchronize(database, api, { pulledUntil: '', pushedFrom: Date.now() - 1000 });
+      const pushQuery = queryList.find((query) =>
+        query.includes(`from "${table}" where "${table}"."updated_at" >=`),
+      );
+      const planList = planOf(pushQuery);
+
+      expect(planList[0]).toMatch(
+        new RegExp(`^SEARCH ${table} USING INDEX ${table}_updated_at_id_idx`),
+      );
+      expect(planList.join('\n')).not.toContain('TEMP B-TREE');
+    },
+  );
 });

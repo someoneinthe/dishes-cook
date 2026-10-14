@@ -9,6 +9,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Meal choice](#meal-choice): 7 scenarios
 - [Recipe list](#recipe-list): 9 scenarios
 - [Recipes](#recipes): 3 scenarios
+- [Server sync](#server-sync): 5 scenarios
 
 ## Ingredients
 
@@ -226,3 +227,44 @@ A recipe has a title, a season, ingredients and its instructions.
 - **Then** I see "Roast the pumpkin" with "Roast" in bold
 - **When** I switch to "Write"
 - **Then** the recipe text is still "**Roast** the pumpkin"
+
+## Server sync
+
+Your data (recipes and ingredients today) is kept on the phone. It can also be synced with your own server, to share it between phones: each phone keeps working without it, and catches up when it reaches it.
+
+### Data is kept on the phone only at first
+
+- **Given** the settings are open
+- **Then** my data is kept on this phone only
+
+### Connecting to a server merges its recipes with the phone's
+
+- **Given** the recipe "Leek soup" on this phone
+- **And** the recipe "Pancakes" on the server, from another phone
+- **And** the settings are open
+- **When** I connect to the server with the right account
+- **Then** I am told that the phone is synced with the server
+- **And** the phone has the recipes "Leek soup" and "Pancakes"
+- **And** the server has the recipe "Leek soup"
+
+### A wrong password is refused
+
+- **Given** the settings are open
+- **When** I connect to the server with a wrong password
+- **Then** I am told that the email or password is wrong
+- **And** the phone is not synced with the server
+
+### An unreachable server is reported
+
+- **Given** the phone is synced with the server
+- **And** the server can't be reached
+- **When** I ask for a sync
+- **Then** I am told that the server doesn't answer
+
+### Stopping the sync keeps the data
+
+- **Given** the recipe "Leek soup" on this phone
+- **And** the phone is synced with the server
+- **When** I stop syncing with the server
+- **Then** my data is kept on this phone only
+- **And** the phone has the recipe "Leek soup"

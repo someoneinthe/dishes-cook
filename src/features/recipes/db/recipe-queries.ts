@@ -5,7 +5,7 @@ import type { Course, Season } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
-import { ingredients, NOW_MS, recipeIngredients, recipes } from '@/db/schema';
+import { ingredients, NOW_MS, recipeIngredients, recipes, syncDeletions } from '@/db/schema';
 import { cleanName, toLikeContains, toSortKey } from '@/lib/text';
 
 export type Recipe = Readonly<{
@@ -58,9 +58,25 @@ export function countRecipes(database: AppDatabase, filters: RecipeFilters): num
   );
 }
 
-// Its ingredient links are deleted by the foreign key's ON DELETE CASCADE.
+// Its ingredient links are deleted by the foreign key's ON DELETE CASCADE. The deletion is kept for
+// the sync server.
 export function deleteRecipe(database: AppDatabase, id: number): void {
-  database.delete(recipes).where(eq(recipes.id, id)).run();
+  database.transaction((tx) => {
+    const deleted = tx
+      .delete(recipes)
+      .where(eq(recipes.id, id))
+      .returning({ syncId: recipes.syncId })
+      .get();
+    if (deleted) {
+      tx.insert(syncDeletions)
+        .values({ syncId: deleted.syncId, tableName: 'recipes' })
+        .onConflictDoUpdate({
+          set: { deletedAt: NOW_MS },
+          target: [syncDeletions.tableName, syncDeletions.syncId],
+        })
+        .run();
+    }
+  });
 }
 export function getRecipe(database: AppDatabase, id: number): Recipe | undefined {
   const recipe = database

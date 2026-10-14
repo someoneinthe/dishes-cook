@@ -7,6 +7,7 @@
 | Navigation         | **Expo Router** (file-based, typed routes)                                                                                                                                                     | Expo default; deep links for free.                                                                                                                                                                                                              |
 | Local storage      | **expo-sqlite** + **Drizzle ORM** — see [database.md](database.md)                                                                                                                             | Relational data (recipes ↔ ingredients ↔ tags), typed queries, versioned migrations, live queries.                                                                                                                                              |
 | Small key/value    | expo-sqlite `kv-store` (user preferences: `src/features/settings/preferences.ts`) or `expo-secure-store` for secrets                                                                           | Avoid an extra dependency for preferences.                                                                                                                                                                                                      |
+| Server sync        | Optional, with the user's own **PocketBase** server, over plain `fetch` (no SDK); sign-in token in `expo-secure-store` — see [sync.md](sync.md)                                                | The phone stays the source of truth and works offline; a single self-hosted binary (SQLite, accounts, REST API) fits a home server; sync is pull-then-push, newest change wins.                                                                 |
 | Data fetching      | **TanStack Query** over the local database                                                                                                                                                     | Caching, pagination (`useInfiniteQuery`, pages of 50) and invalidation after writes; the same hooks will work against an API later.                                                                                                             |
 | UI state           | React state/context; Zustand only if it gets complex                                                                                                                                           | Global UI state is small.                                                                                                                                                                                                                       |
 | Styling            | **Unistyles 3** (`react-native-unistyles` + `react-native-nitro-modules`)                                                                                                                      | `StyleSheet`-compatible, light/dark themes via tokens, computed natively (no runtime class parsing), React Compiler friendly. No component kit: own small components. Needs a development build (no Expo Go).                                   |
@@ -40,8 +41,10 @@ src/
   db/             # Drizzle schema, client, migrations, live queries
   i18n/           # UI text per language (en.ts is the reference), useMessages()
   lib/            # shared utilities
-  test/           # test helpers (in-memory database, alert spy)
+  test/           # test helpers (in-memory database, fake sync server, alert spy)
 assets/           # icons, splash, fonts
+server/
+  migrations/     # PocketBase migrations for the optional sync server (see sync.md)
 ```
 
 Every file inside `src/app/` becomes a route, so tests and helpers must never live there.

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "92677817-9c8e-4411-8bbb-2de038cde365",
+  "id": "1aa59be5-8f3a-4b21-b975-f7f63ee40d33",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "ingredients": {
@@ -42,9 +42,40 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(substr(lower(hex(randomblob(8))), 1, 15))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsec') * 1000 as integer))"
         }
       },
       "indexes": {
+        "ingredients_sync_id_unique": {
+          "name": "ingredients_sync_id_unique",
+          "columns": [
+            "sync_id"
+          ],
+          "isUnique": true
+        },
+        "ingredients_updated_at_id_idx": {
+          "name": "ingredients_updated_at_id_idx",
+          "columns": [
+            "updated_at",
+            "id"
+          ],
+          "isUnique": false
+        },
         "ingredients_name_key_unique": {
           "name": "ingredients_name_key_unique",
           "columns": [
@@ -188,6 +219,14 @@
           "notNull": true,
           "autoincrement": false
         },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(substr(lower(hex(randomblob(8))), 1, 15))"
+        },
         "title": {
           "name": "title",
           "type": "text",
@@ -205,6 +244,21 @@
         }
       },
       "indexes": {
+        "recipes_sync_id_unique": {
+          "name": "recipes_sync_id_unique",
+          "columns": [
+            "sync_id"
+          ],
+          "isUnique": true
+        },
+        "recipes_updated_at_id_idx": {
+          "name": "recipes_updated_at_id_idx",
+          "columns": [
+            "updated_at",
+            "id"
+          ],
+          "isUnique": false
+        },
         "recipes_sort_key_id_idx": {
           "name": "recipes_sort_key_id_idx",
           "columns": [
@@ -229,6 +283,51 @@
         "recipes_course_valid": {
           "name": "recipes_course_valid",
           "value": "\"recipes\".\"course\" in ('starter', 'main', 'dessert')"
+        }
+      }
+    },
+    "sync_deletions": {
+      "name": "sync_deletions",
+      "columns": {
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(unixepoch('subsec') * 1000 as integer))"
+        },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "table_name": {
+          "name": "table_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "sync_deletions_table_name_sync_id_pk": {
+          "columns": [
+            "table_name",
+            "sync_id"
+          ],
+          "name": "sync_deletions_table_name_sync_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "sync_deletions_table_valid": {
+          "name": "sync_deletions_table_valid",
+          "value": "\"sync_deletions\".\"table_name\" in ('ingredients', 'recipes')"
         }
       }
     }
