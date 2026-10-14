@@ -88,12 +88,12 @@ export const en = {
     openLabel: (title: string) => `Open ${title}`,
     promptMessage: (count: number) =>
       count === 1
-        ? 'Tap Suggest: chance picks your only recipe.'
-        : `Tap Suggest: chance picks one of your ${count} recipes.`,
+        ? 'Tap Suggest: chance picks the only matching recipe.'
+        : `Tap Suggest: chance picks one of the ${count} matching recipes.`,
     promptTitle: 'What shall we eat?',
     suggest: 'Suggest',
     suggestAnother: 'Suggest another one',
-    suggestHint: 'Picks one of your recipes at random',
+    suggestHint: 'Picks a matching recipe at random',
     suggestionIntro: 'How about…',
     suggestRecipe: 'Suggest a recipe',
   },

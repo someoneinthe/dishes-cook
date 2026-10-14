@@ -1,6 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
+import type { Course, Season } from '@/db/schema';
 import type { DatabaseConnection } from '@/db/types';
 import { saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
@@ -10,7 +11,7 @@ jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 
 const feature = loadFeature('./meal-choice.feature', { loadRelativePath: true });
 
-const RECIPE_TITLE_LIST = ['Pumpkin soup', 'Tomato salad', 'Omelette'];
+type RecipeRow = Readonly<{ course: Course; season: Season; title: string }>;
 
 defineFeature(feature, (test) => {
   let connection: DatabaseConnection;
@@ -24,12 +25,13 @@ defineFeature(feature, (test) => {
     jest.clearAllMocks();
   });
 
-  const theseRecipes = (rowList: Readonly<{ title: string }>[]) => {
-    for (const { title } of rowList) {
+  const theseRecipes = (rowList: RecipeRow[]) => {
+    for (const { course, season, title } of rowList) {
       const id = saveRecipe(connection.db, {
+        course,
         ingredientIdList: [],
         instructions: '',
-        season: 'both',
+        season,
         title,
       });
       idByTitle.set(title, id);
@@ -38,18 +40,55 @@ defineFeature(feature, (test) => {
 
   // Title of the suggested recipe, shown as a header on its card.
   const currentSuggestion = () =>
-    RECIPE_TITLE_LIST.find((title) => screen.queryByRole('header', { name: title }));
+    [...idByTitle.keys()].find((title) => screen.queryByRole('header', { name: title }));
 
   const openTheMealChoice = async () => {
     await renderWithDatabase(<MealChoiceScreen />, connection);
     firstSuggestion = currentSuggestion();
   };
 
-  test('A recipe is proposed as soon as the meal choice opens', ({ given, then, when }) => {
+  // A season or a course.
+  const chooseTheOption = async (option: string) => {
+    await fireEvent.press(screen.getByRole('radio', { name: option }));
+  };
+
+  test('A main course is proposed as soon as the meal choice opens', ({ given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the meal choice', openTheMealChoice);
     then(/^the suggestion is one of "(.*)"$/, (titles: string) => {
       expect(titles.split(', ')).toContain(currentSuggestion());
+    });
+  });
+
+  test('Choosing a season proposes a recipe of that season', ({ and, given, then, when }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the meal choice', openTheMealChoice);
+    and(/^I choose the "(.*)" season$/, chooseTheOption);
+    then(/^the suggestion is one of "(.*)"$/, (titles: string) => {
+      expect(titles.split(', ')).toContain(currentSuggestion());
+    });
+  });
+
+  test('Choosing a course proposes a recipe of that course', ({ and, given, then, when }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the meal choice', openTheMealChoice);
+    and(/^I choose the "(.*)" course$/, chooseTheOption);
+    then(/^the suggestion is one of "(.*)"$/, (titles: string) => {
+      expect(titles.split(', ')).toContain(currentSuggestion());
+    });
+  });
+
+  test('Nothing is proposed when no recipe matches', ({ and, given, then, when }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the meal choice', openTheMealChoice);
+    and(/^I choose the "(.*)" season$/, chooseTheOption);
+    and(/^I choose the "(.*)" course$/, chooseTheOption);
+    then('I see that no recipe matches', () => {
+      expect(screen.getByText('No recipe matches these filters.')).toBeOnTheScreen();
+      expect(currentSuggestion()).toBeUndefined();
+    });
+    and('I cannot ask for a suggestion', () => {
+      expect(screen.getByRole('button', { name: 'Suggest a recipe' })).toBeDisabled();
     });
   });
 

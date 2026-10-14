@@ -29,16 +29,18 @@ describe('mealChoiceScreen', () => {
     expect(router.push).toHaveBeenCalledWith('/recipe/new');
   });
 
-  it('invites to ask again once the suggested recipe is deleted', async () => {
+  it('invites to ask again once the suggested main course is deleted', async () => {
     // The pick reads at a random offset among the recipes: 0 is the first one.
     jest.spyOn(Math, 'random').mockReturnValue(0);
     const omeletteId = saveRecipe(connection.db, {
+      course: 'main',
       ingredientIdList: [],
       instructions: '',
       season: 'both',
       title: 'Omelette',
     });
     saveRecipe(connection.db, {
+      course: 'main',
       ingredientIdList: [],
       instructions: '',
       season: 'both',
@@ -53,6 +55,8 @@ describe('mealChoiceScreen', () => {
     await expect(
       screen.findByRole('header', { name: 'What shall we eat?' }),
     ).resolves.toBeOnTheScreen();
-    expect(screen.getByText('Tap Suggest: chance picks your only recipe.')).toBeOnTheScreen();
+    expect(
+      screen.getByText('Tap Suggest: chance picks the only matching recipe.'),
+    ).toBeOnTheScreen();
   });
 });

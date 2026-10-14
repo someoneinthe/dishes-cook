@@ -23,6 +23,8 @@ export type SeasonFilter = 'any' | NonNullable<RecipeQueryFilters['season']>;
 export const NO_FILTERS: RecipeFilterValues = { course: 'any', ingredientList: [], season: 'any' };
 
 type RecipeFiltersProps = Readonly<{
+  // Season and course only (the meal choice).
+  isIngredientPickerHidden?: boolean;
   onChange: (values: RecipeFilterValues) => void;
   values: RecipeFilterValues;
 }>;
@@ -33,7 +35,11 @@ export function hasFilters(values: RecipeFilterValues): boolean {
 
 // Season, course and ingredients the recipes must have. The list is narrowed in SQL
 // (toQueryFilters).
-export function RecipeFilters({ onChange, values }: RecipeFiltersProps) {
+export function RecipeFilters({
+  isIngredientPickerHidden = false,
+  onChange,
+  values,
+}: RecipeFiltersProps) {
   const t = useMessages();
 
   return (
@@ -50,13 +56,15 @@ export function RecipeFilters({ onChange, values }: RecipeFiltersProps) {
         optionList={courseFilterOptionList(t)}
         value={values.course}
       />
-      <IngredientPicker
-        emptyMessage={t.filters.noUsedIngredient}
-        isUsedOnly
-        label={t.filters.withIngredients}
-        onChange={(ingredientList) => onChange({ ...values, ingredientList })}
-        selectedList={values.ingredientList}
-      />
+      {!isIngredientPickerHidden && (
+        <IngredientPicker
+          emptyMessage={t.filters.noUsedIngredient}
+          isUsedOnly
+          label={t.filters.withIngredients}
+          onChange={(ingredientList) => onChange({ ...values, ingredientList })}
+          selectedList={values.ingredientList}
+        />
+      )}
     </View>
   );
 }

@@ -90,12 +90,12 @@ export const fr: Messages = {
     openLabel: (title) => `Ouvrir ${title}`,
     promptMessage: (count) =>
       count === 1
-        ? `Touchez Suggérer${NARROW_SPACE}: le hasard choisit votre seule recette.`
-        : `Touchez Suggérer${NARROW_SPACE}: le hasard choisit parmi vos ${count} recettes.`,
+        ? `Touchez Suggérer${NARROW_SPACE}: le hasard choisit la seule recette qui correspond.`
+        : `Touchez Suggérer${NARROW_SPACE}: le hasard choisit parmi les ${count} recettes qui correspondent.`,
     promptTitle: `Qu’est-ce qu’on mange${NARROW_SPACE}?`,
     suggest: 'Suggérer',
     suggestAnother: 'Suggérer une autre recette',
-    suggestHint: 'Choisit une de vos recettes au hasard',
+    suggestHint: 'Choisit au hasard une recette qui correspond',
     suggestionIntro: 'Et si on mangeait…',
     suggestRecipe: 'Suggérer une recette',
   },
