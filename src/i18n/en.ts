@@ -170,6 +170,37 @@ export const en = {
     showButtonLabelsHint: 'Adds the text next to icon buttons',
     system: 'System',
   },
+  sync: {
+    chooseStorage: 'Recipes',
+    connect: 'Connect',
+    connectedAs: (server: string, email: string) => `Synced with ${server} as ${email}.`,
+    connecting: 'Connecting…',
+    email: 'Email',
+    errorFailed: 'The server refused the request. Try again later.',
+    errorUnauthorized:
+      'The server refused the sign-in. Choose “This phone only”, then connect again.',
+    errorUnreachable:
+      'The server doesn’t answer. The phone must be on the home network: it syncs again by itself.',
+    invalidAddress: 'Enter the server’s address, like recipes.example.org.',
+    lastSynced: (time: number) =>
+      `Last sync: ${new Date(time).toLocaleString('en', { day: 'numeric', hour: '2-digit', minute: '2-digit', month: 'short' })}.`,
+    localOnly: 'This phone only',
+    localOnlyDescription: 'Recipes are kept on this phone only.',
+    missingAccount: 'Enter the email and password of your server account.',
+    notSyncedYet: 'Not synced yet.',
+    password: 'Password',
+    serverAddress: 'Server address',
+    serverAddressHint: 'For example recipes.example.org',
+    signInDescription:
+      'Sign in with the account created on your server. The phone keeps its recipes and merges them with the server’s.',
+    stopSyncing: 'Stop syncing',
+    stopSyncingMessage: 'Recipes stay on this phone and on the server.',
+    stopSyncingTitle: 'Stop syncing with the server?',
+    syncing: 'Syncing…',
+    syncNow: 'Sync now',
+    withServer: 'Synced with a server',
+    wrongAccount: 'Wrong email or password.',
+  },
 };
 
 export type Messages = typeof en;

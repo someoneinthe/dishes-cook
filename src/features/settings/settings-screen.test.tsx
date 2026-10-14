@@ -8,6 +8,9 @@ import { AppLanguage } from '@/test/app-language';
 import { getPreferences, updatePreferences } from './preferences';
 import { SettingsScreen } from './settings-screen';
 
+// Tested on its own (server-sync-section.test.tsx); it needs a database these tests don't.
+jest.mock('../sync/components/server-sync-section', () => ({ ServerSyncSection: () => null }));
+
 describe('settingsScreen', () => {
   beforeEach(() => {
     updatePreferences({ colorScheme: 'system', isShowingButtonLabels: false, language: 'system' });
