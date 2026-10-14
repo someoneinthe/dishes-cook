@@ -93,7 +93,8 @@ export function RecipesScreen() {
                   isIconOnly
                   label={t.filters.toggle(countFilters(filterValues))}
                   onPress={() => setIsFiltersShown(!isFiltersShown)}
-                  variant="secondary"
+                  // Tinted while filters are on: the list is narrowed.
+                  variant={hasFilters(filterValues) ? 'active' : 'secondary'}
                 />
               </View>
               {isFiltersShown && <RecipeFilters onChange={setFilterValues} values={filterValues} />}
