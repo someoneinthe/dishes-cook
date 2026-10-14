@@ -32,10 +32,15 @@ describe('settingsScreen', () => {
     expect(getPreferences().colorScheme).toBe('dark');
   });
 
-  it('follows the phone again', async () => {
+  it('follows the phone again, and its later light/dark switches', async () => {
     updatePreferences({ colorScheme: 'dark' });
     const colorSchemeSpy = jest.spyOn(Appearance, 'setColorScheme');
-    const adaptiveThemesSpy = jest.spyOn(UnistylesRuntime, 'setAdaptiveThemes');
+    const themeSpy = jest.spyOn(UnistylesRuntime, 'setTheme');
+    jest.spyOn(Appearance, 'getColorScheme').mockReturnValue('dark');
+    const removeSpy = jest.fn();
+    const listenerSpy = jest
+      .spyOn(Appearance, 'addChangeListener')
+      .mockReturnValue({ remove: removeSpy });
     await render(<SettingsScreen />);
 
     await fireEvent.press(
@@ -43,7 +48,17 @@ describe('settingsScreen', () => {
     );
 
     expect(colorSchemeSpy).toHaveBeenLastCalledWith('unspecified');
-    expect(adaptiveThemesSpy).toHaveBeenLastCalledWith(true);
+    expect(themeSpy).toHaveBeenLastCalledWith('dark');
+
+    // The phone switches to light while the app runs.
+    listenerSpy.mock.lastCall?.[0]({ colorScheme: 'light' });
+
+    expect(themeSpy).toHaveBeenLastCalledWith('light');
+
+    // A forced theme stops following the phone.
+    await fireEvent.press(screen.getByRole('radio', { name: 'Dark' }));
+
+    expect(removeSpy).toHaveBeenCalledTimes(1);
   });
 
   it('shows the text of icon-only buttons when asked', async () => {
