@@ -49,7 +49,7 @@ export function MealChoiceScreen() {
         accessibilityLabel={t.mealChoice.addRecipe}
         icon="plus"
         isIconOnly
-        label={t.common.new}
+        label={t.recipes.new}
         onPress={() => router.push('/recipe/new')}
       />
     ) : (

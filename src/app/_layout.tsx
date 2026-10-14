@@ -9,7 +9,7 @@ import { MENU_ICONS } from '@/components/menu-entry-options';
 import { stackHeader } from '@/components/stack-header';
 import { DatabaseProvider } from '@/db/database-provider';
 import { LoadingScreen } from '@/features/loading/loading-screen';
-import { applyColorScheme, getPreferences } from '@/features/settings/preferences';
+import { applyColorScheme, getPreferences, usePreferences } from '@/features/settings/preferences';
 import { I18nProvider, useMessages } from '@/i18n/i18n-provider';
 
 // Keep the native splash screen until the loading illustration is rendered. Called at module
@@ -21,11 +21,12 @@ applyColorScheme(getPreferences().colorScheme);
 
 export default function RootLayout() {
   const [isLoadingScreenVisible, setIsLoadingScreenVisible] = useState(true);
+  const { language } = usePreferences();
 
   return (
     // The drawer's swipe gesture needs the gesture handler root.
     <GestureHandlerRootView style={styles.root}>
-      <I18nProvider>
+      <I18nProvider language={language}>
         <DatabaseProvider>
           <RootStack />
         </DatabaseProvider>

@@ -4,7 +4,7 @@ import { useLocales } from 'expo-localization';
 import { Appearance } from 'react-native';
 import { UnistylesRuntime } from 'react-native-unistyles';
 import { Button } from '@/components/button';
-import { I18nProvider } from '@/i18n/i18n-provider';
+import { AppLanguage } from '@/test/app-language';
 import { getPreferences, updatePreferences } from './preferences';
 import { SettingsScreen } from './settings-screen';
 
@@ -68,9 +68,9 @@ describe('settingsScreen', () => {
 
   it('switches the app to French, then back to English', async () => {
     await render(
-      <I18nProvider>
+      <AppLanguage>
         <SettingsScreen />
-      </I18nProvider>,
+      </AppLanguage>,
     );
 
     await fireEvent.press(screen.getByRole('radio', { name: 'Français' }));
@@ -89,9 +89,9 @@ describe('settingsScreen', () => {
       .mocked(useLocales)
       .mockReturnValue([{ languageCode: 'fr', languageTag: 'fr-FR' } as Locale]);
     await render(
-      <I18nProvider>
+      <AppLanguage>
         <SettingsScreen />
-      </I18nProvider>,
+      </AppLanguage>,
     );
 
     expect(screen.getByText('Apparence')).toBeOnTheScreen();

@@ -19,6 +19,18 @@ import tseslint from 'typescript-eslint';
 
 const TS_FILES = ['**/*.ts', '**/*.tsx'];
 const TEST_FILES = ['**/*.test.ts', '**/*.test.tsx'];
+// Props whose text users see or hear: translated, never written in JSX.
+const USER_TEXT_PROPS = [
+  'accessibilityHint',
+  'accessibilityLabel',
+  'emptyMessage',
+  'error',
+  'hint',
+  'label',
+  'message',
+  'placeholder',
+  'title',
+];
 
 // eslint-config-expo already registers the @typescript-eslint plugin and parser, so only the
 // *rules* of typescript-eslint's full recommended + type-aware preset are taken (registering the
@@ -218,19 +230,7 @@ export default defineConfig([
       'i18next/no-literal-string': [
         'error',
         {
-          'jsx-attributes': {
-            include: [
-              'accessibilityHint',
-              'accessibilityLabel',
-              'emptyMessage',
-              'error',
-              'hint',
-              'label',
-              'message',
-              'placeholder',
-              'title',
-            ],
-          },
+          'jsx-attributes': { include: USER_TEXT_PROPS },
           message: 'Text shown to users comes from the i18n dictionaries (useMessages).',
           mode: 'jsx-only',
         },
@@ -238,17 +238,29 @@ export default defineConfig([
     },
   },
 
-  // Every deletion asks first, the same way (CONTRIBUTING › Deleting).
+  // Every deletion asks first, the same way (CONTRIBUTING › Deleting); and i18next/no-literal-string
+  // doesn't see template strings: text in them is flagged here (names and counts go through the
+  // dictionaries' functions).
   {
     files: TS_FILES,
-    ignores: ['src/components/use-confirm-delete.ts'],
+    // Tests check the dialog's buttons and the rendered text.
+    ignores: ['src/components/use-confirm-delete.ts', ...TEST_FILES, 'src/test/**'],
     rules: {
       'no-restricted-syntax': [
         'error',
         {
           message:
             'Ask with useConfirmDelete (src/components/use-confirm-delete.ts): every deletion is confirmed the same way.',
-          selector: "Property[key.name='style'][value.value='destructive']",
+          selector: "Literal[value='destructive']",
+        },
+        {
+          message: 'Text shown to users comes from the i18n dictionaries (useMessages).',
+          selector:
+            'JSXElement > JSXExpressionContainer > TemplateLiteral:has(TemplateElement[value.raw=/[A-Za-z]/])',
+        },
+        {
+          message: 'Text shown to users comes from the i18n dictionaries (useMessages).',
+          selector: `JSXAttribute[name.name=/^(${USER_TEXT_PROPS.join('|')})$/] > JSXExpressionContainer > TemplateLiteral:has(TemplateElement[value.raw=/[A-Za-z]/])`,
         },
       ],
     },

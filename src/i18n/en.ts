@@ -17,16 +17,18 @@ export const en = {
     edit: 'Edit',
     loadingMore: 'Loading more',
     loadingMoreHint: 'More items appear when they are loaded',
-    new: 'New',
+    ok: 'OK',
     save: 'Save',
-    // Hint of a segmented choice: "Sets season to winter".
-    setsChoice: (label: string, option: string) =>
-      `Sets ${label.toLowerCase()} to ${option.toLowerCase()}`,
+    // Hint of a segmented choice: "Sets season to Winter" (options keep their case: "English").
+    setsChoice: (label: string, option: string) => `Sets ${label.toLowerCase()} to ${option}`,
   },
   courses: {
     dessert: 'Dessert',
     main: 'Main course',
     starter: 'Starter',
+  },
+  database: {
+    openFailed: (reason: string) => `The recipes database could not be opened: ${reason}`,
   },
   ingredientPicker: {
     addHint: 'Adds it to the selection',
@@ -110,6 +112,8 @@ export const en = {
     ingredients: 'Ingredients',
     ingredientsEmpty: 'Type an ingredient to add it.',
     instructionsPlaceholder: 'Steps, quantities, cooking time…',
+    // Label of the add-recipe buttons, shown with Settings › Show button labels.
+    new: 'New',
     newHint: 'Opens an empty recipe form',
     newRecipe: 'New recipe',
     noCourse: 'None',

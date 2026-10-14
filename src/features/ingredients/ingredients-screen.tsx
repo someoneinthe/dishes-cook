@@ -46,7 +46,9 @@ export function IngredientsScreen() {
       onConfirm: () => {
         // The list hides Delete for used ingredients, but it may be stale by a tick.
         if (deleteIngredient(database, ingredient.id) === 'in-use') {
-          Alert.alert(t.ingredients.inUseTitle(ingredient.name), t.ingredients.inUseMessage);
+          Alert.alert(t.ingredients.inUseTitle(ingredient.name), t.ingredients.inUseMessage, [
+            { text: t.common.ok },
+          ]);
         }
       },
     });

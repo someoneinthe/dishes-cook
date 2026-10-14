@@ -28,7 +28,7 @@ export function RecipesScreen() {
               accessibilityLabel={t.recipes.newRecipe}
               icon="plus"
               isIconOnly
-              label={t.common.new}
+              label={t.recipes.new}
               onPress={addRecipe}
             />,
           ),

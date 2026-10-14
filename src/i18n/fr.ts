@@ -20,14 +20,17 @@ export const fr: Messages = {
     edit: 'Modifier',
     loadingMore: 'Chargement de la suite',
     loadingMoreHint: 'D’autres éléments s’affichent une fois chargés',
-    new: 'Nouveau',
+    ok: 'OK',
     save: 'Enregistrer',
-    setsChoice: (label, option) => `Sélectionne ${quote(option)} pour ${quote(label)}`,
+    setsChoice: (label, option) => `Choisit ${option} comme ${label.toLowerCase()}`,
   },
   courses: {
     dessert: 'Dessert',
     main: 'Plat principal',
     starter: 'Entrée',
+  },
+  database: {
+    openFailed: (reason) => `Impossible d’ouvrir la base des recettes${NARROW_SPACE}: ${reason}`,
   },
   ingredientPicker: {
     addHint: 'L’ajoute à la sélection',
@@ -56,7 +59,7 @@ export const fr: Messages = {
     nameBlank: 'Le nom ne peut pas être vide.',
     nameTaken: 'Un autre ingrédient porte déjà ce nom.',
     noMatch: (search) => `Aucun ingrédient ne correspond à ${quote(search)}.`,
-    placeholder: 'ex. Carotte',
+    placeholder: `Ex.${NARROW_SPACE}: carotte`,
     rename: 'Renommer',
     renameHint: 'Permet de modifier son nom',
     renameLabel: (name) => `Renommer ${name}`,
@@ -68,7 +71,7 @@ export const fr: Messages = {
         : plural(recipeCount, 'Utilisé dans 1 recette', `Utilisé dans ${recipeCount} recettes`),
   },
   loading: {
-    hint: 'L’app s’ouvre d’elle-même une fois chargée',
+    hint: 'L’application s’ouvre d’elle-même une fois chargée',
     label: 'Chargement de Dishes Cook',
   },
   markdown: {
@@ -95,14 +98,14 @@ export const fr: Messages = {
     mealChoice: 'Choix du repas',
     open: 'Ouvrir le menu',
     recipes: 'Recettes',
-    settings: 'Réglages',
+    settings: 'Paramètres',
   },
   recipes: {
     course: 'Type de plat',
     deleteMessage: 'Ses ingrédients restent dans votre liste.',
     editRecipe: 'Modifier la recette',
     emptyMessage:
-      'Enregistrez les plats que vous aimez cuisiner, puis laissez le choix du repas en choisir un pour vous.',
+      'Enregistrez les plats que vous aimez cuisiner, puis laissez le hasard en choisir un pour vous.',
     emptyTitle: 'Aucune recette pour l’instant',
     formatHint:
       `Mise en forme en Markdown${NARROW_SPACE}: #\u{A0}Titre, **gras**, *italique*, ` +
@@ -111,6 +114,7 @@ export const fr: Messages = {
     ingredients: 'Ingrédients',
     ingredientsEmpty: 'Saisissez un ingrédient pour l’ajouter.',
     instructionsPlaceholder: 'Étapes, quantités, temps de cuisson…',
+    new: 'Nouvelle',
     newHint: 'Ouvre un formulaire de recette vide',
     newRecipe: 'Nouvelle recette',
     noCourse: 'Aucun',
@@ -127,7 +131,7 @@ export const fr: Messages = {
     saveRecipe: 'Enregistrer la recette',
     season: 'Saison',
     title: 'Titre',
-    titlePlaceholder: 'ex. Soupe de potiron',
+    titlePlaceholder: `Ex.${NARROW_SPACE}: soupe de potiron`,
     titleRequired: 'Donnez un titre à la recette.',
     write: 'Écrire',
   },
