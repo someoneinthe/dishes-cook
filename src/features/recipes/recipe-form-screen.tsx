@@ -2,10 +2,8 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
-import type { SegmentedOption } from '@/components/segmented-control';
 import type { Course, Season } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
-import type { Messages } from '@/i18n/en';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
@@ -21,9 +19,6 @@ import { InstructionsField } from './components/instructions-field';
 import { courseOptionList } from './course';
 import { getRecipe, saveRecipe } from './db/recipe-queries';
 import { seasonOptionList } from './season';
-
-// The course is optional.
-type CourseChoice = 'none' | Course;
 
 type RecipeFormProps = Readonly<{
   // Undefined for a new recipe.
@@ -54,16 +49,13 @@ export function RecipeFormScreen() {
   return <RecipeForm initialRecipe={initialRecipe} screenTitle={screenTitle} />;
 }
 
-function courseChoiceOptionList(t: Messages): readonly SegmentedOption<CourseChoice>[] {
-  return [{ label: t.recipes.noCourse, value: 'none' }, ...courseOptionList(t)];
-}
-
 function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
   const database = useDatabase();
   const t = useMessages();
   const [title, setTitle] = useState(initialRecipe?.title ?? '');
   const [season, setSeason] = useState<Season>(initialRecipe?.season ?? 'both');
-  const [course, setCourse] = useState<CourseChoice>(initialRecipe?.course ?? 'none');
+  // Every recipe has a course: a main course unless chosen otherwise.
+  const [course, setCourse] = useState<Course>(initialRecipe?.course ?? 'main');
   const [selectedIngredientList, setSelectedIngredientList] = useState<Ingredient[]>(
     initialRecipe?.ingredientList ?? [],
   );
@@ -76,7 +68,7 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
       return;
     }
     const input = {
-      course: course === 'none' ? null : course,
+      course,
       ingredientIdList: selectedIngredientList.map((ingredient) => ingredient.id),
       instructions,
       season,
@@ -131,7 +123,7 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
       <SegmentedControl
         label={t.recipes.course}
         onChange={setCourse}
-        optionList={courseChoiceOptionList(t)}
+        optionList={courseOptionList(t)}
         value={course}
       />
       <IngredientPicker

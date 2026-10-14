@@ -32,6 +32,14 @@ export const fr: Messages = {
   database: {
     openFailed: (reason) => `Impossible d’ouvrir la base des recettes${NARROW_SPACE}: ${reason}`,
   },
+  filters: {
+    any: 'Indifférent',
+    hideHint: 'Masque les filtres, qui restent appliqués',
+    noUsedIngredient: 'Aucun ingrédient n’est encore utilisé dans une recette.',
+    showHint: 'Affiche les filtres de saison, de type de plat et d’ingrédients',
+    toggle: (activeCount) => (activeCount > 0 ? `Filtres (${activeCount})` : 'Filtres'),
+    withIngredients: 'Avec les ingrédients',
+  },
   ingredientPicker: {
     addHint: 'L’ajoute à la sélection',
     addLabel: (name) => `Ajouter ${name}`,
@@ -79,18 +87,20 @@ export const fr: Messages = {
   },
   mealChoice: {
     addRecipe: 'Ajouter une recette',
-    any: 'Indifférent',
+    another: 'Une autre',
     emptyMessage: 'Ajoutez quelques recettes, puis revenez laisser le hasard choisir le repas.',
-    matchCount: (count) =>
-      count === 0
-        ? 'Aucune recette ne correspond à ces filtres.'
-        : plural(count, '1 recette correspond.', `${count} recettes correspondent.`),
-    noUsedIngredient: 'Aucun ingrédient n’est encore utilisé dans une recette.',
+    open: 'Ouvrir',
+    openLabel: (title) => `Ouvrir ${title}`,
+    promptMessage: (count) =>
+      count === 1
+        ? `Touchez Suggérer${NARROW_SPACE}: le hasard choisit la seule recette qui correspond.`
+        : `Touchez Suggérer${NARROW_SPACE}: le hasard choisit parmi les ${count} recettes qui correspondent.`,
+    promptTitle: `Qu’est-ce qu’on mange${NARROW_SPACE}?`,
     suggest: 'Suggérer',
     suggestAnother: 'Suggérer une autre recette',
-    suggestHint: 'Choisit une recette au hasard parmi celles qui correspondent',
+    suggestHint: 'Choisit au hasard une recette qui correspond',
+    suggestionIntro: 'Et si on mangeait…',
     suggestRecipe: 'Suggérer une recette',
-    withIngredients: 'Avec les ingrédients',
   },
   menu: {
     close: 'Fermer le menu',
@@ -114,12 +124,16 @@ export const fr: Messages = {
     ingredients: 'Ingrédients',
     ingredientsEmpty: 'Saisissez un ingrédient pour l’ajouter.',
     instructionsPlaceholder: 'Étapes, quantités, temps de cuisson…',
+    matchCount: (count) =>
+      count === 0
+        ? 'Aucune recette ne correspond à ces filtres.'
+        : plural(count, '1 recette correspond.', `${count} recettes correspondent.`),
     new: 'Nouvelle',
     newHint: 'Ouvre un formulaire de recette vide',
     newRecipe: 'Nouvelle recette',
-    noCourse: 'Aucun',
     noIngredients: 'Aucun ingrédient indiqué.',
     noInstructions: 'Pas encore d’instructions.',
+    noMatch: (search) => `Aucune recette ne correspond à ${quote(search)}.`,
     notFoundMessage: 'Elle a peut-être été supprimée.',
     notFoundTitle: 'Recette introuvable',
     nothingToPreview: 'Rien à prévisualiser pour l’instant.',
@@ -130,6 +144,8 @@ export const fr: Messages = {
     rowLabel: (title, season, course) => [title, season, course].filter(Boolean).join(', '),
     saveHint: 'Enregistre la recette et l’affiche',
     saveRecipe: 'Enregistrer la recette',
+    search: 'Rechercher des recettes',
+    searchPlaceholder: 'Chercher par titre',
     season: 'Saison',
     title: 'Titre',
     titlePlaceholder: `Ex.${NARROW_SPACE}: soupe de potiron`,

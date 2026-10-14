@@ -31,16 +31,16 @@ export default function DrawerLayout() {
       }}
     >
       <Drawer.Screen
+        name="recipes"
+        options={menuEntryOptions(t.menu.recipes, MENU_ICONS.recipes, theme.colors.menuRecipes)}
+      />
+      <Drawer.Screen
         name="ingredients"
         options={menuEntryOptions(
           t.menu.ingredients,
           MENU_ICONS.ingredients,
           theme.colors.menuIngredients,
         )}
-      />
-      <Drawer.Screen
-        name="recipes"
-        options={menuEntryOptions(t.menu.recipes, MENU_ICONS.recipes, theme.colors.menuRecipes)}
       />
       <Drawer.Screen
         name="index"

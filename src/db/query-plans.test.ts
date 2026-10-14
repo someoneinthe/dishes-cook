@@ -19,6 +19,7 @@ const CURSOR = { id: 1, sortKey: 'm' };
 describe('query plans', () => {
   let database: AppDatabase;
   let queryList: string[];
+  let carrotId: number;
 
   beforeEach(() => {
     queryList = [];
@@ -27,7 +28,7 @@ describe('query plans', () => {
         queryList.push(query);
       },
     }));
-    const carrotId = findOrCreateIngredient(database, 'carrot').id;
+    carrotId = findOrCreateIngredient(database, 'carrot').id;
     const leekId = findOrCreateIngredient(database, 'leek').id;
     saveRecipe(database, {
       ingredientIdList: [carrotId, leekId],
@@ -69,8 +70,11 @@ describe('query plans', () => {
     expect(lastPlan()).toContainEqual(expect.stringMatching(INGREDIENT_INDEX));
   });
 
-  it('reads recipe pages in index order and counts ingredients with the primary key', () => {
-    listRecipePage(database, { after: CURSOR });
+  it('reads filtered recipe pages in index order and counts ingredients with the primary key', () => {
+    listRecipePage(database, {
+      filters: { course: 'main', ingredientIdList: [], search: 'so', season: 'winter' },
+      pageParam: { after: CURSOR },
+    });
     const planList = lastPlan();
 
     expect(planList[0]).toMatch(/^SEARCH recipes USING INDEX recipes_sort_key_id_idx/);
@@ -78,6 +82,24 @@ describe('query plans', () => {
       expect.stringMatching(/^SEARCH recipe_ingredients USING COVERING INDEX sqlite_autoindex/),
     );
     expect(planList.join('\n')).not.toContain('TEMP B-TREE');
+  });
+
+  it('starts recipe pages filtered by ingredients from the recipes using them', () => {
+    // Every filter on. The selected ingredients are the most selective: SQLite reads the recipes
+    // using them (covering index), then those recipes by primary key, and sorts only them.
+    listRecipePage(database, {
+      filters: { course: 'main', ingredientIdList: [carrotId], search: 'so', season: 'winter' },
+      pageParam: { after: CURSOR },
+    });
+
+    expect(lastPlan()).toStrictEqual([
+      expect.stringMatching(/^SEARCH recipes USING INTEGER PRIMARY KEY/),
+      'LIST SUBQUERY 2',
+      expect.stringMatching(INGREDIENT_INDEX),
+      'CORRELATED SCALAR SUBQUERY 1',
+      expect.stringMatching(/^SEARCH recipe_ingredients USING COVERING INDEX sqlite_autoindex/),
+      'USE TEMP B-TREE FOR ORDER BY',
+    ]);
   });
 
   it('reads a recipe ingredients by primary key', () => {

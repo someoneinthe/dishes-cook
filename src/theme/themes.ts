@@ -27,6 +27,9 @@ const lightColors = {
   // Contrast with white ≥ 4.5:1 in both themes.
   actionDanger: '#B91C1C',
   actionPrimary: '#1D4ED8',
+  // A secondary button whose option is on (e.g. Filters while filters apply): a light blue tint,
+  // blue border and content (contrast ≥ 4.5:1).
+  actionSoft: '#DBEAFE',
   background: '#FFFFFF',
   border: '#E7E5E4',
   // Course icons (contrast with the background ≥ 3:1).
@@ -41,6 +44,7 @@ const lightColors = {
   menuRecipes: '#15803D',
   menuSettings: '#57534E',
   onAction: '#FFFFFF',
+  onActionSoft: '#1D4ED8',
   // Season icons: a warm sun, a cold snowflake (contrast with the background ≥ 3:1).
   seasonSummer: '#B45309',
   seasonWinter: '#0369A1',
@@ -57,6 +61,7 @@ type ThemeColors = Record<ColorToken, string>;
 const darkColors: ThemeColors = {
   actionDanger: '#DC2626',
   actionPrimary: '#2563EB',
+  actionSoft: '#172554',
   background: '#121212',
   border: '#3A3633',
   courseDessert: '#F472B6',
@@ -68,6 +73,7 @@ const darkColors: ThemeColors = {
   menuRecipes: '#4ADE80',
   menuSettings: '#A8A29E',
   onAction: '#FFFFFF',
+  onActionSoft: '#BFDBFE',
   seasonSummer: '#FBBF24',
   seasonWinter: '#38BDF8',
   surface: '#1E1E1E',

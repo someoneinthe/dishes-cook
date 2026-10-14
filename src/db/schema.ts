@@ -16,7 +16,6 @@ export const SEASON_LIST = ['winter', 'summer', 'both'] as const;
 export type Season = (typeof SEASON_LIST)[number];
 const SEASON_SQL_LIST = SEASON_LIST.map((season) => `'${season}'`).join(', ');
 
-// Optional: a recipe can have no course.
 export const COURSE_LIST = ['starter', 'main', 'dessert'] as const;
 export type Course = (typeof COURSE_LIST)[number];
 const COURSE_SQL_LIST = COURSE_LIST.map((course) => `'${course}'`).join(', ');
@@ -51,8 +50,8 @@ export const ingredients = sqliteTable(
 export const recipes = sqliteTable(
   'recipes',
   {
-    // Starter, main course or dessert; null when not set.
-    course: text('course', { enum: COURSE_LIST }),
+    // Starter, main course or dessert: every recipe has one, a main course unless chosen otherwise.
+    course: text('course', { enum: COURSE_LIST }).notNull().default('main'),
     createdAt: integer('created_at').notNull().default(NOW_MS),
     id: integer('id').primaryKey(),
     // The recipe itself (steps, quantities…). Never selected by list queries: it can be long.

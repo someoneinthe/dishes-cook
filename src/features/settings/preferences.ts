@@ -30,14 +30,25 @@ const DEFAULT_PREFERENCES: Preferences = {
 const state: { current?: Preferences } = {};
 const listenerSet = new Set<() => void>();
 
+// Following the phone: listening to Appearance while the preference is 'system'.
+const appearance: { subscription?: Readonly<{ remove: () => void }> } = {};
+
 // Forces the app's color scheme, or follows the phone's: the Unistyles theme (the screens), and
 // Appearance for native UI (status bar, dialogs, keyboard).
+// For 'system', the theme follows Appearance, not Unistyles' adaptive themes: on Android these read
+// the configuration before it's updated when the phone switches light/dark while the app runs, so
+// the app stayed one switch behind. Appearance is told by the activity itself.
 export function applyColorScheme(colorScheme: ColorSchemePreference): void {
   Appearance.setColorScheme(colorScheme === 'system' ? 'unspecified' : colorScheme);
+  appearance.subscription?.remove();
+  appearance.subscription = undefined;
+  UnistylesRuntime.setAdaptiveThemes(false);
   if (colorScheme === 'system') {
-    UnistylesRuntime.setAdaptiveThemes(true);
+    followPhone(Appearance.getColorScheme());
+    appearance.subscription = Appearance.addChangeListener((preferences) => {
+      followPhone(preferences.colorScheme);
+    });
   } else {
-    UnistylesRuntime.setAdaptiveThemes(false);
     UnistylesRuntime.setTheme(colorScheme);
   }
 }
@@ -62,6 +73,11 @@ export function updatePreferences(changes: Partial<Preferences>): void {
 
 export function usePreferences(): Preferences {
   return useSyncExternalStore(subscribe, getPreferences);
+}
+
+// The phone's light/dark setting; light when it has none.
+function followPhone(colorScheme: ReturnType<typeof Appearance.getColorScheme>): void {
+  UnistylesRuntime.setTheme(colorScheme === 'dark' ? 'dark' : 'light');
 }
 
 function parse(stored: null | string): Preferences {

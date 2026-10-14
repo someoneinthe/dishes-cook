@@ -6,10 +6,10 @@ import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, recipes } from '@/db/schema';
-import { cleanName, toSortKey } from '@/lib/text';
+import { cleanName, toLikeContains, toSortKey } from '@/lib/text';
 
 export type Recipe = Readonly<{
-  course: Course | null;
+  course: Course;
   id: number;
   ingredientList: Ingredient[];
   instructions: string;
@@ -18,17 +18,19 @@ export type Recipe = Readonly<{
 }>;
 
 export type RecipeFilters = Readonly<{
-  // Recipes of this course (not those without one); undefined = any course.
+  // Recipes of this course; undefined = any course.
   course?: Course;
   // Recipes made with ALL these ingredients.
   ingredientIdList: readonly number[];
+  // Titles containing it, ignoring case and accents; undefined or blank = any title.
+  search?: string;
   // A season also matches the recipes for both seasons; undefined = any season.
   season?: Exclude<Season, 'both'>;
 }>;
 
 export type RecipeInput = Readonly<{
-  // No course when left out.
-  course?: Course | null;
+  // A main course when left out.
+  course?: Course;
   ingredientIdList: readonly number[];
   instructions: string;
   season: Season;
@@ -36,7 +38,7 @@ export type RecipeInput = Readonly<{
 }>;
 
 export type RecipeListItem = Readonly<{
-  course: Course | null;
+  course: Course;
   id: number;
   ingredientCount: number;
   season: Season;
@@ -48,7 +50,7 @@ export type RecipeListItem = Readonly<{
 // Written out qualified: Drizzle renders `${recipes.id}` as a bare "id" inside a select.
 const INGREDIENT_COUNT = sql<number>`(select count(*) from "recipe_ingredients" where "recipe_ingredients"."recipe_id" = "recipes"."id")`;
 
-// Number of recipes matching the filters (the meal choice shows it and picks among them).
+// Number of recipes matching the filters (the recipe list shows it).
 export function countRecipes(database: AppDatabase, filters: RecipeFilters): number {
   return (
     database.select({ count: count() }).from(recipes).where(filtersWhere(database, filters)).get()
@@ -86,12 +88,14 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
   return { ...recipe, ingredientList };
 }
 
-// One page (PAGE_SIZE) of the alphabetical recipe list. `instructions` (possibly long) is left out.
+// One page (PAGE_SIZE) of the alphabetical recipe list, narrowed by the filters (title search,
+// season, course, ingredients). `instructions` (possibly long) is left out.
 // Plan: walk the (sort_key, id) index from the cursor, count links on the primary key.
 export function listRecipePage(
   database: AppDatabase,
-  pageParameter: PageRequest,
+  options: Readonly<{ filters: RecipeFilters; pageParam: PageRequest }>,
 ): Page<RecipeListItem> {
+  const { filters, pageParam: pageParameter } = options;
   const order = isBackward(pageParameter) ? desc : asc;
   const rowList = database
     .select({
@@ -103,7 +107,7 @@ export function listRecipePage(
       title: recipes.title,
     })
     .from(recipes)
-    .where(keysetWhere(recipes, pageParameter))
+    .where(and(filtersWhere(database, filters), keysetWhere(recipes, pageParameter)))
     .orderBy(order(recipes.sortKey), order(recipes.id))
     .limit(PAGE_SIZE + 1)
     .all();
@@ -147,7 +151,7 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
     throw new Error('A recipe title cannot be blank');
   }
   const values = {
-    course: input.course ?? null,
+    course: input.course ?? 'main',
     instructions: input.instructions.trim(),
     season: input.season,
     sortKey: toSortKey(title),
@@ -184,6 +188,10 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
 // containing a selected ingredient are visited.
 function filtersWhere(database: AppDatabase, filters: RecipeFilters): SQL | undefined {
   const conditionList: SQL[] = [];
+  const titleSearch = titleSearchWhere(filters.search ?? '');
+  if (titleSearch) {
+    conditionList.push(titleSearch);
+  }
   if (filters.season) {
     conditionList.push(inArray(recipes.season, [filters.season, 'both']));
   }
@@ -204,11 +212,18 @@ function filtersWhere(database: AppDatabase, filters: RecipeFilters): SQL | unde
   return and(...conditionList);
 }
 
+// Titles containing the search, ignoring case and accents (on sort_key); no condition when blank.
+function titleSearchWhere(search: string): SQL | undefined {
+  return cleanName(search)
+    ? sql`${recipes.sortKey} like ${toLikeContains(search)} escape '\\'`
+    : undefined;
+}
+
 function updateRecipe(
   tx: Pick<AppDatabase, 'update'>,
   id: number,
   values: Readonly<{
-    course: Course | null;
+    course: Course;
     instructions: string;
     season: Season;
     sortKey: string;

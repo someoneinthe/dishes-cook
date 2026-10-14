@@ -1,7 +1,20 @@
-import { screen } from '@testing-library/react-native';
+import { screen, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
+type IconStyle = Readonly<{ color?: string; fontFamily?: string }> | undefined;
+
 type JsonNode = NonNullable<ReturnType<typeof screen.toJSON>> | string;
+
+// Color of the icon inside an element (a button), or undefined without one.
+export function iconColorIn(element: Parameters<typeof within>[0]): string | undefined {
+  const icon = within(element)
+    .queryAllByText(/./)
+    .find(
+      (text) =>
+        (StyleSheet.flatten(text.props.style) as IconStyle)?.fontFamily === 'material-community',
+    );
+  return icon ? (StyleSheet.flatten(icon.props.style) as IconStyle)?.color : undefined;
+}
 
 // Colors of the icons rendered on screen, in order, wherever they are in the tree (icons are text
 // in the icon font).

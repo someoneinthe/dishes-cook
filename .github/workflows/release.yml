@@ -66,8 +66,9 @@ jobs:
             "${{ steps.build.outputs.apk-path }}" --clobber
 
   database-diagram:
-    # The database diagram (docs/database.md, kept up to date by CI) as images on the release.
-    name: Attach database diagram
+    # The database diagram (docs/database.md) as images, and the features page (docs/features.md),
+    # both kept up to date by CI, on the release.
+    name: Attach database diagram and features
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
@@ -87,10 +88,11 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: scripts/render-database-diagram.sh dist/database-diagram
-      - name: Upload the diagram to the GitHub Release
+      - name: Upload the diagram and the features page to the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload "$TAG" \
             dist/database-diagram/database-diagram.png \
-            dist/database-diagram/database-diagram.svg --clobber
+            dist/database-diagram/database-diagram.svg \
+            docs/features.md --clobber

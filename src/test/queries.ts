@@ -8,5 +8,5 @@ export function firstIngredientPage(database: AppDatabase) {
 }
 
 export function firstRecipePage(database: AppDatabase) {
-  return listRecipePage(database, null).itemList;
+  return listRecipePage(database, { filters: { ingredientIdList: [] }, pageParam: null }).itemList;
 }

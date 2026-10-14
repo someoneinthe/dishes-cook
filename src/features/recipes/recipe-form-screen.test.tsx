@@ -42,7 +42,8 @@ describe('recipeFormScreen', () => {
     const [{ id: savedId } = { id: -1 }] = firstRecipePage(connection.db);
 
     expect(getRecipe(connection.db, savedId)).toStrictEqual({
-      course: null,
+      // Main course unless chosen otherwise.
+      course: 'main',
       id: savedId,
       ingredientList: [
         { id: carrot.id, name: 'Carrot' },
@@ -107,7 +108,14 @@ describe('recipeFormScreen', () => {
     expect(router.back).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the saved course and clears it with None', async () => {
+  it('requires a course: main course for a new recipe, the saved one when editing', async () => {
+    jest.mocked(useLocalSearchParams).mockReturnValue({});
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    expect(screen.getByRole('radio', { name: 'Main course' })).toBeChecked();
+    expect(screen.queryByRole('radio', { name: 'None' })).not.toBeOnTheScreen();
+
+    await screen.unmount();
     const id = saveRecipe(connection.db, {
       course: 'starter',
       ingredientIdList: [],
@@ -119,11 +127,6 @@ describe('recipeFormScreen', () => {
     await renderWithDatabase(<RecipeFormScreen />, connection);
 
     expect(screen.getByRole('radio', { name: 'Starter' })).toBeChecked();
-
-    await fireEvent.press(screen.getByRole('radio', { name: 'None' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
-
-    expect(getRecipe(connection.db, id)?.course).toBeNull();
   });
 
   it('tells when the recipe to edit no longer exists', async () => {

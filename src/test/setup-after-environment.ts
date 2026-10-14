@@ -24,3 +24,17 @@ jest.mock('expo-router/drawer', () => ({
     Screen: jest.requireActual<NavigationMock>('./navigation-mock').ScreenWithHeaderButtons,
   },
 }));
+
+// After an update, a FlatList (VirtualizedList) re-renders its cells on a 50 ms timer. When a test's
+// last assertions outlasted it, the timer fired between the test and its cleanup, outside act
+// ("An update to VirtualizedList … was not wrapped in act"). In tests the lists get no layout or
+// scroll events, so that timer has nothing to render: it's pushed past any test, and the cleanup's
+// unmount cancels it.
+const { default: VirtualizedList } = jest.requireActual<{
+  default: { defaultProps?: Record<string, unknown> };
+}>('@react-native/virtualized-lists/Lists/VirtualizedList');
+VirtualizedList.defaultProps = {
+  ...VirtualizedList.defaultProps,
+  // An hour: never during a test.
+  updateCellsBatchingPeriod: 3_600_000,
+};

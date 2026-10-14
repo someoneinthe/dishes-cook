@@ -36,7 +36,8 @@ describe('recipe queries', () => {
     const id = saveRecipe(database, { ...soupInput, ingredientIdList: [leekId, carrotId, leekId] });
 
     expect(getRecipe(database, id)).toStrictEqual({
-      course: null,
+      // A main course when none is given.
+      course: 'main',
       id,
       ingredientList: [
         { id: carrotId, name: 'carrot' },
@@ -67,7 +68,7 @@ describe('recipe queries', () => {
     });
   });
 
-  it('sets, changes and clears the course', () => {
+  it('sets and changes the course', () => {
     const id = saveRecipe(database, { ...soupInput, course: 'starter' });
 
     expect(getRecipe(database, id)?.course).toBe('starter');
@@ -75,10 +76,6 @@ describe('recipe queries', () => {
     saveRecipe(database, { ...soupInput, course: 'main' }, id);
 
     expect(firstRecipePage(database)).toStrictEqual([expect.objectContaining({ course: 'main' })]);
-
-    saveRecipe(database, { ...soupInput, course: null }, id);
-
-    expect(getRecipe(database, id)?.course).toBeNull();
   });
 
   it('refuses a blank title and an unknown recipe', () => {
@@ -161,8 +158,9 @@ describe('recipe queries', () => {
       ]);
     });
 
-    it('keeps the recipes of the course, not those without one', () => {
+    it('keeps the recipes of the course (a main course when saved without one)', () => {
       expect(findSortedIds({ course: 'main', ingredientIdList: [] })).toStrictEqual([
+        winterSoupId,
         allYearStewId,
       ]);
       expect(

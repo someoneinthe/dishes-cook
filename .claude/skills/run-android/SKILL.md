@@ -100,11 +100,21 @@ $ADB logcat -d -s ReactNativeJS | tail -50              # console.log/warn/error
 - **Typing**: `$ADB shell input text "Pumpkin%ssoup"` (`%s` = space). `$ADB shell input keyevent 66` = Enter.
 - **Close the keyboard with `input keyevent 111` (Esc), not Back (`4`)**: when the keyboard is already closed, Back leaves the screen.
 
+- **Accents can't be typed** with `input text` (ASCII only), and the keyboard may capitalize the first letter of a line. A field's label is a separate text node: tap the input's own bounds (its `content-desc`).
+
+## 6. Check themes, languages and font sizes
+
+- **Light/dark while the app runs**: `$ADB shell cmd uimode night yes`, then `no`, without restarting the app. Also switch while the app is in the background, then bring it back. A cold start alone doesn't count: it was right while live switches lagged one step behind.
+- **Font size restarts the app** (`settings put system font_scale 1.3|2.0`, back to `1.0`): after it, navigate back to the screen you were checking, and don't take it as a test of live configuration changes.
+- **Language**: Settings › Language (System / English / Français). For System following the phone: `$ADB shell cmd locale set-app-locales io.github.someoneinthe.dishescook --locales fr-FR` (restarts the app; `--locales ""` to reset).
+- **After a schema change** (single init migration until the first release): `$ADB shell pm clear io.github.someoneinthe.dishescook`, then restart Metro with `--clear` (it caches the inlined SQL).
+
 Expected startup: native splash (plate on white / `#121212` in dark mode) → full illustration (~1.5 s) → home screen. The illustration is short: take screenshots in a quick loop to catch it.
 
 ## Troubleshooting
 
 - **Blank/black screen, `splashscreen_icon_view` still in the view hierarchy**: the native splash is never hidden; JS errors are hidden behind it, so check `metro.log` and `logcat`.
 - **Edits don't show up**: see step 4 (`CI=1`, file watcher, stale bundle).
+- **Metro died with `MODULE_NOT_FOUND`** (e.g. `@expo/metro`): `npm ci` or `npx expo install` ran while it was serving. Restart it as in step 4; if the new one asks for port 8082, the old one hadn't exited yet: wait a second and start it again.
 - **`adb: device offline`, or the emulator rebooted**: wait for `sys.boot_completed` again (step 1), then reopen the app (step 4).
 - **Theme check**: `$ADB shell cmd uimode night yes|no` toggles dark mode live.

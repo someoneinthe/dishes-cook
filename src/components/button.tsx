@@ -11,6 +11,8 @@ type ButtonProps = Readonly<
     // Defaults to the visible label.
     accessibilityLabel?: string;
     isDisabled?: boolean;
+    // For a button that shows or hides a section: read as expanded or collapsed.
+    isExpanded?: boolean;
     // Read by screen readers; shown unless `isIconOnly`.
     label: string;
     onPress: () => void;
@@ -26,14 +28,15 @@ type ButtonProps = Readonly<
         // Shown before the label (CONTRIBUTING › Buttons): when it helps, on primary actions.
         icon?: IconName;
         isIconOnly?: false;
-        // `primary`: the main action of a screen (blue); `secondary`: other actions (outlined).
-        variant?: 'primary' | 'secondary';
+        // `primary`: the main action of a screen (blue); `secondary`: other actions (outlined);
+        // `active`: a secondary action whose option is on (light blue tint).
+        variant?: 'active' | 'primary' | 'secondary';
       }
     | {
         icon: IconName;
         // Only the icon is shown (edit, delete…): the label stays for screen readers.
         isIconOnly: true;
-        variant?: 'primary' | 'secondary';
+        variant?: 'active' | 'primary' | 'secondary';
       }
   )
 >;
@@ -43,6 +46,7 @@ export function Button({
   accessibilityLabel,
   icon,
   isDisabled = false,
+  isExpanded,
   isIconOnly = false,
   label,
   onPress,
@@ -56,6 +60,7 @@ export function Button({
   const { theme } = useUnistyles();
   const iconSize = useIconSize('md');
   const contentColor = {
+    active: theme.colors.onActionSoft,
     danger: theme.colors.onAction,
     primary: theme.colors.onAction,
     secondary: theme.colors.text,
@@ -66,7 +71,7 @@ export function Button({
       accessibilityHint={accessibilityHint}
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
-      accessibilityState={{ disabled: isDisabled }}
+      accessibilityState={{ disabled: isDisabled, expanded: isExpanded }}
       disabled={isDisabled}
       onPress={onPress}
       style={({ pressed }) => [styles.button, (pressed || isDisabled) && styles.dimmed]}
@@ -94,6 +99,10 @@ const styles = StyleSheet.create((theme) => ({
         true: { minWidth: theme.size.touchTarget, paddingHorizontal: theme.gap(2) },
       },
       variant: {
+        active: {
+          backgroundColor: theme.colors.actionSoft,
+          borderColor: theme.colors.onActionSoft,
+        },
         danger: {
           backgroundColor: theme.colors.actionDanger,
           borderColor: theme.colors.actionDanger,
@@ -113,6 +122,7 @@ const styles = StyleSheet.create((theme) => ({
     ...theme.typography.label,
     variants: {
       variant: {
+        active: { color: theme.colors.onActionSoft },
         danger: { color: theme.colors.onAction },
         primary: { color: theme.colors.onAction },
         secondary: { color: theme.colors.text },
