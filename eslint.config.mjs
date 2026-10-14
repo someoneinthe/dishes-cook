@@ -4,6 +4,7 @@ import reactNativeOfficial from '@react-native/eslint-plugin';
 import tanstackQuery from '@tanstack/eslint-plugin-query';
 import expoConfig from 'eslint-config-expo/flat.js';
 import prettierConfig from 'eslint-config-prettier/flat';
+import i18next from 'eslint-plugin-i18next';
 import jest from 'eslint-plugin-jest';
 import perfectionist from 'eslint-plugin-perfectionist';
 import reactNative from 'eslint-plugin-react-native';
@@ -204,6 +205,52 @@ export default defineConfig([
       'react-native/no-unused-styles': 'error',
       // Android-first; switch to the `all` preset when iOS is added.
       ...reactNativeA11y.configs.android.rules,
+    },
+  },
+
+  // UI text comes from the dictionaries (src/i18n/en.ts, fr.ts…), never written in JSX: text in
+  // JSX, and the props users see or hear (labels, hints, placeholders, messages).
+  {
+    files: ['src/**/*.tsx'],
+    ignores: [...TEST_FILES, 'src/test/**'],
+    plugins: { i18next },
+    rules: {
+      'i18next/no-literal-string': [
+        'error',
+        {
+          'jsx-attributes': {
+            include: [
+              'accessibilityHint',
+              'accessibilityLabel',
+              'emptyMessage',
+              'error',
+              'hint',
+              'label',
+              'message',
+              'placeholder',
+              'title',
+            ],
+          },
+          message: 'Text shown to users comes from the i18n dictionaries (useMessages).',
+          mode: 'jsx-only',
+        },
+      ],
+    },
+  },
+
+  // Every deletion asks first, the same way (CONTRIBUTING › Deleting).
+  {
+    files: TS_FILES,
+    ignores: ['src/components/use-confirm-delete.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          message:
+            'Ask with useConfirmDelete (src/components/use-confirm-delete.ts): every deletion is confirmed the same way.',
+          selector: "Property[key.name='style'][value.value='destructive']",
+        },
+      ],
     },
   },
 

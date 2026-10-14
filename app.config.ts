@@ -35,6 +35,15 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
     orientation: 'portrait',
     plugins: [
       'expo-router',
+      [
+        'expo-localization',
+        {
+          // Applies a change of the phone's language without restarting the app.
+          allowDynamicLocaleChangesAndroid: true,
+          // The app's languages, also listed in Android 13+'s per-app language settings.
+          supportedLocales: ['en', 'fr'],
+        },
+      ],
       // One NDK for every native module (see the plugin).
       './plugins/with-uniform-ndk.js',
       [

@@ -6,6 +6,7 @@ import { StyleSheet } from 'react-native-unistyles';
 import type { SegmentedOption } from '@/components/segmented-control';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import type { RecipeFilters } from '@/features/recipes/db/recipe-queries';
+import type { Messages } from '@/i18n/en';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
@@ -13,27 +14,18 @@ import { SegmentedControl } from '@/components/segmented-control';
 import { useDatabase } from '@/db/database-context';
 import { IngredientPicker } from '@/features/ingredients/components/ingredient-picker';
 import { RecipeDetails } from '@/features/recipes/components/recipe-details';
-import { COURSE_OPTION_LIST } from '@/features/recipes/course';
+import { courseOptionList } from '@/features/recipes/course';
 import { pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
 import { useRecipe, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
 import { SEASON_ICONS } from '@/features/recipes/season';
+import { useMessages } from '@/i18n/i18n-provider';
 
 type CourseFilter = 'any' | NonNullable<RecipeFilters['course']>;
 type SeasonFilter = 'any' | NonNullable<RecipeFilters['season']>;
 
-const COURSE_FILTER_OPTION_LIST: readonly SegmentedOption<CourseFilter>[] = [
-  { label: 'Any', value: 'any' },
-  ...COURSE_OPTION_LIST,
-];
-
-const SEASON_FILTER_OPTION_LIST: readonly SegmentedOption<SeasonFilter>[] = [
-  { label: 'Any', value: 'any' },
-  { ...SEASON_ICONS.winter, label: 'Winter', value: 'winter' },
-  { ...SEASON_ICONS.summer, label: 'Summer', value: 'summer' },
-];
-
 // Picks a random recipe among those matching the filters.
 export function MealChoiceScreen() {
+  const t = useMessages();
   const [season, setSeason] = useState<SeasonFilter>('any');
   const [course, setCourse] = useState<CourseFilter>('any');
   const [selectedIngredientList, setSelectedIngredientList] = useState<Ingredient[]>([]);
@@ -53,20 +45,20 @@ export function MealChoiceScreen() {
   const headerButton =
     recipeCount === 0 ? (
       <Button
-        accessibilityHint="Opens an empty recipe form"
-        accessibilityLabel="Add a recipe"
+        accessibilityHint={t.recipes.newHint}
+        accessibilityLabel={t.mealChoice.addRecipe}
         icon="plus"
         isIconOnly
-        label="New"
+        label={t.common.new}
         onPress={() => router.push('/recipe/new')}
       />
     ) : (
       <Button
-        accessibilityHint="Picks a random recipe among the matching ones"
-        accessibilityLabel={suggestion ? 'Suggest another one' : 'Suggest a recipe'}
+        accessibilityHint={t.mealChoice.suggestHint}
+        accessibilityLabel={suggestion ? t.mealChoice.suggestAnother : t.mealChoice.suggestRecipe}
         icon="dice-multiple"
         isDisabled={matchCount === 0}
-        label="Suggest"
+        label={t.mealChoice.suggest}
         onPress={() => setSuggestedId(pickRandomRecipeId(database, filters, suggestedId))}
       />
     );
@@ -76,10 +68,7 @@ export function MealChoiceScreen() {
     return (
       <View style={styles.screen}>
         {header}
-        <EmptyState
-          message="Add a few recipes, then come back to let chance decide what to eat."
-          title="No recipes yet"
-        />
+        <EmptyState message={t.mealChoice.emptyMessage} title={t.recipes.emptyTitle} />
       </View>
     );
   }
@@ -92,27 +81,27 @@ export function MealChoiceScreen() {
     >
       {header}
       <SegmentedControl
-        label="Season"
+        label={t.recipes.season}
         onChange={(value) => {
           setSeason(value);
           setSuggestedId(undefined);
         }}
-        optionList={SEASON_FILTER_OPTION_LIST}
+        optionList={seasonFilterOptionList(t)}
         value={season}
       />
       <SegmentedControl
-        label="Course"
+        label={t.recipes.course}
         onChange={(value) => {
           setCourse(value);
           setSuggestedId(undefined);
         }}
-        optionList={COURSE_FILTER_OPTION_LIST}
+        optionList={courseFilterOptionList(t)}
         value={course}
       />
       <IngredientPicker
-        emptyMessage="No ingredient is used by a recipe yet."
+        emptyMessage={t.mealChoice.noUsedIngredient}
         isUsedOnly
-        label="With ingredients"
+        label={t.mealChoice.withIngredients}
         onChange={(ingredientList) => {
           setSelectedIngredientList(ingredientList);
           setSuggestedId(undefined);
@@ -120,7 +109,7 @@ export function MealChoiceScreen() {
         selectedList={selectedIngredientList}
       />
       <Text accessibilityLiveRegion="polite" style={styles.matchCount}>
-        {describeMatchCount(matchCount)}
+        {t.mealChoice.matchCount(matchCount)}
       </Text>
       {suggestion && (
         <View style={styles.suggestion}>
@@ -131,11 +120,16 @@ export function MealChoiceScreen() {
   );
 }
 
-function describeMatchCount(count: number): string {
-  if (count === 0) {
-    return 'No recipe matches these filters.';
-  }
-  return count === 1 ? '1 recipe matches.' : `${count} recipes match.`;
+function courseFilterOptionList(t: Messages): readonly SegmentedOption<CourseFilter>[] {
+  return [{ label: t.mealChoice.any, value: 'any' }, ...courseOptionList(t)];
+}
+
+function seasonFilterOptionList(t: Messages): readonly SegmentedOption<SeasonFilter>[] {
+  return [
+    { label: t.mealChoice.any, value: 'any' },
+    { ...SEASON_ICONS.winter, label: t.seasons.winter, value: 'winter' },
+    { ...SEASON_ICONS.summer, label: t.seasons.summer, value: 'summer' },
+  ];
 }
 
 const styles = StyleSheet.create((theme) => ({

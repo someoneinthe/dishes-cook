@@ -5,6 +5,7 @@ import { StyleSheet } from 'react-native-unistyles';
 import type { SegmentedOption } from '@/components/segmented-control';
 import type { Course, Season } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
+import type { Messages } from '@/i18n/en';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
@@ -13,20 +14,16 @@ import { TextField } from '@/components/text-field';
 import { useDatabase } from '@/db/database-context';
 import { IngredientPicker } from '@/features/ingredients/components/ingredient-picker';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
+import { useMessages } from '@/i18n/i18n-provider';
 import { cleanName } from '@/lib/text';
 import type { Recipe } from './db/recipe-queries';
 import { InstructionsField } from './components/instructions-field';
-import { COURSE_OPTION_LIST } from './course';
+import { courseOptionList } from './course';
 import { getRecipe, saveRecipe } from './db/recipe-queries';
-import { SEASON_OPTION_LIST } from './season';
+import { seasonOptionList } from './season';
 
 // The course is optional.
 type CourseChoice = 'none' | Course;
-
-const COURSE_CHOICE_OPTION_LIST: readonly SegmentedOption<CourseChoice>[] = [
-  { label: 'None', value: 'none' },
-  ...COURSE_OPTION_LIST,
-];
 
 type RecipeFormProps = Readonly<{
   // Undefined for a new recipe.
@@ -43,21 +40,27 @@ export function RecipeFormScreen() {
   const [initialRecipe] = useState(() =>
     recipeId === undefined ? undefined : getRecipe(database, recipeId),
   );
-  const screenTitle = recipeId === undefined ? 'New recipe' : 'Edit recipe';
+  const t = useMessages();
+  const screenTitle = recipeId === undefined ? t.recipes.newRecipe : t.recipes.editRecipe;
 
   if (recipeId !== undefined && !initialRecipe) {
     return (
       <View style={styles.screen}>
         <Stack.Screen options={{ title: screenTitle }} />
-        <EmptyState message="It may have been deleted." title="Recipe not found" />
+        <EmptyState message={t.recipes.notFoundMessage} title={t.recipes.notFoundTitle} />
       </View>
     );
   }
   return <RecipeForm initialRecipe={initialRecipe} screenTitle={screenTitle} />;
 }
 
+function courseChoiceOptionList(t: Messages): readonly SegmentedOption<CourseChoice>[] {
+  return [{ label: t.recipes.noCourse, value: 'none' }, ...courseOptionList(t)];
+}
+
 function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
   const database = useDatabase();
+  const t = useMessages();
   const [title, setTitle] = useState(initialRecipe?.title ?? '');
   const [season, setSeason] = useState<Season>(initialRecipe?.season ?? 'both');
   const [course, setCourse] = useState<CourseChoice>(initialRecipe?.course ?? 'none');
@@ -69,7 +72,7 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
 
   const save = () => {
     if (!cleanName(title)) {
-      setTitleError('Give the recipe a title.');
+      setTitleError(t.recipes.titleRequired);
       return;
     }
     const input = {
@@ -98,11 +101,11 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
         options={{
           headerRight: headerActions(
             <Button
-              accessibilityHint="Saves the recipe and shows it"
-              accessibilityLabel="Save recipe"
+              accessibilityHint={t.recipes.saveHint}
+              accessibilityLabel={t.recipes.saveRecipe}
               icon="check"
               isIconOnly
-              label="Save"
+              label={t.common.save}
               onPress={save}
             />,
           ),
@@ -111,29 +114,29 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
       />
       <TextField
         error={titleError}
-        label="Title"
+        label={t.recipes.title}
         onChangeText={(text) => {
           setTitle(text);
           setTitleError(undefined);
         }}
-        placeholder="e.g. Pumpkin soup"
+        placeholder={t.recipes.titlePlaceholder}
         value={title}
       />
       <SegmentedControl
-        label="Season"
+        label={t.recipes.season}
         onChange={setSeason}
-        optionList={SEASON_OPTION_LIST}
+        optionList={seasonOptionList(t)}
         value={season}
       />
       <SegmentedControl
-        label="Course"
+        label={t.recipes.course}
         onChange={setCourse}
-        optionList={COURSE_CHOICE_OPTION_LIST}
+        optionList={courseChoiceOptionList(t)}
         value={course}
       />
       <IngredientPicker
-        emptyMessage="Type an ingredient to add it."
-        label="Ingredients"
+        emptyMessage={t.recipes.ingredientsEmpty}
+        label={t.recipes.ingredients}
         onChange={setSelectedIngredientList}
         onCreate={(name) => {
           const { id, name: createdName } = findOrCreateIngredient(database, name);

@@ -1,7 +1,9 @@
 import { router, Stack } from 'expo-router';
 import { act, renderRouter, screen } from 'expo-router/testing-library';
 import { Text } from 'react-native';
-import { StackHeader } from './stack-header';
+import { stackHeader } from './stack-header';
+
+const StackHeader = stackHeader('Go back');
 
 const TITLE = 'Slow-roasted pumpkin and chestnut soup';
 

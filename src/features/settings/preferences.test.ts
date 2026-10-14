@@ -18,6 +18,7 @@ describe('preferences', () => {
     expect(loadPreferences().getPreferences()).toStrictEqual({
       colorScheme: 'system',
       isShowingButtonLabels: false,
+      language: 'system',
     });
   });
 
@@ -27,6 +28,7 @@ describe('preferences', () => {
     expect(loadPreferences().getPreferences()).toStrictEqual({
       colorScheme: 'system',
       isShowingButtonLabels: true,
+      language: 'system',
     });
   });
 
@@ -47,11 +49,15 @@ describe('preferences', () => {
 
     expect(loadPreferences().getPreferences().colorScheme).toBe('system');
 
-    Storage.setItemSync('preferences', '{"colorScheme":"sepia","isShowingButtonLabels":"yes"}');
+    Storage.setItemSync(
+      'preferences',
+      '{"colorScheme":"sepia","isShowingButtonLabels":"yes","language":"tlh"}',
+    );
 
     expect(loadPreferences().getPreferences()).toStrictEqual({
       colorScheme: 'system',
       isShowingButtonLabels: false,
+      language: 'system',
     });
   });
 });
