@@ -3,6 +3,7 @@ import { Drawer } from 'expo-router/drawer';
 import { useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import type { IconName } from '@/components/icon';
 import type { Messages } from '@/i18n/en';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
@@ -86,8 +87,10 @@ export function RecipesScreen() {
                 </View>
                 <Button
                   accessibilityHint={isFiltersShown ? t.filters.hideHint : t.filters.showHint}
-                  icon={isFiltersShown ? 'filter-variant-remove' : 'filter-variant'}
+                  icon={filtersIcon(isFiltersShown, countFilters(filterValues))}
                   isExpanded={isFiltersShown}
+                  // Text only with Settings › Show button labels; screen readers always read it.
+                  isIconOnly
                   label={t.filters.toggle(countFilters(filterValues))}
                   onPress={() => setIsFiltersShown(!isFiltersShown)}
                   variant="secondary"
@@ -132,6 +135,14 @@ export function RecipesScreen() {
 // What a screen reader announces for a row: its labels, read as one.
 function describeRecipeRow(item: RecipeListItem, t: Messages): string {
   return t.recipes.rowLabel(item.title, describeSeason(item.season, t), t.courses[item.course]);
+}
+
+// Hide when shown; a check mark when hidden filters are on (the count is in the label).
+function filtersIcon(isShown: boolean, activeCount: number): IconName {
+  if (isShown) {
+    return 'filter-variant-remove';
+  }
+  return activeCount > 0 ? 'filter-check' : 'filter-variant';
 }
 
 const styles = StyleSheet.create((theme) => ({

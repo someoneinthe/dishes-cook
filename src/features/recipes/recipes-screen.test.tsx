@@ -81,4 +81,17 @@ describe('recipesScreen', () => {
 
     expect(screen.queryByLabelText('Search recipes')).not.toBeOnTheScreen();
   });
+
+  it('shows the Filters button as an icon, its text read by screen readers', async () => {
+    saveRecipe(connection.db, {
+      ingredientIdList: [],
+      instructions: '',
+      season: 'both',
+      title: 'Soup',
+    });
+    await renderWithDatabase(<RecipesScreen />, connection);
+
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeOnTheScreen();
+    expect(screen.queryByText('Filters')).not.toBeOnTheScreen();
+  });
 });
