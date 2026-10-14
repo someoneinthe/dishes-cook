@@ -50,6 +50,15 @@ Any PocketBase 0.23+ (tested with 0.40):
 3. Serve it over **HTTPS with a valid certificate**: Android refuses plain HTTP. Any reverse proxy works (e.g. Caddy).
 4. Back up `pb_data/` (PocketBase has built-in scheduled backups).
 
+## Testing during development
+
+- **Tests** run against `src/test/fake-sync-server.ts`, which mirrors the behaviours below; `sync-engine.test.ts` simulates two phones.
+- **On an emulator**, against a throwaway PocketBase (never your real one, its data would mix with test recipes):
+  1. Start one with the migrations: `pocketbase serve --dir /tmp/pb-test/pb_data --migrationsDir server/migrations --http 127.0.0.1:8091`, create a superuser (`pocketbase superuser upsert … --dir /tmp/pb-test/pb_data`), then an account in **users** from its admin UI.
+  2. Forward the port to the emulator: `adb reverse tcp:8091 tcp:8091`.
+  3. In the app, connect to `http://localhost:8091`. Plain HTTP only works in **debug** builds (they allow cleartext for Metro); release builds need HTTPS.
+  4. Add, edit and delete recipes, change rows in the admin UI, and check both sides (Settings shows the last sync).
+
 ## Server behaviour the app relies on
 
 Measured on a real server, and mirrored by the test server (`src/test/fake-sync-server.ts`):

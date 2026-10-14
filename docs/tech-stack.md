@@ -41,8 +41,10 @@ src/
   db/             # Drizzle schema, client, migrations, live queries
   i18n/           # UI text per language (en.ts is the reference), useMessages()
   lib/            # shared utilities
-  test/           # test helpers (in-memory database, alert spy)
+  test/           # test helpers (in-memory database, fake sync server, alert spy)
 assets/           # icons, splash, fonts
+server/
+  migrations/     # PocketBase migrations for the optional sync server (see sync.md)
 ```
 
 Every file inside `src/app/` becomes a route, so tests and helpers must never live there.
