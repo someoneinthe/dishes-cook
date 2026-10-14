@@ -30,6 +30,11 @@ export const en = {
   database: {
     openFailed: (reason: string) => `The recipes database could not be opened: ${reason}`,
   },
+  filters: {
+    any: 'Any',
+    noUsedIngredient: 'No ingredient is used by a recipe yet.',
+    withIngredients: 'With ingredients',
+  },
   ingredientPicker: {
     addHint: 'Adds it to the selection',
     addLabel: (name: string) => `Add ${name}`,
@@ -78,21 +83,19 @@ export const en = {
   mealChoice: {
     addRecipe: 'Add a recipe',
     another: 'Another one',
-    any: 'Any',
     emptyMessage: 'Add a few recipes, then come back to let chance decide what to eat.',
-    matchCount: (count: number) =>
-      count === 0
-        ? 'No recipe matches these filters.'
-        : plural(count, '1 recipe matches.', `${count} recipes match.`),
-    noUsedIngredient: 'No ingredient is used by a recipe yet.',
     open: 'Open',
     openLabel: (title: string) => `Open ${title}`,
+    promptMessage: (count: number) =>
+      count === 1
+        ? 'Tap Suggest: chance picks your only recipe.'
+        : `Tap Suggest: chance picks one of your ${count} recipes.`,
+    promptTitle: 'What shall we eat?',
     suggest: 'Suggest',
     suggestAnother: 'Suggest another one',
-    suggestHint: 'Picks a random recipe among the matching ones',
+    suggestHint: 'Picks one of your recipes at random',
     suggestionIntro: 'How about…',
     suggestRecipe: 'Suggest a recipe',
-    withIngredients: 'With ingredients',
   },
   menu: {
     close: 'Close the menu',
@@ -116,6 +119,10 @@ export const en = {
     ingredients: 'Ingredients',
     ingredientsEmpty: 'Type an ingredient to add it.',
     instructionsPlaceholder: 'Steps, quantities, cooking time…',
+    matchCount: (count: number) =>
+      count === 0
+        ? 'No recipe matches these filters.'
+        : plural(count, '1 recipe matches.', `${count} recipes match.`),
     // Label of the add-recipe buttons, shown with Settings › Show button labels.
     new: 'New',
     newHint: 'Opens an empty recipe form',

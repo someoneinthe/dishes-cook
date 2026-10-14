@@ -70,7 +70,10 @@ describe('query plans', () => {
   });
 
   it('reads recipe pages in index order and counts ingredients with the primary key', () => {
-    listRecipePage(database, { pageParam: { after: CURSOR }, search: 'so' });
+    listRecipePage(database, {
+      filters: { course: 'main', ingredientIdList: [], search: 'so', season: 'winter' },
+      pageParam: { after: CURSOR },
+    });
     const planList = lastPlan();
 
     expect(planList[0]).toMatch(/^SEARCH recipes USING INDEX recipes_sort_key_id_idx/);

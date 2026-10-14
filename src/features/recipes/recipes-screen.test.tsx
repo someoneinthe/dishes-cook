@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react-native';
+import { fireEvent, screen, within } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import type { DatabaseConnection } from '@/db/types';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
@@ -40,14 +40,14 @@ describe('recipesScreen', () => {
     });
     await renderWithDatabase(<RecipesScreen />, connection);
 
-    expect(screen.getByText('Winter & summer')).toBeOnTheScreen();
-    expect(screen.getByText('Starter')).toBeOnTheScreen();
-    expect(screen.getByText('1 ingredient')).toBeOnTheScreen();
-
     // Screen readers announce the row's labels with its title.
-    await fireEvent.press(
-      screen.getByRole('button', { name: 'Carrot soup, Winter & summer, Starter' }),
-    );
+    const row = screen.getByRole('button', { name: 'Carrot soup, Winter & summer, Starter' });
+
+    expect(within(row).getByText('Winter & summer')).toBeOnTheScreen();
+    expect(within(row).getByText('Starter')).toBeOnTheScreen();
+    expect(within(row).getByText('1 ingredient')).toBeOnTheScreen();
+
+    await fireEvent.press(row);
 
     expect(router.push).toHaveBeenCalledWith({
       params: { id: String(id) },

@@ -10,18 +10,28 @@ import { headerActions } from '@/components/header-actions';
 import { getPagingProps } from '@/components/paging-props';
 import { TextField } from '@/components/text-field';
 import { useMessages } from '@/i18n/i18n-provider';
+import type { RecipeFilterValues } from './components/recipe-filters';
 import type { RecipeListItem } from './db/recipe-queries';
+import { hasFilters, NO_FILTERS, RecipeFilters, toQueryFilters } from './components/recipe-filters';
 import { CourseLabel, SeasonLabel } from './components/recipe-labels';
-import { useRecipePages } from './hooks/use-recipes';
+import { useRecipeCount, useRecipePages } from './hooks/use-recipes';
 import { describeSeason } from './season';
 
 export function RecipesScreen() {
   const t = useMessages();
   const [search, setSearch] = useState('');
-  // Filtered in SQL, PAGE_SIZE rows at a time.
-  const recipePages = useRecipePages(search);
-  // No search field before the first recipe: there's nothing to search yet.
-  const isSearchVisible = search !== '' || recipePages.itemList.length > 0;
+  const [filterValues, setFilterValues] = useState<RecipeFilterValues>(NO_FILTERS);
+  const queryFilters = toQueryFilters(filterValues, search);
+  // Filtered in SQL, PAGE_SIZE rows at a time; counts in SQL too.
+  const recipePages = useRecipePages(queryFilters);
+  const matchCount = useRecipeCount(queryFilters);
+  const recipeCount = useRecipeCount({ ingredientIdList: [] });
+  const isFiltering = search.trim() !== '' || hasFilters(filterValues);
+  // Only search with a title: "no recipe matches “pizza”".
+  const matchText =
+    matchCount === 0 && !hasFilters(filterValues)
+      ? t.recipes.noMatch(search)
+      : t.recipes.matchCount(matchCount);
   const addRecipe = () => router.push('/recipe/new');
 
   return (
@@ -46,14 +56,14 @@ export function RecipesScreen() {
         keyboardShouldPersistTaps="handled"
         keyExtractor={(recipe) => String(recipe.id)}
         ListEmptyComponent={
-          search ? (
-            <Text style={styles.noMatch}>{t.recipes.noMatch(search)}</Text>
-          ) : (
+          // Before the first recipe; while filtering, the header tells there's no match.
+          recipeCount === 0 ? (
             <EmptyState message={t.recipes.emptyMessage} title={t.recipes.emptyTitle} />
-          )
+          ) : null
         }
         ListHeaderComponent={
-          isSearchVisible ? (
+          // No search or filters before the first recipe: there's nothing to narrow yet.
+          recipeCount > 0 ? (
             <View style={styles.header}>
               <TextField
                 isLabelHidden
@@ -63,6 +73,12 @@ export function RecipesScreen() {
                 returnKeyType="search"
                 value={search}
               />
+              <RecipeFilters onChange={setFilterValues} values={filterValues} />
+              {isFiltering && (
+                <Text accessibilityLiveRegion="polite" style={styles.matchCount}>
+                  {matchText}
+                </Text>
+              )}
             </View>
           ) : null
         }
@@ -121,6 +137,7 @@ const styles = StyleSheet.create((theme) => ({
     rowGap: theme.gap(1),
   },
   header: {
+    gap: theme.gap(5),
     marginBottom: theme.gap(2),
   },
   labels: {
@@ -133,7 +150,7 @@ const styles = StyleSheet.create((theme) => ({
   list: {
     backgroundColor: theme.colors.background,
   },
-  noMatch: {
+  matchCount: {
     ...theme.typography.body,
     color: theme.colors.textMuted,
   },

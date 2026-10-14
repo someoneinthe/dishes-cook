@@ -19,20 +19,26 @@ export function useRecipe(id: number | undefined) {
 
 export function useRecipeCount(filters: RecipeFilters) {
   const database = useDatabase();
-  const { course, ingredientIdList, season } = filters;
-  const count = () => countRecipes(database, { course, ingredientIdList, season });
+  const { course, ingredientIdList, search, season } = filters;
+  const count = () => countRecipes(database, { course, ingredientIdList, search, season });
   const { data } = useQuery({
     initialData: count,
     queryFn: count,
-    queryKey: ['recipes', 'count', { course, ingredientIdList, season }],
+    queryKey: ['recipes', 'count', { course, ingredientIdList, search, season }],
   });
   return data;
 }
 
-// The alphabetical recipe list, page by page, filtered by a search on the title.
-export function useRecipePages(search: string) {
+// The alphabetical recipe list, page by page, narrowed by the filters.
+export function useRecipePages(filters: RecipeFilters) {
   const database = useDatabase();
-  return usePagedQuery(['recipes', 'pages', search], (pageParameter) =>
-    listRecipePage(database, { pageParam: pageParameter, search }),
+  const { course, ingredientIdList, search, season } = filters;
+  return usePagedQuery(
+    ['recipes', 'pages', { course, ingredientIdList, search, season }],
+    (pageParameter) =>
+      listRecipePage(database, {
+        filters: { course, ingredientIdList, search, season },
+        pageParam: pageParameter,
+      }),
   );
 }

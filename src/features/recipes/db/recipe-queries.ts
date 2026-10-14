@@ -22,6 +22,8 @@ export type RecipeFilters = Readonly<{
   course?: Course;
   // Recipes made with ALL these ingredients.
   ingredientIdList: readonly number[];
+  // Titles containing it, ignoring case and accents; undefined or blank = any title.
+  search?: string;
   // A season also matches the recipes for both seasons; undefined = any season.
   season?: Exclude<Season, 'both'>;
 }>;
@@ -48,7 +50,7 @@ export type RecipeListItem = Readonly<{
 // Written out qualified: Drizzle renders `${recipes.id}` as a bare "id" inside a select.
 const INGREDIENT_COUNT = sql<number>`(select count(*) from "recipe_ingredients" where "recipe_ingredients"."recipe_id" = "recipes"."id")`;
 
-// Number of recipes matching the filters (the meal choice shows it and picks among them).
+// Number of recipes matching the filters (the recipe list shows it).
 export function countRecipes(database: AppDatabase, filters: RecipeFilters): number {
   return (
     database.select({ count: count() }).from(recipes).where(filtersWhere(database, filters)).get()
@@ -86,14 +88,14 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
   return { ...recipe, ingredientList };
 }
 
-// One page (PAGE_SIZE) of the alphabetical recipe list, filtered by a search on the title (accent-
-// and case-insensitive "contains"). `instructions` (possibly long) is left out.
+// One page (PAGE_SIZE) of the alphabetical recipe list, narrowed by the filters (title search,
+// season, course, ingredients). `instructions` (possibly long) is left out.
 // Plan: walk the (sort_key, id) index from the cursor, count links on the primary key.
 export function listRecipePage(
   database: AppDatabase,
-  options: Readonly<{ pageParam: PageRequest; search: string }>,
+  options: Readonly<{ filters: RecipeFilters; pageParam: PageRequest }>,
 ): Page<RecipeListItem> {
-  const { pageParam: pageParameter, search } = options;
+  const { filters, pageParam: pageParameter } = options;
   const order = isBackward(pageParameter) ? desc : asc;
   const rowList = database
     .select({
@@ -105,7 +107,7 @@ export function listRecipePage(
       title: recipes.title,
     })
     .from(recipes)
-    .where(and(titleSearchWhere(search), keysetWhere(recipes, pageParameter)))
+    .where(and(filtersWhere(database, filters), keysetWhere(recipes, pageParameter)))
     .orderBy(order(recipes.sortKey), order(recipes.id))
     .limit(PAGE_SIZE + 1)
     .all();
@@ -186,6 +188,10 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
 // containing a selected ingredient are visited.
 function filtersWhere(database: AppDatabase, filters: RecipeFilters): SQL | undefined {
   const conditionList: SQL[] = [];
+  const titleSearch = titleSearchWhere(filters.search ?? '');
+  if (titleSearch) {
+    conditionList.push(titleSearch);
+  }
   if (filters.season) {
     conditionList.push(inArray(recipes.season, [filters.season, 'both']));
   }

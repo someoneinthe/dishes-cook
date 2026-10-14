@@ -32,6 +32,11 @@ export const fr: Messages = {
   database: {
     openFailed: (reason) => `Impossible d’ouvrir la base des recettes${NARROW_SPACE}: ${reason}`,
   },
+  filters: {
+    any: 'Indifférent',
+    noUsedIngredient: 'Aucun ingrédient n’est encore utilisé dans une recette.',
+    withIngredients: 'Avec les ingrédients',
+  },
   ingredientPicker: {
     addHint: 'L’ajoute à la sélection',
     addLabel: (name) => `Ajouter ${name}`,
@@ -80,21 +85,19 @@ export const fr: Messages = {
   mealChoice: {
     addRecipe: 'Ajouter une recette',
     another: 'Une autre',
-    any: 'Indifférent',
     emptyMessage: 'Ajoutez quelques recettes, puis revenez laisser le hasard choisir le repas.',
-    matchCount: (count) =>
-      count === 0
-        ? 'Aucune recette ne correspond à ces filtres.'
-        : plural(count, '1 recette correspond.', `${count} recettes correspondent.`),
-    noUsedIngredient: 'Aucun ingrédient n’est encore utilisé dans une recette.',
     open: 'Ouvrir',
     openLabel: (title) => `Ouvrir ${title}`,
+    promptMessage: (count) =>
+      count === 1
+        ? `Touchez Suggérer${NARROW_SPACE}: le hasard choisit votre seule recette.`
+        : `Touchez Suggérer${NARROW_SPACE}: le hasard choisit parmi vos ${count} recettes.`,
+    promptTitle: `Qu’est-ce qu’on mange${NARROW_SPACE}?`,
     suggest: 'Suggérer',
     suggestAnother: 'Suggérer une autre recette',
-    suggestHint: 'Choisit une recette au hasard parmi celles qui correspondent',
+    suggestHint: 'Choisit une de vos recettes au hasard',
     suggestionIntro: 'Et si on mangeait…',
     suggestRecipe: 'Suggérer une recette',
-    withIngredients: 'Avec les ingrédients',
   },
   menu: {
     close: 'Fermer le menu',
@@ -118,6 +121,10 @@ export const fr: Messages = {
     ingredients: 'Ingrédients',
     ingredientsEmpty: 'Saisissez un ingrédient pour l’ajouter.',
     instructionsPlaceholder: 'Étapes, quantités, temps de cuisson…',
+    matchCount: (count) =>
+      count === 0
+        ? 'Aucune recette ne correspond à ces filtres.'
+        : plural(count, '1 recette correspond.', `${count} recettes correspondent.`),
     new: 'Nouvelle',
     newHint: 'Ouvre un formulaire de recette vide',
     newRecipe: 'Nouvelle recette',

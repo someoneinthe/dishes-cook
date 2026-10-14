@@ -1,66 +1,29 @@
 Feature: Meal choice
-  The app suggests a random recipe among the saved ones, narrowed down by
-  season, by course and by the ingredients the recipe must contain.
+  The app proposes a random recipe among the saved ones, and another one on
+  request. Narrowing the recipes down happens in the recipe list.
 
   Background:
     Given these recipes:
-      | title         | season | course  | ingredients            |
-      | Pumpkin soup  | winter |         | pumpkin, onion, cream  |
-      | Tomato salad  | summer | starter | tomato, onion          |
-      | Omelette      | both   | main    | egg, cream             |
+      | title        |
+      | Pumpkin soup |
+      | Tomato salad |
+      | Omelette     |
 
-  Scenario: Any recipe can be suggested without filters
+  Scenario: A recipe is proposed as soon as the meal choice opens
     When I open the meal choice
-    Then I see that 3 recipes match
-    When I ask for a suggestion
     Then the suggestion is one of "Pumpkin soup, Tomato salad, Omelette"
-
-  Scenario: A season also includes the recipes for both seasons
-    When I open the meal choice
-    And I choose the "Summer" season
-    Then I see that 2 recipes match
-    When I ask for a suggestion
-    Then the suggestion is one of "Tomato salad, Omelette"
-
-  Scenario: A course keeps only the recipes of that course
-    When I open the meal choice
-    And I choose the "Main course" course
-    Then I see that 1 recipe matches
-    When I ask for a suggestion
-    Then the suggestion is one of "Omelette"
-
-  Scenario: Suggested recipes contain every selected ingredient
-    When I open the meal choice
-    And I select the ingredient "onion"
-    And I select the ingredient "cream"
-    Then I see that 1 recipe matches
-    When I ask for a suggestion
-    Then the suggestion is one of "Pumpkin soup"
 
   Scenario: Asking again suggests another recipe
     When I open the meal choice
-    And I choose the "Winter" season
-    And I ask for a suggestion
     And I ask for another suggestion
     Then the two suggestions are different
 
-  Scenario: Nothing can be suggested when no recipe matches
+  Scenario: The suggestion offers another one
     When I open the meal choice
-    And I choose the "Summer" season
-    And I select the ingredient "pumpkin"
-    Then I see that no recipe matches
-    And I cannot ask for a suggestion
+    And I ask the suggestion for another one
+    Then the two suggestions are different
 
   Scenario: The suggested recipe opens in full
     When I open the meal choice
-    And I choose the "Main course" course
-    And I ask for a suggestion
     And I open the suggestion
-    Then the recipe "Omelette" opens
-
-  Scenario: The suggestion offers another one
-    When I open the meal choice
-    And I choose the "Winter" season
-    And I ask for a suggestion
-    And I ask the suggestion for another one
-    Then the two suggestions are different
+    Then the suggested recipe's page opens
