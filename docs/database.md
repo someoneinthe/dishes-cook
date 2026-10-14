@@ -22,7 +22,7 @@ erDiagram
   }
   recipes {
     integer id PK
-    text course "starter / main / dessert, nullable"
+    text course "starter / main / dessert"
     integer created_at
     text instructions
     text season "winter / summer / both"
@@ -52,7 +52,7 @@ Integer primary keys are SQLite rowids.
 - **Constraints in the database**, not only in the UI: `CHECK` on the season and course values and on non-blank names/titles, `NOT NULL`, foreign keys (`PRAGMA foreign_keys = ON` on every connection, since SQLite disables them by default).
 - **Integer primary keys** are SQLite's rowid: the fastest lookups and joins. If sync between devices comes later, add a UUID column then.
 - **No index on `season` or `course`**: with 3 values each, an index can't beat scanning the table.
-- **The course is optional** (`NULL`); filtering by a course leaves out the recipes without one.
+- **Every recipe has a course** (`NOT NULL`, `'main'` by default): a recipe always matches a course filter of its own course, and the form offers no "none".
 
 ## Performance choices
 

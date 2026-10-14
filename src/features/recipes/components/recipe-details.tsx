@@ -17,7 +17,7 @@ export function RecipeDetails({ recipe }: RecipeDetailsProps) {
       </Text>
       <View style={styles.labels}>
         <SeasonLabel season={recipe.season} />
-        {recipe.course && <CourseLabel course={recipe.course} />}
+        <CourseLabel course={recipe.course} />
       </View>
 
       <Text accessibilityRole="header" style={styles.heading}>

@@ -5,7 +5,7 @@ Feature: Recipe list
   Background:
     Given these recipes:
       | title         | season | course  | ingredients            |
-      | Pumpkin soup  | winter |         | pumpkin, onion, cream  |
+      | Pumpkin soup  | winter | starter | pumpkin, onion, cream  |
       | Tomato salad  | summer | starter | tomato, onion          |
       | Omelette      | both   | main    | egg, cream             |
 

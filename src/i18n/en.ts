@@ -131,7 +131,6 @@ export const en = {
     new: 'New',
     newHint: 'Opens an empty recipe form',
     newRecipe: 'New recipe',
-    noCourse: 'None',
     noIngredients: 'No ingredients listed.',
     noInstructions: 'No instructions written yet.',
     noMatch: (search: string) => `No recipe matches “${search}”.`,

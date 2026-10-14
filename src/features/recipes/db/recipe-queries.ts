@@ -9,7 +9,7 @@ import { ingredients, NOW_MS, recipeIngredients, recipes } from '@/db/schema';
 import { cleanName, toLikeContains, toSortKey } from '@/lib/text';
 
 export type Recipe = Readonly<{
-  course: Course | null;
+  course: Course;
   id: number;
   ingredientList: Ingredient[];
   instructions: string;
@@ -18,7 +18,7 @@ export type Recipe = Readonly<{
 }>;
 
 export type RecipeFilters = Readonly<{
-  // Recipes of this course (not those without one); undefined = any course.
+  // Recipes of this course; undefined = any course.
   course?: Course;
   // Recipes made with ALL these ingredients.
   ingredientIdList: readonly number[];
@@ -29,8 +29,8 @@ export type RecipeFilters = Readonly<{
 }>;
 
 export type RecipeInput = Readonly<{
-  // No course when left out.
-  course?: Course | null;
+  // A main course when left out.
+  course?: Course;
   ingredientIdList: readonly number[];
   instructions: string;
   season: Season;
@@ -38,7 +38,7 @@ export type RecipeInput = Readonly<{
 }>;
 
 export type RecipeListItem = Readonly<{
-  course: Course | null;
+  course: Course;
   id: number;
   ingredientCount: number;
   season: Season;
@@ -151,7 +151,7 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
     throw new Error('A recipe title cannot be blank');
   }
   const values = {
-    course: input.course ?? null,
+    course: input.course ?? 'main',
     instructions: input.instructions.trim(),
     season: input.season,
     sortKey: toSortKey(title),
@@ -223,7 +223,7 @@ function updateRecipe(
   tx: Pick<AppDatabase, 'update'>,
   id: number,
   values: Readonly<{
-    course: Course | null;
+    course: Course;
     instructions: string;
     season: Season;
     sortKey: string;

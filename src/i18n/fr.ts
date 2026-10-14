@@ -131,7 +131,6 @@ export const fr: Messages = {
     new: 'Nouvelle',
     newHint: 'Ouvre un formulaire de recette vide',
     newRecipe: 'Nouvelle recette',
-    noCourse: 'Aucun',
     noIngredients: 'Aucun ingrédient indiqué.',
     noInstructions: 'Pas encore d’instructions.',
     noMatch: (search) => `Aucune recette ne correspond à ${quote(search)}.`,

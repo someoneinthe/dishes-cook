@@ -19,7 +19,7 @@ CREATE TABLE `recipe_ingredients` (
 --> statement-breakpoint
 CREATE INDEX `recipe_ingredients_ingredient_recipe_idx` ON `recipe_ingredients` (`ingredient_id`,`recipe_id`);--> statement-breakpoint
 CREATE TABLE `recipes` (
-	`course` text,
+	`course` text DEFAULT 'main' NOT NULL,
 	`created_at` integer DEFAULT (cast(unixepoch('subsec') * 1000 as integer)) NOT NULL,
 	`id` integer PRIMARY KEY NOT NULL,
 	`instructions` text DEFAULT '' NOT NULL,

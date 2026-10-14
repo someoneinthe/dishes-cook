@@ -11,9 +11,8 @@ jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 
 const feature = loadFeature('./recipe-list.feature', { loadRelativePath: true });
 
-// An empty course cell is a recipe without a course.
 type RecipeRow = Readonly<{
-  course: '' | Course;
+  course: Course;
   ingredients: string;
   season: Season;
   title: string;
@@ -32,7 +31,7 @@ defineFeature(feature, (test) => {
         .split(',')
         .map((name) => findOrCreateIngredient(connection.db, name).id);
       saveRecipe(connection.db, {
-        course: row.course || null,
+        course: row.course,
         ingredientIdList,
         instructions: '',
         season: row.season,

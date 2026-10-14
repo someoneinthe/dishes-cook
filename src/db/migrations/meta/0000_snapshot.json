@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "7155841f-200a-43f4-bc1a-d27eba0ff03b",
+  "id": "92677817-9c8e-4411-8bbb-2de038cde365",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "ingredients": {
@@ -146,8 +146,9 @@
           "name": "course",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'main'"
         },
         "created_at": {
           "name": "created_at",

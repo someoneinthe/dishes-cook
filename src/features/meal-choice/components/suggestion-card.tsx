@@ -25,7 +25,7 @@ export function SuggestionCard({ onAnother, recipe }: SuggestionCardProps) {
       </Text>
       <View style={styles.details}>
         <SeasonLabel season={recipe.season} />
-        {recipe.course && <CourseLabel course={recipe.course} />}
+        <CourseLabel course={recipe.course} />
         <Text style={styles.detail}>{t.recipes.ingredientCount(recipe.ingredientList.length)}</Text>
       </View>
       <View style={styles.actions}>

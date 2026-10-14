@@ -116,7 +116,7 @@ export function RecipesScreen() {
             <View style={styles.details}>
               <View style={styles.labels}>
                 <SeasonLabel season={item.season} />
-                {item.course && <CourseLabel course={item.course} />}
+                <CourseLabel course={item.course} />
               </View>
               <Text style={styles.detail}>{t.recipes.ingredientCount(item.ingredientCount)}</Text>
             </View>
@@ -131,11 +131,7 @@ export function RecipesScreen() {
 
 // What a screen reader announces for a row: its labels, read as one.
 function describeRecipeRow(item: RecipeListItem, t: Messages): string {
-  return t.recipes.rowLabel(
-    item.title,
-    describeSeason(item.season, t),
-    item.course ? t.courses[item.course] : undefined,
-  );
+  return t.recipes.rowLabel(item.title, describeSeason(item.season, t), t.courses[item.course]);
 }
 
 const styles = StyleSheet.create((theme) => ({
