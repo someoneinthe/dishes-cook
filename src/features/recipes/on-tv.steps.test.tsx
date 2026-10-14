@@ -1,18 +1,22 @@
 import { screen } from '@testing-library/react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
+import { IngredientsScreen } from '@/features/ingredients/ingredients-screen';
 import { MealChoiceScreen } from '@/features/meal-choice/meal-choice-screen';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { saveRecipe } from './db/recipe-queries';
 import { RecipeDetailScreen } from './recipe-detail-screen';
+import { RecipeFormScreen } from './recipe-form-screen';
 import { RecipesScreen } from './recipes-screen';
 
 // The app as a TV runs it.
 jest.mock('../../lib/device', () => ({ isTv: true }));
 
 jest.mock('expo-router', () => ({
+  // Records where the screen sends the user.
+  Redirect: jest.fn(() => null),
   router: { back: jest.fn(), push: jest.fn() },
   Stack: {
     Screen: jest.requireActual<NavigationMock>('@/test/navigation-mock').ScreenWithHeaderButtons,
@@ -32,6 +36,7 @@ defineFeature(feature, (test) => {
   beforeEach(() => {
     connection = createTestConnection();
     idByTitle.clear();
+    jest.mocked(Redirect).mockClear();
   });
 
   const noRecipes = () => {
@@ -83,6 +88,24 @@ defineFeature(feature, (test) => {
       expect(screen.getByText(ON_PHONE_MESSAGE)).toBeOnTheScreen();
     });
     and('no recipe can be added', () => {
+      expect(screen.queryByRole('button')).not.toBeOnTheScreen();
+    });
+  });
+
+  test('Links to the writing screens lead to the meal choice on the TV', ({ then, when }) => {
+    when('I open the new recipe form on the TV', async () => {
+      jest.mocked(useLocalSearchParams).mockReturnValue({});
+      await renderWithDatabase(<RecipeFormScreen />, connection);
+    });
+    then('I am taken to the meal choice', () => {
+      expect(jest.mocked(Redirect).mock.calls.at(-1)?.[0]).toStrictEqual({ href: '/' });
+      expect(screen.queryByRole('button')).not.toBeOnTheScreen();
+    });
+    when('I open the ingredient list on the TV', async () => {
+      await renderWithDatabase(<IngredientsScreen />, connection);
+    });
+    then('I am taken to the meal choice', () => {
+      expect(jest.mocked(Redirect).mock.calls.at(-1)?.[0]).toStrictEqual({ href: '/' });
       expect(screen.queryByRole('button')).not.toBeOnTheScreen();
     });
   });

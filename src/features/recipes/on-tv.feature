@@ -20,3 +20,9 @@ Feature: On a TV
     When I open the meal choice on the TV
     Then I am told that recipes are written in the app on a phone, to sync with the TV
     And no recipe can be added
+
+  Scenario: Links to the writing screens lead to the meal choice on the TV
+    When I open the new recipe form on the TV
+    Then I am taken to the meal choice
+    When I open the ingredient list on the TV
+    Then I am taken to the meal choice

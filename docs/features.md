@@ -7,7 +7,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
 - [Meal choice](#meal-choice): 7 scenarios
-- [On a TV](#on-a-tv): 3 scenarios
+- [On a TV](#on-a-tv): 4 scenarios
 - [Recipe list](#recipe-list): 9 scenarios
 - [Recipes](#recipes): 3 scenarios
 - [Server sync](#server-sync): 5 scenarios
@@ -137,6 +137,13 @@ On an Android TV, driven with the remote, the app is read-only: it proposes and 
 - **When** I open the meal choice on the TV
 - **Then** I am told that recipes are written in the app on a phone, to sync with the TV
 - **And** no recipe can be added
+
+### Links to the writing screens lead to the meal choice on the TV
+
+- **When** I open the new recipe form on the TV
+- **Then** I am taken to the meal choice
+- **When** I open the ingredient list on the TV
+- **Then** I am taken to the meal choice
 
 ## Recipe list
 

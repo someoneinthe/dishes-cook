@@ -1,3 +1,4 @@
+import { Redirect } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import { useState } from 'react';
 import { Alert, FlatList, Text, View } from 'react-native';
@@ -10,14 +11,21 @@ import { TextField } from '@/components/text-field';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useDatabase } from '@/db/database-context';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isTv } from '@/lib/device';
 import { cleanName } from '@/lib/text';
 import type { IngredientListItem } from './db/ingredient-queries';
 import { IngredientRow } from './components/ingredient-row';
 import { deleteIngredient, findOrCreateIngredient } from './db/ingredient-queries';
 import { useIngredientPages } from './hooks/use-ingredients';
 
-// The ingredient catalog: one field both filters the list and adds a new ingredient.
+// Read-only on a TV: the catalog only manages ingredients, so a link to it (it isn't in the TV's
+// menu) leads to the meal choice.
 export function IngredientsScreen() {
+  return isTv ? <Redirect href="/" /> : <IngredientCatalog />;
+}
+
+// The ingredient catalog: one field both filters the list and adds a new ingredient.
+function IngredientCatalog() {
   const database = useDatabase();
   const t = useMessages();
   const confirmDelete = useConfirmDelete();
