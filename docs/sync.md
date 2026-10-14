@@ -35,6 +35,7 @@ Integer ids stay on the phone. A row's identity across devices is its `sync_id`:
 
 ### Known limits
 
+- **Concurrent edits lose one side, silently** (open problem, solution to find): when the same recipe is changed on two phones between syncs (easy when one is away from home), the newest version by the phones' clocks is kept and the other edit disappears without a warning, even if they touched different fields (title on one, ingredients on the other). Workaround for now: sync before editing a recipe someone else may edit. Options to study: field-by-field merge, or keeping both versions and warning on conflict.
 - Times come from each phone's clock: a phone with a clock far off could win or lose against changes it shouldn't.
 - An ingredient renamed on one phone to a name another phone already uses for a different ingredient keeps its old name on that phone; recipes there that use it may miss it.
 - One server is one shared recipe library: every account sees everything.
