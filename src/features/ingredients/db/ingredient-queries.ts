@@ -3,7 +3,8 @@ import { and, asc, desc, eq, ne, notInArray, sql } from 'drizzle-orm';
 import type { Page, PageRequest } from '@/db/pagination';
 import type { AppDatabase } from '@/db/types';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
-import { ingredients, recipeIngredients } from '@/db/schema';
+import { ingredients, NOW_MS, recipeIngredients, syncDeletions } from '@/db/schema';
+import { toIngredientSyncId } from '@/lib/sync-id';
 import { cleanName, toLikeContains, toNameKey, toSortKey } from '@/lib/text';
 
 export type DeleteResult = 'deleted' | 'in-use';
@@ -19,19 +20,34 @@ export type RenameResult = 'blank' | 'duplicate' | 'renamed';
 const RECIPE_COUNT = sql<number>`(select count(*) from "recipe_ingredients" where "recipe_ingredients"."ingredient_id" = "ingredients"."id")`;
 
 // Deletes an unused ingredient. The foreign key is ON DELETE RESTRICT, so usage is checked first
-// instead of catching a driver-specific error.
+// instead of catching a driver-specific error. The deletion is kept for the sync server.
 export function deleteIngredient(database: AppDatabase, id: number): DeleteResult {
-  const link = database
-    .select({ recipeId: recipeIngredients.recipeId })
-    .from(recipeIngredients)
-    .where(eq(recipeIngredients.ingredientId, id))
-    .limit(1)
-    .get();
-  if (link) {
-    return 'in-use';
-  }
-  database.delete(ingredients).where(eq(ingredients.id, id)).run();
-  return 'deleted';
+  return database.transaction((tx) => {
+    const link = tx
+      .select({ recipeId: recipeIngredients.recipeId })
+      .from(recipeIngredients)
+      .where(eq(recipeIngredients.ingredientId, id))
+      .limit(1)
+      .get();
+    if (link) {
+      return 'in-use';
+    }
+    const deleted = tx
+      .delete(ingredients)
+      .where(eq(ingredients.id, id))
+      .returning({ syncId: ingredients.syncId })
+      .get();
+    if (deleted) {
+      tx.insert(syncDeletions)
+        .values({ syncId: deleted.syncId, tableName: 'ingredients' })
+        .onConflictDoUpdate({
+          set: { deletedAt: NOW_MS },
+          target: [syncDeletions.tableName, syncDeletions.syncId],
+        })
+        .run();
+    }
+    return 'deleted';
+  });
 }
 
 export function findIngredientByName(database: AppDatabase, name: string): Ingredient | undefined {
@@ -52,9 +68,15 @@ export function findOrCreateIngredient(
   if (!cleanedName) {
     throw new Error('An ingredient name cannot be blank');
   }
+  const nameKey = toNameKey(cleanedName);
   const created = database
     .insert(ingredients)
-    .values({ name: cleanedName, nameKey: toNameKey(cleanedName), sortKey: toSortKey(cleanedName) })
+    .values({
+      name: cleanedName,
+      nameKey,
+      sortKey: toSortKey(cleanedName),
+      syncId: toIngredientSyncId(nameKey),
+    })
     .onConflictDoNothing({ target: ingredients.nameKey })
     .returning({ id: ingredients.id, name: ingredients.name })
     .get();
@@ -108,7 +130,7 @@ export function renameIngredient(database: AppDatabase, id: number, name: string
   }
   database
     .update(ingredients)
-    .set({ name: cleanedName, nameKey, sortKey: toSortKey(cleanedName) })
+    .set({ name: cleanedName, nameKey, sortKey: toSortKey(cleanedName), updatedAt: NOW_MS })
     .where(eq(ingredients.id, id))
     .run();
   return 'renamed';
