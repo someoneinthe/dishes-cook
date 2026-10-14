@@ -6,7 +6,7 @@ import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, recipes } from '@/db/schema';
-import { cleanName, toSortKey } from '@/lib/text';
+import { cleanName, toLikeContains, toSortKey } from '@/lib/text';
 
 export type Recipe = Readonly<{
   course: Course | null;
@@ -86,12 +86,14 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
   return { ...recipe, ingredientList };
 }
 
-// One page (PAGE_SIZE) of the alphabetical recipe list. `instructions` (possibly long) is left out.
+// One page (PAGE_SIZE) of the alphabetical recipe list, filtered by a search on the title (accent-
+// and case-insensitive "contains"). `instructions` (possibly long) is left out.
 // Plan: walk the (sort_key, id) index from the cursor, count links on the primary key.
 export function listRecipePage(
   database: AppDatabase,
-  pageParameter: PageRequest,
+  options: Readonly<{ pageParam: PageRequest; search: string }>,
 ): Page<RecipeListItem> {
+  const { pageParam: pageParameter, search } = options;
   const order = isBackward(pageParameter) ? desc : asc;
   const rowList = database
     .select({
@@ -103,7 +105,7 @@ export function listRecipePage(
       title: recipes.title,
     })
     .from(recipes)
-    .where(keysetWhere(recipes, pageParameter))
+    .where(and(titleSearchWhere(search), keysetWhere(recipes, pageParameter)))
     .orderBy(order(recipes.sortKey), order(recipes.id))
     .limit(PAGE_SIZE + 1)
     .all();
@@ -202,6 +204,13 @@ function filtersWhere(database: AppDatabase, filters: RecipeFilters): SQL | unde
     conditionList.push(inArray(recipes.id, recipesWithAllIngredients));
   }
   return and(...conditionList);
+}
+
+// Titles containing the search, ignoring case and accents (on sort_key); no condition when blank.
+function titleSearchWhere(search: string): SQL | undefined {
+  return cleanName(search)
+    ? sql`${recipes.sortKey} like ${toLikeContains(search)} escape '\\'`
+    : undefined;
 }
 
 function updateRecipe(

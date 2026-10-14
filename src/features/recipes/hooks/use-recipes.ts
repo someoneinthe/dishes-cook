@@ -29,10 +29,10 @@ export function useRecipeCount(filters: RecipeFilters) {
   return data;
 }
 
-// The alphabetical recipe list, page by page.
-export function useRecipePages() {
+// The alphabetical recipe list, page by page, filtered by a search on the title.
+export function useRecipePages(search: string) {
   const database = useDatabase();
-  return usePagedQuery(['recipes', 'pages'], (pageParameter) =>
-    listRecipePage(database, pageParameter),
+  return usePagedQuery(['recipes', 'pages', search], (pageParameter) =>
+    listRecipePage(database, { pageParam: pageParameter, search }),
   );
 }

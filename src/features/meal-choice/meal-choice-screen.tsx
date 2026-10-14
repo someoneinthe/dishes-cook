@@ -13,12 +13,12 @@ import { headerActions } from '@/components/header-actions';
 import { SegmentedControl } from '@/components/segmented-control';
 import { useDatabase } from '@/db/database-context';
 import { IngredientPicker } from '@/features/ingredients/components/ingredient-picker';
-import { RecipeDetails } from '@/features/recipes/components/recipe-details';
 import { courseOptionList } from '@/features/recipes/course';
 import { pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
 import { useRecipe, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
 import { SEASON_ICONS } from '@/features/recipes/season';
 import { useMessages } from '@/i18n/i18n-provider';
+import { SuggestionCard } from './components/suggestion-card';
 
 type CourseFilter = 'any' | NonNullable<RecipeFilters['course']>;
 type SeasonFilter = 'any' | NonNullable<RecipeFilters['season']>;
@@ -42,6 +42,8 @@ export function MealChoiceScreen() {
   const recipeCount = useRecipeCount({ ingredientIdList: [] });
   const suggestion = useRecipe(suggestedId);
 
+  const suggestAnother = () => setSuggestedId(pickRandomRecipeId(database, filters, suggestedId));
+
   const headerButton =
     recipeCount === 0 ? (
       <Button
@@ -59,7 +61,7 @@ export function MealChoiceScreen() {
         icon="dice-multiple"
         isDisabled={matchCount === 0}
         label={t.mealChoice.suggest}
-        onPress={() => setSuggestedId(pickRandomRecipeId(database, filters, suggestedId))}
+        onPress={suggestAnother}
       />
     );
   const header = <Drawer.Screen options={{ headerRight: headerActions(headerButton) }} />;
@@ -80,6 +82,7 @@ export function MealChoiceScreen() {
       style={styles.screen}
     >
       {header}
+      {suggestion && <SuggestionCard onAnother={suggestAnother} recipe={suggestion} />}
       <SegmentedControl
         label={t.recipes.season}
         onChange={(value) => {
@@ -111,11 +114,6 @@ export function MealChoiceScreen() {
       <Text accessibilityLiveRegion="polite" style={styles.matchCount}>
         {t.mealChoice.matchCount(matchCount)}
       </Text>
-      {suggestion && (
-        <View style={styles.suggestion}>
-          <RecipeDetails recipe={suggestion} />
-        </View>
-      )}
     </ScrollView>
   );
 }
@@ -144,12 +142,5 @@ const styles = StyleSheet.create((theme) => ({
   screen: {
     backgroundColor: theme.colors.background,
     flex: 1,
-  },
-  suggestion: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.lg,
-    borderWidth: theme.borderWidth,
-    padding: theme.gap(4),
   },
 }));

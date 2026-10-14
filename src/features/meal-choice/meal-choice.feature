@@ -50,3 +50,17 @@ Feature: Meal choice
     And I select the ingredient "pumpkin"
     Then I see that no recipe matches
     And I cannot ask for a suggestion
+
+  Scenario: The suggested recipe opens in full
+    When I open the meal choice
+    And I choose the "Main course" course
+    And I ask for a suggestion
+    And I open the suggestion
+    Then the recipe "Omelette" opens
+
+  Scenario: The suggestion offers another one
+    When I open the meal choice
+    And I choose the "Winter" season
+    And I ask for a suggestion
+    And I ask the suggestion for another one
+    Then the two suggestions are different

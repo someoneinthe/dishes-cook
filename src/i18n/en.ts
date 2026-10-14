@@ -77,6 +77,7 @@ export const en = {
   },
   mealChoice: {
     addRecipe: 'Add a recipe',
+    another: 'Another one',
     any: 'Any',
     emptyMessage: 'Add a few recipes, then come back to let chance decide what to eat.',
     matchCount: (count: number) =>
@@ -84,9 +85,12 @@ export const en = {
         ? 'No recipe matches these filters.'
         : plural(count, '1 recipe matches.', `${count} recipes match.`),
     noUsedIngredient: 'No ingredient is used by a recipe yet.',
+    open: 'Open',
+    openLabel: (title: string) => `Open ${title}`,
     suggest: 'Suggest',
     suggestAnother: 'Suggest another one',
     suggestHint: 'Picks a random recipe among the matching ones',
+    suggestionIntro: 'How about…',
     suggestRecipe: 'Suggest a recipe',
     withIngredients: 'With ingredients',
   },
@@ -119,6 +123,7 @@ export const en = {
     noCourse: 'None',
     noIngredients: 'No ingredients listed.',
     noInstructions: 'No instructions written yet.',
+    noMatch: (search: string) => `No recipe matches “${search}”.`,
     notFoundMessage: 'It may have been deleted.',
     notFoundTitle: 'Recipe not found',
     nothingToPreview: 'Nothing to preview yet.',
@@ -131,6 +136,8 @@ export const en = {
       [title, season, course].filter(Boolean).join(', '),
     saveHint: 'Saves the recipe and shows it',
     saveRecipe: 'Save recipe',
+    search: 'Search recipes',
+    searchPlaceholder: 'Search by title',
     season: 'Season',
     title: 'Title',
     titlePlaceholder: 'e.g. Pumpkin soup',

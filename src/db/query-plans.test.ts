@@ -70,7 +70,7 @@ describe('query plans', () => {
   });
 
   it('reads recipe pages in index order and counts ingredients with the primary key', () => {
-    listRecipePage(database, { after: CURSOR });
+    listRecipePage(database, { pageParam: { after: CURSOR }, search: 'so' });
     const planList = lastPlan();
 
     expect(planList[0]).toMatch(/^SEARCH recipes USING INDEX recipes_sort_key_id_idx/);

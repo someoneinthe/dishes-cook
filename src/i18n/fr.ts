@@ -79,6 +79,7 @@ export const fr: Messages = {
   },
   mealChoice: {
     addRecipe: 'Ajouter une recette',
+    another: 'Une autre',
     any: 'Indifférent',
     emptyMessage: 'Ajoutez quelques recettes, puis revenez laisser le hasard choisir le repas.',
     matchCount: (count) =>
@@ -86,9 +87,12 @@ export const fr: Messages = {
         ? 'Aucune recette ne correspond à ces filtres.'
         : plural(count, '1 recette correspond.', `${count} recettes correspondent.`),
     noUsedIngredient: 'Aucun ingrédient n’est encore utilisé dans une recette.',
+    open: 'Ouvrir',
+    openLabel: (title) => `Ouvrir ${title}`,
     suggest: 'Suggérer',
     suggestAnother: 'Suggérer une autre recette',
     suggestHint: 'Choisit une recette au hasard parmi celles qui correspondent',
+    suggestionIntro: 'Et si on mangeait…',
     suggestRecipe: 'Suggérer une recette',
     withIngredients: 'Avec les ingrédients',
   },
@@ -120,6 +124,7 @@ export const fr: Messages = {
     noCourse: 'Aucun',
     noIngredients: 'Aucun ingrédient indiqué.',
     noInstructions: 'Pas encore d’instructions.',
+    noMatch: (search) => `Aucune recette ne correspond à ${quote(search)}.`,
     notFoundMessage: 'Elle a peut-être été supprimée.',
     notFoundTitle: 'Recette introuvable',
     nothingToPreview: 'Rien à prévisualiser pour l’instant.',
@@ -130,6 +135,8 @@ export const fr: Messages = {
     rowLabel: (title, season, course) => [title, season, course].filter(Boolean).join(', '),
     saveHint: 'Enregistre la recette et l’affiche',
     saveRecipe: 'Enregistrer la recette',
+    search: 'Rechercher des recettes',
+    searchPlaceholder: 'Chercher par titre',
     season: 'Saison',
     title: 'Titre',
     titlePlaceholder: `Ex.${NARROW_SPACE}: soupe de potiron`,

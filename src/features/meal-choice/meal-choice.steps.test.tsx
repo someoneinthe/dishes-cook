@@ -1,4 +1,5 @@
 import { fireEvent, screen } from '@testing-library/react-native';
+import { router } from 'expo-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import type { Course, Season } from '@/db/schema';
 import type { DatabaseConnection } from '@/db/types';
@@ -150,6 +151,40 @@ defineFeature(feature, (test) => {
     });
     and('I cannot ask for a suggestion', () => {
       expect(screen.getByRole('button', { name: 'Suggest a recipe' })).toBeDisabled();
+    });
+  });
+
+  test('The suggested recipe opens in full', ({ and, given, then, when }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the meal choice', openTheMealChoice);
+    and(/^I choose the "(.*)" course$/, chooseTheOption);
+    and('I ask for a suggestion', askForSuggestion);
+    and('I open the suggestion', async () => {
+      await fireEvent.press(screen.getByRole('button', { name: /^Open / }));
+    });
+    then(/^the recipe "(.*)" opens$/, (title: string) => {
+      expect(screen.getByRole('button', { name: `Open ${title}` })).toBeOnTheScreen();
+      expect(router.push).toHaveBeenCalledWith({
+        params: { id: expect.any(String) as string },
+        pathname: '/recipe/[id]',
+      });
+    });
+  });
+
+  test('The suggestion offers another one', ({ and, given, then, when }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the meal choice', openTheMealChoice);
+    and(/^I choose the "(.*)" season$/, chooseTheOption);
+    and('I ask for a suggestion', async () => {
+      await askForSuggestion();
+      previousSuggestion = currentSuggestion();
+    });
+    and('I ask the suggestion for another one', async () => {
+      await fireEvent.press(screen.getByRole('button', { name: 'Another one' }));
+    });
+    then('the two suggestions are different', () => {
+      expect(previousSuggestion).toBeDefined();
+      expect(currentSuggestion()).not.toBe(previousSuggestion);
     });
   });
 });

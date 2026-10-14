@@ -54,4 +54,31 @@ describe('recipesScreen', () => {
       pathname: '/recipe/[id]',
     });
   });
+
+  it('searches the recipes by title, ignoring case and accents', async () => {
+    for (const title of ['Crème brûlée', 'Carrot soup', 'Leek soup']) {
+      saveRecipe(connection.db, { ingredientIdList: [], instructions: '', season: 'both', title });
+    }
+    await renderWithDatabase(<RecipesScreen />, connection);
+
+    await fireEvent.changeText(screen.getByLabelText('Search recipes'), 'SOUP');
+
+    expect(screen.getByText('Carrot soup')).toBeOnTheScreen();
+    expect(screen.getByText('Leek soup')).toBeOnTheScreen();
+    expect(screen.queryByText('Crème brûlée')).not.toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByLabelText('Search recipes'), 'creme');
+
+    expect(screen.getByText('Crème brûlée')).toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByLabelText('Search recipes'), 'pizza');
+
+    expect(screen.getByText('No recipe matches “pizza”.')).toBeOnTheScreen();
+  });
+
+  it('has no search field before the first recipe', async () => {
+    await renderWithDatabase(<RecipesScreen />, connection);
+
+    expect(screen.queryByLabelText('Search recipes')).not.toBeOnTheScreen();
+  });
 });
