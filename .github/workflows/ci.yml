@@ -47,8 +47,15 @@ jobs:
     name: Database diagram image
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      # Checkout, and the PR's changed files for paths-filter.
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The renderer runs packages installed by npx: no token left in .git/config for them.
+          persist-credentials: false
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: files
         with:
