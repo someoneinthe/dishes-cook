@@ -45,7 +45,7 @@ Integer ids stay on the phone. A row's identity across devices is its `sync_id`:
 
 Any PocketBase 0.23+ (tested with 0.40):
 
-1. Copy `server/migrations/*.js` into `pb_migrations/` next to the PocketBase executable and restart it: `pocketbase serve` applies them. They create the `ingredients` and `recipes` collections with their API rules, close sign-up on `users`, and make sign-in tokens last a year (each sync renews it).
+1. Copy `server/migrations/*.js` into `pb_migrations/` next to the PocketBase executable and restart it: `pocketbase serve` applies them. They create the `ingredients` and `recipes` collections with their API rules, close sign-up on `users`, and make sign-in tokens last a year (each sync renews it). When a new app version adds a file there, copy it too and restart: PocketBase applies only the migrations it hasn't run yet, and never re-runs an edited one (so they're never edited, see [database.md](database.md#changing-the-schema)).
 2. In the admin UI (`/_/`), create an account in **users** for the phones to sign in with.
 3. Serve it over **HTTPS with a valid certificate**: Android refuses plain HTTP. Any reverse proxy works (e.g. Caddy).
 4. Back up `pb_data/` (PocketBase has built-in scheduled backups).
