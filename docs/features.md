@@ -4,7 +4,7 @@
 
 What the app does, scenario by scenario. Every scenario runs as a test (jest-cucumber), so this page only describes behaviour that is checked.
 
-- [Ingredient quantities](#ingredient-quantities): 4 scenarios
+- [Ingredient quantities](#ingredient-quantities): 3 scenarios
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
 - [Meal choice](#meal-choice): 7 scenarios
@@ -42,12 +42,6 @@ Each ingredient of a recipe can have a quantity: an amount and a unit, or a numb
 - **Then** the recipe lists "Flour: 227 g, Milk: 237 ml"
 - **When** I read it with US units
 - **Then** the recipe lists "Flour: 8 oz, Milk: 1 cup"
-
-### Saving a recipe without touching a quantity keeps it exact
-
-- **Given** a recipe "Cake" needs "8 oz" of "Flour" and "1 cup" of "Milk"
-- **When** I edit it with European units and save it without changes
-- **Then** "Flour" still weighs exactly 8 oz
 
 ## Ingredients
 

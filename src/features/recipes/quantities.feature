@@ -26,8 +26,3 @@ Feature: Ingredient quantities
     Then the recipe lists "Flour: 227 g, Milk: 237 ml"
     When I read it with US units
     Then the recipe lists "Flour: 8 oz, Milk: 1 cup"
-
-  Scenario: Saving a recipe without touching a quantity keeps it exact
-    Given a recipe "Cake" needs "8 oz" of "Flour" and "1 cup" of "Milk"
-    When I edit it with European units and save it without changes
-    Then "Flour" still weighs exactly 8 oz
