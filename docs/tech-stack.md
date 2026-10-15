@@ -42,7 +42,7 @@ src/
   db/             # Drizzle schema, client, migrations, live queries
   i18n/           # UI text per language (en.ts is the reference), useMessages()
   lib/            # shared utilities
-  test/           # test helpers (in-memory database, fake sync server, alert spy)
+  test/           # test helpers (in-memory database, fake and real sync servers, shared sync scenarios, alert spy)
 assets/           # icons, splash, fonts
 server/
   migrations/     # PocketBase migrations for the optional sync server (see sync.md)

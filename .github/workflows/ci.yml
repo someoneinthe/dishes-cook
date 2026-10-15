@@ -34,6 +34,10 @@ jobs:
         run: npm run docs:features -- --check
       - run: npm run typecheck
       - run: npm run test:ci
+      # The sync scenarios again, against a real PocketBase (server/pocketbase-version) started with
+      # server/migrations: the fake server of the unit tests must keep behaving like the real one.
+      - name: Sync tests against PocketBase
+        run: npm run test:pocketbase
       - run: npm run doctor
       # The Android check builds a debug APK, which doesn't contain the JS bundle: bundle it here.
       - name: Bundle JS for Android (Metro)

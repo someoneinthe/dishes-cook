@@ -299,6 +299,8 @@ export default defineConfig([
       'jest/no-untyped-mock-factory': 'off',
       'jest/prefer-expect-assertions': 'off',
       'jest/prefer-importing-jest-globals': 'off',
+      // Shared scenarios run against several sync servers (src/test/sync-scenarios.ts).
+      'jest/require-hook': ['error', { allowedFunctionCalls: ['describeSyncScenarios'] }],
       'jest/require-top-level-describe': ['error', { maxNumberOfTopLevelDescribes: 1 }],
       'sonarjs/assertions-in-tests': 'warn',
     },

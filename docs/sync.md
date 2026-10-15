@@ -43,7 +43,7 @@ Integer ids stay on the phone. A row's identity across devices is its `sync_id`:
 
 ## Server setup
 
-Any PocketBase 0.23+ (tested with 0.40):
+Any PocketBase 0.23+; the version in `server/pocketbase-version` is the one the tests run against (see [Upgrading PocketBase](#upgrading-pocketbase)):
 
 1. Copy `server/migrations/*.js` into `pb_migrations/` next to the PocketBase executable and restart it: `pocketbase serve` applies them. They create the `ingredients` and `recipes` collections with their API rules, close sign-up on `users`, and make sign-in tokens last a year (each sync renews it). When a new app version adds a file there, copy it too and restart: PocketBase applies only the migrations it hasn't run yet, and never re-runs an edited one (so they're never edited, see [database.md](database.md#changing-the-schema)).
 2. In the admin UI (`/_/`), create an account in **users** for the phones to sign in with.
@@ -53,6 +53,7 @@ Any PocketBase 0.23+ (tested with 0.40):
 ## Testing during development
 
 - **Tests** run against `src/test/fake-sync-server.ts`, which mirrors the behaviours below; `sync-engine.test.ts` simulates two phones.
+- **Against a real PocketBase**: `npm run test:pocketbase` runs the same two-phone scenarios (`src/test/sync-scenarios.ts`) and checks the behaviours below on a throwaway PocketBase: the version in `server/pocketbase-version` (or `POCKETBASE_VERSION=0.x.y`), downloaded once into `node_modules/.cache/pocketbase` and checked against the release's checksums, started empty with `server/migrations` on a free local port, and stopped afterwards. CI runs it on every PR. Needs `curl` and `unzip` (macOS or Linux).
 - **On an emulator**, against a throwaway PocketBase (never your real one, its data would mix with test recipes):
   1. Start one with the migrations: `pocketbase serve --dir /tmp/pb-test/pb_data --migrationsDir server/migrations --http 127.0.0.1:8091`, create a superuser (`pocketbase superuser upsert … --dir /tmp/pb-test/pb_data`), then an account in **users** from its admin UI.
   2. Forward the port to the emulator: `adb reverse tcp:8091 tcp:8091`.
@@ -66,3 +67,14 @@ Measured on a real server, and mirrored by the test server (`src/test/fake-sync-
 - A refused or expired token is treated as a guest: lists come back **empty** (not 401), creates get a 400, updates a 404. That's why every sync starts by renewing the token (`auth-refresh`), which does fail with a 401.
 - An update refused by the update rule (older change) gets a 404; the app then tries a create, which gets a 400 `validation_not_unique` for an existing id: the server's row is newer, and the next pull brings it.
 - `updated` (`2026-10-14 18:03:59.794Z`) sorts as text in time order: it's the pull cursor.
+
+## Upgrading PocketBase
+
+PocketBase hasn't reached 1.0: a minor version can change its API, its API rules or the JS migrations API. The server runs the version in `server/pocketbase-version`, the one the tests pass with.
+
+1. **Read the release notes** of every version in between ([releases](https://github.com/pocketbase/pocketbase/releases)), looking for breaking changes to the records API, auth, API rules and JS migrations (`Collection`, `migrate`).
+2. **Test it first**: on a branch, set the new version in `server/pocketbase-version` and run `npm run test:pocketbase` (CI runs it on the PR too). If something fails, fix the app, or add a server migration (never edit one, see [database.md](database.md#changing-the-schema)), then merge.
+3. **Back up `pb_data/`** on the server: stop PocketBase and copy the folder, or make a backup from the admin UI (Settings › Backups) and keep a copy off the server.
+4. **Replace the executable** with the new version's, downloaded from its release page and checked against that release's `checksums.txt` (not `pocketbase update`: it installs the latest version, not the tested one). Copy any new file of `server/migrations/` into `pb_migrations/`, then start it: PocketBase upgrades `pb_data/` and applies the new migrations on start.
+5. **Check**: the admin UI opens with the collections and their records, a phone syncs (Settings › Data storage › Sync now), and a change made on one phone reaches another.
+6. **If anything goes wrong**, stop PocketBase and put back both the previous executable and the `pb_data/` backup: the new version may have changed `pb_data/` in a way the old one can't read.

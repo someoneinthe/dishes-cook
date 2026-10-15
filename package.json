@@ -79,6 +79,7 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:ci": "jest --ci --coverage",
+    "test:pocketbase": "scripts/test-pocketbase.sh",
     "doctor": "EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1 expo-doctor && node scripts/check-expo-dependencies.mjs",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run test",
     "prepare": "husky",
