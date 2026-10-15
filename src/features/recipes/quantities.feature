@@ -1,7 +1,8 @@
 Feature: Ingredient quantities
   Each ingredient of a recipe can have a quantity: an amount and a unit, or a number of pieces.
-  Settings › Units chooses European units (the default) or US units: amounts written in the other
-  units are converted, weight to weight and volume to volume.
+  Weights are kept in grams and volumes in millilitres, and shown in the closest unit of the
+  reader's units: Settings › Units, European (the default) or US. Spoons and counted units (pinch,
+  clove…) stay as written.
 
   Scenario: Quantities are given in the recipe form
     Given the ingredients "Carrot, Leek, Salt" exist
@@ -9,7 +10,7 @@ Feature: Ingredient quantities
     When I give "Carrot" the quantity "0,5" in "kg"
     And I give "Leek" the quantity "2"
     And I save the recipe
-    Then the recipe lists "Carrot: 0.5 kg, Leek: 2, Salt"
+    Then the recipe lists "Carrot: 500 g, Leek: 2, Salt"
 
   Scenario: A quantity must be a number
     Given the ingredients "Carrot" exist
@@ -25,3 +26,8 @@ Feature: Ingredient quantities
     Then the recipe lists "Flour: 227 g, Milk: 237 ml"
     When I read it with US units
     Then the recipe lists "Flour: 8 oz, Milk: 1 cup"
+
+  Scenario: Saving a recipe without touching a quantity keeps it exact
+    Given a recipe "Cake" needs "8 oz" of "Flour" and "1 cup" of "Milk"
+    When I edit it with European units and save it without changes
+    Then "Flour" still weighs exactly 8 oz

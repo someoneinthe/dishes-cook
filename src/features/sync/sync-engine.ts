@@ -14,7 +14,7 @@ import {
 } from '@/db/schema';
 import { isSyncId } from '@/lib/sync-id';
 import { cleanName, toNameKey, toSortKey } from '@/lib/text';
-import { toQuantity } from '@/lib/units';
+import { toQuantity, toStored } from '@/lib/units';
 import type { ServerIngredient, ServerRecipe, ServerRow, ServerRowOf, SyncApi } from './sync-api';
 
 // Two-way sync between the phone's database and the sync server (see docs/sync.md):
@@ -305,7 +305,9 @@ function pulledQuantity(quantities: unknown, syncId: string): Quantity | undefin
     return undefined;
   }
   const { amount, unit } = value as Record<string, unknown>;
-  return toQuantity(amount, unit);
+  // Stored like the phone's own: a server row written in another unit ("1.5 kg") is normalized.
+  const quantity = toQuantity(amount, unit);
+  return quantity && toStored(quantity);
 }
 
 async function pushDeletions(database: AppDatabase, api: SyncApi): Promise<void> {

@@ -1,10 +1,12 @@
 import { act, fireEvent, screen } from '@testing-library/react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import type { Unit } from '@/db/schema';
 import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { updatePreferences } from '@/features/settings/preferences';
+import { toStored } from '@/lib/units';
 import { firstRecipePage } from '@/test/queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { RecipeDetails } from './components/recipe-details';
@@ -16,16 +18,19 @@ jest.mock('expo-router', () => ({
   Stack: {
     Screen: jest.requireActual<NavigationMock>('@/test/navigation-mock').ScreenWithHeaderButtons,
   },
-  useLocalSearchParams: () => ({}),
+  // A step that opens an existing recipe (/recipe/[id]/edit) gives its id.
+  useLocalSearchParams: jest.fn(() => ({})),
 }));
 
 const feature = loadFeature('./quantities.feature', { loadRelativePath: true });
+const RECIPE_NEEDS = /^a recipe "(.*)" needs "(\d+) (.*)" of "(.*)" and "(\d+) (.*)" of "(.*)"$/;
 
 defineFeature(feature, (test) => {
   let connection: DatabaseConnection;
   let ingredientNameList: string[];
 
   beforeEach(() => {
+    jest.mocked(useLocalSearchParams).mockReturnValue({});
     connection = createTestConnection();
     updatePreferences({ units: 'metric' });
   });
@@ -42,6 +47,29 @@ defineFeature(feature, (test) => {
     for (const name of ingredientNameList) {
       await fireEvent.press(screen.getByRole('button', { name: `Add ${name}` }));
     }
+  };
+  // A recipe saved with two quantities, as a phone would have saved them.
+  const givenRecipeNeeds = (...[title = '', ...parts]: string[]) => {
+    const [
+      firstAmount = '',
+      firstUnit = '',
+      firstName = '',
+      secondAmount = '',
+      secondUnit = '',
+      secondName = '',
+    ] = parts;
+    const first = findOrCreateIngredient(connection.db, firstName).id;
+    const second = findOrCreateIngredient(connection.db, secondName).id;
+    saveRecipe(connection.db, {
+      ingredientIdList: [first, second],
+      instructions: '',
+      quantities: new Map([
+        [first, { amount: Number(firstAmount), unit: firstUnit as Unit }],
+        [second, { amount: Number(secondAmount), unit: secondUnit as Unit }],
+      ]),
+      season: 'both',
+      title,
+    });
   };
   const giveQuantity = async (name: string, amount: string) => {
     await fireEvent.changeText(screen.getByLabelText(`Quantity of ${name}`), amount);
@@ -91,31 +119,7 @@ defineFeature(feature, (test) => {
   });
 
   test('A recipe written in US units is shown in my units', ({ given, then, when }) => {
-    given(
-      /^a recipe "(.*)" needs "(\d+) (.*)" of "(.*)" and "(\d+) (.*)" of "(.*)"$/,
-      (...[title = '', ...parts]: string[]) => {
-        const [
-          firstAmount = '',
-          firstUnit = '',
-          firstName = '',
-          secondAmount = '',
-          secondUnit = '',
-          secondName = '',
-        ] = parts;
-        const first = findOrCreateIngredient(connection.db, firstName).id;
-        const second = findOrCreateIngredient(connection.db, secondName).id;
-        saveRecipe(connection.db, {
-          ingredientIdList: [first, second],
-          instructions: '',
-          quantities: new Map([
-            [first, { amount: Number(firstAmount), unit: firstUnit as Unit }],
-            [second, { amount: Number(secondAmount), unit: secondUnit as Unit }],
-          ]),
-          season: 'both',
-          title,
-        });
-      },
-    );
+    given(RECIPE_NEEDS, givenRecipeNeeds);
     // The recipe on screen re-renders with the new units.
     when('I read it with European units', async () => {
       await act(() => updatePreferences({ units: 'metric' }));
@@ -132,6 +136,28 @@ defineFeature(feature, (test) => {
       await showFirstRecipe();
 
       expect(shownLines()).toStrictEqual(lines.split(', ').map((line) => `• ${line}`));
+    });
+  });
+
+  test('Saving a recipe without touching a quantity keeps it exact', ({ given, then, when }) => {
+    given(RECIPE_NEEDS, givenRecipeNeeds);
+    when('I edit it with European units and save it without changes', async () => {
+      const [{ id } = { id: -1 }] = firstRecipePage(connection.db);
+      jest.mocked(useLocalSearchParams).mockReturnValue({ id: String(id) });
+      await renderWithDatabase(<RecipeFormScreen />, connection);
+
+      // Shown rounded: 8 oz = 226.8 g.
+      expect(screen.getByLabelText('Quantity of Flour')).toHaveDisplayValue('227');
+
+      await saveTheRecipe();
+    });
+    then(/^"(.*)" still weighs exactly 8 oz$/, (name: string) => {
+      const [{ id } = { id: -1 }] = firstRecipePage(connection.db);
+
+      expect(
+        getRecipe(connection.db, id)?.ingredientList.find((ingredient) => ingredient.name === name)
+          ?.quantity,
+      ).toStrictEqual(toStored({ amount: 8, unit: 'oz' }));
     });
   });
 });

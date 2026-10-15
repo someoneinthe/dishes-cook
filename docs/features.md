@@ -4,7 +4,7 @@
 
 What the app does, scenario by scenario. Every scenario runs as a test (jest-cucumber), so this page only describes behaviour that is checked.
 
-- [Ingredient quantities](#ingredient-quantities): 3 scenarios
+- [Ingredient quantities](#ingredient-quantities): 4 scenarios
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
 - [Meal choice](#meal-choice): 7 scenarios
@@ -15,7 +15,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 
 ## Ingredient quantities
 
-Each ingredient of a recipe can have a quantity: an amount and a unit, or a number of pieces. Settings › Units chooses European units (the default) or US units: amounts written in the other units are converted, weight to weight and volume to volume.
+Each ingredient of a recipe can have a quantity: an amount and a unit, or a number of pieces. Weights are kept in grams and volumes in millilitres, and shown in the closest unit of the reader's units: Settings › Units, European (the default) or US. Spoons and counted units (pinch, clove…) stay as written.
 
 ### Quantities are given in the recipe form
 
@@ -24,7 +24,7 @@ Each ingredient of a recipe can have a quantity: an amount and a unit, or a numb
 - **When** I give "Carrot" the quantity "0,5" in "kg"
 - **And** I give "Leek" the quantity "2"
 - **And** I save the recipe
-- **Then** the recipe lists "Carrot: 0.5 kg, Leek: 2, Salt"
+- **Then** the recipe lists "Carrot: 500 g, Leek: 2, Salt"
 
 ### A quantity must be a number
 
@@ -42,6 +42,12 @@ Each ingredient of a recipe can have a quantity: an amount and a unit, or a numb
 - **Then** the recipe lists "Flour: 227 g, Milk: 237 ml"
 - **When** I read it with US units
 - **Then** the recipe lists "Flour: 8 oz, Milk: 1 cup"
+
+### Saving a recipe without touching a quantity keeps it exact
+
+- **Given** a recipe "Cake" needs "8 oz" of "Flour" and "1 cup" of "Milk"
+- **When** I edit it with European units and save it without changes
+- **Then** "Flour" still weighs exactly 8 oz
 
 ## Ingredients
 

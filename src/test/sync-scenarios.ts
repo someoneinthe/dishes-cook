@@ -125,7 +125,7 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     await syncBoth();
 
     expect(recipeOf(phoneB, 'Soup')?.ingredientList).toMatchObject([
-      { name: 'Carrot', quantity: { amount: 0.5, unit: 'kg' } },
+      { name: 'Carrot', quantity: { amount: 500, unit: 'g' } },
       { name: 'Leek', quantity: { amount: 2 } },
       { name: 'Salt' },
     ]);

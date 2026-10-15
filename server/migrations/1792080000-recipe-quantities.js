@@ -1,7 +1,8 @@
 /// <reference path="../pb_data/types.d.ts" />
 /* global JSONField, migrate */
 // PocketBase migration: the quantities of a recipe's ingredients (see docs/sync.md), next to its
-// `ingredients` list: { "<ingredient sync id>": { "amount": 1.5, "unit": "kg" } } (no unit: pieces).
+// `ingredients` list: { "<ingredient sync id>": { "amount": 1500, "unit": "g" } }, weights in grams
+// and volumes in millilitres, spoons and counted units as written, no unit = pieces.
 // A separate field: apps without quantities keep reading `ingredients` as before.
 
 migrate(

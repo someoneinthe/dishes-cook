@@ -8,7 +8,7 @@ import type { Quantity } from '@/lib/units';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, recipes, syncDeletions } from '@/db/schema';
 import { cleanName, toLikeContains, toSortKey } from '@/lib/text';
-import { toQuantity } from '@/lib/units';
+import { toQuantity, toStored } from '@/lib/units';
 
 export type Recipe = Readonly<{
   course: Course;
@@ -210,7 +210,9 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
         .values(
           ingredientIdList.map((ingredientId) => {
             const quantity = input.quantities?.get(ingredientId);
-            const checked = quantity && toQuantity(quantity.amount, quantity.unit);
+            const typed = quantity && toQuantity(quantity.amount, quantity.unit);
+            // Weights in grams, volumes in millilitres (src/lib/units.ts).
+            const checked = typed && toStored(typed);
             return {
               amount: checked?.amount ?? null,
               ingredientId,

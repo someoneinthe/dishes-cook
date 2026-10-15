@@ -98,12 +98,11 @@ export function IngredientQuantityRow({
   );
 }
 
-// The units of Settings › Units (and the current one, from the other system) in a sheet over the
-// form; Back or a tap outside closes it.
+// The units of Settings › Units in a sheet over the form; Back or a tap outside closes it.
 function UnitPicker({ onChoose, onClose, title, unit }: UnitPickerProps) {
   const t = useMessages();
   const { units } = usePreferences();
-  const optionList: readonly (undefined | Unit)[] = [undefined, ...unitOptionList(units, unit)];
+  const optionList: readonly (undefined | Unit)[] = [undefined, ...unitOptionList(units)];
 
   return (
     <Modal animationType="fade" onRequestClose={onClose} transparent visible>

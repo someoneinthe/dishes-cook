@@ -13,7 +13,7 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
   ],
   [
     'server/migrations/1792080000-recipe-quantities.js',
-    '438b4643f06a3dce2818d1345c232ce1fa22ad14991ba27fd259a3155c8f3201',
+    '4cb4b741ca945ba1bd6d7e2c1c2ccdd0bb5c22f46486736c9c4a9dd959782e21',
   ],
   [
     'src/db/migrations/0000_init.sql',

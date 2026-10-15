@@ -68,6 +68,7 @@ describe('recipe queries', () => {
     });
   });
 
+  // Weights are stored in grams, volumes in millilitres; spoons and counted units as written.
   it('saves the quantities of its ingredients, and changes or clears them', () => {
     const id = saveRecipe(database, {
       ...soupInput,
@@ -79,7 +80,7 @@ describe('recipe queries', () => {
     });
 
     expect(getRecipe(database, id)?.ingredientList).toStrictEqual([
-      { id: carrotId, name: 'carrot', quantity: { amount: 0.5, unit: 'kg' } },
+      { id: carrotId, name: 'carrot', quantity: { amount: 500, unit: 'g' } },
       { id: leekId, name: 'leek', quantity: { amount: 2 } },
       { id: tomatoId, name: 'tomato' },
     ]);
@@ -98,7 +99,7 @@ describe('recipe queries', () => {
     );
 
     expect(getRecipe(database, id)?.ingredientList).toStrictEqual([
-      { id: carrotId, name: 'carrot', quantity: { amount: 0.5, unit: 'kg' } },
+      { id: carrotId, name: 'carrot', quantity: { amount: 500, unit: 'g' } },
       { id: leekId, name: 'leek' },
       { id: tomatoId, name: 'tomato', quantity: { amount: 1, unit: 'can' } },
     ]);

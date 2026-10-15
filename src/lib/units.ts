@@ -3,10 +3,10 @@ import { UNIT_LIST } from '@/db/schema';
 
 export type { Unit } from '@/db/schema';
 
-// Quantities of a recipe's ingredients: an amount and a unit, in European (metric) or US units.
-// Settings › Units picks the system: amounts written in the other one are converted for display,
-// weight to weight and volume to volume. Spoons and counted units (pinch, clove…) exist in both
-// systems and are never converted.
+// Quantities of a recipe's ingredients. Weights are stored in grams and volumes in millilitres,
+// whatever unit they were typed in (`toStored`); each reader sees them in the closest unit of their
+// system, Settings › Units: 1000 g shows as 1 kg, or 2.25 lb in US units (`toDisplay`). Spoons and
+// counted units (pinch, clove…) exist in both systems and stay as written.
 
 export const UNIT_SYSTEM_LIST = ['metric', 'us'] as const;
 // An amount of an ingredient; without a unit, it's a number of pieces ("3 leeks").
@@ -18,7 +18,7 @@ type UnitInfo = Readonly<{
   // Grams (mass) or millilitres (volume) in one unit; undefined for counted units.
   base?: number;
   kind: 'count' | 'mass' | 'volume';
-  // 'both' = used in both systems, never converted.
+  // 'both' = used in both systems, stored and shown as written.
   system: 'both' | UnitSystem;
 }>;
 
@@ -48,8 +48,10 @@ const SYSTEM_UNIT_LIST: Readonly<Record<UnitSystem, readonly Unit[]>> = {
 };
 const SHARED_UNIT_LIST: readonly Unit[] = ['tsp', 'tbsp', 'pinch', 'clove', 'bunch', 'can'];
 
-// Largest amount accepted: more is a typo.
+// Largest amount typed in the form: more is a typo.
 export const MAX_AMOUNT = 100_000;
+// Largest stored amount (grams, millilitres…): MAX_AMOUNT of the largest unit, with some margin.
+const MAX_STORED_AMOUNT = 100_000_000;
 // Smallest amount accepted: the form shows amounts to 0.01.
 const MIN_AMOUNT = 0.01;
 
@@ -89,38 +91,44 @@ export function parseAmount(text: string): number | undefined {
     : undefined;
 }
 
+// The quantity as shown to a reader: weights and volumes in the closest unit of their system
+// (grams below a kilo, ounces below a pound…), rounded for the kitchen; the rest as written.
+export function toDisplay(quantity: Quantity, system: UnitSystem): Quantity {
+  const base = toBase(quantity);
+  if (base === undefined) {
+    return quantity;
+  }
+  const target = closestUnit(base.kind, base.amount, system);
+  return {
+    amount: roundForKitchen(base.amount / (UNIT_INFO[target].base ?? 1), target),
+    unit: target,
+  };
+}
+
 // A quantity read from storage or the sync server; undefined when it isn't a usable one.
 export function toQuantity(amount: unknown, unit: unknown): Quantity | undefined {
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
     return undefined;
   }
-  if (amount > MAX_AMOUNT) {
+  if (amount > MAX_STORED_AMOUNT) {
     return undefined;
   }
   return isUnit(unit) ? { amount, unit } : { amount };
 }
 
-// The quantity in the reader's system: units of the other system become the closest unit of this
-// one (grams below a kilo, ounces below a pound…), rounded for the kitchen.
-export function toSystem(quantity: Quantity, system: UnitSystem): Quantity {
-  const { unit } = quantity;
-  if (unit === undefined) {
+// The quantity as stored: weights in grams, volumes in millilitres ("1.5 kg" -> 1500 g, "8 oz" ->
+// 226.8 g); spoons, counted units and pieces as written.
+export function toStored(quantity: Quantity): Quantity {
+  const base = toBase(quantity);
+  if (base === undefined) {
     return quantity;
   }
-  const info = UNIT_INFO[unit];
-  if (info.system === 'both' || info.system === system || info.base === undefined) {
-    return quantity;
-  }
-  const base = quantity.amount * info.base;
-  const target = closestUnit(info.kind, base, system);
-  return { amount: roundForKitchen(base / (UNIT_INFO[target].base ?? 1), target), unit: target };
+  return { amount: base.amount, unit: base.kind === 'mass' ? 'g' : 'ml' };
 }
 
-// The units the form offers for this system, and the quantity's own unit when it's another
-// system's (a recipe written on a phone set to the other units keeps its unit when edited).
-export function unitOptionList(system: UnitSystem, current?: Unit): readonly Unit[] {
-  const unitList = [...SYSTEM_UNIT_LIST[system], ...SHARED_UNIT_LIST];
-  return current === undefined || unitList.includes(current) ? unitList : [current, ...unitList];
+// The units the form offers for this system.
+export function unitOptionList(system: UnitSystem): readonly Unit[] {
+  return [...SYSTEM_UNIT_LIST[system], ...SHARED_UNIT_LIST];
 }
 
 function closestUnit(kind: UnitInfo['kind'], base: number, system: UnitSystem): Unit {
@@ -137,8 +145,8 @@ function closestUnit(kind: UnitInfo['kind'], base: number, system: UnitSystem): 
   return base >= CUP_IN_ML / 4 ? 'cup' : 'fl_oz';
 }
 
-// Grams and millilitres to the unit, kilos and litres to 0.01, ounces to 0.1, pounds and cups to
-// a quarter.
+// Grams and millilitres to the unit (to 0.1 below 10), kilos and litres to 0.01, ounces to 0.1,
+// pounds and cups to a quarter.
 function roundForKitchen(amount: number, unit: Unit): number {
   switch (unit) {
     case 'cup':
@@ -151,10 +159,20 @@ function roundForKitchen(amount: number, unit: Unit): number {
     }
     case 'g':
     case 'ml': {
-      return Math.max(Math.round(amount), 1);
+      return amount < 10 ? Math.max(Math.round(amount * 10) / 10, 0.1) : Math.round(amount);
     }
     default: {
       return Math.round(amount * 100) / 100;
     }
   }
+}
+
+// A weight in grams or a volume in millilitres; undefined for spoons, counted units and pieces.
+function toBase(
+  quantity: Quantity,
+): Readonly<{ amount: number; kind: 'mass' | 'volume' }> | undefined {
+  const info = quantity.unit === undefined ? undefined : UNIT_INFO[quantity.unit];
+  return info?.base === undefined || info.system === 'both' || info.kind === 'count'
+    ? undefined
+    : { amount: quantity.amount * info.base, kind: info.kind };
 }
