@@ -41,7 +41,10 @@ export function IngredientPicker({
     limit: MAX_SUGGESTIONS,
     search,
   });
-  const { focusMoved, isFocusTarget } = useChipFocus([...selectedList, ...suggestionList]);
+  const { focusMoved, forgetFocus, isFocusTarget } = useChipFocus([
+    ...selectedList,
+    ...suggestionList,
+  ]);
   const typedName = cleanName(search);
   const isSameName = (ingredient: Ingredient) =>
     toNameKey(ingredient.name) === toNameKey(typedName);
@@ -86,7 +89,11 @@ export function IngredientPicker({
         autoCapitalize="none"
         isLabelHidden
         label={t.ingredientPicker.searchLabel(label)}
-        onChangeText={setSearch}
+        onChangeText={(text) => {
+          setSearch(text);
+          // Typing: no chip may take the focus from the field when the search shows it again.
+          forgetFocus();
+        }}
         onSubmitEditing={() => {
           if (suggestionList[0]) {
             select(suggestionList[0]);
@@ -149,6 +156,7 @@ function useChipFocus(shownList: readonly Ingredient[]) {
       setMovedId(undefined);
       setTimeout(() => setMovedId(ingredient.id), 0);
     },
+    forgetFocus: () => setMovedId(undefined),
     isFocusTarget: (ingredient: Ingredient) => isTv && ingredient.id === targetId,
   };
 }

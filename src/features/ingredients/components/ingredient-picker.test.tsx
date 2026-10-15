@@ -68,5 +68,14 @@ describe('ingredientPicker on a TV', () => {
       'hasTVPreferredFocus',
       true,
     );
+
+    // Typing again: the chip doesn't take the focus back from the search field.
+    await fireEvent.changeText(screen.getByLabelText('Search ingredients'), 'xyz');
+    await fireEvent.changeText(screen.getByLabelText('Search ingredients'), 'car');
+
+    await expect(screen.findByRole('button', { name: 'Add Carrot' })).resolves.toHaveProp(
+      'hasTVPreferredFocus',
+      false,
+    );
   });
 });
