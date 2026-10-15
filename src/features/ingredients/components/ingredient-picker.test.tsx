@@ -53,4 +53,20 @@ describe('ingredientPicker on a TV', () => {
       true,
     );
   });
+
+  it('gives the focus to the first chip shown when the search hides the removed ingredient', async () => {
+    findOrCreateIngredient(connection.db, 'Carrot');
+    await renderWithDatabase(<Picker />, connection);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Add Leek' }));
+    await fireEvent.changeText(screen.getByLabelText('Search ingredients'), 'car');
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove Leek' }));
+    await act(() => jest.runAllTimers());
+
+    expect(screen.queryByRole('button', { name: 'Add Leek' })).not.toBeOnTheScreen();
+    await expect(screen.findByRole('button', { name: 'Add Carrot' })).resolves.toHaveProp(
+      'hasTVPreferredFocus',
+      true,
+    );
+  });
 });

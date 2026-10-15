@@ -33,19 +33,6 @@ export function IngredientPicker({
 }: IngredientPickerProps) {
   const t = useMessages();
   const [search, setSearch] = useState('');
-  // On a TV, the chip an ingredient just moved to (selected or suggested) takes the remote's focus:
-  // the pressed chip disappears, and Android would otherwise send the focus to the top of the screen.
-  const [focusedId, setFocusedId] = useState<number>();
-  const isFocusTarget = (ingredient: Ingredient) => isTv && ingredient.id === focusedId;
-  const focusMoved = (ingredient: Ingredient) => {
-    if (!isTv) {
-      return;
-    }
-
-    // The chip shows up first; it's asked to take the focus on the next render, once on screen.
-    setFocusedId(undefined);
-    setTimeout(() => setFocusedId(ingredient.id), 0);
-  };
   const selectedIds = new Set(selectedList.map((ingredient) => ingredient.id));
   // Exact name first, then the most used: the likeliest picks before typing.
   const suggestionList = useIngredientSuggestions({
@@ -54,6 +41,7 @@ export function IngredientPicker({
     limit: MAX_SUGGESTIONS,
     search,
   });
+  const { focusMoved, isFocusTarget } = useChipFocus([...selectedList, ...suggestionList]);
   const typedName = cleanName(search);
   const isSameName = (ingredient: Ingredient) =>
     toNameKey(ingredient.name) === toNameKey(typedName);
@@ -140,6 +128,29 @@ export function IngredientPicker({
       )}
     </View>
   );
+}
+
+// On a TV, the chip an ingredient just moved to (selected or suggested) takes the remote's focus:
+// the pressed chip disappears, and Android would otherwise send the focus to the top of the screen.
+// When the search or the suggestion limit hides that chip, the first chip shown takes it instead.
+function useChipFocus(shownList: readonly Ingredient[]) {
+  const [movedId, setMovedId] = useState<number>();
+  const shownIdList = shownList.map((ingredient) => ingredient.id);
+  const targetId =
+    movedId === undefined || shownIdList.includes(movedId) ? movedId : shownIdList[0];
+
+  return {
+    focusMoved: (ingredient: Ingredient) => {
+      if (!isTv) {
+        return;
+      }
+
+      // The chip shows up first; it's asked to take the focus on the next render, once on screen.
+      setMovedId(undefined);
+      setTimeout(() => setMovedId(ingredient.id), 0);
+    },
+    isFocusTarget: (ingredient: Ingredient) => isTv && ingredient.id === targetId,
+  };
 }
 
 const styles = StyleSheet.create((theme) => ({
