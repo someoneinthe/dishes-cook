@@ -60,16 +60,22 @@ superuser_password="$(node -e 'console.log(require("node:crypto").randomBytes(18
 server_pid=$!
 
 url="http://127.0.0.1:$port"
+is_up=false
 for _ in $(seq 1 50); do
   if curl --fail --silent "$url/api/health" > /dev/null; then
+    is_up=true
     break
   fi
   if ! kill -0 "$server_pid" 2>/dev/null; then
-    cat "$work/pocketbase.log" >&2
-    exit 1
+    break
   fi
   sleep 0.2
 done
+if [[ "$is_up" != true ]]; then
+  echo "PocketBase didn't start:" >&2
+  cat "$work/pocketbase.log" >&2
+  exit 1
+fi
 echo "PocketBase $version on $url"
 
 POCKETBASE_URL="$url" \

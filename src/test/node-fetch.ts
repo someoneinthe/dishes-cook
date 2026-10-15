@@ -22,7 +22,8 @@ export const nodeFetch = ((input: RequestInfo | URL, init: RequestInit = {}) =>
           const status = incoming.statusCode ?? 0;
           resolve(
             new Response(status === 204 ? null : Buffer.concat(chunkList).toString('utf8'), {
-              headers: incoming.headers as Record<string, string>,
+              // Name/value pairs as received (a repeated header stays repeated).
+              headers: pairsOf(incoming.rawHeaders),
               status,
             }),
           );
@@ -32,3 +33,12 @@ export const nodeFetch = ((input: RequestInfo | URL, init: RequestInit = {}) =>
     outgoing.on('error', reject);
     outgoing.end(typeof init.body === 'string' ? init.body : undefined);
   })) as typeof fetch;
+
+// ['Name', 'value', 'Name', 'value', …] -> [['Name', 'value'], …]
+function pairsOf(rawHeaderList: string[]): [string, string][] {
+  const pairList: [string, string][] = [];
+  for (let index = 0; index + 1 < rawHeaderList.length; index += 2) {
+    pairList.push([rawHeaderList[index] ?? '', rawHeaderList[index + 1] ?? '']);
+  }
+  return pairList;
+}

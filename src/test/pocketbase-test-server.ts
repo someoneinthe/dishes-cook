@@ -1,10 +1,11 @@
+import { env } from 'node:process';
 import type { SyncedTable } from '@/db/schema';
 import type { StoredRow, SyncTestServer } from './sync-scenarios';
 import { nodeFetch } from './node-fetch';
 
 // The throwaway PocketBase started by scripts/test-pocketbase.sh (server/migrations applied), or
 // undefined when the tests run without one.
-export const POCKETBASE_URL = process.env.POCKETBASE_URL;
+export const POCKETBASE_URL = env.POCKETBASE_URL;
 
 const ACCOUNT = { email: 'home@example.org', password: 'test-password' };
 const SYNCED_TABLES: SyncedTable[] = ['ingredients', 'recipes'];
@@ -54,8 +55,8 @@ export async function createPocketBaseServer(serverUrl: string): Promise<SyncTes
 async function signInSuperuser(serverUrl: string): Promise<string> {
   const response = await nodeFetch(`${serverUrl}/api/collections/_superusers/auth-with-password`, {
     body: JSON.stringify({
-      identity: process.env.POCKETBASE_SUPERUSER_EMAIL,
-      password: process.env.POCKETBASE_SUPERUSER_PASSWORD,
+      identity: env.POCKETBASE_SUPERUSER_EMAIL ?? '',
+      password: env.POCKETBASE_SUPERUSER_PASSWORD ?? '',
     }),
     headers: { 'Content-Type': 'application/json' },
     method: 'POST',
