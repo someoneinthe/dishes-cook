@@ -1,3 +1,5 @@
+import type { ServerInfo } from '@/features/sync/server-version';
+import { SERVER_MIGRATION_LIST, SYNC_VERSION } from '@/features/sync/server-version';
 // An in-memory stand-in for the sync server's HTTP API (PocketBase), for sync tests: the calls the
 // app makes, with the behaviours measured on a real server (see server/migrations):
 // - a refused or missing token is a guest: lists come back empty, creates get a 400, updates a 404;
@@ -10,6 +12,9 @@ export type FakeSyncServer = Readonly<{
   fetch: typeof fetch;
   // Requests from now on fail as if the server were unreachable (or answer again).
   setReachable: (isReachable: boolean) => void;
+  // What /api/dishes-cook/server answers (server/hooks/server-info.pb.js); undefined = a server
+  // without that hook (404). By default: up to date with this app.
+  setServerInfo: (info: ServerInfo | undefined) => void;
 }>;
 
 type StoredRow = Record<string, unknown> & { id: string; modified: number; updated: string };
@@ -24,6 +29,10 @@ export function createFakeSyncServer(
   let tokenCount = 0;
   let clock = 0;
   let isReachable = true;
+  let serverInfo: ServerInfo | undefined = {
+    migrations: [...SERVER_MIGRATION_LIST],
+    minimumAppSyncVersion: SYNC_VERSION,
+  };
 
   const collection = (name: string) => {
     let rowMap = collectionMap.get(name);
@@ -90,6 +99,13 @@ export function createFakeSyncServer(
     return json(200, created);
   };
 
+  const handleServerInfo = ({ method, path }: FakeRequest) => {
+    if (method !== 'GET' || path !== '/api/dishes-cook/server') {
+      return;
+    }
+    return serverInfo ? json(200, serverInfo) : json(404, { message: 'Not found' });
+  };
+
   const handleRecords = (request: FakeRequest) => {
     const match = /^\/api\/collections\/(\w+)\/records(?:\/(\w+))?$/.exec(request.path);
     if (!match) {
@@ -119,7 +135,10 @@ export function createFakeSyncServer(
       query: url.searchParams,
     };
     return Promise.resolve(
-      handleAuth(request) ?? handleRecords(request) ?? json(404, { message: 'Not found' }),
+      handleAuth(request) ??
+        handleServerInfo(request) ??
+        handleRecords(request) ??
+        json(404, { message: 'Not found' }),
     );
   }) as typeof fetch;
 
@@ -128,6 +147,9 @@ export function createFakeSyncServer(
     fetch: fakeFetch,
     setReachable: (value) => {
       isReachable = value;
+    },
+    setServerInfo: (info) => {
+      serverInfo = info;
     },
   };
 }

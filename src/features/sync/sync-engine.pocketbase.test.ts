@@ -5,7 +5,8 @@ import type { SyncTestServer } from '@/test/sync-scenarios';
 import { nodeFetch } from '@/test/node-fetch';
 import { createPocketBaseServer, POCKETBASE_URL } from '@/test/pocketbase-test-server';
 import { describeSyncScenarios } from '@/test/sync-scenarios';
-import { signIn } from './sync-api';
+import { checkServerVersion } from './server-version';
+import { createSyncApi, signIn } from './sync-api';
 
 // The sync against a real PocketBase with server/migrations: the scenarios of sync-engine.test.ts,
 // and the server behaviours its fake server (src/test/fake-sync-server.ts) mirrors. Started by
@@ -35,6 +36,12 @@ describe('synchronize with PocketBase', () => {
         method: 'POST',
         token: asToken,
       });
+
+    it('tells this app its versions match (server/hooks)', async () => {
+      const api = createSyncApi({ fetch: nodeFetch, serverUrl: server.serverUrl, token: '' });
+
+      expect(checkServerVersion(await api.getServerInfo())).toBe('compatible');
+    });
 
     it('treats a refused token as a guest: empty lists, refused creates and updates', async () => {
       await createRecipe('aaaaaaaaaaaaaaa');

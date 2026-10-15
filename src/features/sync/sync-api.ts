@@ -1,5 +1,6 @@
 import type { SyncedTable } from '@/db/schema';
 import { PAGE_SIZE } from '@/db/pagination';
+import type { ServerInfo } from './server-version';
 
 // The sync server's HTTP API (PocketBase, see docs/sync.md), with plain `fetch`: the few calls the
 // sync needs don't justify an SDK.
@@ -37,6 +38,9 @@ export type ServerRowOf<Table extends SyncedTable> = Table extends 'ingredients'
   : ServerRecipe;
 
 export type SyncApi = Readonly<{
+  // The server's migrations and the oldest app it accepts; undefined for a server without that
+  // endpoint (installed before it existed): too old for this app.
+  getServerInfo: () => Promise<ServerInfo | undefined>;
   // Rows written on the server at or after `since` ('' = all), oldest first, PAGE_SIZE per page.
   listChanges: <Table extends SyncedTable>(
     table: Table,
@@ -54,13 +58,14 @@ export type SyncApi = Readonly<{
   ) => Promise<UpsertResult>;
 }>;
 
+// Why a sync failed:
+// - app-outdated: the server asks for a newer app;
+// - failed: anything else the server answered;
+// - server-outdated: the server lacks what this app version needs;
+// - unauthorized: the account or its sign-in token was refused (sign in again);
+// - unreachable: no answer (not on the home network, server down, wrong address).
 export type SyncErrorKind =
-  // The account or its sign-in token was refused: sign in again.
-  | 'failed'
-  // No answer (not on the home network, server down, wrong address).
-  | 'unauthorized'
-  // Anything else the server answered.
-  | 'unreachable';
+  'app-outdated' | 'failed' | 'server-outdated' | 'unauthorized' | 'unreachable';
 
 // 'kept-newer': the server already has a newer change of this row, which the next pull brings.
 export type UpsertResult = 'kept-newer' | 'saved';
@@ -105,6 +110,22 @@ export function createSyncApi(
   };
 
   return {
+    getServerInfo: async () => {
+      const response = await send(apiUrl(options.serverUrl, 'dishes-cook', 'server'));
+      if (response.status === 404) {
+        return;
+      }
+      const { migrations, minimumAppSyncVersion } = (await readJson(response)) as Partial<
+        Record<keyof ServerInfo, unknown>
+      >;
+      if (typeof minimumAppSyncVersion !== 'number' || !Array.isArray(migrations)) {
+        throw new SyncError('failed', 'Unexpected server info');
+      }
+      return {
+        migrations: migrations.filter((file): file is string => typeof file === 'string'),
+        minimumAppSyncVersion,
+      };
+    },
     listChanges: async <Table extends SyncedTable>(table: Table, since: string, page: number) => {
       const query = new URLSearchParams({
         page: String(page),

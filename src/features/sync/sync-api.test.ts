@@ -45,6 +45,16 @@ describe('syncApi', () => {
         token: await signIn({ ...ACCOUNT, fetch: server.fetch, serverUrl: SERVER_URL }),
       });
 
+    it("reads the server's versions, or nothing from a server without them", async () => {
+      const api = await signedInApi();
+
+      await expect(api.getServerInfo()).resolves.toMatchObject({ minimumAppSyncVersion: 1 });
+
+      server.setServerInfo(undefined);
+
+      await expect(api.getServerInfo()).resolves.toBeUndefined();
+    });
+
     it('refuses a wrong password as unauthorized', async () => {
       await expect(
         signIn({ ...ACCOUNT, fetch: server.fetch, password: 'wrong', serverUrl: SERVER_URL }),

@@ -137,10 +137,14 @@ function ConnectForm() {
 }
 
 function errorMessage(t: Messages, kind: SyncErrorKind): string {
-  if (kind === 'unreachable') {
-    return t.sync.errorUnreachable;
-  }
-  return kind === 'unauthorized' ? t.sync.errorUnauthorized : t.sync.errorFailed;
+  const messages: Record<SyncErrorKind, string> = {
+    'app-outdated': t.sync.errorAppOutdated,
+    failed: t.sync.errorFailed,
+    'server-outdated': t.sync.errorServerOutdated,
+    unauthorized: t.sync.errorUnauthorized,
+    unreachable: t.sync.errorUnreachable,
+  };
+  return messages[kind];
 }
 
 function storageOptionList(t: Messages): readonly SegmentedOption<Storage>[] {
@@ -152,7 +156,7 @@ function storageOptionList(t: Messages): readonly SegmentedOption<Storage>[] {
 
 function SyncStatus({ onSyncNow, state }: Readonly<{ onSyncNow: () => void; state: SyncState }>) {
   const t = useMessages();
-  const { connection, error, isSyncing, lastSyncedAt } = state;
+  const { connection, error, isAppUpdateAvailable, isSyncing, lastSyncedAt } = state;
   if (!connection) {
     return null;
   }
@@ -175,6 +179,9 @@ function SyncStatus({ onSyncNow, state }: Readonly<{ onSyncNow: () => void; stat
       >
         {status}
       </Text>
+      {isAppUpdateAvailable && error === undefined && (
+        <Text style={styles.text}>{t.sync.appUpdateAvailable}</Text>
+      )}
       <Button
         icon="sync"
         isDisabled={isSyncing}

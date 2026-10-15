@@ -147,6 +147,7 @@ describe('query plans', () => {
     async (table) => {
       // A server with nothing new, that accepts everything.
       const api: SyncApi = {
+        getServerInfo: () => Promise.resolve(undefined),
         listChanges: () => Promise.resolve([]),
         refreshToken: () => Promise.resolve('token'),
         sendDeletion: () => Promise.resolve('saved'),

@@ -229,12 +229,18 @@ export const en = {
     unitsUs: 'US (oz, cups)',
   },
   sync: {
+    appUpdateAvailable:
+      'Your server has a newer version: update the app to get its latest features.',
     chooseStorage: 'Data storage',
     connect: 'Connect',
     connectedAs: (server: string, email: string) => `Synced with ${server} as ${email}.`,
     connecting: 'Connecting…',
     email: 'Email',
+    errorAppOutdated:
+      'This app is too old for your server: update the app to sync again. Your changes stay on this phone meanwhile.',
     errorFailed: 'The server refused the request. Try again later.',
+    errorServerOutdated:
+      'Your server is older than this app: update the server to sync again. Your changes stay on this phone meanwhile.',
     errorUnauthorized:
       'The server refused the sign-in. Choose “This device only”, then connect again.',
     errorUnreachable:

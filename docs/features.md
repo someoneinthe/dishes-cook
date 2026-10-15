@@ -11,7 +11,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [On a TV](#on-a-tv): 4 scenarios
 - [Recipe list](#recipe-list): 9 scenarios
 - [Recipes](#recipes): 3 scenarios
-- [Server sync](#server-sync): 5 scenarios
+- [Server sync](#server-sync): 8 scenarios
 
 ## Ingredient quantities
 
@@ -324,6 +324,30 @@ Your data (recipes and ingredients today) is kept on the phone. It can also be s
 - **And** the server can't be reached
 - **When** I ask for a sync
 - **Then** I am told that the server doesn't answer
+
+### A server older than the app is reported
+
+- **Given** the phone is synced with the server
+- **And** the server lacks the latest server update
+- **And** the recipe "Pie" on this phone
+- **When** I ask for a sync
+- **Then** I am told that the server needs an update
+- **And** the server doesn't have the recipe "Pie"
+
+### An app older than the server is asked to update
+
+- **Given** the phone is synced with the server
+- **And** the server only accepts newer apps
+- **When** I ask for a sync
+- **Then** I am told that the app needs an update
+
+### A server newer than the app is pointed out
+
+- **Given** the phone is synced with the server
+- **And** the server has an update this app doesn't know
+- **When** I ask for a sync
+- **Then** I am told that an app update exists
+- **And** the phone is still synced
 
 ### Stopping the sync keeps the data
 

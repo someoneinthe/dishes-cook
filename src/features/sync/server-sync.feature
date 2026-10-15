@@ -27,6 +27,27 @@ Feature: Server sync
     When I ask for a sync
     Then I am told that the server doesn't answer
 
+  Scenario: A server older than the app is reported
+    Given the phone is synced with the server
+    And the server lacks the latest server update
+    And the recipe "Pie" on this phone
+    When I ask for a sync
+    Then I am told that the server needs an update
+    And the server doesn't have the recipe "Pie"
+
+  Scenario: An app older than the server is asked to update
+    Given the phone is synced with the server
+    And the server only accepts newer apps
+    When I ask for a sync
+    Then I am told that the app needs an update
+
+  Scenario: A server newer than the app is pointed out
+    Given the phone is synced with the server
+    And the server has an update this app doesn't know
+    When I ask for a sync
+    Then I am told that an app update exists
+    And the phone is still synced
+
   Scenario: Stopping the sync keeps the data
     Given the recipe "Leek soup" on this phone
     And the phone is synced with the server

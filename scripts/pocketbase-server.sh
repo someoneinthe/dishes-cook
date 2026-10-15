@@ -68,6 +68,7 @@ start_pocketbase() {
   "$binary" superuser upsert "$POCKETBASE_SUPERUSER_EMAIL" "$POCKETBASE_SUPERUSER_PASSWORD" \
     --dir "$pocketbase_work/pb_data" > /dev/null
   "$binary" serve --dir "$pocketbase_work/pb_data" --migrationsDir server/migrations \
+    --hooksDir server/hooks \
     --http "127.0.0.1:$POCKETBASE_PORT" > "$pocketbase_work/pocketbase.log" 2>&1 &
   pocketbase_pid=$!
 
