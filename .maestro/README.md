@@ -4,7 +4,7 @@
 
 | Flow           | Checks                                                                                                                     |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `recipes.yaml` | Add a recipe with a new ingredient, edit it, find it in Recipes, delete it after confirming.                               |
+| `recipes.yaml` | Add a recipe with a new ingredient, edit it, find it in Meal choice and in Recipes, delete it after confirming.            |
 | `sync.yaml`    | Connect to a sync server (the first sync merges the phone's recipes and the server's), then a deletion reaches the server. |
 
 `subflows/` holds steps shared by flows; `scripts/server.js` reads and writes the test sync server directly, as another phone would.
@@ -14,14 +14,15 @@
 They run on **a release build made for them**: its JavaScript is bundled (Maestro hangs now and then on a debug build that loads it from Metro), and `E2E_BUILD=1` lets it reach the test sync server over plain HTTP (`plugins/with-e2e-cleartext.js`; the released app never can).
 
 1. Install Maestro (`brew install mobile-dev-inc/tap/maestro`, which needs Java 17: `brew install openjdk@17`) and boot an Android emulator.
-2. Build and install the end-to-end build (arm64 on Apple silicon, x86_64 on Intel and in CI):
+2. Build and install the end-to-end build, for the emulator's processor (arm64 on Apple silicon, x86_64 on Intel and in CI):
    ```bash
    E2E_BUILD=1 npx expo prebuild --platform android --clean
-   (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a)
+   (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a)   # Apple silicon
+   (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64)      # Intel
    adb install -r android/app/build/outputs/apk/release/app-release.apk
    ```
    Run `npx expo prebuild --platform android --clean` again (without `E2E_BUILD`) before going back to debug builds.
-3. `npm run test:e2e` runs every flow; `npm run test:e2e -- .maestro/sync.yaml` runs one. It starts a throwaway PocketBase with a throwaway account (`scripts/pocketbase-server.sh`, as for `npm run test:pocketbase`) and forwards its port to the emulator (`adb reverse`). Set `ANDROID_SERIAL` when several devices are connected.
+3. `npm run test:e2e` runs every flow; `npm run test:e2e -- .maestro/sync.yaml` runs one. It starts a throwaway PocketBase with a throwaway account (`scripts/pocketbase-server.sh`, as for `npm run test:pocketbase`) and forwards its port to the emulator (`adb reverse`). Set `ANDROID_SERIAL` when several devices are connected: both adb and Maestro then use that one.
 
 Each flow starts with `launchApp: clearState`: it wipes the app's data on that emulator.
 

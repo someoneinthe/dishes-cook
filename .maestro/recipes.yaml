@@ -33,8 +33,12 @@ name: Recipes
 - assertVisible: Summer
 - assertVisible: Main course
 
-# The recipe list has it.
+# Meal choice suggests it (a main course now), and the recipe list has it.
 - tapOn: Go back
+- tapOn: Suggest
+- extendedWaitUntil:
+    visible: Leek soup
+    timeout: 10000
 - tapOn: Show navigation menu
 - tapOn: Recipes
 - assertVisible: Leek soup.*

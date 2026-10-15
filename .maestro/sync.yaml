@@ -66,12 +66,11 @@ name: Server sync
 - scrollUntilVisible:
     element: Sync now
 - tapOn: Sync now
-- extendedWaitUntil:
-    notVisible: Syncing…
-    timeout: 20000
+# Waits (up to 20 s) for the server to mark it deleted.
 - runScript:
     file: scripts/server.js
     env:
-      ACTION: read
+      ACTION: wait-deleted
+      TITLE: Pumpkin pie
 - assertTrue: ${output.serverRecipes['Pumpkin pie'] > 0}
 - assertTrue: ${output.serverRecipes['Leek soup'] === 0}

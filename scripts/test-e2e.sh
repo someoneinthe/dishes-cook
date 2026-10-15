@@ -30,8 +30,13 @@ trap 'adb reverse --remove "tcp:$POCKETBASE_PORT" > /dev/null 2>&1 || true; stop
 if [[ $# -eq 0 ]]; then
   set -- .maestro
 fi
+# Maestro picks a device on its own: give it the one adb uses.
+device_option=()
+if [[ -n "${ANDROID_SERIAL:-}" ]]; then
+  device_option=(--device "$ANDROID_SERIAL")
+fi
 export MAESTRO_CLI_NO_ANALYTICS=1 MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED=true
-maestro test \
+maestro "${device_option[@]}" test \
   --env SERVER_URL="http://localhost:$POCKETBASE_PORT" \
   --env EMAIL="$account_email" \
   --env PASSWORD="$account_password" \
