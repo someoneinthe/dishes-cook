@@ -5,7 +5,10 @@
 // The server migrations (server/migrations) this app version knows, oldest first: a test keeps the
 // list equal to the folder. The server must have applied the last one, or it lacks what the app
 // sends and reads.
-export const SERVER_MIGRATION_LIST: readonly string[] = ['1792000000-dishes-cook-sync.js'];
+export const SERVER_MIGRATION_LIST: readonly string[] = [
+  '1792000000-dishes-cook-sync.js',
+  '1792080000-recipe-quantities.js',
+];
 
 // This app's sync version. Raised together with the server's minimum (MINIMUM_APP_SYNC_VERSION in
 // the hook) when a server change breaks older apps: they're then asked to update.
