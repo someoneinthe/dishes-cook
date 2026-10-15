@@ -17,8 +17,8 @@ They run on **a release build made for them**: its JavaScript is bundled (Maestr
 2. Build and install the end-to-end build, for the emulator's processor (arm64 on Apple silicon, x86_64 on Intel and in CI):
    ```bash
    E2E_BUILD=1 npx expo prebuild --platform android --clean
-   (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a)   # Apple silicon
-   (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64)      # Intel
+   abi=arm64-v8a   # the emulator's processor: arm64-v8a on Apple silicon, x86_64 on Intel
+   (cd android && ./gradlew assembleRelease -PreactNativeArchitectures="$abi")
    adb install -r android/app/build/outputs/apk/release/app-release.apk
    ```
    Run `npx expo prebuild --platform android --clean` again (without `E2E_BUILD`) before going back to debug builds.
