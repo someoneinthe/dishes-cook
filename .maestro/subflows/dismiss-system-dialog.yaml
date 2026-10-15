@@ -1,0 +1,8 @@
+# Closes Android's "… isn't responding" dialog if one is on screen (the app keeps running).
+appId: io.github.someoneinthe.dishescook
+---
+- runFlow:
+    when:
+      visible: .*isn't responding.*
+    commands:
+      - tapOn: Wait
