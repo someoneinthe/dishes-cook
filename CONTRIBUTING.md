@@ -59,6 +59,8 @@ React Native specifics:
 
 `eslint-plugin-react` and `eslint-plugin-import` (bundled by Expo), `eslint-plugin-react-native` and `eslint-plugin-react-native-a11y` don't declare ESLint 10 support yet: npm `overrides` in `package.json` let them install with our ESLint, and `@eslint/compat` shims the APIs ESLint 10 removed. Drop both workarounds once those plugins support ESLint 10.
 
+Two more `overrides` pull patched versions of vulnerable transitive dev dependencies: `uuid` (≥ 11.1.1, used by `xcode` and `jest-cucumber`) and the `esbuild` of `@esbuild-kit/core-utils` (≥ 0.25, used by `drizzle-kit`). Drop them once those packages depend on fixed versions themselves.
+
 ## Code quality (SonarQube Cloud)
 
 CI runs a [SonarQube Cloud](https://sonarcloud.io/project/overview?id=someoneinthe_dishes-cook) scan after the tests and uploads Jest coverage (`coverage/lcov.info`). Configuration lives in `sonar-project.properties`. Fix new issues reported on your PR before merging.
