@@ -110,7 +110,7 @@ $ADB logcat -d -s ReactNativeJS | tail -50              # console.log/warn/error
 - **Font size restarts the app** (`settings put system font_scale 1.3|2.0`, back to `1.0`): after it, navigate back to the screen you were checking, and don't take it as a test of live configuration changes.
 - **Language**: Settings › Language (System / English / Français). For System following the phone: `$ADB shell cmd locale set-app-locales io.github.someoneinthe.dishescook --locales fr-FR` (restarts the app; `--locales ""` to reset).
 - **Server sync**: test against a throwaway PocketBase, never the user's real server: `adb reverse tcp:<port> tcp:<port>`, then connect to `http://localhost:<port>` in Settings › Data storage (plain HTTP works in debug builds only). Steps in `docs/sync.md` › Testing during development.
-- **After a schema change** (single init migration until the first release): `$ADB shell pm clear io.github.someoneinthe.dishescook`, then restart Metro with `--clear` (it caches the inlined SQL).
+- **After a schema change**: restart Metro with `--clear` (it caches the inlined SQL) and reopen the app, which applies the new migration. Don't clear its data: check that the recipes from before the change are still there.
 
 Expected startup: native splash (plate on white / `#121212` in dark mode) → full illustration (~1.5 s) → home screen. The illustration is short: take screenshots in a quick loop to catch it.
 

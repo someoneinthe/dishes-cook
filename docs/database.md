@@ -86,16 +86,19 @@ Integer primary keys are SQLite rowids.
 
 ## Changing the schema
 
-**Until the first release, there are no users and no data to keep**: the schema has a single migration, `0000_init.sql`, regenerated on every change.
+**Migrations are additive**: phones and the sync server keep real data, so a schema change never resets it. Migrations run at startup (`DatabaseProvider`), before any screen renders, and Drizzle only applies the ones newer than the last it recorded: an edit to a migration that already ran never reaches existing databases.
 
 1. Edit `src/db/schema.ts`.
-2. Delete `src/db/migrations/` and run `npm run db:generate -- --name init`. It also regenerates the diagram above (`npm run db:diagram`; CI fails if it's out of date, and attaches it as an image to each release). Commit the result.
-3. Reset the app's data on your device or emulator (`adb shell pm clear io.github.someoneinthe.dishescook`): an existing database already has the old `0000` applied.
-4. Restart Metro with `npx expo start --dev-client --clear`: it caches the inlined `.sql` files by `migrations.js`, so it would keep serving the old SQL.
+2. Run `npm run db:generate -- --name <what-changes>` (e.g. `--name recipe-servings`). It adds `src/db/migrations/<NNNN>_<what-changes>.sql` and regenerates the diagram above (`npm run db:diagram`; CI fails if it's out of date, and attaches it as an image to each release).
+3. Read the generated SQL (see below), and add a test that rows written before the migration survive it.
+4. Restart Metro with `npx expo start --dev-client --clear`: it caches the inlined `.sql` files by `migrations.js`, so it would keep serving the old SQL. The app applies the new migration on its next start; don't clear its data.
+5. Record the new migration's checksum in `src/db/frozen-migrations.test.ts` (the failing test prints it), then commit.
 
-Migrations run at startup (`DatabaseProvider`), before any screen renders.
+While the PR is open you can delete your new migration and generate it again; once merged, it's frozen: `frozen-migrations.test.ts` fails if a shipped migration changes. Fix a mistake with another migration.
 
-**After the first release**, migrations must keep users' data: never edit a shipped migration, add new ones with `npm run db:generate`, and read the generated SQL. For changes `ALTER TABLE` can't express (a table-level `CHECK`, for instance), drizzle-kit rebuilds the table (copy, `DROP TABLE`, rename) inside `PRAGMA foreign_keys=OFF`, which has no effect in the migration transaction: dropping `recipes` would cascade-delete every `recipe_ingredients` row. Hand-write an `ALTER TABLE … ADD` instead when it can do the job, and test that existing rows survive.
+**Read the generated SQL**: for changes `ALTER TABLE` can't express (a table-level `CHECK`, for instance), drizzle-kit rebuilds the table (copy, `DROP TABLE`, rename) inside `PRAGMA foreign_keys=OFF`, which has no effect in the migration transaction: dropping `recipes` would cascade-delete every `recipe_ingredients` row. Hand-write an `ALTER TABLE … ADD` instead when it can do the job. A new column on an existing table needs a default (or to be nullable) for the rows already there.
+
+A change to a synced table (`recipes`, `ingredients`, `recipe_ingredients`) usually needs a server migration too: a new file in `server/migrations/` (see [sync.md](sync.md#server-setup)), frozen the same way.
 
 Drinks (planned) will likely reuse `recipes` with a `kind` column (`'dish' | 'drink'`) so they share ingredients, live queries and the random pick.
 
