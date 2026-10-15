@@ -54,6 +54,7 @@ Any PocketBase 0.23+; the version in `server/pocketbase-version` is the one the 
 
 - **Tests** run against `src/test/fake-sync-server.ts`, which mirrors the behaviours below; `sync-engine.test.ts` simulates two phones.
 - **Against a real PocketBase**: `npm run test:pocketbase` runs the same two-phone scenarios (`src/test/sync-scenarios.ts`) and checks the behaviours below on a throwaway PocketBase: the version in `server/pocketbase-version` (or `POCKETBASE_VERSION=0.x.y`), downloaded once into `node_modules/.cache/pocketbase` and checked against the release's checksums, started empty with `server/migrations` on a free local port, and stopped afterwards. CI runs it on every PR. Needs `curl` and `unzip` (macOS or Linux).
+- **End to end**: `npm run test:e2e` runs the Maestro flow `.maestro/sync.yaml` (connect, merge, deletion) on an emulator against a throwaway PocketBase; see [.maestro/README.md](../.maestro/README.md).
 - **On an emulator**, against a throwaway PocketBase (never your real one, its data would mix with test recipes):
   1. Start one with the migrations: `pocketbase serve --dir /tmp/pb-test/pb_data --migrationsDir server/migrations --http 127.0.0.1:8091`, create a superuser (`pocketbase superuser upsert … --dir /tmp/pb-test/pb_data`), then an account in **users** from its admin UI.
   2. Forward the port to the emulator: `adb reverse tcp:8091 tcp:8091`.

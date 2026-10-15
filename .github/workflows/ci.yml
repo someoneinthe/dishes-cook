@@ -82,6 +82,102 @@ jobs:
           name: database-diagram
           path: dist/database-diagram/
 
+  e2e:
+    # Maestro flows (.maestro/) on an Android emulator, against an end-to-end build of the app (release,
+    # x86_64, E2E_BUILD) and a throwaway sync server. Runs on main, and on PRs that change the app or
+    # the flows; skipped (= passing) otherwise. See .maestro/README.md.
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      # Checkout, and the PR's changed files for paths-filter.
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: files
+        if: github.event_name == 'pull_request'
+        with:
+          filters: |
+            app:
+              - 'src/**'
+              - 'assets/**'
+              - 'plugins/**'
+              - 'app.config.ts'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'server/**'
+              - '.maestro/**'
+              - 'scripts/test-e2e.sh'
+              - 'scripts/pocketbase-server.sh'
+              - '.github/actions/build-android-apk/**'
+              - '.github/workflows/ci.yml'
+      - name: Decide whether to run
+        id: run
+        env:
+          IS_PULL_REQUEST: ${{ github.event_name == 'pull_request' }}
+          TOUCHES_APP: ${{ steps.files.outputs.app }}
+        run: |
+          if [[ "$IS_PULL_REQUEST" != true || "$TOUCHES_APP" == true ]]; then
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No app change: end-to-end tests skipped."
+          fi
+      - if: steps.run.outputs.e2e == 'true'
+        uses: ./.github/actions/setup-node-deps
+      - if: steps.run.outputs.e2e == 'true'
+        id: apk
+        uses: ./.github/actions/build-android-apk
+        env:
+          E2E_BUILD: '1'
+        with:
+          architectures: x86_64
+          output-name: dishes-cook-${{ github.sha }}-e2e.apk
+          variant: release
+      - name: Install Maestro
+        if: steps.run.outputs.e2e == 'true'
+        run: |
+          version="$(tr -d '[:space:]' < .maestro/maestro-version)"
+          release="https://github.com/mobile-dev-inc/maestro/releases/download/cli-$version"
+          cd "$RUNNER_TEMP"
+          curl --fail --silent --show-error --location --remote-name "$release/maestro.zip"
+          curl --fail --silent --show-error --location --remote-name "$release/checksums_sha256.txt"
+          grep ' maestro.zip$' checksums_sha256.txt | sha256sum --check --status
+          unzip -q maestro.zip
+          echo "$RUNNER_TEMP/maestro/bin" >> "$GITHUB_PATH"
+      # The Android emulator needs hardware acceleration (KVM) on the runner.
+      - name: Enable KVM
+        if: steps.run.outputs.e2e == 'true'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run the flows on an emulator
+        if: steps.run.outputs.e2e == 'true'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        env:
+          APK: ${{ steps.apk.outputs.apk-path }}
+        with:
+          api-level: 34
+          # A phone-sized screen like the local emulator's (the default one is much smaller).
+          profile: pixel_6
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            adb install "$APK"
+            npm run test:e2e -- --format junit --output "$RUNNER_TEMP/maestro-report.xml" --test-output-dir "$RUNNER_TEMP/maestro-output" .maestro
+      - name: Keep screenshots and logs of failed flows
+        if: failure() && steps.run.outputs.e2e == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: maestro-output
+          path: |
+            ${{ runner.temp }}/maestro-output/
+            ${{ runner.temp }}/maestro-report.xml
+
   changes:
     # Decides whether the Android build must run:
     # - on PRs, only if the PR touches a native input (otherwise its native fingerprint is main's,
