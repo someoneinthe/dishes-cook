@@ -53,12 +53,9 @@ defineFeature(feature, (test) => {
     const [{ id } = { id: -1 }] = firstRecipePage(connection.db);
     await renderWithDatabase(<RecipeDetails recipe={getRecipe(connection.db, id)!} />, connection);
   };
-  const recipeListsThem = async (lines: string) => {
-    await showFirstRecipe();
-    for (const line of lines.split(', ')) {
-      expect(screen.getByText(`• ${line}`)).toBeOnTheScreen();
-    }
-  };
+  // The lines of the recipe's ingredient list, in order.
+  const shownLines = () =>
+    screen.getAllByText(/^• /).map((element) => element.props.children as string);
 
   test('Quantities are given in the recipe form', ({ and, given, then, when }) => {
     given(/^the ingredients "(.*)" exist$/, givenIngredients);
@@ -73,7 +70,11 @@ defineFeature(feature, (test) => {
     );
     and(/^I give "(.*)" the quantity "(.*)"$/, giveQuantity);
     and('I save the recipe', saveTheRecipe);
-    then(/^the recipe lists "(.*)"$/, recipeListsThem);
+    then(/^the recipe lists "(.*)"$/, async (lines: string) => {
+      await showFirstRecipe();
+
+      expect(shownLines()).toStrictEqual(lines.split(', ').map((line) => `• ${line}`));
+    });
   });
 
   test('A quantity must be a number', ({ and, given, then, when }) => {
@@ -119,10 +120,18 @@ defineFeature(feature, (test) => {
     when('I read it with European units', async () => {
       await act(() => updatePreferences({ units: 'metric' }));
     });
-    then(/^the recipe lists "(.*)"$/, recipeListsThem);
+    then(/^the recipe lists "(.*)"$/, async (lines: string) => {
+      await showFirstRecipe();
+
+      expect(shownLines()).toStrictEqual(lines.split(', ').map((line) => `• ${line}`));
+    });
     when('I read it with US units', async () => {
       await act(() => updatePreferences({ units: 'us' }));
     });
-    then(/^the recipe lists "(.*)"$/, recipeListsThem);
+    then(/^the recipe lists "(.*)"$/, async (lines: string) => {
+      await showFirstRecipe();
+
+      expect(shownLines()).toStrictEqual(lines.split(', ').map((line) => `• ${line}`));
+    });
   });
 });

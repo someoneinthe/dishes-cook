@@ -1,5 +1,5 @@
-import type { Unit } from '@/lib/units';
-import type { Messages } from './en';
+import type { Messages, WordUnit } from './en';
+import { unitName } from './en';
 
 // French typography: a narrow no-break space before "?", "!" and ":", no-break spaces inside « ».
 const NARROW_SPACE = '\u{202F}';
@@ -10,19 +10,11 @@ function plural(count: number, one: string, other: string): string {
   return count <= 1 ? one : other;
 }
 
-const UNIT_NAMES: Readonly<Record<Unit, readonly [one: string, other: string]>> = {
+const UNIT_WORDS: Readonly<Record<WordUnit, readonly [one: string, other: string]>> = {
   bunch: ['botte', 'bottes'],
   can: ['boîte', 'boîtes'],
-  cl: ['cl', 'cl'],
   clove: ['gousse', 'gousses'],
   cup: ['tasse', 'tasses'],
-  fl_oz: ['fl oz', 'fl oz'],
-  g: ['g', 'g'],
-  kg: ['kg', 'kg'],
-  l: ['l', 'l'],
-  lb: ['lb', 'lb'],
-  ml: ['ml', 'ml'],
-  oz: ['oz', 'oz'],
   pinch: ['pincée', 'pincées'],
   tbsp: ['c. à soupe', 'c. à soupe'],
   tsp: ['c. à café', 'c. à café'],
@@ -139,9 +131,10 @@ export const fr: Messages = {
     line: (name, quantity) => `${name}${NARROW_SPACE}: ${quantity}`,
     pieces: 'pièces',
     // Singular below 2: « 1,5 tasse », « 2 tasses ».
-    unit: (unit, amount) => UNIT_NAMES[unit][amount < 2 ? 0 : 1],
+    unit: (unit, amount) => unitName(UNIT_WORDS, unit, amount >= 2),
     unitButtonHint: 'Ouvre la liste des unités',
     unitButtonLabel: (name, unit) => `Unité de ${name}${NARROW_SPACE}: ${unit}`,
+    unitOptionHint: 'Utilise cette unité pour la quantité',
   },
   recipes: {
     course: 'Type de plat',

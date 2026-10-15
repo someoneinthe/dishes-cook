@@ -50,6 +50,11 @@ const SHARED_UNIT_LIST: readonly Unit[] = ['tsp', 'tbsp', 'pinch', 'clove', 'bun
 
 // Largest amount accepted: more is a typo.
 export const MAX_AMOUNT = 100_000;
+// Smallest amount accepted: the form shows amounts to 0.01.
+const MIN_AMOUNT = 0.01;
+
+const CUP_IN_ML = UNIT_INFO.cup.base ?? 0;
+const POUND_IN_GRAMS = UNIT_INFO.lb.base ?? 0;
 
 // An amount as typed back into the form: "1.5" (or "1,5"), without trailing zeros.
 export function formatAmount(amount: number, decimalSeparator: string): string {
@@ -65,7 +70,8 @@ export function isUnitSystem(value: unknown): value is UnitSystem {
   return UNIT_SYSTEM_LIST.includes(value as UnitSystem);
 }
 
-// "1,5" / "1.5" / "1/2" / "1 1/2" -> 1.5…; undefined when it isn't a positive amount.
+// "1,5" / "1.5" / "1/2" / "1 1/2" -> 1.5…; undefined when it isn't an amount between 0.01
+// and MAX_AMOUNT.
 export function parseAmount(text: string): number | undefined {
   const trimmed = text.trim().replace(',', '.');
   const fraction = /^(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)$/.exec(trimmed);
@@ -78,7 +84,9 @@ export function parseAmount(text: string): number | undefined {
   } else {
     return undefined;
   }
-  return Number.isFinite(amount) && amount > 0 && amount <= MAX_AMOUNT ? amount : undefined;
+  return Number.isFinite(amount) && amount >= MIN_AMOUNT && amount <= MAX_AMOUNT
+    ? amount
+    : undefined;
 }
 
 // A quantity read from storage or the sync server; undefined when it isn't a usable one.
@@ -123,10 +131,10 @@ function closestUnit(kind: UnitInfo['kind'], base: number, system: UnitSystem): 
     return base >= 1000 ? 'l' : 'ml';
   }
   if (kind === 'mass') {
-    return base >= UNIT_INFO.lb.base! ? 'lb' : 'oz';
+    return base >= POUND_IN_GRAMS ? 'lb' : 'oz';
   }
   // A quarter of a cup and more in cups, less in fluid ounces.
-  return base >= UNIT_INFO.cup.base! / 4 ? 'cup' : 'fl_oz';
+  return base >= CUP_IN_ML / 4 ? 'cup' : 'fl_oz';
 }
 
 // Grams and millilitres to the unit, kilos and litres to 0.01, ounces to 0.1, pounds and cups to

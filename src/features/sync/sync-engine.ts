@@ -411,12 +411,11 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
       const syncIdList = ingredientSyncIdsByRecipe.get(link.recipeId) ?? [];
       syncIdList.push(link.syncId);
       ingredientSyncIdsByRecipe.set(link.recipeId, syncIdList);
-      const quantity = toQuantity(link.amount, link.unit);
-      if (!quantity) {
-        continue;
-      }
       const quantities = quantitiesByRecipe.get(link.recipeId) ?? {};
-      quantities[link.syncId] = quantity;
+      const quantity = toQuantity(link.amount, link.unit);
+      if (quantity) {
+        quantities[link.syncId] = quantity;
+      }
       quantitiesByRecipe.set(link.recipeId, quantities);
     }
     await Promise.all(

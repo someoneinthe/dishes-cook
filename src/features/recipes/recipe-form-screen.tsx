@@ -206,14 +206,13 @@ function readQuantities(
   const quantities = new Map<number, Quantity>();
   for (const { id } of selectedList) {
     const draft = draftMap.get(id);
-    if (!draft?.amountText.trim()) {
-      continue;
-    }
-    const amount = parseAmount(draft.amountText);
-    if (amount === undefined) {
+    const amountText = draft?.amountText.trim() ?? '';
+    const amount = parseAmount(amountText);
+    if (amountText !== '' && amount === undefined) {
       invalidIdList.push(id);
-    } else {
-      quantities.set(id, draft.unit === undefined ? { amount } : { amount, unit: draft.unit });
+    }
+    if (amount !== undefined) {
+      quantities.set(id, draft?.unit === undefined ? { amount } : { amount, unit: draft.unit });
     }
   }
   return { invalidIdList, quantities };

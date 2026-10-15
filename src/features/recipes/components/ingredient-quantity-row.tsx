@@ -121,6 +121,7 @@ function UnitPicker({ onChoose, onClose, title, unit }: UnitPickerProps) {
         <ScrollView contentContainerStyle={styles.optionList}>
           {optionList.map((option) => (
             <Chip
+              accessibilityHint={t.quantities.unitOptionHint}
               icon={option === unit ? 'check-circle' : 'circle-outline'}
               isSelected={option === unit}
               key={option ?? 'pieces'}

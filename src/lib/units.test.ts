@@ -81,9 +81,12 @@ describe('units', () => {
       expect(parseAmount(text)).toBe(amount);
     });
 
-    it.each(['', 'abc', '0', '-1', '1/0', '2kg', '1.2.3', '100001'])('refuses %p', (text) => {
-      expect(parseAmount(text)).toBeUndefined();
-    });
+    it.each(['', 'abc', '0', '0.001', '-1', '1/0', '2kg', '1.2.3', '100001'])(
+      'refuses %p',
+      (text) => {
+        expect(parseAmount(text)).toBeUndefined();
+      },
+    );
   });
 
   it('formats an amount with the language decimal separator', () => {

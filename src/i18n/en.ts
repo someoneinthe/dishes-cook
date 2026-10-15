@@ -4,23 +4,40 @@
 
 import type { Unit } from '@/lib/units';
 
+// A unit's symbol ("kg"), or its word in the singular or plural ("cup", "cups").
+export function unitName(
+  wordList: Readonly<Record<WordUnit, readonly [one: string, other: string]>>,
+  unit: Unit,
+  isPlural: boolean,
+): string {
+  if (Object.hasOwn(UNIT_SYMBOLS, unit)) {
+    return UNIT_SYMBOLS[unit as keyof typeof UNIT_SYMBOLS];
+  }
+  return wordList[unit as WordUnit][isPlural ? 1 : 0];
+}
+
 function plural(count: number, one: string, other: string): string {
   return count === 1 ? one : other;
 }
 
-const UNIT_NAMES: Readonly<Record<Unit, readonly [one: string, other: string]>> = {
+// Units written the same in every language; the others are words, translated in each dictionary.
+export const UNIT_SYMBOLS = {
+  cl: 'cl',
+  fl_oz: 'fl oz',
+  g: 'g',
+  kg: 'kg',
+  l: 'l',
+  lb: 'lb',
+  ml: 'ml',
+  oz: 'oz',
+} as const satisfies Partial<Record<Unit, string>>;
+export type WordUnit = Exclude<Unit, keyof typeof UNIT_SYMBOLS>;
+
+const UNIT_WORDS: Readonly<Record<WordUnit, readonly [one: string, other: string]>> = {
   bunch: ['bunch', 'bunches'],
   can: ['can', 'cans'],
-  cl: ['cl', 'cl'],
   clove: ['clove', 'cloves'],
   cup: ['cup', 'cups'],
-  fl_oz: ['fl oz', 'fl oz'],
-  g: ['g', 'g'],
-  kg: ['kg', 'kg'],
-  l: ['l', 'l'],
-  lb: ['lb', 'lb'],
-  ml: ['ml', 'ml'],
-  oz: ['oz', 'oz'],
   pinch: ['pinch', 'pinches'],
   tbsp: ['tbsp', 'tbsp'],
   tsp: ['tsp', 'tsp'],
@@ -138,10 +155,11 @@ export const en = {
     invalidAmount: 'Enter a number, like 2, 1.5 or 1/2.',
     line: (name: string, quantity: string) => `${name}: ${quantity}`,
     pieces: 'pieces',
-    // Up to 1: "1 cup", "0.5 cup"; more: "2 cups".
-    unit: (unit: Unit, amount: number) => UNIT_NAMES[unit][amount <= 1 ? 0 : 1],
+    // Up to 1 in the singular: "1 cup", "0.5 cup", "2 cups".
+    unit: (unit: Unit, amount: number) => unitName(UNIT_WORDS, unit, amount > 1),
     unitButtonHint: 'Opens the list of units',
     unitButtonLabel: (name: string, unit: string) => `Unit of ${name}: ${unit}`,
+    unitOptionHint: 'Uses this unit for the quantity',
   },
   recipes: {
     course: 'Course',
