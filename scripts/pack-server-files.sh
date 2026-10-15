@@ -17,4 +17,10 @@ mkdir -p "$(dirname "$archive")"
 # No macOS metadata ("._name" files, extended attributes) in the archive when packed on a Mac.
 COPYFILE_DISABLE=1 tar --no-xattrs -czf "$archive" -C server migrations hooks -C "$work" VERSION
 # Relative name in the checksum file: `sha256sum --check` runs next to the archive.
-(cd "$(dirname "$archive")" && shasum -a 256 "$(basename "$archive")" > "$(basename "$archive").sha256")
+# sha256sum on Linux (CI), shasum on macOS: the same output.
+if command -v sha256sum > /dev/null; then
+  checksum=(sha256sum)
+else
+  checksum=(shasum -a 256)
+fi
+(cd "$(dirname "$archive")" && "${checksum[@]}" "$(basename "$archive")" > "$(basename "$archive").sha256")

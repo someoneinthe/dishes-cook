@@ -13,6 +13,8 @@
 # put back as they were. An installed migration that differs from the archive's stops everything:
 # migrations are never edited (PocketBase wouldn't re-run them).
 set -euEo pipefail
+# An empty folder gives no file to loop over, not a literal "*.js".
+shopt -s nullglob
 
 repo="${DISHES_COOK_REPO:-someoneinthe/dishes-cook}"
 pb_dir="${PB_DIR:-/opt/pocketbase}"
@@ -48,11 +50,28 @@ else
   (cd "$work" && sha256sum --check --quiet server-files.tar.gz.sha256)
   archive="$work/server-files.tar.gz"
 fi
+# Only plain files under migrations/ and hooks/, and VERSION: no links (cmp and install, as root,
+# would follow them), devices or other paths.
+if ! tar -tvzf "$archive" | awk '
+  BEGIN { valid = 1; has_version = 0 }
+  $1 ~ /^d/ && ($NF == "migrations/" || $NF == "hooks/") { next }
+  $1 ~ /^-/ && $NF == "VERSION" { has_version = 1; next }
+  $1 ~ /^-/ && $NF ~ /^(migrations|hooks)\/[^/]+$/ { next }
+  { valid = 0 }
+  END { exit !(valid && has_version) }
+'; then
+  log "refusing the archive: unexpected members (links, other paths) or no VERSION"
+  exit 1
+fi
 mkdir "$work/files"
 tar -xzf "$archive" -C "$work/files"
 
 # VERSION: "<commit time> <commit>" of the files (scripts/pack-server-files.sh).
-read -r archive_time archive_commit < "$work/files/VERSION"
+read -r archive_time archive_commit < "$work/files/VERSION" || true
+if [[ ! "${archive_time:-}" =~ ^[0-9]+$ || -z "${archive_commit:-}" ]]; then
+  log "refusing the archive: invalid VERSION"
+  exit 1
+fi
 installed_time=0
 installed_commit=none
 if [[ -f "$version_file" ]]; then
