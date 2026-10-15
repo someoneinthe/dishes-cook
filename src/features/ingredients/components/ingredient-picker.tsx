@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Chip } from '@/components/chip';
@@ -142,6 +142,12 @@ export function IngredientPicker({
 // When the search or the suggestion limit hides that chip, the first chip shown takes it instead.
 function useChipFocus(shownList: readonly Ingredient[]) {
   const [movedId, setMovedId] = useState<number>();
+  // The pending request to focus the moved chip: cancelled when the user moves on.
+  const pendingTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const forgetFocus = () => {
+    clearTimeout(pendingTimer.current);
+    setMovedId(undefined);
+  };
   const shownIdList = shownList.map((ingredient) => ingredient.id);
   const targetId =
     movedId === undefined || shownIdList.includes(movedId) ? movedId : shownIdList[0];
@@ -153,10 +159,10 @@ function useChipFocus(shownList: readonly Ingredient[]) {
       }
 
       // The chip shows up first; it's asked to take the focus on the next render, once on screen.
-      setMovedId(undefined);
-      setTimeout(() => setMovedId(ingredient.id), 0);
+      forgetFocus();
+      pendingTimer.current = setTimeout(() => setMovedId(ingredient.id), 0);
     },
-    forgetFocus: () => setMovedId(undefined),
+    forgetFocus,
     isFocusTarget: (ingredient: Ingredient) => isTv && ingredient.id === targetId,
   };
 }

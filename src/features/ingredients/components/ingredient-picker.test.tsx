@@ -78,4 +78,17 @@ describe('ingredientPicker on a TV', () => {
       false,
     );
   });
+
+  it("doesn't give the focus once the search changed before the chip asked for it", async () => {
+    await renderWithDatabase(<Picker />, connection);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Add Leek' }));
+    await fireEvent.changeText(screen.getByLabelText('Search ingredients'), 'l');
+    await act(() => jest.runAllTimers());
+
+    expect(screen.getByRole('button', { name: 'Remove Leek' })).toHaveProp(
+      'hasTVPreferredFocus',
+      false,
+    );
+  });
 });
