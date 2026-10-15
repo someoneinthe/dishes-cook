@@ -112,19 +112,8 @@ export function createSyncApi(
   return {
     getServerInfo: async () => {
       const response = await send(apiUrl(options.serverUrl, 'dishes-cook', 'server'));
-      if (response.status === 404) {
-        return;
-      }
-      const { migrations, minimumAppSyncVersion } = (await readJson(response)) as Partial<
-        Record<keyof ServerInfo, unknown>
-      >;
-      if (typeof minimumAppSyncVersion !== 'number' || !Array.isArray(migrations)) {
-        throw new SyncError('failed', 'Unexpected server info');
-      }
-      return {
-        migrations: migrations.filter((file): file is string => typeof file === 'string'),
-        minimumAppSyncVersion,
-      };
+      // 404: a server installed before the endpoint existed.
+      return response.status === 404 ? undefined : readServerInfo(response);
     },
     listChanges: async <Table extends SyncedTable>(table: Table, since: string, page: number) => {
       const query = new URLSearchParams({
@@ -236,6 +225,19 @@ async function readJson(response: Response): Promise<unknown> {
   } catch {
     throw new SyncError('failed', 'The server answered something that is not JSON');
   }
+}
+
+async function readServerInfo(response: Response): Promise<ServerInfo> {
+  const { migrations, minimumAppSyncVersion } = (await readJson(response)) as Partial<
+    Record<keyof ServerInfo, unknown>
+  >;
+  if (typeof minimumAppSyncVersion !== 'number' || !Array.isArray(migrations)) {
+    throw new SyncError('failed', 'Unexpected server info');
+  }
+  return {
+    migrations: migrations.filter((file): file is string => typeof file === 'string'),
+    minimumAppSyncVersion,
+  };
 }
 
 function readToken(body: unknown): string {
