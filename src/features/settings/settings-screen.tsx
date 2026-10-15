@@ -3,6 +3,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { SegmentedOption } from '@/components/segmented-control';
 import type { Messages } from '@/i18n/en';
 import type { LanguagePreference } from '@/i18n/languages';
+import { screenScrollProps } from '@/components/screen-scroll-props';
 import { SegmentedControl } from '@/components/segmented-control';
 import { ServerSyncSection } from '@/features/sync/components/server-sync-section';
 import { useMessages } from '@/i18n/i18n-provider';
@@ -22,6 +23,7 @@ export function SettingsScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
       style={styles.screen}
+      {...screenScrollProps}
     >
       <SegmentedControl
         label={t.settings.appearance}

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Chip } from '@/components/chip';
 import { TextField } from '@/components/text-field';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isTv } from '@/lib/device';
 import { cleanName, toNameKey } from '@/lib/text';
 import type { Ingredient } from '../db/ingredient-queries';
 import { useIngredientSuggestions } from '../hooks/use-ingredients';
@@ -40,6 +41,10 @@ export function IngredientPicker({
     limit: MAX_SUGGESTIONS,
     search,
   });
+  const { focusMoved, forgetFocus, isFocusTarget } = useChipFocus([
+    ...selectedList,
+    ...suggestionList,
+  ]);
   const typedName = cleanName(search);
   const isSameName = (ingredient: Ingredient) =>
     toNameKey(ingredient.name) === toNameKey(typedName);
@@ -53,7 +58,12 @@ export function IngredientPicker({
     if (!selectedIds.has(ingredient.id)) {
       onChange([...selectedList, ingredient]);
     }
+    focusMoved(ingredient);
     setSearch('');
+  };
+  const remove = (ingredient: Ingredient) => {
+    onChange(selectedList.filter((item) => item.id !== ingredient.id));
+    focusMoved(ingredient);
   };
 
   return (
@@ -67,9 +77,10 @@ export function IngredientPicker({
               accessibilityLabel={t.ingredientPicker.removeLabel(ingredient.name)}
               icon="close"
               isSelected
+              isTvPreferredFocus={isFocusTarget(ingredient)}
               key={ingredient.id}
               label={ingredient.name}
-              onPress={() => onChange(selectedList.filter((item) => item.id !== ingredient.id))}
+              onPress={() => remove(ingredient)}
             />
           ))}
         </View>
@@ -78,7 +89,11 @@ export function IngredientPicker({
         autoCapitalize="none"
         isLabelHidden
         label={t.ingredientPicker.searchLabel(label)}
-        onChangeText={setSearch}
+        onChangeText={(text) => {
+          setSearch(text);
+          // Typing: no chip may take the focus from the field when the search shows it again.
+          forgetFocus();
+        }}
         onSubmitEditing={() => {
           if (suggestionList[0]) {
             select(suggestionList[0]);
@@ -99,6 +114,7 @@ export function IngredientPicker({
             accessibilityHint={t.ingredientPicker.addHint}
             accessibilityLabel={t.ingredientPicker.addLabel(ingredient.name)}
             icon="plus"
+            isTvPreferredFocus={isFocusTarget(ingredient)}
             key={ingredient.id}
             label={ingredient.name}
             onPress={() => select(ingredient)}
@@ -119,6 +135,36 @@ export function IngredientPicker({
       )}
     </View>
   );
+}
+
+// On a TV, the chip an ingredient just moved to (selected or suggested) takes the remote's focus:
+// the pressed chip disappears, and Android would otherwise send the focus to the top of the screen.
+// When the search or the suggestion limit hides that chip, the first chip shown takes it instead.
+function useChipFocus(shownList: readonly Ingredient[]) {
+  const [movedId, setMovedId] = useState<number>();
+  // The pending request to focus the moved chip: cancelled when the user moves on.
+  const pendingTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const forgetFocus = () => {
+    clearTimeout(pendingTimer.current);
+    setMovedId(undefined);
+  };
+  const shownIdList = shownList.map((ingredient) => ingredient.id);
+  const targetId =
+    movedId === undefined || shownIdList.includes(movedId) ? movedId : shownIdList[0];
+
+  return {
+    focusMoved: (ingredient: Ingredient) => {
+      if (!isTv) {
+        return;
+      }
+
+      // The chip shows up first; it's asked to take the focus on the next render, once on screen.
+      forgetFocus();
+      pendingTimer.current = setTimeout(() => setMovedId(ingredient.id), 0);
+    },
+    forgetFocus,
+    isFocusTarget: (ingredient: Ingredient) => isTv && ingredient.id === targetId,
+  };
 }
 
 const styles = StyleSheet.create((theme) => ({

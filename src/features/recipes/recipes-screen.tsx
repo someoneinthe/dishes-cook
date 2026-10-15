@@ -8,6 +8,7 @@ import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
 import { getPagingProps } from '@/components/paging-props';
+import { screenScrollProps } from '@/components/screen-scroll-props';
 import { TextField } from '@/components/text-field';
 import { useFocusRing } from '@/components/use-focus-ring';
 import { useMessages } from '@/i18n/i18n-provider';
@@ -106,6 +107,7 @@ export function RecipesScreen() {
         renderItem={({ item }) => <RecipeRow recipe={item} />}
         style={styles.list}
         {...getPagingProps(recipePages)}
+        {...screenScrollProps}
       />
     </>
   );
