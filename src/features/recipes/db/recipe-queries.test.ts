@@ -68,6 +68,58 @@ describe('recipe queries', () => {
     });
   });
 
+  it('saves the quantities of its ingredients, and changes or clears them', () => {
+    const id = saveRecipe(database, {
+      ...soupInput,
+      ingredientIdList: [carrotId, leekId, tomatoId],
+      quantities: new Map([
+        [carrotId, { amount: 0.5, unit: 'kg' }],
+        [leekId, { amount: 2 }],
+      ]),
+    });
+
+    expect(getRecipe(database, id)?.ingredientList).toStrictEqual([
+      { id: carrotId, name: 'carrot', quantity: { amount: 0.5, unit: 'kg' } },
+      { id: leekId, name: 'leek', quantity: { amount: 2 } },
+      { id: tomatoId, name: 'tomato' },
+    ]);
+
+    saveRecipe(
+      database,
+      {
+        ...soupInput,
+        ingredientIdList: [carrotId, leekId, tomatoId],
+        quantities: new Map([
+          [carrotId, { amount: 0.5, unit: 'kg' }],
+          [tomatoId, { amount: 1, unit: 'can' }],
+        ]),
+      },
+      id,
+    );
+
+    expect(getRecipe(database, id)?.ingredientList).toStrictEqual([
+      { id: carrotId, name: 'carrot', quantity: { amount: 0.5, unit: 'kg' } },
+      { id: leekId, name: 'leek' },
+      { id: tomatoId, name: 'tomato', quantity: { amount: 1, unit: 'can' } },
+    ]);
+  });
+
+  it('saves no quantity for an amount that is not usable', () => {
+    const id = saveRecipe(database, {
+      ...soupInput,
+      ingredientIdList: [carrotId, leekId],
+      quantities: new Map([
+        [carrotId, { amount: -1, unit: 'g' }],
+        [leekId, { amount: Infinity }],
+      ]),
+    });
+
+    expect(getRecipe(database, id)?.ingredientList).toStrictEqual([
+      { id: carrotId, name: 'carrot' },
+      { id: leekId, name: 'leek' },
+    ]);
+  });
+
   it('sets and changes the course', () => {
     const id = saveRecipe(database, { ...soupInput, course: 'starter' });
 

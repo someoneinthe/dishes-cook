@@ -14,6 +14,8 @@ export type ServerRecipe = Readonly<{
   // Sync ids of its ingredients.
   ingredients: unknown;
   instructions: string;
+  // Quantities by ingredient sync id: { amount, unit? } (see server/migrations).
+  quantities: unknown;
   season: string;
   title: string;
 }> &

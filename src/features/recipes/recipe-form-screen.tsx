@@ -4,6 +4,8 @@ import { ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { Course, Season } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
+import type { Messages } from '@/i18n/en';
+import type { Quantity } from '@/lib/units';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
@@ -15,7 +17,10 @@ import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-que
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import { cleanName } from '@/lib/text';
+import { formatAmount, parseAmount } from '@/lib/units';
+import type { QuantityDraft } from './components/ingredient-quantity-row';
 import type { Recipe } from './db/recipe-queries';
+import { IngredientQuantityRow } from './components/ingredient-quantity-row';
 import { InstructionsField } from './components/instructions-field';
 import { courseOptionList } from './course';
 import { getRecipe, saveRecipe } from './db/recipe-queries';
@@ -49,16 +54,25 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
   );
   const [instructions, setInstructions] = useState(initialRecipe?.instructions ?? '');
   const [titleError, setTitleError] = useState<string>();
+  // Quantities as typed, by ingredient id (kept when an ingredient is removed then added back).
+  const [draftMap, setDraftMap] = useState(() => initialDrafts(initialRecipe, t));
+  // Ingredients whose amount isn't a number, shown after a save attempt.
+  const [invalidIdSet, setInvalidIdSet] = useState<ReadonlySet<number>>(new Set());
 
   const save = () => {
+    const { invalidIdList, quantities } = readQuantities(selectedIngredientList, draftMap);
+    setInvalidIdSet(new Set(invalidIdList));
     if (!cleanName(title)) {
       setTitleError(t.recipes.titleRequired);
+    }
+    if (!cleanName(title) || invalidIdList.length > 0) {
       return;
     }
     const input = {
       course,
       ingredientIdList: selectedIngredientList.map((ingredient) => ingredient.id),
       instructions,
+      quantities,
       season,
       title,
     };
@@ -122,6 +136,20 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
           const { id, name: createdName } = findOrCreateIngredient(database, name);
           return { id, name: createdName };
         }}
+        renderSelected={(ingredient, remove) => (
+          <IngredientQuantityRow
+            draft={draftMap.get(ingredient.id) ?? EMPTY_DRAFT}
+            error={invalidIdSet.has(ingredient.id) ? t.quantities.invalidAmount : undefined}
+            ingredient={ingredient}
+            onChange={(draft) => {
+              setDraftMap((previous) => new Map(previous).set(ingredient.id, draft));
+              if (invalidIdSet.has(ingredient.id)) {
+                setInvalidIdSet((previous) => withoutId(previous, ingredient.id));
+              }
+            }}
+            onRemove={remove}
+          />
+        )}
         selectedList={selectedIngredientList}
       />
       <InstructionsField onChange={setInstructions} value={instructions} />
@@ -150,6 +178,51 @@ function RecipeFormRoute() {
     );
   }
   return <RecipeForm initialRecipe={initialRecipe} screenTitle={screenTitle} />;
+}
+
+const EMPTY_DRAFT: QuantityDraft = { amountText: '' };
+
+// The saved quantities, as the form shows them ("1.5", or "1,5" in French).
+function initialDrafts(recipe: Recipe | undefined, t: Messages): Map<number, QuantityDraft> {
+  const draftMap = new Map<number, QuantityDraft>();
+  const ingredientList = recipe?.ingredientList ?? [];
+  for (const { id, quantity } of ingredientList) {
+    if (quantity) {
+      draftMap.set(id, {
+        amountText: formatAmount(quantity.amount, t.quantities.decimalSeparator),
+        unit: quantity.unit,
+      });
+    }
+  }
+  return draftMap;
+}
+
+// The quantities of the selected ingredients; an empty amount = no quantity.
+function readQuantities(
+  selectedList: readonly Ingredient[],
+  draftMap: ReadonlyMap<number, QuantityDraft>,
+): Readonly<{ invalidIdList: number[]; quantities: Map<number, Quantity> }> {
+  const invalidIdList: number[] = [];
+  const quantities = new Map<number, Quantity>();
+  for (const { id } of selectedList) {
+    const draft = draftMap.get(id);
+    if (!draft?.amountText.trim()) {
+      continue;
+    }
+    const amount = parseAmount(draft.amountText);
+    if (amount === undefined) {
+      invalidIdList.push(id);
+    } else {
+      quantities.set(id, draft.unit === undefined ? { amount } : { amount, unit: draft.unit });
+    }
+  }
+  return { invalidIdList, quantities };
+}
+
+function withoutId(idSet: ReadonlySet<number>, id: number): ReadonlySet<number> {
+  const next = new Set(idSet);
+  next.delete(id);
+  return next;
 }
 
 const styles = StyleSheet.create((theme) => ({

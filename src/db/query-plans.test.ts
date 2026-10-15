@@ -108,7 +108,10 @@ describe('query plans', () => {
     getRecipe(database, 1);
 
     expect(lastPlan()).toStrictEqual([
-      expect.stringMatching(/^SEARCH recipe_ingredients USING COVERING INDEX sqlite_autoindex/),
+      // Not covering: each link's quantity (amount, unit) is read from its row.
+      expect.stringMatching(
+        /^SEARCH recipe_ingredients USING INDEX sqlite_autoindex\S+ \(recipe_id=\?\)/,
+      ),
       expect.stringMatching(/^SEARCH ingredients USING INTEGER PRIMARY KEY/),
       // Sorting one recipe's few ingredients by name: a small, bounded sort.
       'USE TEMP B-TREE FOR ORDER BY',

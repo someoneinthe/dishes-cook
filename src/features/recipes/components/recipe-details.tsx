@@ -1,8 +1,10 @@
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Markdown } from '@/components/markdown';
+import { usePreferences } from '@/features/settings/preferences';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { Recipe } from '../db/recipe-queries';
+import { formatQuantity } from '../quantity';
 import { CourseLabel, SeasonLabel } from './recipe-labels';
 
 type RecipeDetailsProps = Readonly<{ recipe: Recipe }>;
@@ -10,6 +12,8 @@ type RecipeDetailsProps = Readonly<{ recipe: Recipe }>;
 // The content of a recipe, shared by the recipe screen and the meal choice suggestion.
 export function RecipeDetails({ recipe }: RecipeDetailsProps) {
   const t = useMessages();
+  // Quantities in the reader's units (Settings › Units).
+  const { units } = usePreferences();
   return (
     <View style={styles.container}>
       <Text accessibilityRole="header" style={styles.title}>
@@ -25,9 +29,9 @@ export function RecipeDetails({ recipe }: RecipeDetailsProps) {
       </Text>
       {recipe.ingredientList.length > 0 ? (
         <View accessibilityRole="list">
-          {recipe.ingredientList.map((ingredient) => (
-            <Text key={ingredient.id} style={styles.text}>
-              {`• ${ingredient.name}`}
+          {recipe.ingredientList.map(({ id, name, quantity }) => (
+            <Text key={id} style={styles.text}>
+              {`• ${quantity ? t.quantities.line(name, formatQuantity(t, quantity, units)) : name}`}
             </Text>
           ))}
         </View>

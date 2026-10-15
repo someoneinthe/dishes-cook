@@ -105,6 +105,47 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     expect(titlesOf(phoneB)).toStrictEqual(['Carrot soup']);
   });
 
+  it('brings the quantities of a recipe to the other phone, and their changes', async () => {
+    const carrotId = findOrCreateIngredient(phoneA.db, 'Carrot').id;
+    const leekId = findOrCreateIngredient(phoneA.db, 'Leek').id;
+    const saltId = findOrCreateIngredient(phoneA.db, 'Salt').id;
+    const input = {
+      ingredientIdList: [carrotId, leekId, saltId],
+      instructions: '',
+      season: 'both' as const,
+      title: 'Soup',
+    };
+    const id = saveRecipe(phoneA.db, {
+      ...input,
+      quantities: new Map([
+        [carrotId, { amount: 0.5, unit: 'kg' as const }],
+        [leekId, { amount: 2 }],
+      ]),
+    });
+    await syncBoth();
+
+    expect(recipeOf(phoneB, 'Soup')?.ingredientList).toMatchObject([
+      { name: 'Carrot', quantity: { amount: 0.5, unit: 'kg' } },
+      { name: 'Leek', quantity: { amount: 2 } },
+      { name: 'Salt' },
+    ]);
+    expect(recipeOf(phoneB, 'Soup')?.ingredientList[2]).not.toHaveProperty('quantity');
+
+    saveRecipe(
+      phoneA.db,
+      { ...input, quantities: new Map([[saltId, { amount: 1, unit: 'pinch' as const }]]) },
+      id,
+    );
+    await sync(phoneA);
+    await sync(phoneB);
+
+    expect(recipeOf(phoneB, 'Soup')?.ingredientList.map(({ quantity }) => quantity)).toStrictEqual([
+      undefined,
+      undefined,
+      { amount: 1, unit: 'pinch' },
+    ]);
+  });
+
   it('keeps the newest change when both phones changed the same recipe', async () => {
     addRecipe(phoneA, 'Soup');
     await syncBoth();

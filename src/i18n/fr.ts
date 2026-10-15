@@ -1,3 +1,4 @@
+import type { Unit } from '@/lib/units';
 import type { Messages } from './en';
 
 // French typography: a narrow no-break space before "?", "!" and ":", no-break spaces inside « ».
@@ -8,6 +9,24 @@ const quote = (text: string) => `«\u{A0}${text}\u{A0}»`;
 function plural(count: number, one: string, other: string): string {
   return count <= 1 ? one : other;
 }
+
+const UNIT_NAMES: Readonly<Record<Unit, readonly [one: string, other: string]>> = {
+  bunch: ['botte', 'bottes'],
+  can: ['boîte', 'boîtes'],
+  cl: ['cl', 'cl'],
+  clove: ['gousse', 'gousses'],
+  cup: ['tasse', 'tasses'],
+  fl_oz: ['fl oz', 'fl oz'],
+  g: ['g', 'g'],
+  kg: ['kg', 'kg'],
+  l: ['l', 'l'],
+  lb: ['lb', 'lb'],
+  ml: ['ml', 'ml'],
+  oz: ['oz', 'oz'],
+  pinch: ['pincée', 'pincées'],
+  tbsp: ['c. à soupe', 'c. à soupe'],
+  tsp: ['c. à café', 'c. à café'],
+};
 
 export const fr: Messages = {
   common: {
@@ -111,6 +130,19 @@ export const fr: Messages = {
     recipes: 'Recettes',
     settings: 'Paramètres',
   },
+  quantities: {
+    amountLabel: (name) => `Quantité de ${name}`,
+    amountPlaceholder: 'Qté',
+    chooseUnit: (name) => `Unité de ${name}`,
+    decimalSeparator: ',',
+    invalidAmount: 'Saisissez un nombre, comme 2, 1,5 ou 1/2.',
+    line: (name, quantity) => `${name}${NARROW_SPACE}: ${quantity}`,
+    pieces: 'pièces',
+    // Singular below 2: « 1,5 tasse », « 2 tasses ».
+    unit: (unit, amount) => UNIT_NAMES[unit][amount < 2 ? 0 : 1],
+    unitButtonHint: 'Ouvre la liste des unités',
+    unitButtonLabel: (name, unit) => `Unité de ${name}${NARROW_SPACE}: ${unit}`,
+  },
   recipes: {
     course: 'Type de plat',
     deleteMessage: 'Ses ingrédients restent dans votre liste.',
@@ -170,6 +202,9 @@ export const fr: Messages = {
     showButtonLabels: 'Afficher le texte des boutons',
     showButtonLabelsHint: 'Ajoute le texte à côté des boutons à icône',
     system: 'Système',
+    units: 'Unités',
+    unitsMetric: 'Européennes (g, l)',
+    unitsUs: 'Américaines (oz, tasses)',
   },
   sync: {
     chooseStorage: 'Stockage des données',

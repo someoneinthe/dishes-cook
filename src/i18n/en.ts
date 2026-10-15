@@ -2,9 +2,29 @@
 // entries (type `Messages`, checked by TypeScript). Functions build the texts with a name or a
 // count in them. User content (recipe titles, ingredients) is never translated.
 
+import type { Unit } from '@/lib/units';
+
 function plural(count: number, one: string, other: string): string {
   return count === 1 ? one : other;
 }
+
+const UNIT_NAMES: Readonly<Record<Unit, readonly [one: string, other: string]>> = {
+  bunch: ['bunch', 'bunches'],
+  can: ['can', 'cans'],
+  cl: ['cl', 'cl'],
+  clove: ['clove', 'cloves'],
+  cup: ['cup', 'cups'],
+  fl_oz: ['fl oz', 'fl oz'],
+  g: ['g', 'g'],
+  kg: ['kg', 'kg'],
+  l: ['l', 'l'],
+  lb: ['lb', 'lb'],
+  ml: ['ml', 'ml'],
+  oz: ['oz', 'oz'],
+  pinch: ['pinch', 'pinches'],
+  tbsp: ['tbsp', 'tbsp'],
+  tsp: ['tsp', 'tsp'],
+};
 
 export const en = {
   common: {
@@ -110,6 +130,19 @@ export const en = {
     recipes: 'Recipes',
     settings: 'Settings',
   },
+  quantities: {
+    amountLabel: (name: string) => `Quantity of ${name}`,
+    amountPlaceholder: 'Qty',
+    chooseUnit: (name: string) => `Unit of ${name}`,
+    decimalSeparator: '.',
+    invalidAmount: 'Enter a number, like 2, 1.5 or 1/2.',
+    line: (name: string, quantity: string) => `${name}: ${quantity}`,
+    pieces: 'pieces',
+    // Up to 1: "1 cup", "0.5 cup"; more: "2 cups".
+    unit: (unit: Unit, amount: number) => UNIT_NAMES[unit][amount <= 1 ? 0 : 1],
+    unitButtonHint: 'Opens the list of units',
+    unitButtonLabel: (name: string, unit: string) => `Unit of ${name}: ${unit}`,
+  },
   recipes: {
     course: 'Course',
     deleteMessage: 'Its ingredients stay in your list.',
@@ -173,6 +206,9 @@ export const en = {
     showButtonLabels: 'Show button labels',
     showButtonLabelsHint: 'Adds the text next to icon buttons',
     system: 'System',
+    units: 'Units',
+    unitsMetric: 'European (g, l)',
+    unitsUs: 'US (oz, cups)',
   },
   sync: {
     chooseStorage: 'Data storage',

@@ -4,6 +4,7 @@ import {
   index,
   integer,
   primaryKey,
+  real,
   sqliteTable,
   text,
   uniqueIndex,
@@ -19,6 +20,26 @@ const SEASON_SQL_LIST = SEASON_LIST.map((season) => `'${season}'`).join(', ');
 export const COURSE_LIST = ['starter', 'main', 'dessert'] as const;
 export type Course = (typeof COURSE_LIST)[number];
 const COURSE_SQL_LIST = COURSE_LIST.map((course) => `'${course}'`).join(', ');
+
+// Units of ingredient quantities (conversions and the units setting: src/lib/units.ts).
+export const UNIT_LIST = [
+  'g',
+  'kg',
+  'ml',
+  'cl',
+  'l',
+  'oz',
+  'lb',
+  'fl_oz',
+  'cup',
+  'tsp',
+  'tbsp',
+  'pinch',
+  'clove',
+  'bunch',
+  'can',
+] as const;
+export type Unit = (typeof UNIT_LIST)[number];
 
 // Milliseconds since the epoch, set by SQLite so every writer agrees.
 export const NOW_MS = sql`(cast(unixepoch('subsec') * 1000 as integer))`;
@@ -96,6 +117,10 @@ export const recipes = sqliteTable(
 export const recipeIngredients = sqliteTable(
   'recipe_ingredients',
   {
+    // How much of it the recipe needs (with `unit`), as written; null = no quantity ("salt").
+    // Positive and at most MAX_AMOUNT, checked by the code that writes it (`toQuantity`): a CHECK
+    // added to an existing table makes drizzle-kit rebuild it (see docs/database.md).
+    amount: real('amount'),
     ingredientId: integer('ingredient_id')
       .notNull()
       // An ingredient still used by a recipe can't be deleted (the UI explains why).
@@ -103,6 +128,8 @@ export const recipeIngredients = sqliteTable(
     recipeId: integer('recipe_id')
       .notNull()
       .references(() => recipes.id, { onDelete: 'cascade' }),
+    // One of UNIT_LIST; null with an amount = a number of pieces ("3 leeks").
+    unit: text('unit', { enum: UNIT_LIST }),
   },
   (table) => [
     // (recipe_id, ingredient_id): "ingredients of a recipe", and no duplicate link.

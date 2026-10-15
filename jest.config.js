@@ -14,15 +14,19 @@ module.exports = {
     // jest-cucumber -> @cucumber/messages -> uuid: jest-expo picks uuid's ESM browser build; use CommonJS.
     '^uuid$': require.resolve('uuid', { paths: [require.resolve('@cucumber/messages')] }),
   },
+  // Other checkouts of the repository (Claude Code worktrees) have their own tests and modules.
+  modulePathIgnorePatterns: ['<rootDir>/.claude/worktrees/'],
   preset: 'jest-expo',
   // Unistyles: native runtime mocked, then the app's themes registered (StyleSheet.configure).
   setupFiles: ['react-native-unistyles/mocks', '<rootDir>/src/theme/unistyles.ts'],
   // Module mocks shared by every test (header buttons of screens).
   setupFilesAfterEnv: ['<rootDir>/src/test/setup-after-environment.ts'],
   // Sync tests against a real PocketBase only run with one: `npm run test:pocketbase`.
-  testPathIgnorePatterns: process.env.POCKETBASE_URL
-    ? ['/node_modules/']
-    : ['/node_modules/', String.raw`\.pocketbase\.test\.ts$`],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '<rootDir>/.claude/worktrees/',
+    ...(process.env.POCKETBASE_URL ? [] : [String.raw`\.pocketbase\.test\.ts$`]),
+  ],
   // Compile like the app: Metro enables the React Compiler (app.config.ts), jest-expo doesn't.
   // Without it, tests miss memoization bugs (a live query once returned stale data on device only).
   transform: {

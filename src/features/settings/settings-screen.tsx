@@ -3,6 +3,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { SegmentedOption } from '@/components/segmented-control';
 import type { Messages } from '@/i18n/en';
 import type { LanguagePreference } from '@/i18n/languages';
+import type { UnitSystem } from '@/lib/units';
 import { screenScrollProps } from '@/components/screen-scroll-props';
 import { SegmentedControl } from '@/components/segmented-control';
 import { ServerSyncSection } from '@/features/sync/components/server-sync-section';
@@ -14,7 +15,7 @@ import { updatePreferences, usePreferences } from './preferences';
 
 export function SettingsScreen() {
   const t = useMessages();
-  const { colorScheme, isShowingButtonLabels, language } = usePreferences();
+  const { colorScheme, isShowingButtonLabels, language, units } = usePreferences();
   // Switch colors are props, not styles.
   const { theme } = useUnistyles();
 
@@ -36,6 +37,12 @@ export function SettingsScreen() {
         onChange={(value) => updatePreferences({ language: value })}
         optionList={languageOptionList(t)}
         value={language}
+      />
+      <SegmentedControl
+        label={t.settings.units}
+        onChange={(value) => updatePreferences({ units: value })}
+        optionList={unitSystemOptionList(t)}
+        value={units}
       />
       <View style={styles.switchRow}>
         <Text style={styles.label}>{t.settings.showButtonLabels}</Text>
@@ -69,6 +76,14 @@ function languageOptionList(t: Messages): readonly SegmentedOption<LanguagePrefe
   return [
     { icon: SYSTEM_ICON, label: t.settings.system, value: 'system' },
     ...LANGUAGE_LIST.map((language) => ({ label: LANGUAGE_NAMES[language], value: language })),
+  ];
+}
+
+// Ingredient quantities: amounts written in the other system are converted.
+function unitSystemOptionList(t: Messages): readonly SegmentedOption<UnitSystem>[] {
+  return [
+    { icon: 'weight-kilogram', label: t.settings.unitsMetric, value: 'metric' },
+    { icon: 'weight-pound', label: t.settings.unitsUs, value: 'us' },
   ];
 }
 

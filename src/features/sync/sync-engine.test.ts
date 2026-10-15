@@ -1,4 +1,6 @@
 import type { Phone } from '@/test/sync-scenarios';
+import { toIngredientSyncId } from '@/lib/sync-id';
+import { toNameKey } from '@/lib/text';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
 import { addRecipe, describeSyncScenarios, recipeOf, titlesOf } from '@/test/sync-scenarios';
 import { createTestConnection } from '@/test/test-database';
@@ -67,6 +69,32 @@ describe('synchronize', () => {
       ingredientList: [],
       season: 'both',
     });
+  });
+
+  it('keeps only the usable quantities a server sends', async () => {
+    addRecipe(phoneA, 'Soup', ['Carrot', 'Leek', 'Salt']);
+    await sync(phoneA);
+    // Ingredient sync ids derive from the name.
+    const syncIdOf = (name: string) => toIngredientSyncId(toNameKey(name));
+    const recipe = server.collection('recipes').values().next().value!;
+    server.collection('recipes').set(recipe.id, {
+      ...recipe,
+      quantities: {
+        [syncIdOf('Carrot')]: { amount: 'lots', unit: 'kg' },
+        [syncIdOf('Leek')]: { amount: 3, unit: 'cubit' },
+        [syncIdOf('Salt')]: 'a pinch',
+      },
+    });
+
+    await sync(phoneB);
+
+    expect(
+      recipeOf(phoneB, 'Soup')?.ingredientList.map(({ name, quantity }) => ({ name, quantity })),
+    ).toStrictEqual([
+      { name: 'Carrot', quantity: undefined },
+      { name: 'Leek', quantity: { amount: 3 } },
+      { name: 'Salt', quantity: undefined },
+    ]);
   });
 
   it('fails without changing anything when the server is unreachable', async () => {

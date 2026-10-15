@@ -21,6 +21,8 @@ erDiagram
   recipe_ingredients {
     integer ingredient_id PK, FK
     integer recipe_id PK, FK
+    real amount "nullable"
+    text unit "g / kg / ml / cl / l / oz / lb / fl_oz / cup / tsp / tbsp / pinch / clove / bunch / can, nullable"
   }
   recipes {
     integer id PK
@@ -60,7 +62,8 @@ Integer primary keys are SQLite rowids.
 <!-- db-diagram:end -->
 
 - **Ingredients are unique** by `name_key` (trimmed, single spaces, lower case, computed by `toNameKey` in `src/lib/text.ts`). Case is ignored, accents are not (`pâte` ≠ `pâté`). The key is computed in JS because SQLite's `NOCASE` only folds ASCII (`Œuf` vs `œuf`).
-- **Many-to-many** through `recipe_ingredients`: its composite primary key forbids duplicate links and serves "ingredients of a recipe"; the reverse index serves "recipes using an ingredient". Both cover their queries (no table lookup).
+- **Many-to-many** through `recipe_ingredients`: its composite primary key forbids duplicate links and serves "ingredients of a recipe"; the reverse index serves "recipes using an ingredient" and covers its queries (no table lookup). Reading a recipe's ingredients also reads each link's quantity from its row.
+- **Quantities** live on the link (`recipe_ingredients.amount` and `unit`), as written: a unit of `UNIT_LIST` (European, US, spoons, or counted like `clove`), no unit = pieces, no amount = no quantity ("salt"). They're stored in the writer's units and converted only for display, into the reader's (Settings › Units, `src/lib/units.ts`). Amounts are checked by `toQuantity` (positive, at most 100,000) in the code that writes them: a `CHECK` added to an existing table makes drizzle-kit rebuild it.
 - **Deleting**: a recipe cascades to its links; an ingredient still used by a recipe can't be deleted (`RESTRICT`, and the UI hides the button).
 - **Constraints in the database**, not only in the UI: `CHECK` on the season and course values and on non-blank names/titles, `NOT NULL`, foreign keys (`PRAGMA foreign_keys = ON` on every connection, since SQLite disables them by default).
 - **Integer primary keys** are SQLite's rowid: the fastest lookups and joins. They stay on the phone: across devices and on the server a row is its `sync_id` (15 characters of `[0-9a-f]`, the server's id format): random for recipes, derived from the name for ingredients, so the same ingredient added on two phones is one row (see [sync.md](sync.md)).

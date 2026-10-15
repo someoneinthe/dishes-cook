@@ -59,6 +59,8 @@ const lightColors = {
   menuSettings: '#57534E',
   onAction: '#FFFFFF',
   onActionSoft: '#1D4ED8',
+  // Dims the screen behind a sheet (e.g. the unit picker of the recipe form).
+  overlay: 'rgba(0, 0, 0, 0.4)',
   // Season icons: a warm sun, a cold snowflake (contrast with the background ≥ 3:1).
   seasonSummer: '#B45309',
   seasonWinter: '#0369A1',
@@ -89,6 +91,7 @@ const darkColors: ThemeColors = {
   menuSettings: '#A8A29E',
   onAction: '#FFFFFF',
   onActionSoft: '#BFDBFE',
+  overlay: 'rgba(0, 0, 0, 0.6)',
   seasonSummer: '#FBBF24',
   seasonWinter: '#38BDF8',
   surface: '#1E1E1E',

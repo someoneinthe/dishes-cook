@@ -19,16 +19,18 @@ describe('preferences', () => {
       colorScheme: 'system',
       isShowingButtonLabels: false,
       language: 'system',
+      units: 'metric',
     });
   });
 
   it('keeps the changes for the next launch', () => {
-    loadPreferences().updatePreferences({ isShowingButtonLabels: true });
+    loadPreferences().updatePreferences({ isShowingButtonLabels: true, units: 'us' });
 
     expect(loadPreferences().getPreferences()).toStrictEqual({
       colorScheme: 'system',
       isShowingButtonLabels: true,
       language: 'system',
+      units: 'us',
     });
   });
 
@@ -51,13 +53,14 @@ describe('preferences', () => {
 
     Storage.setItemSync(
       'preferences',
-      '{"colorScheme":"sepia","isShowingButtonLabels":"yes","language":"tlh"}',
+      '{"colorScheme":"sepia","isShowingButtonLabels":"yes","language":"tlh","units":"cubits"}',
     );
 
     expect(loadPreferences().getPreferences()).toStrictEqual({
       colorScheme: 'system',
       isShowingButtonLabels: false,
       language: 'system',
+      units: 'metric',
     });
   });
 });
