@@ -22,22 +22,41 @@ name: Server sync
 - tapOn: Show navigation menu
 - tapOn: Settings
 - tapOn: Synced with a server
-# Each field has its label above it: index 1 is the field.
+# Each field has its label above it: index 1 is the field. Scroll to each one first: on a small
+# screen they're below the fold.
+- scrollUntilVisible:
+    element:
+      text: Server address
+      index: 1
+    centerElement: true
 - tapOn:
     text: Server address
     index: 1
 - inputText: ${SERVER_URL}
 - hideKeyboard
+- scrollUntilVisible:
+    element:
+      text: Email
+      index: 1
+    centerElement: true
 - tapOn:
     text: Email
     index: 1
 - inputText: ${EMAIL}
 - hideKeyboard
+- scrollUntilVisible:
+    element:
+      text: Password
+      index: 1
+    centerElement: true
 - tapOn:
     text: Password
     index: 1
 - inputText: ${PASSWORD}
 - hideKeyboard
+- scrollUntilVisible:
+    element: Connect
+    centerElement: true
 - tapOn: Connect
 - extendedWaitUntil:
     visible: Last sync.*

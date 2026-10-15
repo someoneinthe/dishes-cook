@@ -16,12 +16,16 @@ name: Recipes
 - tapOn: Edit
 - tapOn: Summer
 - tapOn: Main course
-- tapOn: Search or add an ingredient
+- scrollUntilVisible:
+    element: Search ingredients
+    centerElement: true
+- tapOn: Search ingredients
 - inputText: Potato
 - tapOn: Create Potato
 - hideKeyboard
 - scrollUntilVisible:
     element: Recipe text
+    centerElement: true
 - tapOn: Recipe text
 - inputText: Simmer for 30 minutes.
 - hideKeyboard

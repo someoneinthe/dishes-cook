@@ -160,6 +160,8 @@ jobs:
           APK: ${{ steps.apk.outputs.apk-path }}
         with:
           api-level: 34
+          # A phone-sized screen like the local emulator's (the default one is much smaller).
+          profile: pixel_6
           arch: x86_64
           target: google_apis
           disable-animations: true

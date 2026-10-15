@@ -35,5 +35,6 @@ The **End-to-end tests** job of `ci.yml` builds the x86_64 end-to-end APK, boots
 ## Writing flows
 
 - Find elements by their visible text or accessibility label (the English UI: the emulator's language), never by coordinates. A label shown above a field matches too: tap the field by its placeholder, or with `index: 1`.
+- The keyboard covers the lower part of the screen, but Maestro still sees the fields behind it: close it (`hideKeyboard`) and `scrollUntilVisible` a field before tapping it. CI's emulator has a Pixel 6 screen.
 - Only type in **empty** fields: on a field that already has text, Maestro waits for the screen to settle and never returns.
 - Wait for what a step leads to (`extendedWaitUntil`) rather than a fixed delay.
