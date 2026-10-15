@@ -7,6 +7,7 @@ import type { RecipeFilterValues } from '@/features/recipes/components/recipe-fi
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
+import { screenScrollProps } from '@/components/screen-scroll-props';
 import { useDatabase } from '@/db/database-context';
 import {
   NO_FILTERS,
@@ -86,7 +87,7 @@ export function MealChoiceScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
+    <ScrollView contentContainerStyle={styles.content} style={styles.screen} {...screenScrollProps}>
       {header}
       <RecipeFilters isIngredientPickerHidden onChange={changeFilters} values={filterValues} />
       {matchCount === 0 && (

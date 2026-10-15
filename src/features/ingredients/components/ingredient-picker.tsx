@@ -4,6 +4,7 @@ import { StyleSheet } from 'react-native-unistyles';
 import { Chip } from '@/components/chip';
 import { TextField } from '@/components/text-field';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isTv } from '@/lib/device';
 import { cleanName, toNameKey } from '@/lib/text';
 import type { Ingredient } from '../db/ingredient-queries';
 import { useIngredientSuggestions } from '../hooks/use-ingredients';
@@ -32,6 +33,19 @@ export function IngredientPicker({
 }: IngredientPickerProps) {
   const t = useMessages();
   const [search, setSearch] = useState('');
+  // On a TV, the chip an ingredient just moved to (selected or suggested) takes the remote's focus:
+  // the pressed chip disappears, and Android would otherwise send the focus to the top of the screen.
+  const [focusedId, setFocusedId] = useState<number>();
+  const isFocusTarget = (ingredient: Ingredient) => isTv && ingredient.id === focusedId;
+  const focusMoved = (ingredient: Ingredient) => {
+    if (!isTv) {
+      return;
+    }
+
+    // The chip shows up first; it's asked to take the focus on the next render, once on screen.
+    setFocusedId(undefined);
+    setTimeout(() => setFocusedId(ingredient.id), 0);
+  };
   const selectedIds = new Set(selectedList.map((ingredient) => ingredient.id));
   // Exact name first, then the most used: the likeliest picks before typing.
   const suggestionList = useIngredientSuggestions({
@@ -53,7 +67,12 @@ export function IngredientPicker({
     if (!selectedIds.has(ingredient.id)) {
       onChange([...selectedList, ingredient]);
     }
+    focusMoved(ingredient);
     setSearch('');
+  };
+  const remove = (ingredient: Ingredient) => {
+    onChange(selectedList.filter((item) => item.id !== ingredient.id));
+    focusMoved(ingredient);
   };
 
   return (
@@ -67,9 +86,10 @@ export function IngredientPicker({
               accessibilityLabel={t.ingredientPicker.removeLabel(ingredient.name)}
               icon="close"
               isSelected
+              isTvPreferredFocus={isFocusTarget(ingredient)}
               key={ingredient.id}
               label={ingredient.name}
-              onPress={() => onChange(selectedList.filter((item) => item.id !== ingredient.id))}
+              onPress={() => remove(ingredient)}
             />
           ))}
         </View>
@@ -99,6 +119,7 @@ export function IngredientPicker({
             accessibilityHint={t.ingredientPicker.addHint}
             accessibilityLabel={t.ingredientPicker.addLabel(ingredient.name)}
             icon="plus"
+            isTvPreferredFocus={isFocusTarget(ingredient)}
             key={ingredient.id}
             label={ingredient.name}
             onPress={() => select(ingredient)}

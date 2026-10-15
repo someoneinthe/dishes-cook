@@ -12,6 +12,9 @@ type ChipProps = Readonly<{
   // Shown before the label, like on every button (e.g. "plus" to add, "close" to remove).
   icon: IconName;
   isSelected?: boolean;
+  // Takes the remote's focus on a TV when it turns true, its view being on screen. Never on a phone:
+  // it makes the chip focusable by touch, so a first tap would focus it instead of pressing it.
+  isTvPreferredFocus?: boolean;
   label: string;
   onPress: () => void;
 }>;
@@ -21,6 +24,7 @@ export function Chip({
   accessibilityLabel,
   icon,
   isSelected = false,
+  isTvPreferredFocus = false,
   label,
   onPress,
 }: ChipProps) {
@@ -36,6 +40,9 @@ export function Chip({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
       accessibilityState={{ selected: isSelected }}
+      // Android requests the focus when this turns true (the typings only mention Apple TV).
+      // eslint-disable-next-line sonarjs/deprecation
+      hasTVPreferredFocus={isTvPreferredFocus}
       onPress={onPress}
       {...focusProps}
       style={({ pressed }) => [styles.chip, pressed && styles.pressed, focusStyle]}

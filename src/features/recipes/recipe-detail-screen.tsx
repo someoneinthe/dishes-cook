@@ -5,6 +5,7 @@ import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
+import { screenScrollProps } from '@/components/screen-scroll-props';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useDatabase } from '@/db/database-context';
 import { useMessages } from '@/i18n/i18n-provider';
@@ -71,7 +72,7 @@ export function RecipeDetailScreen() {
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
+    <ScrollView contentContainerStyle={styles.content} style={styles.screen} {...screenScrollProps}>
       <Stack.Screen
         options={{
           // Read-only on a TV: recipes are edited on the phone.
