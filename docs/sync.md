@@ -66,7 +66,11 @@ Before each sync, the app asks the server `GET /api/dishes-cook/server` (`server
 
 ## Updating the server
 
-The server needs the files of the app version the phones run: migrations and hooks. Two ways to install them, both through `server/deploy/update-server.sh`, which installs only what's new, and never an edited migration (it stops instead). It stops PocketBase, backs up `pb_data/` (`backups-before-update/`, the last 5 kept), installs the new files, and starts PocketBase again; if it doesn't come back healthy, it puts the data and files back as they were.
+The server needs the files of the app version the phones run: migrations and hooks. Two ways to install them, both through `server/deploy/update-server.sh`:
+
+- It installs only what's new: new migrations, new or changed hooks, and it removes hooks the archive no longer has. It never installs an edited migration (it stops instead), nor files older than the installed ones: each archive carries a `VERSION` (commit time and commit), and the installed one is kept in `server-files.version`, so an older release can't undo a manual deploy from `main`.
+- It stops PocketBase, backs up `pb_data/` (`backups-before-update/`, root-only since it holds the accounts, the last 5 kept), installs the files and starts PocketBase again. On any failure from then on, or if PocketBase doesn't come back healthy, it puts the data and files back as they were and starts it.
+- One run at a time (a lock): the timer and a manual deploy can't overlap.
 
 - **Automatically, from releases**: each GitHub release carries `server-files.tar.gz` (and its `.sha256`, `scripts/pack-server-files.sh`). The `dishes-cook-server-update.timer` runs the updater every hour: it downloads the latest release's archive, checks its checksum, and installs it if there's anything new.
 - **By hand**, before releases or right away: from an up-to-date `main`, `SYNC_SERVER_SSH=<user@host> npm run server:deploy` packs `server/`, copies it over SSH and runs the updater (`sudo` on the server). It also installs or refreshes the updater (`/usr/local/sbin/dishes-cook-update-server`) and enables its timer. It refuses to deploy from anything but an up-to-date `main` without changes under `server/` (`FORCE=1` for a test server): a migration deployed from a branch, then edited before merging, would never reach the server in its final form.
@@ -79,7 +83,7 @@ Logs: `journalctl -u dishes-cook-server-update`. Phones show "the server needs a
 - **Against a real PocketBase**: `npm run test:pocketbase` runs the same two-phone scenarios (`src/test/sync-scenarios.ts`) and checks the behaviours below on a throwaway PocketBase: the version in `server/pocketbase-version` (or `POCKETBASE_VERSION=0.x.y`), downloaded once into `node_modules/.cache/pocketbase` and checked against the release's checksums, started empty with `server/migrations` on a free local port, and stopped afterwards. CI runs it on every PR. Needs `curl` and `unzip` (macOS or Linux).
 - **End to end**: `npm run test:e2e` runs the Maestro flow `.maestro/sync.yaml` (connect, merge, deletion) on an emulator against a throwaway PocketBase; see [.maestro/README.md](../.maestro/README.md).
 - **On an emulator**, against a throwaway PocketBase (never your real one, its data would mix with test recipes):
-  1. Start one with the migrations: `pocketbase serve --dir /tmp/pb-test/pb_data --migrationsDir server/migrations --http 127.0.0.1:8091`, create a superuser (`pocketbase superuser upsert … --dir /tmp/pb-test/pb_data`), then an account in **users** from its admin UI.
+  1. Start one with the migrations: `pocketbase serve --dir /tmp/pb-test/pb_data --migrationsDir server/migrations --hooksDir server/hooks --http 127.0.0.1:8091` (without `--hooksDir`, the app finds no version endpoint and says the server is too old), create a superuser (`pocketbase superuser upsert … --dir /tmp/pb-test/pb_data`), then an account in **users** from its admin UI.
   2. Forward the port to the emulator: `adb reverse tcp:8091 tcp:8091`.
   3. In the app, connect to `http://localhost:8091`. Plain HTTP only works in **debug** builds (they allow cleartext for Metro); release builds need HTTPS.
   4. Add, edit and delete recipes, change rows in the admin UI, and check both sides (Settings shows the last sync).

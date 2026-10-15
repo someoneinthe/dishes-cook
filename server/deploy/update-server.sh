@@ -6,21 +6,32 @@
 #                                        against its .sha256 (what the hourly timer runs)
 #   update-server.sh --archive <file>    a given archive (`npm run server:deploy`)
 #
-# Nothing happens when the server already has these files. Otherwise PocketBase is stopped, its
-# data backed up, the new files installed, and PocketBase started again; if it doesn't come back
-# healthy, the data and files are put back as they were. An installed migration that differs from
-# the archive's stops everything: migrations are never edited (PocketBase wouldn't re-run them).
-set -euo pipefail
+# Nothing happens when the server already has these files, or newer ones (an archive is never
+# installed over newer files: e.g. a release older than a manual deploy from main). Otherwise
+# PocketBase is stopped, its data backed up, the new files installed, and PocketBase started again;
+# on any failure from then on, or if PocketBase doesn't come back healthy, the data and files are
+# put back as they were. An installed migration that differs from the archive's stops everything:
+# migrations are never edited (PocketBase wouldn't re-run them).
+set -euEo pipefail
 
 repo="${DISHES_COOK_REPO:-someoneinthe/dishes-cook}"
 pb_dir="${PB_DIR:-/opt/pocketbase}"
 pb_service="${PB_SERVICE:-pocketbase}"
 pb_user="${PB_USER:-pocketbase}"
 health_url="${PB_HEALTH_URL:-http://127.0.0.1:8090/api/health}"
+lock_file="${UPDATE_LOCK:-/run/lock/dishes-cook-update-server.lock}"
 backup_dir="$pb_dir/backups-before-update"
+version_file="$pb_dir/server-files.version"
 backups_kept=5
 
 log() { echo "update-server: $*"; }
+
+# One update at a time: the timer and a manual deploy can start together.
+exec 9> "$lock_file"
+if ! flock -w 900 9; then
+  log "another update is still running"
+  exit 1
+fi
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -40,7 +51,19 @@ fi
 mkdir "$work/files"
 tar -xzf "$archive" -C "$work/files"
 
-# What's new: migrations not installed yet, hooks new or changed.
+# VERSION: "<commit time> <commit>" of the files (scripts/pack-server-files.sh).
+read -r archive_time archive_commit < "$work/files/VERSION"
+installed_time=0
+installed_commit=none
+if [[ -f "$version_file" ]]; then
+  read -r installed_time installed_commit < "$version_file"
+fi
+if (( archive_time < installed_time )); then
+  log "skipped: these files ($archive_commit) are older than the installed ones ($installed_commit)"
+  exit 0
+fi
+
+# What's new: migrations not installed yet, hooks new, changed or removed.
 new_migration_list=()
 for file in "$work/files/migrations"/*.js; do
   name="$(basename "$file")"
@@ -59,11 +82,20 @@ for file in "$work/files/hooks"/*.js; do
     changed_hook_list+=("$name")
   fi
 done
-if (( ${#new_migration_list[@]} == 0 && ${#changed_hook_list[@]} == 0 )); then
-  log "up to date"
+removed_hook_list=()
+for file in "$pb_dir/pb_hooks"/*.js; do
+  name="$(basename "$file")"
+  if [[ -e "$file" && ! -e "$work/files/hooks/$name" ]]; then
+    removed_hook_list+=("$name")
+  fi
+done
+if (( ${#new_migration_list[@]} + ${#changed_hook_list[@]} + ${#removed_hook_list[@]} == 0 )); then
+  echo "$archive_time $archive_commit" > "$version_file"
+  log "up to date ($archive_commit)"
   exit 0
 fi
-log "installing migrations: ${new_migration_list[*]:-none}; hooks: ${changed_hook_list[*]:-none}"
+log "installing $archive_commit: migrations ${new_migration_list[*]:-none};" \
+  "hooks ${changed_hook_list[*]:-none}; removed hooks ${removed_hook_list[*]:-none}"
 
 is_healthy() {
   for _ in $(seq 1 30); do
@@ -75,10 +107,40 @@ is_healthy() {
   return 1
 }
 
+# Puts back the files (and the data, once PocketBase ran with the new files), then starts it.
+is_data_changed=false
+rollback() {
+  trap - ERR
+  log "putting the previous data and files back"
+  systemctl stop "$pb_service" || true
+  if [[ "$is_data_changed" == true ]]; then
+    rm -rf "$pb_dir/pb_data"
+    tar -xzf "$backup" -C "$pb_dir"
+  fi
+  for name in "${new_migration_list[@]}"; do
+    rm -f "$pb_dir/pb_migrations/$name"
+  done
+  if [[ -d "$work/previous_hooks" ]]; then
+    rm -rf "$pb_dir/pb_hooks"
+    cp -a "$work/previous_hooks" "$pb_dir/pb_hooks"
+  fi
+  systemctl start "$pb_service" || true
+  if is_healthy; then
+    log "rolled back: PocketBase runs as before the update"
+  else
+    log "rolled back, but PocketBase still isn't healthy: check \`journalctl -u $pb_service\`"
+  fi
+  exit 1
+}
+
 systemctl stop "$pb_service"
-mkdir -p "$backup_dir" "$pb_dir/pb_migrations" "$pb_dir/pb_hooks"
+# From here, any failing command rolls back (the ERR trap, with set -E for functions).
+trap 'log "failed (line $LINENO)"; rollback' ERR
+install -d -o "$pb_user" -g "$pb_user" -m 755 "$pb_dir/pb_migrations" "$pb_dir/pb_hooks"
+# Backups hold the users' data (accounts included): readable by root only.
+install -d -m 700 "$backup_dir"
 backup="$backup_dir/pb_data-$(date +%Y%m%d-%H%M%S).tar.gz"
-tar -czf "$backup" -C "$pb_dir" pb_data
+(umask 077 && tar -czf "$backup" -C "$pb_dir" pb_data)
 cp -a "$pb_dir/pb_hooks" "$work/previous_hooks"
 
 for name in "${new_migration_list[@]}"; do
@@ -87,28 +149,19 @@ done
 for name in "${changed_hook_list[@]}"; do
   install -o "$pb_user" -g "$pb_user" -m 644 "$work/files/hooks/$name" "$pb_dir/pb_hooks/"
 done
-systemctl start "$pb_service"
-
-if is_healthy; then
-  # Oldest backups first out.
-  find "$backup_dir" -name 'pb_data-*.tar.gz' | sort | head -n "-$backups_kept" | xargs -r rm -f
-  log "done (data backed up in $backup)"
-  exit 0
-fi
-
-log "PocketBase didn't come back healthy: putting the previous data and files back"
-systemctl stop "$pb_service"
-rm -rf "$pb_dir/pb_data"
-tar -xzf "$backup" -C "$pb_dir"
-for name in "${new_migration_list[@]}"; do
-  rm -f "$pb_dir/pb_migrations/$name"
+for name in "${removed_hook_list[@]}"; do
+  rm -f "$pb_dir/pb_hooks/$name"
 done
-rm -rf "$pb_dir/pb_hooks"
-cp -a "$work/previous_hooks" "$pb_dir/pb_hooks"
+# Starting applies the new migrations: from now on, the data may change.
+is_data_changed=true
 systemctl start "$pb_service"
-if is_healthy; then
-  log "rolled back: PocketBase runs as before the update"
-else
-  log "rolled back, but PocketBase still isn't healthy: check \`journalctl -u $pb_service\`"
+if ! is_healthy; then
+  log "PocketBase didn't come back healthy"
+  rollback
 fi
-exit 1
+trap - ERR
+
+echo "$archive_time $archive_commit" > "$version_file"
+# Oldest backups first out.
+find "$backup_dir" -name 'pb_data-*.tar.gz' | sort | head -n "-$backups_kept" | xargs -r rm -f
+log "done (data backed up in $backup)"

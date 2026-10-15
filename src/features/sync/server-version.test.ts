@@ -42,6 +42,15 @@ describe('server version', () => {
         }),
       ).toBe('newer-server');
     });
+
+    it('ignores the migrations PocketBase writes itself when its admin UI edits a collection', () => {
+      expect(
+        checkServerVersion({
+          migrations: [...upToDateList, '1792100000_updated_recipes.js'],
+          minimumAppSyncVersion: SYNC_VERSION,
+        }),
+      ).toBe('compatible');
+    });
   });
 
   describe('versions kept in step with the server files', () => {

@@ -27,7 +27,10 @@ export type ServerVersionCheck =
   // The server lacks a migration this app needs: update the server.
   | 'server-outdated';
 
-// Our migrations are named "<10-digit timestamp>-<name>.js"; PocketBase's own end in ".go".
+// Our migrations are named "<10-digit timestamp>-<name>.js" (a hyphen); PocketBase's own end in
+// ".go". Files named "<timestamp>_<name>.js" (an underscore) are left out on purpose: PocketBase
+// writes them itself when someone edits a collection in its admin UI (automigrate), and they don't
+// mean a newer app exists.
 const APP_MIGRATION = /^\d{10}-[\w-]+\.js$/;
 
 export function checkServerVersion(info: ServerInfo | undefined): ServerVersionCheck {
