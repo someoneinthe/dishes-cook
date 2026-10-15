@@ -5,7 +5,7 @@ import { nodeFetch } from './node-fetch';
 
 // The throwaway PocketBase started by scripts/test-pocketbase.sh (server/migrations applied), or
 // undefined when the tests run without one.
-export const POCKETBASE_URL = env.POCKETBASE_URL;
+export const POCKETBASE_URL = environment('POCKETBASE_URL');
 
 const ACCOUNT = { email: 'home@example.org', password: 'test-password' };
 const SYNCED_TABLES: SyncedTable[] = ['ingredients', 'recipes'];
@@ -52,11 +52,17 @@ export async function createPocketBaseServer(serverUrl: string): Promise<SyncTes
   };
 }
 
+// A variable set by scripts/test-pocketbase.sh. Read as unknown: CI's types give env values `any`.
+function environment(name: string): string | undefined {
+  const value: unknown = env[name];
+  return typeof value === 'string' ? value : undefined;
+}
+
 async function signInSuperuser(serverUrl: string): Promise<string> {
   const response = await nodeFetch(`${serverUrl}/api/collections/_superusers/auth-with-password`, {
     body: JSON.stringify({
-      identity: env.POCKETBASE_SUPERUSER_EMAIL ?? '',
-      password: env.POCKETBASE_SUPERUSER_PASSWORD ?? '',
+      identity: environment('POCKETBASE_SUPERUSER_EMAIL') ?? '',
+      password: environment('POCKETBASE_SUPERUSER_PASSWORD') ?? '',
     }),
     headers: { 'Content-Type': 'application/json' },
     method: 'POST',
