@@ -23,6 +23,15 @@ name: Recipes
 - inputText: Potato
 - tapOn: Create Potato
 - hideKeyboard
+# A quantity for Leek: 500 g.
+- scrollUntilVisible:
+    element: Quantity of Leek
+    centerElement: true
+- tapOn: Quantity of Leek
+- inputText: '500'
+- hideKeyboard
+- tapOn: 'Unit of Leek: pieces'
+- tapOn: g
 - scrollUntilVisible:
     element: Recipe text
     centerElement: true
@@ -34,6 +43,7 @@ name: Recipes
     visible: Simmer for 30 minutes.
     timeout: 10000
 - assertVisible: • Potato
+- assertVisible: '• Leek: 500 g'
 - assertVisible: Summer
 - assertVisible: Main course
 

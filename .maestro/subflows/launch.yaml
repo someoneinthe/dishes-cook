@@ -3,6 +3,16 @@ appId: io.github.someoneinthe.dishescook
 ---
 - launchApp:
     clearState: true
+# A cold emulator (CI) sometimes shows "Pixel Launcher isn't responding" over the app, right away or
+# a few seconds later: wait it out.
+- runFlow:
+    file: dismiss-system-dialog.yaml
+- extendedWaitUntil:
+    visible: Meal choice
+    timeout: 15000
+    optional: true
+- runFlow:
+    file: dismiss-system-dialog.yaml
 - extendedWaitUntil:
     visible: Meal choice
     timeout: 30000

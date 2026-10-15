@@ -2,10 +2,10 @@
 
 [Maestro](https://maestro.dev) flows that drive the real app on an Android emulator: what used to be checked by hand before a PR. Unit, screen and sync tests stay in Jest; these flows check that the pieces work together on a device.
 
-| Flow           | Checks                                                                                                                     |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `recipes.yaml` | Add a recipe with a new ingredient, edit it, find it in Meal choice and in Recipes, delete it after confirming.            |
-| `sync.yaml`    | Connect to a sync server (the first sync merges the phone's recipes and the server's), then a deletion reaches the server. |
+| Flow           | Checks                                                                                                                                     |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `recipes.yaml` | Add a recipe with a new ingredient, edit it (with a quantity in grams), find it in Meal choice and in Recipes, delete it after confirming. |
+| `sync.yaml`    | Connect to a sync server (the first sync merges the phone's recipes and the server's), then a deletion reaches the server.                 |
 
 `subflows/` holds steps shared by flows; `scripts/server.js` reads and writes the test sync server directly, as another phone would.
 

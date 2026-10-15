@@ -2,9 +2,46 @@
 // entries (type `Messages`, checked by TypeScript). Functions build the texts with a name or a
 // count in them. User content (recipe titles, ingredients) is never translated.
 
+import type { Unit } from '@/lib/units';
+
+// A unit's symbol ("kg"), or its word in the singular or plural ("cup", "cups").
+export function unitName(
+  wordList: Readonly<Record<WordUnit, readonly [one: string, other: string]>>,
+  unit: Unit,
+  isPlural: boolean,
+): string {
+  if (Object.hasOwn(UNIT_SYMBOLS, unit)) {
+    return UNIT_SYMBOLS[unit as keyof typeof UNIT_SYMBOLS];
+  }
+  return wordList[unit as WordUnit][isPlural ? 1 : 0];
+}
+
 function plural(count: number, one: string, other: string): string {
   return count === 1 ? one : other;
 }
+
+// Units written the same in every language; the others are words, translated in each dictionary.
+export const UNIT_SYMBOLS = {
+  cl: 'cl',
+  fl_oz: 'fl oz',
+  g: 'g',
+  kg: 'kg',
+  l: 'l',
+  lb: 'lb',
+  ml: 'ml',
+  oz: 'oz',
+} as const satisfies Partial<Record<Unit, string>>;
+export type WordUnit = Exclude<Unit, keyof typeof UNIT_SYMBOLS>;
+
+const UNIT_WORDS: Readonly<Record<WordUnit, readonly [one: string, other: string]>> = {
+  bunch: ['bunch', 'bunches'],
+  can: ['can', 'cans'],
+  clove: ['clove', 'cloves'],
+  cup: ['cup', 'cups'],
+  pinch: ['pinch', 'pinches'],
+  tbsp: ['tbsp', 'tbsp'],
+  tsp: ['tsp', 'tsp'],
+};
 
 export const en = {
   common: {
@@ -110,6 +147,20 @@ export const en = {
     recipes: 'Recipes',
     settings: 'Settings',
   },
+  quantities: {
+    amountLabel: (name: string) => `Quantity of ${name}`,
+    amountPlaceholder: 'Qty',
+    chooseUnit: (name: string) => `Unit of ${name}`,
+    decimalSeparator: '.',
+    invalidAmount: 'Enter a number, like 2, 1.5 or 1/2.',
+    line: (name: string, quantity: string) => `${name}: ${quantity}`,
+    pieces: 'pieces',
+    // Up to 1 in the singular: "1 cup", "0.5 cup", "2 cups".
+    unit: (unit: Unit, amount: number) => unitName(UNIT_WORDS, unit, amount > 1),
+    unitButtonHint: 'Opens the list of units',
+    unitButtonLabel: (name: string, unit: string) => `Unit of ${name}: ${unit}`,
+    unitOptionHint: 'Uses this unit for the quantity',
+  },
   recipes: {
     course: 'Course',
     deleteMessage: 'Its ingredients stay in your list.',
@@ -173,6 +224,9 @@ export const en = {
     showButtonLabels: 'Show button labels',
     showButtonLabelsHint: 'Adds the text next to icon buttons',
     system: 'System',
+    units: 'Units',
+    unitsMetric: 'European (g, l)',
+    unitsUs: 'US (oz, cups)',
   },
   sync: {
     chooseStorage: 'Data storage',

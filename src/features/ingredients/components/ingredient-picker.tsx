@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
@@ -20,6 +21,15 @@ type IngredientPickerProps = Readonly<{
   onChange: (selectedList: Ingredient[]) => void;
   // When given, a typed name that matches no ingredient can be created.
   onCreate?: (name: string) => Ingredient;
+  // Shows each selected ingredient (e.g. with its quantity) instead of a chip that removes it.
+  renderSelected?: (ingredient: Ingredient, remove: () => void) => ReactNode;
+  selectedList: readonly Ingredient[];
+}>;
+
+type SelectedIngredientsProps = Readonly<{
+  isFocusTarget: (ingredient: Ingredient) => boolean;
+  onRemove: (ingredient: Ingredient) => void;
+  renderSelected: IngredientPickerProps['renderSelected'];
   selectedList: readonly Ingredient[];
 }>;
 
@@ -29,6 +39,7 @@ export function IngredientPicker({
   label,
   onChange,
   onCreate,
+  renderSelected,
   selectedList,
 }: IngredientPickerProps) {
   const t = useMessages();
@@ -69,22 +80,12 @@ export function IngredientPicker({
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      {selectedList.length > 0 && (
-        <View style={styles.chipList}>
-          {selectedList.map((ingredient) => (
-            <Chip
-              accessibilityHint={t.ingredientPicker.removeHint}
-              accessibilityLabel={t.ingredientPicker.removeLabel(ingredient.name)}
-              icon="close"
-              isSelected
-              isTvPreferredFocus={isFocusTarget(ingredient)}
-              key={ingredient.id}
-              label={ingredient.name}
-              onPress={() => remove(ingredient)}
-            />
-          ))}
-        </View>
-      )}
+      <SelectedIngredients
+        isFocusTarget={isFocusTarget}
+        onRemove={remove}
+        renderSelected={renderSelected}
+        selectedList={selectedList}
+      />
       <TextField
         autoCapitalize="none"
         isLabelHidden
@@ -137,6 +138,44 @@ export function IngredientPicker({
   );
 }
 
+// The selected ingredients: chips that remove them, or the rows `renderSelected` draws.
+function SelectedIngredients({
+  isFocusTarget,
+  onRemove,
+  renderSelected,
+  selectedList,
+}: SelectedIngredientsProps) {
+  const t = useMessages();
+  if (selectedList.length === 0) {
+    return null;
+  }
+  if (renderSelected) {
+    return (
+      <View style={styles.selectedList}>
+        {selectedList.map((ingredient) => (
+          <View key={ingredient.id}>{renderSelected(ingredient, () => onRemove(ingredient))}</View>
+        ))}
+      </View>
+    );
+  }
+  return (
+    <View style={styles.chipList}>
+      {selectedList.map((ingredient) => (
+        <Chip
+          accessibilityHint={t.ingredientPicker.removeHint}
+          accessibilityLabel={t.ingredientPicker.removeLabel(ingredient.name)}
+          icon="close"
+          isSelected
+          isTvPreferredFocus={isFocusTarget(ingredient)}
+          key={ingredient.id}
+          label={ingredient.name}
+          onPress={() => onRemove(ingredient)}
+        />
+      ))}
+    </View>
+  );
+}
+
 // On a TV, the chip an ingredient just moved to (selected or suggested) takes the remote's focus:
 // the pressed chip disappears, and Android would otherwise send the focus to the top of the screen.
 // When the search or the suggestion limit hides that chip, the first chip shown takes it instead.
@@ -183,5 +222,8 @@ const styles = StyleSheet.create((theme) => ({
   label: {
     ...theme.typography.label,
     color: theme.colors.text,
+  },
+  selectedList: {
+    gap: theme.gap(3),
   },
 }));

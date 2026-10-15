@@ -1,6 +1,7 @@
 import { and, asc, eq, gt, inArray, ne, or, sql } from 'drizzle-orm';
 import type { Course, Season, SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
+import type { Quantity } from '@/lib/units';
 import { PAGE_SIZE } from '@/db/pagination';
 import {
   COURSE_LIST,
@@ -13,6 +14,7 @@ import {
 } from '@/db/schema';
 import { isSyncId } from '@/lib/sync-id';
 import { cleanName, toNameKey, toSortKey } from '@/lib/text';
+import { toQuantity, toStored } from '@/lib/units';
 import type { ServerIngredient, ServerRecipe, ServerRow, ServerRowOf, SyncApi } from './sync-api';
 
 // Two-way sync between the phone's database and the sync server (see docs/sync.md):
@@ -135,7 +137,7 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe): void {
   };
   if (local) {
     tx.update(recipes).set(values).where(eq(recipes.id, local.id)).run();
-    linkIngredients(tx, local.id, row.ingredients);
+    linkIngredients(tx, local.id, row);
     return;
   }
   const { id } = tx
@@ -144,7 +146,7 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe): void {
     .returning({ id: recipes.id })
     .get();
   forgetDeletion(tx, 'recipes', row.id);
-  linkIngredients(tx, id, row.ingredients);
+  linkIngredients(tx, id, row);
 }
 
 function applyRecipes(database: AppDatabase, rowList: readonly ServerRecipe[]): void {
@@ -239,23 +241,38 @@ function latest(time: string, other: unknown): string {
   return typeof other === 'string' && other.localeCompare(time) > 0 ? other : time;
 }
 
-// Replaces the recipe's ingredients with the pulled ones; those not here (yet) are left out.
-function linkIngredients(tx: AppDatabase, recipeId: number, pulledSyncIds: unknown): void {
+// Replaces the recipe's ingredients (and their quantities) with the pulled ones; those not here
+// (yet) are left out, and so are quantities that aren't usable.
+function linkIngredients(
+  tx: AppDatabase,
+  recipeId: number,
+  row: Pick<ServerRecipe, 'ingredients' | 'quantities'>,
+): void {
   tx.delete(recipeIngredients).where(eq(recipeIngredients.recipeId, recipeId)).run();
-  const syncIdList = Array.isArray(pulledSyncIds)
-    ? pulledSyncIds.filter((syncId) => isSyncId(syncId))
+  const syncIdList = Array.isArray(row.ingredients)
+    ? row.ingredients.filter((syncId) => isSyncId(syncId))
     : [];
   if (syncIdList.length === 0) {
     return;
   }
   const ingredientList = tx
-    .select({ id: ingredients.id })
+    .select({ id: ingredients.id, syncId: ingredients.syncId })
     .from(ingredients)
     .where(inArray(ingredients.syncId, syncIdList))
     .all();
   if (ingredientList.length > 0) {
     tx.insert(recipeIngredients)
-      .values(ingredientList.map((ingredient) => ({ ingredientId: ingredient.id, recipeId })))
+      .values(
+        ingredientList.map((ingredient) => {
+          const quantity = pulledQuantity(row.quantities, ingredient.syncId);
+          return {
+            amount: quantity?.amount ?? null,
+            ingredientId: ingredient.id,
+            recipeId,
+            unit: quantity?.unit ?? null,
+          };
+        }),
+      )
       .run();
   }
 }
@@ -276,6 +293,21 @@ async function pull<Table extends SyncedTable>(
       return pulledUntil;
     }
   }
+}
+
+// The pulled quantity of an ingredient, if the server has a usable one.
+function pulledQuantity(quantities: unknown, syncId: string): Quantity | undefined {
+  if (typeof quantities !== 'object' || quantities === null || !Object.hasOwn(quantities, syncId)) {
+    return undefined;
+  }
+  const value: unknown = (quantities as Record<string, unknown>)[syncId];
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+  const { amount, unit } = value as Record<string, unknown>;
+  // Stored like the phone's own: a server row written in another unit ("1.5 kg") is normalized.
+  const quantity = toQuantity(amount, unit);
+  return quantity && toStored(quantity);
 }
 
 async function pushDeletions(database: AppDatabase, api: SyncApi): Promise<void> {
@@ -358,7 +390,12 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
       rowList.length === 0
         ? []
         : database
-            .select({ recipeId: recipeIngredients.recipeId, syncId: ingredients.syncId })
+            .select({
+              amount: recipeIngredients.amount,
+              recipeId: recipeIngredients.recipeId,
+              syncId: ingredients.syncId,
+              unit: recipeIngredients.unit,
+            })
             .from(recipeIngredients)
             .innerJoin(ingredients, eq(ingredients.id, recipeIngredients.ingredientId))
             .where(
@@ -370,10 +407,18 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
             .orderBy(asc(recipeIngredients.recipeId), asc(ingredients.syncId))
             .all();
     const ingredientSyncIdsByRecipe = new Map<number, string[]>();
+    // { "<ingredient sync id>": { amount, unit? } } by recipe: the links that have a quantity.
+    const quantitiesByRecipe = new Map<number, Record<string, Quantity>>();
     for (const link of linkList) {
       const syncIdList = ingredientSyncIdsByRecipe.get(link.recipeId) ?? [];
       syncIdList.push(link.syncId);
       ingredientSyncIdsByRecipe.set(link.recipeId, syncIdList);
+      const quantities = quantitiesByRecipe.get(link.recipeId) ?? {};
+      const quantity = toQuantity(link.amount, link.unit);
+      if (quantity) {
+        quantities[link.syncId] = quantity;
+      }
+      quantitiesByRecipe.set(link.recipeId, quantities);
     }
     await Promise.all(
       rowList.map((row) =>
@@ -383,6 +428,7 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
           ingredients: ingredientSyncIdsByRecipe.get(row.id) ?? [],
           instructions: row.instructions,
           modified: row.updatedAt,
+          quantities: quantitiesByRecipe.get(row.id) ?? {},
           season: row.season,
           title: row.title,
         }),

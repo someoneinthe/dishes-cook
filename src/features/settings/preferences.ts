@@ -3,7 +3,9 @@ import { useSyncExternalStore } from 'react';
 import { Appearance } from 'react-native';
 import { UnistylesRuntime } from 'react-native-unistyles';
 import type { LanguagePreference } from '@/i18n/languages';
+import type { UnitSystem } from '@/lib/units';
 import { LANGUAGE_PREFERENCE_LIST } from '@/i18n/languages';
+import { isUnitSystem } from '@/lib/units';
 
 // User preferences, kept in expo-sqlite's key-value store (synchronous reads: applied before the
 // first screen renders).
@@ -17,6 +19,8 @@ export type Preferences = Readonly<{
   isShowingButtonLabels: boolean;
   // The phone's language ('system') or one chosen for the app.
   language: LanguagePreference;
+  // Units of ingredient quantities: European (metric, the default) or US.
+  units: UnitSystem;
 }>;
 
 const STORAGE_KEY = 'preferences';
@@ -24,6 +28,7 @@ const DEFAULT_PREFERENCES: Preferences = {
   colorScheme: 'system',
   isShowingButtonLabels: false,
   language: 'system',
+  units: 'metric',
 };
 
 // Read once from storage, then kept in memory.
@@ -94,6 +99,7 @@ function parse(stored: null | string): Preferences {
       language: LANGUAGE_PREFERENCE_LIST.includes(parsed.language as LanguagePreference)
         ? (parsed.language as LanguagePreference)
         : DEFAULT_PREFERENCES.language,
+      units: isUnitSystem(parsed.units) ? parsed.units : DEFAULT_PREFERENCES.units,
     };
   } catch {
     // Unreadable (e.g. written by a future version): start from the defaults.

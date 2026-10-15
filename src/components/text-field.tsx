@@ -31,6 +31,8 @@ type TextFieldProps = Readonly<
     error?: string;
     // Help shown under the field (e.g. the accepted format).
     hint?: string;
+    // Red border without the `error` text under the field (the caller shows the message).
+    isInvalid?: boolean;
     // Hidden labels are still read by screen readers.
     isLabelHidden?: boolean;
     label: string;
@@ -40,6 +42,7 @@ type TextFieldProps = Readonly<
 export function TextField({
   error,
   hint,
+  isInvalid = false,
   isLabelHidden = false,
   label,
   multiline,
@@ -58,7 +61,7 @@ export function TextField({
         style={[
           styles.input,
           multiline && styles.multiline,
-          error !== undefined && styles.invalid,
+          (error !== undefined || isInvalid) && styles.invalid,
           // On a TV, the remote's focus ring; a phone shows the cursor and the keyboard instead.
           isTv && focusStyle,
         ]}

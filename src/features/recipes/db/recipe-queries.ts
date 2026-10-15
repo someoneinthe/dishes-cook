@@ -4,14 +4,16 @@ import type { Page, PageRequest } from '@/db/pagination';
 import type { Course, Season } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
+import type { Quantity } from '@/lib/units';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, recipes, syncDeletions } from '@/db/schema';
 import { cleanName, toLikeContains, toSortKey } from '@/lib/text';
+import { toQuantity, toStored } from '@/lib/units';
 
 export type Recipe = Readonly<{
   course: Course;
   id: number;
-  ingredientList: Ingredient[];
+  ingredientList: RecipeIngredient[];
   instructions: string;
   season: Season;
   title: string;
@@ -28,11 +30,16 @@ export type RecipeFilters = Readonly<{
   season?: Exclude<Season, 'both'>;
 }>;
 
+// An ingredient of a recipe, with how much of it the recipe needs (none: "salt").
+export type RecipeIngredient = Ingredient & Readonly<{ quantity?: Quantity }>;
+
 export type RecipeInput = Readonly<{
   // A main course when left out.
   course?: Course;
   ingredientIdList: readonly number[];
   instructions: string;
+  // Quantities by ingredient id; an ingredient without one has no quantity.
+  quantities?: ReadonlyMap<number, Quantity>;
   season: Season;
   title: string;
 }>;
@@ -93,14 +100,23 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
   if (!recipe) {
     return undefined;
   }
-  const ingredientList = database
-    .select({ id: ingredients.id, name: ingredients.name })
+  const linkList = database
+    .select({
+      amount: recipeIngredients.amount,
+      id: ingredients.id,
+      name: ingredients.name,
+      unit: recipeIngredients.unit,
+    })
     .from(recipeIngredients)
     .innerJoin(ingredients, eq(ingredients.id, recipeIngredients.ingredientId))
     .where(eq(recipeIngredients.recipeId, id))
     .orderBy(asc(ingredients.sortKey), asc(ingredients.id))
     .all();
   // Not paginated: a recipe's own ingredients, bounded by what the form lets you add.
+  const ingredientList = linkList.map(({ amount, id: ingredientId, name, unit }) => {
+    const quantity = toQuantity(amount, unit);
+    return quantity ? { id: ingredientId, name, quantity } : { id: ingredientId, name };
+  });
   return { ...recipe, ingredientList };
 }
 
@@ -159,8 +175,8 @@ export function pickRandomRecipeId(
         .get()?.id;
 }
 
-// Creates (no id) or updates a recipe and its ingredients in one transaction; returns its id.
-// Only the ingredient links that changed are written.
+// Creates (no id) or updates a recipe and its ingredients (with their quantities) in one
+// transaction; returns its id. Only the ingredient links that changed are written.
 export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: number): number {
   const title = cleanName(input.title);
   if (!title) {
@@ -191,8 +207,26 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
       .run();
     if (ingredientIdList.length > 0) {
       tx.insert(recipeIngredients)
-        .values(ingredientIdList.map((ingredientId) => ({ ingredientId, recipeId })))
-        .onConflictDoNothing()
+        .values(
+          ingredientIdList.map((ingredientId) => {
+            const quantity = input.quantities?.get(ingredientId);
+            const typed = quantity && toQuantity(quantity.amount, quantity.unit);
+            // Weights in grams, volumes in millilitres (src/lib/units.ts).
+            const checked = typed && toStored(typed);
+            return {
+              amount: checked?.amount ?? null,
+              ingredientId,
+              recipeId,
+              unit: checked?.unit ?? null,
+            };
+          }),
+        )
+        .onConflictDoUpdate({
+          set: { amount: sql`excluded.amount`, unit: sql`excluded.unit` },
+          // Links whose quantity didn't change aren't rewritten.
+          setWhere: sql`${recipeIngredients.amount} is not excluded.amount or ${recipeIngredients.unit} is not excluded.unit`,
+          target: [recipeIngredients.recipeId, recipeIngredients.ingredientId],
+        })
         .run();
     }
     return recipeId;

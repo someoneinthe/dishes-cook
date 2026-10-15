@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
+import { toStored } from '@/lib/units';
 import { firstRecipePage } from '@/test/queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { getRecipe, saveRecipe } from './db/recipe-queries';
@@ -127,6 +128,34 @@ describe('recipeFormScreen', () => {
     await renderWithDatabase(<RecipeFormScreen />, connection);
 
     expect(screen.getByRole('radio', { name: 'Starter' })).toBeChecked();
+  });
+
+  it('keeps the exact quantity of a row left as shown, and saves an edited row as typed', async () => {
+    const flour = findOrCreateIngredient(connection.db, 'Flour').id;
+    const milk = findOrCreateIngredient(connection.db, 'Milk').id;
+    const id = saveRecipe(connection.db, {
+      ingredientIdList: [flour, milk],
+      instructions: '',
+      quantities: new Map([
+        [flour, { amount: 8, unit: 'oz' }],
+        [milk, { amount: 1, unit: 'cup' }],
+      ]),
+      season: 'both',
+      title: 'Cake',
+    });
+    jest.mocked(useLocalSearchParams).mockReturnValue({ id: String(id) });
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    // Shown rounded in European units: 8 oz = 226.8 g, 1 cup = 236.6 ml.
+    expect(screen.getByLabelText('Quantity of Flour')).toHaveDisplayValue('227');
+    expect(screen.getByLabelText('Quantity of Milk')).toHaveDisplayValue('237');
+
+    await fireEvent.changeText(screen.getByLabelText('Quantity of Milk'), '250');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+
+    expect(
+      getRecipe(connection.db, id)?.ingredientList.map(({ quantity }) => quantity),
+    ).toStrictEqual([toStored({ amount: 8, unit: 'oz' }), { amount: 250, unit: 'ml' }]);
   });
 
   it('tells when the recipe to edit no longer exists', async () => {

@@ -12,8 +12,16 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
     'e50490d596f48cf905f70299e672d4b6ed03315904aca4d4949fe6acf3948ebe',
   ],
   [
+    'server/migrations/1792080000-recipe-quantities.js',
+    '4cb4b741ca945ba1bd6d7e2c1c2ccdd0bb5c22f46486736c9c4a9dd959782e21',
+  ],
+  [
     'src/db/migrations/0000_init.sql',
     '76cc3f90b737b4d4fc587e49f95b56a56dbffc1d15747624574ea1ef73c7a018',
+  ],
+  [
+    'src/db/migrations/0001_ingredient-quantities.sql',
+    '1151edd560a8d01bb5dc1f7e104dfe2ba8b7579563071c5c4e96975ae4fb437e',
   ],
 ]);
 

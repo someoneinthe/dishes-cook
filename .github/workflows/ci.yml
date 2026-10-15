@@ -166,8 +166,13 @@ jobs:
           target: google_apis
           disable-animations: true
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          # The launcher of a freshly booted emulator freezes now and then ("Pixel Launcher isn't
+          # responding"), and its dialog covers the app at any step. The flows start the app
+          # themselves: hide such dialogs and switch the launcher off.
           script: |
             adb install "$APK"
+            adb shell settings put global hide_error_dialogs 1
+            adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
             npm run test:e2e -- --format junit --output "$RUNNER_TEMP/maestro-report.xml" --test-output-dir "$RUNNER_TEMP/maestro-output" .maestro
       - name: Keep screenshots and logs of failed flows
         if: failure() && steps.run.outputs.e2e == 'true'

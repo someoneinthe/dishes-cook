@@ -13,7 +13,12 @@ jest.mock('../sync/components/server-sync-section', () => ({ ServerSyncSection: 
 
 describe('settingsScreen', () => {
   beforeEach(() => {
-    updatePreferences({ colorScheme: 'system', isShowingButtonLabels: false, language: 'system' });
+    updatePreferences({
+      colorScheme: 'system',
+      isShowingButtonLabels: false,
+      language: 'system',
+      units: 'metric',
+    });
   });
 
   afterEach(() => {
@@ -82,6 +87,16 @@ describe('settingsScreen', () => {
 
     expect(screen.getByText('Edit')).toBeOnTheScreen();
     expect(getPreferences().isShowingButtonLabels).toBe(true);
+  });
+
+  it('uses European units by default, and US units when chosen', async () => {
+    await render(<SettingsScreen />);
+
+    expect(screen.getByRole('radio', { name: 'European (g, l)' })).toBeChecked();
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'US (oz, cups)' }));
+
+    expect(getPreferences().units).toBe('us');
   });
 
   it('switches the app to French, then back to English', async () => {
