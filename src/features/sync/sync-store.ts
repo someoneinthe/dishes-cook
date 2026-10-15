@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react';
 import type { AppDatabase } from '@/db/types';
 import type { SyncErrorKind } from './sync-api';
 import type { SyncCursors } from './sync-engine';
+import { checkServerVersion } from './server-version';
 import { createSyncApi, signIn, SyncError } from './sync-api';
 import { INITIAL_CURSORS, synchronize } from './sync-engine';
 
@@ -16,6 +17,8 @@ export type SyncState = Readonly<{
   connection?: Readonly<{ email: string; serverUrl: string }>;
   // Why the last sync failed; undefined after a successful one.
   error?: SyncErrorKind;
+  // The server has changes this app version doesn't know (it still syncs): an app update exists.
+  isAppUpdateAvailable: boolean;
   isSyncing: boolean;
   lastSyncedAt?: number;
 }>;
@@ -30,7 +33,13 @@ type StoredSync = Readonly<{
 const STORAGE_KEY = 'sync';
 const TOKEN_KEY = 'sync-token';
 
-const state: { current?: SyncState; error?: SyncErrorKind; isSyncing: boolean } = {
+const state: {
+  current?: SyncState;
+  error?: SyncErrorKind;
+  isAppUpdateAvailable: boolean;
+  isSyncing: boolean;
+} = {
+  isAppUpdateAvailable: false,
   isSyncing: false,
 };
 const listenerSet = new Set<() => void>();
@@ -60,6 +69,7 @@ export async function disconnect(): Promise<void> {
   Storage.removeItemSync(STORAGE_KEY);
   await deleteItemAsync(TOKEN_KEY);
   state.error = undefined;
+  state.isAppUpdateAvailable = false;
   publish();
 }
 
@@ -126,6 +136,12 @@ async function runSync(database: AppDatabase): Promise<void> {
     const currentToken = await createSyncApi({ serverUrl: stored.serverUrl, token }).refreshToken();
     setItem(TOKEN_KEY, currentToken);
     const api = createSyncApi({ serverUrl: stored.serverUrl, token: currentToken });
+    // Before any change: a server too old (or an app too old) for the other isn't synced with.
+    const versionCheck = checkServerVersion(await api.getServerInfo());
+    if (versionCheck === 'server-outdated' || versionCheck === 'app-outdated') {
+      throw new SyncError(versionCheck, `Versions don't match: ${versionCheck}`);
+    }
+    state.isAppUpdateAvailable = versionCheck === 'newer-server';
     const cursors = await synchronize(database, api, stored.cursors);
     // Disconnected while syncing: nothing to save.
     if (read()) {
@@ -162,6 +178,7 @@ function toState(stored: StoredSync | undefined): SyncState {
   return {
     connection: stored ? { email: stored.email, serverUrl: stored.serverUrl } : undefined,
     error: stored ? state.error : undefined,
+    isAppUpdateAvailable: stored ? state.isAppUpdateAvailable : false,
     isSyncing: state.isSyncing,
     lastSyncedAt: stored?.lastSyncedAt,
   };

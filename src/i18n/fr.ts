@@ -200,13 +200,16 @@ export const fr: Messages = {
     unitsUs: 'Américaines (oz, tasses)',
   },
   sync: {
+    appUpdateAvailable: `Votre serveur a une version plus récente${NARROW_SPACE}: mettez l’application à jour pour profiter de ses nouveautés.`,
     chooseStorage: 'Stockage des données',
     connect: 'Se connecter',
     connectedAs: (server: string, email: string) =>
       `Synchronisé avec ${server} en tant que ${email}.`,
     connecting: 'Connexion…',
     email: 'E-mail',
+    errorAppOutdated: `Cette application est trop ancienne pour votre serveur${NARROW_SPACE}: mettez-la à jour pour synchroniser à nouveau. Vos modifications restent sur ce téléphone en attendant.`,
     errorFailed: 'Le serveur a refusé la demande. Réessayez plus tard.',
+    errorServerOutdated: `Votre serveur est plus ancien que cette application${NARROW_SPACE}: mettez-le à jour pour synchroniser à nouveau. Vos modifications restent sur ce téléphone en attendant.`,
     errorUnauthorized: `Le serveur a refusé la connexion. Choisissez ${quote('Cet appareil uniquement')}, puis reconnectez-vous.`,
     errorUnreachable: `Le serveur ne répond pas. L’appareil doit être sur le réseau de la maison${NARROW_SPACE}: il se resynchronise tout seul.`,
     invalidAddress: 'Saisissez l’adresse du serveur, comme recettes.exemple.fr.',

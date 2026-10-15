@@ -46,6 +46,9 @@ src/
 assets/           # icons, splash, fonts
 server/
   migrations/     # PocketBase migrations for the optional sync server (see sync.md)
+  hooks/          # PocketBase hooks: the version endpoint the app checks (sync.md › Versions)
+  deploy/         # the server's updater and its hourly timer (sync.md › Updating the server)
+  pocketbase-version  # the PocketBase version tested and deployed
   pocketbase-version  # the PocketBase version tests run against
 .maestro/         # end-to-end flows (Maestro), see .maestro/README.md
 ```

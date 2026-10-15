@@ -8,6 +8,7 @@ import { SettingsScreen } from '@/features/settings/settings-screen';
 import { spyOnAlert } from '@/test/alert';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
+import { SERVER_MIGRATION_LIST, SYNC_VERSION } from './server-version';
 import { createSyncApi, signIn } from './sync-api';
 import { INITIAL_CURSORS, synchronize } from './sync-engine';
 import { connect, disconnect, getSyncState } from './sync-store';
@@ -135,6 +136,68 @@ defineFeature(feature, (test) => {
     });
     then("I am told that the server doesn't answer", async () => {
       await expect(screen.findByText(/^The server doesn’t answer\./)).resolves.toBeOnTheScreen();
+    });
+  });
+
+  const requestSync = async () => {
+    await fireEvent.press(screen.getByRole('button', { name: 'Sync now' }));
+  };
+
+  test('A server older than the app is reported', ({ and, given, then, when }) => {
+    given('the phone is synced with the server', thePhoneIsSyncedWithTheServer);
+    and('the server lacks the latest server update', () => {
+      server.setServerInfo({
+        migrations: SERVER_MIGRATION_LIST.slice(0, -1),
+        minimumAppSyncVersion: SYNC_VERSION,
+      });
+    });
+    and(/^the recipe "(.*)" on this phone$/, theRecipeOnThisPhone);
+    when('I ask for a sync', requestSync);
+    then('I am told that the server needs an update', async () => {
+      await expect(
+        screen.findByText(/^Your server is older than this app: update the server/),
+      ).resolves.toBeOnTheScreen();
+    });
+    and(/^the server doesn't have the recipe "(.*)"$/, (title: string) => {
+      const titleList = [...server.collection('recipes').values()].map((row) => row.title);
+
+      expect(titleList).not.toContain(title);
+    });
+  });
+
+  test('An app older than the server is asked to update', ({ and, given, then, when }) => {
+    given('the phone is synced with the server', thePhoneIsSyncedWithTheServer);
+    and('the server only accepts newer apps', () => {
+      server.setServerInfo({
+        migrations: [...SERVER_MIGRATION_LIST],
+        minimumAppSyncVersion: SYNC_VERSION + 1,
+      });
+    });
+    when('I ask for a sync', requestSync);
+    then('I am told that the app needs an update', async () => {
+      await expect(
+        screen.findByText(/^This app is too old for your server: update the app/),
+      ).resolves.toBeOnTheScreen();
+    });
+  });
+
+  test('A server newer than the app is pointed out', ({ and, given, then, when }) => {
+    given('the phone is synced with the server', thePhoneIsSyncedWithTheServer);
+    and("the server has an update this app doesn't know", () => {
+      server.setServerInfo({
+        migrations: [...SERVER_MIGRATION_LIST, '9999999999-from-a-newer-app.js'],
+        minimumAppSyncVersion: SYNC_VERSION,
+      });
+    });
+    when('I ask for a sync', requestSync);
+    then('I am told that an app update exists', async () => {
+      await expect(
+        screen.findByText(/^Your server has a newer version: update the app/),
+      ).resolves.toBeOnTheScreen();
+    });
+    and('the phone is still synced', () => {
+      expect(getSyncState().error).toBeUndefined();
+      expect(screen.getByText(/^Last sync: /)).toBeOnTheScreen();
     });
   });
 
