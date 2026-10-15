@@ -101,7 +101,7 @@ While the PR is open you can delete your new migration and generate it again; on
 
 **Read the generated SQL**: for changes `ALTER TABLE` can't express (a table-level `CHECK`, for instance), drizzle-kit rebuilds the table (copy, `DROP TABLE`, rename) inside `PRAGMA foreign_keys=OFF`, which has no effect in the migration transaction: dropping `recipes` would cascade-delete every `recipe_ingredients` row. Hand-write an `ALTER TABLE … ADD` instead when it can do the job. A new column on an existing table needs a default (or to be nullable) for the rows already there.
 
-A change to a synced table (`recipes`, `ingredients`, `recipe_ingredients`) usually needs a server migration too: a new file in `server/migrations/` (see [sync.md](sync.md#server-setup)), frozen the same way.
+A change to a synced table (`recipes`, `ingredients`, `recipe_ingredients`) usually needs a server migration too: a new file in `server/migrations/`, frozen the same way, and added to `SERVER_MIGRATION_LIST` so the app checks the server has it (see [sync.md › Versions](sync.md#versions)). Once merged, deploy it (`npm run server:deploy`, see [sync.md › Updating the server](sync.md#updating-the-server)).
 
 Drinks (planned) will likely reuse `recipes` with a `kind` column (`'dish' | 'drink'`) so they share ingredients, live queries and the random pick.
 

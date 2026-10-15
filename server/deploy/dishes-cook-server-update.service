@@ -1,0 +1,10 @@
+# Installs the server files (PocketBase migrations and hooks) of the latest dishes-cook release,
+# when there's anything new (see docs/sync.md › Updating the server). Started by its timer.
+[Unit]
+Description=Install the latest dishes-cook server files
+Wants=network-online.target
+After=network-online.target pocketbase.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/dishes-cook-update-server

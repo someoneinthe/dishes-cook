@@ -45,10 +45,33 @@ Integer ids stay on the phone. A row's identity across devices is its `sync_id`:
 
 Any PocketBase 0.23+; the version in `server/pocketbase-version` is the one the tests run against (see [Upgrading PocketBase](#upgrading-pocketbase)):
 
-1. Copy `server/migrations/*.js` into `pb_migrations/` next to the PocketBase executable and restart it: `pocketbase serve` applies them. They create the `ingredients` and `recipes` collections with their API rules, close sign-up on `users`, and make sign-in tokens last a year (each sync renews it). When a new app version adds a file there, copy it too and restart: PocketBase applies only the migrations it hasn't run yet, and never re-runs an edited one (so they're never edited, see [database.md](database.md#changing-the-schema)).
+1. Install the server files: `server/migrations/*.js` into `pb_migrations/` and `server/hooks/*.js` into `pb_hooks/`, next to the PocketBase executable, then restart it (`pocketbase serve` applies the migrations). The migrations create the `ingredients` and `recipes` collections with their API rules, close sign-up on `users`, and make sign-in tokens last a year (each sync renews it); the hook tells the app the server's version (see [Versions](#versions)). `npm run server:deploy` does all this, and installs the updater that keeps them up to date (see [Updating the server](#updating-the-server)).
 2. In the admin UI (`/_/`), create an account in **users** for the phones to sign in with.
 3. Serve it over **HTTPS with a valid certificate**: Android refuses plain HTTP. Any reverse proxy works (e.g. Caddy).
 4. Back up `pb_data/` (PocketBase has built-in scheduled backups).
+
+## Versions
+
+Before each sync, the app asks the server `GET /api/dishes-cook/server` (`server/hooks/server-info.pb.js`, public: nothing secret in it) and compares (`src/features/sync/server-version.ts`):
+
+| The server…                                                       | The app                                                                                                     |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| has every migration this app knows                                | syncs.                                                                                                      |
+| lacks the last one (or has no such endpoint: installed before it) | doesn't sync: Settings says the **server** needs an update. Changes wait on the phone.                      |
+| asks for a newer app (`minimumAppSyncVersion` > `SYNC_VERSION`)   | doesn't sync: Settings says the **app** needs an update. Changes wait on the phone.                         |
+| has migrations this app doesn't know                              | syncs (server changes only add fields, so older apps keep working), and Settings says an app update exists. |
+
+- **A server migration** goes in `server/migrations/`, never edited once merged (checksums in `src/db/frozen-migrations.test.ts`), and in `SERVER_MIGRATION_LIST` (`server-version.test.ts` checks the list matches the folder). From then on, this app version syncs only with servers that have it.
+- **A change that breaks older apps** (not just new fields): raise `SYNC_VERSION` in the app and `MINIMUM_APP_SYNC_VERSION` in the hook, in the same PR. The hook's can never be higher than the app's (tested): the app couldn't sync with its own server.
+
+## Updating the server
+
+The server needs the files of the app version the phones run: migrations and hooks. Two ways to install them, both through `server/deploy/update-server.sh`, which installs only what's new, and never an edited migration (it stops instead). It stops PocketBase, backs up `pb_data/` (`backups-before-update/`, the last 5 kept), installs the new files, and starts PocketBase again; if it doesn't come back healthy, it puts the data and files back as they were.
+
+- **Automatically, from releases**: each GitHub release carries `server-files.tar.gz` (and its `.sha256`, `scripts/pack-server-files.sh`). The `dishes-cook-server-update.timer` runs the updater every hour: it downloads the latest release's archive, checks its checksum, and installs it if there's anything new.
+- **By hand**, before releases or right away: from an up-to-date `main`, `SYNC_SERVER_SSH=<user@host> npm run server:deploy` packs `server/`, copies it over SSH and runs the updater (`sudo` on the server). It also installs or refreshes the updater (`/usr/local/sbin/dishes-cook-update-server`) and enables its timer. It refuses to deploy from anything but an up-to-date `main` without changes under `server/` (`FORCE=1` for a test server): a migration deployed from a branch, then edited before merging, would never reach the server in its final form.
+
+Logs: `journalctl -u dishes-cook-server-update`. Phones show "the server needs an update" until it's done; their changes wait on them meanwhile.
 
 ## Testing during development
 
