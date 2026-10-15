@@ -219,7 +219,7 @@ function readQuantities(
 
 // One row: left as shown, its stored quantity; edited, as typed; nothing when empty.
 function readRow(draft: QuantityDraft, saved: SavedQuantity | undefined): RowReading {
-  if (saved && draft.amountText === saved.draft.amountText && draft.unit === saved.draft.unit) {
+  if (draft.amountText === saved?.draft.amountText && draft.unit === saved.draft.unit) {
     return { isInvalid: false, quantity: saved.stored };
   }
   const amount = parseAmount(draft.amountText);
@@ -242,20 +242,24 @@ function savedQuantities(
   const savedMap = new Map<number, SavedQuantity>();
   const ingredientList = recipe?.ingredientList ?? [];
   for (const { id, quantity } of ingredientList) {
-    if (!quantity) {
-      continue;
+    const saved = quantity && toSaved(quantity, t, units);
+    if (saved) {
+      savedMap.set(id, saved);
     }
-
-    const shown = toDisplay(quantity, units);
-    savedMap.set(id, {
-      draft: {
-        amountText: formatAmount(shown.amount, t.quantities.decimalSeparator),
-        unit: shown.unit,
-      },
-      stored: quantity,
-    });
   }
   return savedMap;
+}
+
+// A stored quantity, and how the form shows it.
+function toSaved(quantity: Quantity, t: Messages, units: UnitSystem): SavedQuantity {
+  const shown = toDisplay(quantity, units);
+  return {
+    draft: {
+      amountText: formatAmount(shown.amount, t.quantities.decimalSeparator),
+      unit: shown.unit,
+    },
+    stored: quantity,
+  };
 }
 
 function withoutId(idSet: ReadonlySet<number>, id: number): ReadonlySet<number> {
