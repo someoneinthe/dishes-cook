@@ -1,0 +1,8 @@
+# Starts the app with no data.
+appId: io.github.someoneinthe.dishescook
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: Meal choice
+    timeout: 30000

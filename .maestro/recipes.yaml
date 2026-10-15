@@ -1,0 +1,52 @@
+# Add, read, edit and delete a recipe, then find it from Meal choice and Recipes.
+appId: io.github.someoneinthe.dishescook
+name: Recipes
+---
+- runFlow: subflows/launch.yaml
+- runFlow:
+    file: subflows/add-recipe.yaml
+    env:
+      INGREDIENT: Leek
+      TITLE: Leek soup
+- assertVisible: Leek soup
+- assertVisible: • Leek
+
+# Edit it. (Maestro hangs after tapping a text field that already has text: only empty fields are
+# typed in.)
+- tapOn: Edit
+- tapOn: Summer
+- tapOn: Main course
+- tapOn: Search or add an ingredient
+- inputText: Potato
+- tapOn: Create Potato
+- hideKeyboard
+- scrollUntilVisible:
+    element: Recipe text
+- tapOn: Recipe text
+- inputText: Simmer for 30 minutes.
+- hideKeyboard
+- tapOn: Save recipe
+- extendedWaitUntil:
+    visible: Simmer for 30 minutes.
+    timeout: 10000
+- assertVisible: • Potato
+- assertVisible: Summer
+- assertVisible: Main course
+
+# The recipe list has it.
+- tapOn: Go back
+- tapOn: Show navigation menu
+- tapOn: Recipes
+- assertVisible: Leek soup.*
+
+# Delete it, after confirming.
+- tapOn: Leek soup.*
+- tapOn: Delete
+- assertVisible: Delete “Leek soup”?
+- tapOn:
+    text: DELETE|Delete
+    index: 0
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible: No recipes yet
+    timeout: 10000

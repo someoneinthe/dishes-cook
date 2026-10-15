@@ -1,0 +1,77 @@
+# Connect to a sync server, merge with what it has, then send a change and a deletion to it.
+# SERVER_URL, EMAIL, PASSWORD: the throwaway server and account of scripts/test-e2e.sh.
+appId: io.github.someoneinthe.dishescook
+name: Server sync
+---
+- runFlow: subflows/launch.yaml
+- runFlow:
+    file: subflows/add-recipe.yaml
+    env:
+      INGREDIENT: Leek
+      TITLE: Leek soup
+# Meanwhile, another phone put a recipe on the server.
+- runScript:
+    file: scripts/server.js
+    env:
+      ACTION: add
+      ID: 0e2e00000000001
+      TITLE: Pumpkin pie
+
+# Connect: the first sync merges both sides.
+- tapOn: Go back
+- tapOn: Show navigation menu
+- tapOn: Settings
+- tapOn: Synced with a server
+# Each field has its label above it: index 1 is the field.
+- tapOn:
+    text: Server address
+    index: 1
+- inputText: ${SERVER_URL}
+- hideKeyboard
+- tapOn:
+    text: Email
+    index: 1
+- inputText: ${EMAIL}
+- hideKeyboard
+- tapOn:
+    text: Password
+    index: 1
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: Connect
+- extendedWaitUntil:
+    visible: Last sync.*
+    timeout: 20000
+- tapOn: Show navigation menu
+- tapOn: Recipes
+- assertVisible: Leek soup.*
+- assertVisible: Pumpkin pie.*
+- runScript:
+    file: scripts/server.js
+    env:
+      ACTION: read
+- assertTrue: ${output.serverRecipes['Leek soup'] === 0}
+
+# A deletion reaches the server, marked deleted there.
+- tapOn: Pumpkin pie.*
+- tapOn: Delete
+- tapOn:
+    text: DELETE|Delete
+    index: 0
+- extendedWaitUntil:
+    notVisible: Pumpkin pie.*
+    timeout: 10000
+- tapOn: Show navigation menu
+- tapOn: Settings
+- scrollUntilVisible:
+    element: Sync now
+- tapOn: Sync now
+- extendedWaitUntil:
+    notVisible: Syncing…
+    timeout: 20000
+- runScript:
+    file: scripts/server.js
+    env:
+      ACTION: read
+- assertTrue: ${output.serverRecipes['Pumpkin pie'] > 0}
+- assertTrue: ${output.serverRecipes['Leek soup'] === 0}

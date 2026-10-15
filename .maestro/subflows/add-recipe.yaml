@@ -1,0 +1,16 @@
+# Adds a recipe from the Meal choice screen, with one new ingredient (TITLE, INGREDIENT).
+appId: io.github.someoneinthe.dishescook
+---
+- tapOn: Add a recipe
+- tapOn: e.g. Pumpkin soup
+- inputText: ${TITLE}
+- tapOn: Search or add an ingredient
+- inputText: ${INGREDIENT}
+- tapOn: Create ${INGREDIENT}
+- hideKeyboard
+- tapOn: Winter
+- tapOn: Starter
+- tapOn: Save recipe
+- extendedWaitUntil:
+    visible: Edit
+    timeout: 10000

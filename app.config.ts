@@ -65,6 +65,8 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
           imageWidth: 240,
         },
       ],
+      // End-to-end test builds only (CI's Maestro job): plain HTTP to the test sync server.
+      ...(process.env.E2E_BUILD === '1' ? ['./plugins/with-e2e-cleartext.js'] : []),
     ],
     scheme: 'dishescook',
     slug: 'dishes-cook',
