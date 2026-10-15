@@ -54,10 +54,18 @@ describe('migrations', () => {
     const journal = JSON.parse(
       readFileSync(path.join(ROOT, 'src/db/migrations/meta/_journal.json'), 'utf8'),
     ) as { entries: { tag: string }[] };
-    const sqlFileList = migrationFiles().filter((file) => file.endsWith('.sql'));
+    // The journal's order is the order they run in; the folder's isn't guaranteed.
+    const sqlFileList = migrationFiles()
+      .filter((file) => file.endsWith('.sql'))
+      .sort((a, b) => a.localeCompare(b));
+    // The app bundles the migrations listed in migrations.js (what `npm run db:generate` writes).
+    const bundled = readFileSync(path.join(ROOT, 'src/db/migrations/migrations.js'), 'utf8');
 
     expect(sqlFileList).toStrictEqual(
       journal.entries.map(({ tag }) => `src/db/migrations/${tag}.sql`),
+    );
+    expect(journal.entries.filter(({ tag }) => !bundled.includes(`'./${tag}.sql'`))).toStrictEqual(
+      [],
     );
   });
 });
