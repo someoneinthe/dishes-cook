@@ -10,6 +10,9 @@ export type FakeSyncServer = Readonly<{
   // Every row of a collection, as stored (tests read and edit them).
   collection: (name: string) => Map<string, StoredRow>;
   fetch: typeof fetch;
+  // Called before each list of a collection is read: tests write rows there, as another phone
+  // would during a pull.
+  setBeforeList: (callback: ((name: string) => void) | undefined) => void;
   // Requests from now on fail as if the server were unreachable (or answer again).
   setReachable: (isReachable: boolean) => void;
   // What /api/dishes-cook/server answers (server/hooks/server-info.pb.js); undefined = a server
@@ -29,6 +32,7 @@ export function createFakeSyncServer(
   let tokenCount = 0;
   let clock = 0;
   let isReachable = true;
+  let beforeList: ((name: string) => void) | undefined;
   let serverInfo: ServerInfo | undefined = {
     migrations: [...SERVER_MIGRATION_LIST],
     minimumAppSyncVersion: SYNC_VERSION,
@@ -117,6 +121,7 @@ export function createFakeSyncServer(
       return request.method === 'PATCH' ? patchRecord(rowMap, id, request) : undefined;
     }
     if (request.method === 'GET') {
+      beforeList?.(name);
       return json(200, { items: request.isSignedIn ? listPage(rowMap, request.query) : [] });
     }
     return request.method === 'POST' ? createRecord(rowMap, request) : undefined;
@@ -145,6 +150,9 @@ export function createFakeSyncServer(
   return {
     collection,
     fetch: fakeFetch,
+    setBeforeList: (callback) => {
+      beforeList = callback;
+    },
     setReachable: (value) => {
       isReachable = value;
     },
@@ -161,13 +169,23 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-// filter=updated >= '…', sort=updated,id, page, perPage: what the app asks for.
+// What the app asks for: sort=updated,id, perPage, page (1 by default), and a filter, either
+// `updated >= '<time>'` or `(updated > '<time>' || (updated = '<time>' && id > '<id>' ))`.
 function listPage(rowMap: Map<string, StoredRow>, query: URLSearchParams): StoredRow[] {
-  const since = /^updated >= '(.*)'$/.exec(query.get('filter') ?? '')?.[1] ?? '';
+  const filter = query.get('filter') ?? '';
+  const since = /^updated >= '([^']*)'$/.exec(filter)?.[1];
+  const after = /^\(updated > '([^']*)' \|\| \(updated = '\1' && id > '([^']*)' \)\)$/.exec(filter);
+  const isListed = (row: StoredRow) => {
+    if (after) {
+      const [, updated = '', id = ''] = after;
+      return row.updated > updated || (row.updated === updated && row.id > id);
+    }
+    return row.updated >= (since ?? '');
+  };
   const perPage = Math.min(Number(query.get('perPage') ?? 30), PER_PAGE_MAX);
   const page = Number(query.get('page') ?? 1);
   return [...rowMap.values()]
-    .filter((row) => row.updated >= since)
+    .filter((row) => isListed(row))
     .toSorted((a, b) => a.updated.localeCompare(b.updated) || a.id.localeCompare(b.id))
     .slice((page - 1) * perPage, page * perPage);
 }

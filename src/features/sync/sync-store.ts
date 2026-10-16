@@ -38,13 +38,18 @@ const state: {
   error?: SyncErrorKind;
   isAppUpdateAvailable: boolean;
   isSyncing: boolean;
+  // Changes on each connect and disconnect: a sync started before stops at its next request and
+  // keeps nothing (token, progress, error), so it can't bring back the server it was syncing with.
+  session: number;
 } = {
   isAppUpdateAvailable: false,
   isSyncing: false,
+  session: 0,
 };
 const listenerSet = new Set<() => void>();
-// The sync running now: callers wait for it instead of starting another.
-const running: { promise?: Promise<void> } = {};
+// The sync running now, and the session it belongs to: callers wait for it instead of starting
+// another, unless its session is over.
+const running: { promise?: Promise<void>; session?: number } = {};
 
 // Signs in, saves the server, then syncs: the phone's recipes and the server's are merged.
 // Throws a SyncError when signing in fails (nothing is saved then).
@@ -52,6 +57,7 @@ export async function connect(
   database: AppDatabase,
   options: Readonly<{ email: string; password: string; serverUrl: string }>,
 ): Promise<void> {
+  state.session += 1;
   const token = await signIn(options);
   setItem(TOKEN_KEY, token);
   write({
@@ -66,6 +72,7 @@ export async function connect(
 
 // Back to the phone's data only. The recipes stay on the phone, and on the server.
 export async function disconnect(): Promise<void> {
+  state.session += 1;
   Storage.removeItemSync(STORAGE_KEY);
   await deleteItemAsync(TOKEN_KEY);
   state.error = undefined;
@@ -87,7 +94,14 @@ export function getSyncState(): SyncState {
 // Pulls the server's changes and pushes the phone's. Does nothing when not connected; never
 // throws (the error is kept in the state). A call during a sync waits for that one.
 export async function syncNow(database: AppDatabase): Promise<void> {
-  running.promise ??= runSyncOnce(database);
+  if (running.promise && running.session !== state.session) {
+    // Started before a connect or disconnect: it stops at its next request.
+    await running.promise;
+  }
+  if (!running.promise) {
+    running.session = state.session;
+    running.promise = runSyncOnce(database);
+  }
   await running.promise;
 }
 
@@ -114,8 +128,7 @@ function read(): StoredSync | undefined {
     }
     return {
       cursors: {
-        pulledUntil:
-          typeof parsed.cursors?.pulledUntil === 'string' ? parsed.cursors.pulledUntil : '',
+        pulledUntil: readPulledUntil(parsed.cursors?.pulledUntil),
         pushedFrom: typeof parsed.cursors?.pushedFrom === 'number' ? parsed.cursors.pushedFrom : 0,
       },
       email: parsed.email,
@@ -128,20 +141,55 @@ function read(): StoredSync | undefined {
   }
 }
 
+// The pull cursors as stored. Before one per table, a single time was kept for both, which could
+// skip rows (ingredients written while recipes were pulled): everything is pulled again once,
+// which only brings what's missing here.
+function readPulledUntil(value: unknown): SyncCursors['pulledUntil'] {
+  const cursors =
+    typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+  return {
+    ingredients: typeof cursors.ingredients === 'string' ? cursors.ingredients : '',
+    recipes: typeof cursors.recipes === 'string' ? cursors.recipes : '',
+  };
+}
+
 async function runSync(database: AppDatabase): Promise<void> {
   const stored = read();
-  const token = getItem(TOKEN_KEY);
-  if (!stored || !token) {
+  if (!stored) {
     return;
   }
+  const token = getItem(TOKEN_KEY);
+  if (!token) {
+    // Connected without a token: the phone was restored from a backup, which keeps the server's
+    // address but not the token (encrypted with a key that stays on the old phone).
+    state.error = 'unauthorized';
+    publish();
+    return;
+  }
+  const session = state.session;
+  const isCurrent = () => state.session === session;
+  // Requests of a session that's over fail: the sync stops there.
+  const fetchInSession: typeof fetch = (input, init) =>
+    isCurrent() ? fetch(input, init) : Promise.reject(new Error('Disconnected'));
   state.isSyncing = true;
   publish();
   try {
     // Renewed first, on every sync: the server treats a refused token as a guest, whose reads
     // come back empty instead of failing. Renewing it fails clearly (and keeps it valid a year).
-    const currentToken = await createSyncApi({ serverUrl: stored.serverUrl, token }).refreshToken();
+    const currentToken = await createSyncApi({
+      fetch: fetchInSession,
+      serverUrl: stored.serverUrl,
+      token,
+    }).refreshToken();
+    if (!isCurrent()) {
+      return;
+    }
     setItem(TOKEN_KEY, currentToken);
-    const api = createSyncApi({ serverUrl: stored.serverUrl, token: currentToken });
+    const api = createSyncApi({
+      fetch: fetchInSession,
+      serverUrl: stored.serverUrl,
+      token: currentToken,
+    });
     // Before any change: a server too old (or an app too old) for the other isn't synced with.
     const versionCheck = checkServerVersion(await api.getServerInfo());
     if (versionCheck === 'server-outdated' || versionCheck === 'app-outdated') {
@@ -149,12 +197,16 @@ async function runSync(database: AppDatabase): Promise<void> {
     }
     state.isAppUpdateAvailable = versionCheck === 'newer-server';
     const cursors = await synchronize(database, api, stored.cursors);
-    // Disconnected while syncing: nothing to save.
-    if (read()) {
-      write({ ...stored, cursors, lastSyncedAt: Date.now() });
+    // Disconnected (or connected again) while syncing: nothing to save.
+    if (!isCurrent()) {
+      return;
     }
+    write({ ...stored, cursors, lastSyncedAt: Date.now() });
     state.error = undefined;
   } catch (error) {
+    if (!isCurrent()) {
+      return;
+    }
     state.error = error instanceof SyncError ? error.kind : 'failed';
     if (!(error instanceof SyncError)) {
       console.error('Sync failed', error);

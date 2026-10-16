@@ -5,6 +5,13 @@ import type { ServerInfo } from './server-version';
 // The sync server's HTTP API (PocketBase, see docs/sync.md), with plain `fetch`: the few calls the
 // sync needs don't justify an SDK.
 
+// Where a page of pulled rows starts, in the (updated, id) order: at a time ('' = from the start),
+// or right after a row (the last one of the previous page). Pages follow each other by key, not
+// by number: a row written meanwhile moves to the end instead of shifting the next pages.
+export type PullPosition = Readonly<
+  { after: Readonly<{ id: string; updated: string }> } | { since: string }
+>;
+
 // What a push sends: the row's fields, without what the server sets.
 export type RowUpload<Table extends SyncedTable> = Omit<ServerRowOf<Table>, 'id' | 'updated'>;
 
@@ -41,12 +48,11 @@ export type SyncApi = Readonly<{
   // The server's migrations and the oldest app it accepts; undefined for a server without that
   // endpoint (installed before it existed): too old for this app.
   getServerInfo: () => Promise<ServerInfo | undefined>;
-  // Rows written on the server at or after `since` ('' = all), oldest first, PAGE_SIZE per page.
+  // Up to PAGE_SIZE rows written on the server from `position` on, oldest first.
   listChanges: <Table extends SyncedTable>(
     table: Table,
-    since: string,
-    page: number,
-  ) => Promise<ServerRowOf<Table>[]>;
+    position: PullPosition,
+  ) => Promise<unknown[]>;
   // A new sign-in token for the same account (tokens expire after a year).
   refreshToken: () => Promise<string>;
   // Marks a row deleted; 'kept-newer' when it's missing or changed later.
@@ -115,23 +121,23 @@ export function createSyncApi(
       // 404: a server installed before the endpoint existed.
       return response.status === 404 ? undefined : readServerInfo(response);
     },
-    listChanges: async <Table extends SyncedTable>(table: Table, since: string, page: number) => {
+    listChanges: async (table, position) => {
       const query = new URLSearchParams({
-        page: String(page),
         perPage: String(PAGE_SIZE),
         skipTotal: '1',
         sort: 'updated,id',
       });
-      if (since) {
-        // >=: rows written in the same millisecond as the last one pulled aren't missed.
-        query.set('filter', ['updated', '>=', `'${since.replaceAll("'", '')}'`].join(' '));
+      const filter = pullFilter(position);
+      if (filter) {
+        query.set('filter', filter);
       }
       const body = await readJson(await send(`${records(table)}?${query.toString()}`));
-      const itemList = (body as { items?: unknown }).items;
+      const itemList: unknown = (body as { items?: unknown }).items;
       if (!Array.isArray(itemList)) {
         throw new SyncError('failed', `Unexpected list of ${table}`);
       }
-      return itemList as ServerRowOf<Table>[];
+      // Never more than asked for, whatever the server sends.
+      return itemList.slice(0, PAGE_SIZE) as unknown[];
     },
     refreshToken: async () => {
       const url = apiUrl(options.serverUrl, 'collections', 'users', 'auth-refresh');
@@ -211,6 +217,26 @@ async function isDuplicateId(response: Response): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// The filter of a pull page (PocketBase's syntax). The values are quoted strings: quotes are
+// removed from them (times and ids never contain any).
+function pullFilter(position: PullPosition): string | undefined {
+  const quoted = (value: string) => `'${value.replaceAll("'", '')}'`;
+  if ('since' in position) {
+    // >=: rows written in the same millisecond as the last one pulled aren't missed.
+    return position.since ? ['updated', '>=', quoted(position.since)].join(' ') : undefined;
+  }
+  const updated = quoted(position.after.updated);
+  return [
+    '(updated >',
+    updated,
+    '|| (updated =',
+    updated,
+    '&& id >',
+    quoted(position.after.id),
+    '))',
+  ].join(' ');
 }
 
 async function readJson(response: Response): Promise<unknown> {
