@@ -49,11 +49,27 @@ describe('ingredient queries', () => {
     expect(findSimilarIngredient(database, 'pâté')).toStrictEqual({ id: pate.id, name: 'Pâte' });
   });
 
+  it('finds an ingredient whose name is in the new one as whole words, the longest first', () => {
+    findOrCreateIngredient(database, 'vin');
+    const redWine = findOrCreateIngredient(database, 'Vin rouge');
+    const salt = findOrCreateIngredient(database, 'Sel');
+
+    expect(findSimilarIngredient(database, 'bouteille de vin rouge assez bon')).toStrictEqual({
+      id: redWine.id,
+      name: 'Vin rouge',
+    });
+    expect(findSimilarIngredient(database, 'Sel, poivre')).toStrictEqual({
+      id: salt.id,
+      name: 'Sel',
+    });
+    expect(findSimilarIngredient(database, 'selle d’agneau')).toBeUndefined();
+  });
+
   it('finds no similar ingredient for the same name or an unrelated one', () => {
     findOrCreateIngredient(database, 'Carrots');
 
     expect(findSimilarIngredient(database, 'carrots')).toBeUndefined();
-    expect(findSimilarIngredient(database, 'carrot cake')).toBeUndefined();
+    expect(findSimilarIngredient(database, 'pumpkin')).toBeUndefined();
   });
 
   it('refuses a blank name', () => {

@@ -1,5 +1,5 @@
 import type { SQL } from 'drizzle-orm';
-import { and, asc, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, notInArray, or, sql } from 'drizzle-orm';
 import type { Page, PageRequest } from '@/db/pagination';
 import type { AppDatabase } from '@/db/types';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
@@ -14,6 +14,9 @@ export type Ingredient = Readonly<{ id: number; name: string }>;
 export type IngredientListItem = Ingredient & Readonly<{ recipeCount: number; sortKey: string }>;
 
 export type RenameResult = 'blank' | 'duplicate' | 'renamed';
+
+// Separators between words of a name, for whole-word comparisons ("Sel, poivre" = "sel poivre").
+const NOT_A_WORD = /[^\p{L}\p{N}']+/gu;
 
 // Number of recipes using the ingredient, read from the (ingredient_id, recipe_id) index. Written
 // out qualified: Drizzle renders `${ingredients.id}` as a bare "id" inside a select.
@@ -91,16 +94,38 @@ export function findOrCreateIngredient(
 }
 
 // An ingredient written another way than this name, but likely the same one: with other accents
-// or in the other number ("carrot" for "carrots", "Poireau" for "poireaux"); the most used one.
-// Plan: a lookup per word form on the (sort_key, id) index.
+// or in the other number ("carrot" for "carrots", "Poireau" for "poireaux"), else one whose name is
+// in this one as whole words ("vin rouge" in "bouteille de vin rouge", "Sel" in "Sel, poivre"):
+// the most used one, the longest name for words.
+// Plan: a lookup per word form on the (sort_key, id) index; for words, a scan of the ingredients
+// (a household's list), each compared with the name's forms, LIMIT 1.
 export function findSimilarIngredient(database: AppDatabase, name: string): Ingredient | undefined {
-  const otherFormWhere = inArray(ingredients.sortKey, toWordForms(name));
+  const formList = toWordForms(name);
   const otherNameWhere = ne(ingredients.nameKey, toNameKey(name));
+  const sameForm = database
+    .select({ id: ingredients.id, name: ingredients.name })
+    .from(ingredients)
+    .where(and(inArray(ingredients.sortKey, formList), otherNameWhere))
+    .orderBy(desc(RECIPE_COUNT), asc(ingredients.sortKey))
+    .limit(1)
+    .get();
+  if (sameForm) {
+    return sameForm;
+  }
+  // ' vin rouge ' inside ' bouteille de vin rouge assez bon ': whole words only.
+  const paddedList = formList.map((form) => ` ${form.replaceAll(NOT_A_WORD, ' ').trim()} `);
+  const inNameWhere = or(
+    ...paddedList.map((padded) => sql`instr(${padded}, ' ' || ${ingredients.sortKey} || ' ') > 0`),
+  );
   return database
     .select({ id: ingredients.id, name: ingredients.name })
     .from(ingredients)
-    .where(and(otherFormWhere, otherNameWhere))
-    .orderBy(desc(RECIPE_COUNT), asc(ingredients.sortKey))
+    .where(and(inNameWhere, otherNameWhere))
+    .orderBy(
+      desc(sql`length(${ingredients.sortKey})`),
+      desc(RECIPE_COUNT),
+      asc(ingredients.sortKey),
+    )
     .limit(1)
     .get();
 }

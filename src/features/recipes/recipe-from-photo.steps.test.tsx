@@ -189,6 +189,14 @@ defineFeature(feature, (test) => {
     });
   });
 
+  test('A read name containing an existing ingredient asks too', ({ given, then, when }) => {
+    given(/^the ingredients "(.*)" exist$/, givenIngredients);
+    when(PHOTO_OF, fillInRecipe);
+    then(/^I am told I already have "(.*)"$/, (name: string) => {
+      expect(screen.getByText(`You already have “${name}”. Use it instead?`)).toBeOnTheScreen();
+    });
+  });
+
   test('The new ingredient can be kept', ({ and, given, then, when }) => {
     given(/^the ingredients "(.*)" exist$/, givenIngredients);
     when(PHOTO_OF, fillInRecipe);

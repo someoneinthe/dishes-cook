@@ -4,7 +4,8 @@ Feature: A recipe from a photo
   The title, the ingredients with their quantities and the steps fill in the form, to check before
   saving. An ingredient that already exists (same name, ignoring case) is used; a new one is only
   created when the recipe is saved. When a new one looks like an existing one (singular or plural,
-  other accents: "carrot" and "Carrots"), its row asks which to keep, and the recipe can't be saved
+  other accents: "carrot" and "Carrots"), or contains one ("bouteille de vin rouge" and "Vin
+  rouge"), its row asks which to keep, and the recipe can't be saved
   until the user chooses.
 
   Scenario: Adding a recipe asks how to start
@@ -35,6 +36,11 @@ Feature: A recipe from a photo
     And I save the recipe
     Then the recipe "Carrot salad" lists "Carrots: 3"
     And the ingredients are "Carrots"
+
+  Scenario: A read name containing an existing ingredient asks too
+    Given the ingredients "Vin rouge" exist
+    When I fill in a new recipe from a photo of "Bœuf bourguignon" listing "1 bouteille de vin rouge"
+    Then I am told I already have "Vin rouge"
 
   Scenario: The new ingredient can be kept
     Given the ingredients "Carrots" exist
