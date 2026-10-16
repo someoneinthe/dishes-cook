@@ -10,15 +10,22 @@ import {
 import { toNameKey } from '@/lib/text';
 import type { ScannedIngredient } from '../recipe-from-text';
 
-export type AddedIngredient = Ingredient & Readonly<{ quantity?: Quantity }>;
+// The scanned ingredients the form adds, and the quantities read (by ingredient id: added ones,
+// and the ones the form already had).
+export type ScanResult = Readonly<{
+  addedList: Ingredient[];
+  quantityList: [number, Quantity][];
+}>;
+
+type Picked = Readonly<{ existing: Ingredient | undefined; scanned: ScannedIngredient }>;
 
 type Resolved = Readonly<{
-  addedList: AddedIngredient[];
   // The last temporary id given (below 0).
   lastId: number;
   newNameList: [number, string][];
   newSimilarList: [number, Ingredient][];
-}>;
+}> &
+  ScanResult;
 
 // Ingredients read from a photo, in the recipe form. One that exists (same name, ignoring case) is
 // used; the others are new, with a temporary id below 0, and created when the recipe is saved.
@@ -42,25 +49,24 @@ export function useNewIngredients(initialList: readonly ScannedIngredient[] = []
   };
 
   return {
-    // The scanned ingredients not in the form yet, as the form adds them.
+    // The scanned ingredients not in the form yet, as the form adds them, and the quantities read.
     add: (
       scannedList: readonly ScannedIngredient[],
       selectedList: readonly Ingredient[],
-    ): AddedIngredient[] => {
+    ): ScanResult => {
       const resolved = resolveScanned(database, scannedList, selectedList, lastId);
-      const { addedList, newNameList, newSimilarList } = resolved;
       setLastId(resolved.lastId);
-      setNameMap((previous) => new Map([...previous, ...newNameList]));
-      setSimilarMap((previous) => new Map([...previous, ...newSimilarList]));
-      return addedList;
+      setNameMap((previous) => new Map([...previous, ...resolved.newNameList]));
+      setSimilarMap((previous) => new Map([...previous, ...resolved.newSimilarList]));
+      return resolved;
     },
     // The existing ingredient replaces the new one (the form swaps them): nothing to create.
     chooseSimilar: (id: number) => {
       forget(id);
       setNameMap((previous) => withoutKey(previous, id));
     },
-    // The ingredients of `initialList`, as the form starts with them.
-    initialAddedList: initial.addedList,
+    // The ingredients of `initialList`, as the form starts with them, and their quantities.
+    initial: initial as ScanResult,
     // Keeps the new ingredient, as read.
     keepNew: forget,
     // Names of the ingredients to create on Save, by temporary id.
@@ -74,35 +80,53 @@ export function useNewIngredients(initialList: readonly ScannedIngredient[] = []
 }
 
 // The scanned ingredients not selected yet: existing ones found by name, the others new (with the
-// existing ingredient they look like, if any), numbered below `lastId`.
+// existing ingredient they look like, if any), numbered below `lastId`. The quantities read are
+// kept for the selected ingredients too.
 function resolveScanned(
   database: AppDatabase,
   scannedList: readonly ScannedIngredient[],
   selectedList: readonly Ingredient[],
   lastId: number,
 ): Resolved {
-  let nextId = lastId;
-  const nameKeySet = new Set(selectedList.map((ingredient) => toNameKey(ingredient.name)));
-  const addedList: AddedIngredient[] = [];
+  const selectedByKey = new Map(
+    selectedList.map((ingredient) => [toNameKey(ingredient.name), ingredient]),
+  );
+  const pickedByKey = new Map<string, Picked>();
+  const quantityList: [number, Quantity][] = [];
+  for (const scanned of scannedList) {
+    const existing = findIngredientByName(database, scanned.name);
+    const nameKey = toNameKey(existing?.name ?? scanned.name);
+    const selected = selectedByKey.get(nameKey);
+    if (selected && scanned.quantity) {
+      quantityList.push([selected.id, scanned.quantity]);
+    }
+    if (!selected && !pickedByKey.has(nameKey)) {
+      pickedByKey.set(nameKey, { existing, scanned });
+    }
+  }
   const newNameList: [number, string][] = [];
   const newSimilarList: [number, Ingredient][] = [];
-  for (const { name, quantity } of scannedList) {
-    const existing = findIngredientByName(database, name);
-    if (nameKeySet.has(toNameKey(existing?.name ?? name))) {
-      continue;
-    }
-    nameKeySet.add(toNameKey(existing?.name ?? name));
-    const ingredient = existing ?? { id: --nextId, name };
+  const addedList = [...pickedByKey.values()].map(({ existing, scanned }) => {
+    const ingredient = existing ?? { id: lastId - newNameList.length - 1, name: scanned.name };
     if (!existing) {
-      newNameList.push([ingredient.id, name]);
-      const similar = findSimilarIngredient(database, name);
+      newNameList.push([ingredient.id, scanned.name]);
+      const similar = findSimilarIngredient(database, scanned.name);
       if (similar) {
         newSimilarList.push([ingredient.id, similar]);
       }
     }
-    addedList.push(quantity ? { ...ingredient, quantity } : ingredient);
-  }
-  return { addedList, lastId: nextId, newNameList, newSimilarList };
+    if (scanned.quantity) {
+      quantityList.push([ingredient.id, scanned.quantity]);
+    }
+    return ingredient;
+  });
+  return {
+    addedList,
+    lastId: lastId - newNameList.length,
+    newNameList,
+    newSimilarList,
+    quantityList,
+  };
 }
 
 function withoutKey<Value>(

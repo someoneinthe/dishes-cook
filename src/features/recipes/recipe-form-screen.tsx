@@ -21,7 +21,6 @@ import { cleanName } from '@/lib/text';
 import { formatAmount, parseAmount, toDisplay, toStored } from '@/lib/units';
 import type { QuantityDraft } from './components/ingredient-quantity-row';
 import type { Recipe } from './db/recipe-queries';
-import type { AddedIngredient } from './hooks/use-new-ingredients';
 import type { ScannedRecipe } from './recipe-from-text';
 import { IngredientQuantityRow } from './components/ingredient-quantity-row';
 import { InstructionsField } from './components/instructions-field';
@@ -61,9 +60,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
   // Every recipe has a course: a main course unless chosen otherwise.
   const [course, setCourse] = useState<Course>(initialRecipe?.course ?? 'main');
   const [selectedIngredientList, setSelectedIngredientList] = useState<Ingredient[]>(
-    () =>
-      initialRecipe?.ingredientList ??
-      newIngredients.initialAddedList.map(({ id, name }) => ({ id, name })),
+    () => initialRecipe?.ingredientList ?? newIngredients.initial.addedList,
   );
   const [instructions, setInstructions] = useState(() =>
     startingText(initialRecipe, scannedRecipe, 'instructions'),
@@ -77,7 +74,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
   const [draftMap, setDraftMap] = useState(() =>
     withScannedDrafts(
       new Map([...savedMap].map(([id, { draft }]) => [id, draft])),
-      newIngredients.initialAddedList,
+      newIngredients.initial.quantityList,
       t,
       units,
     ),
@@ -87,16 +84,19 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
   // Save was pressed while a new ingredient looked like an existing one: the rows ask to choose.
   const [isChoiceMissing, setIsChoiceMissing] = useState(false);
   const { isReading, scan } = useRecipeScan((scanned) => {
-    const addedList = newIngredients.add(scanned.ingredientList, selectedIngredientList);
+    const { addedList, quantityList } = newIngredients.add(
+      scanned.ingredientList,
+      selectedIngredientList,
+    );
     if (!cleanName(title)) {
       setTitle(scanned.title);
       setTitleError(undefined);
     }
     setSelectedIngredientList((previous) => [
       ...previous,
-      ...addedList.map(({ id, name }) => ({ id, name })),
+      ...addedList.filter(({ id }) => previous.every((ingredient) => ingredient.id !== id)),
     ]);
-    setDraftMap((previous) => withScannedDrafts(previous, addedList, t, units));
+    setDraftMap((previous) => withScannedDrafts(previous, quantityList, t, units));
     setInstructions((previous) =>
       [previous.trim(), scanned.instructions].filter(Boolean).join('\n\n'),
     );
@@ -409,18 +409,17 @@ function withoutId(idSet: ReadonlySet<number>, id: number): ReadonlySet<number> 
 }
 
 // The quantities read from a photo, in the reader's units ("2 cups" shows as 473 ml in European
-// units), for the ingredients that have one.
+// units), where no amount was typed: what the user typed stays.
 function withScannedDrafts(
   draftMap: ReadonlyMap<number, QuantityDraft>,
-  addedList: readonly AddedIngredient[],
+  quantityList: readonly (readonly [number, Quantity])[],
   t: Messages,
   units: UnitSystem,
 ): Map<number, QuantityDraft> {
   const next = new Map(draftMap);
-  for (const { id, quantity } of addedList) {
-    if (quantity) {
-      next.set(id, toSaved(toStored(quantity), t, units).draft);
-    }
+  const emptyList = quantityList.filter(([id]) => !draftMap.get(id)?.amountText.trim());
+  for (const [id, quantity] of emptyList) {
+    next.set(id, toSaved(toStored(quantity), t, units).draft);
   }
   return next;
 }

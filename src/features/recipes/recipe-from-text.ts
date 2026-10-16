@@ -202,15 +202,11 @@ export function readRecipeText(blockList: readonly ScannedBlock[]): ScannedRecip
 // The largest line before the ingredients (or among the first lines), the first one on a tie.
 function findTitleIndex(lineList: readonly Line[], ingredientHeadingIndex: number): number {
   const end = ingredientHeadingIndex === -1 ? TITLE_LOOKUP_LINES : ingredientHeadingIndex;
+  const candidateList = lineList.slice(0, end);
   let titleIndex = -1;
-  let titleHeight = 0;
-  for (const [index, line] of lineList.slice(0, end).entries()) {
-    if (line.height <= titleHeight || isInstructionHeading(line.text)) {
-      continue;
-    }
-
-    titleIndex = index;
-    titleHeight = line.height;
+  for (const [index, line] of candidateList.entries()) {
+    const isLarger = line.height > (candidateList[titleIndex]?.height ?? 0);
+    titleIndex = isLarger && !isInstructionHeading(line.text) ? index : titleIndex;
   }
   return titleIndex;
 }
@@ -234,7 +230,6 @@ function isInstructionHeading(text: string): boolean {
   return INSTRUCTION_HEADING_SET.has(headingKey(text));
 }
 
-// "Ingrédients :" -> "Ingrédients".
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -242,38 +237,34 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 // The unit at the start of the text, followed by a space, a dot or the end ("200 gr." / "200 g").
 function matchUnit(text: string): Readonly<{ length: number; unit: Unit }> | undefined {
   const key = toSearchText(text);
-  for (const [alias, unit] of UNIT_ALIAS_LIST) {
-    if (!key.startsWith(alias)) {
-      continue;
-    }
-
+  const isWordStart = (alias: string) => {
     const next = key.charAt(alias.length);
-    if (next === '' || next === ' ' || next === '.' || alias.endsWith('.')) {
-      // toSearchText keeps one character per character here (accents dropped, case lowered).
-      const length = next === '.' ? alias.length + 1 : alias.length;
-      return { length, unit };
-    }
+    return (
+      key.startsWith(alias) && (next === '' || next === ' ' || next === '.' || alias.endsWith('.'))
+    );
+  };
+  const [alias, unit] = UNIT_ALIAS_LIST.find(([candidate]) => isWordStart(candidate)) ?? [];
+  if (alias === undefined || unit === undefined) {
+    return undefined;
   }
-  return undefined;
+  // toSearchText keeps one character per character here (accents dropped, case lowered).
+  return { length: key.charAt(alias.length) === '.' ? alias.length + 1 : alias.length, unit };
 }
 
 // One ingredient per line, each name once, at most MAX_INGREDIENTS.
 function readIngredientLines(lineList: readonly Line[]): ScannedIngredient[] {
-  const ingredientList: ScannedIngredient[] = [];
-  const nameKeySet = new Set<string>();
+  const byNameKey = new Map<string, ScannedIngredient>();
   for (const line of lineList) {
     const ingredient = readIngredientLine(line.text);
     const nameKey = ingredient && toNameKey(ingredient.name);
-    if (!(nameKey && !nameKeySet.has(nameKey) && ingredientList.length < MAX_INGREDIENTS)) {
-      continue;
+    if (nameKey && !byNameKey.has(nameKey)) {
+      byNameKey.set(nameKey, ingredient);
     }
-
-    nameKeySet.add(nameKey);
-    ingredientList.push(ingredient);
   }
-  return ingredientList;
+  return [...byNameKey.values()].slice(0, MAX_INGREDIENTS);
 }
 
+// "Ingrédients :" -> "Ingrédients".
 function stripColon(text: string): string {
   const trimmed = text.trimEnd();
   return trimmed.endsWith(':') ? trimmed.slice(0, -1).trimEnd() : trimmed;

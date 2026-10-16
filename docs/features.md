@@ -62,10 +62,13 @@ A new recipe can be filled in from a photo of a recipe page, taken with the came
 
 ### What I typed before stays
 
-- **Given** I typed the title "Grandma's soup" and the steps "Serve hot."
-- **When** I fill in the recipe from a photo of "Leek soup" listing "2 leeks"
+- **Given** the ingredients "Leek" exist
+- **And** I typed the title "Grandma's soup", the steps "Serve hot." and "Leek" with the quantity "3"
+- **When** I fill in the recipe from a photo of "Leek soup" listing "2 leek, 1 l water"
 - **Then** the title is still "Grandma's soup"
 - **And** the steps read "Serve hot." then the photo's steps
+- **And** "Leek" is listed once, with the quantity "3"
+- **And** "water" has the quantity "1"
 
 ### The camera needs my permission
 

@@ -89,25 +89,23 @@ defineFeature(feature, (test) => {
   const saveTheRecipe = async () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
   };
-  const recipeLists = async (title: string, lines: string) => {
+  // The saved recipe as its screen shows it: title, then the lines of its ingredient list.
+  const shownRecipe = async () => {
     const [recipe] = firstRecipePage(connection.db);
-
-    expect(recipe?.title).toBe(title);
-
     await renderWithDatabase(
       <RecipeDetails recipe={getRecipe(connection.db, recipe?.id ?? -1)!} />,
       connection,
     );
-
-    expect(
-      screen.getAllByText(/^• /).map((element) => element.props.children as string),
-    ).toStrictEqual(lines.split(', ').map((line) => `• ${line}`));
+    return {
+      lineList: screen.getAllByText(/^• /).map((element) => element.props.children as string),
+      title: recipe?.title,
+    };
   };
-  const ingredientsAre = (names: string) => {
-    expect(firstIngredientPage(connection.db).map(({ name }) => name)).toStrictEqual(
-      names ? names.split(', ') : [],
-    );
-  };
+  const expectedRecipe = (title: string, lines: string) => ({
+    lineList: lines.split(', ').map((line) => `• ${line}`),
+    title,
+  });
+  const ingredientNames = () => firstIngredientPage(connection.db).map(({ name }) => name);
 
   test('Adding a recipe asks how to start', ({ then, when }) => {
     when('I add a recipe from the recipe list', async () => {
@@ -149,13 +147,19 @@ defineFeature(feature, (test) => {
     given(/^the ingredients "(.*)" exist$/, givenIngredients);
     when(PHOTO_OF, fillInRecipe);
     and('I save the recipe', saveTheRecipe);
-    then(/^the recipe "(.*)" lists "(.*)"$/, recipeLists);
-    and(/^the ingredients are "(.*)"$/, ingredientsAre);
+    then(/^the recipe "(.*)" lists "(.*)"$/, async (title: string, lines: string) => {
+      await expect(shownRecipe()).resolves.toStrictEqual(expectedRecipe(title, lines));
+    });
+    and(/^the ingredients are "(.*)"$/, (names: string) => {
+      expect(ingredientNames()).toStrictEqual(names.split(', '));
+    });
   });
 
   test('New ingredients are only created when the recipe is saved', ({ then, when }) => {
     when(PHOTO_OF, fillInRecipe);
-    then('no ingredient exists yet', () => ingredientsAre(''));
+    then('no ingredient exists yet', () => {
+      expect(ingredientNames()).toStrictEqual([]);
+    });
   });
 
   test('An ingredient like an existing one asks which to keep', ({ and, given, then, when }) => {
@@ -175,8 +179,12 @@ defineFeature(feature, (test) => {
       await fireEvent.press(screen.getByRole('button', { name: `Use “${name}”` }));
     });
     and('I save the recipe', saveTheRecipe);
-    then(/^the recipe "(.*)" lists "(.*)"$/, recipeLists);
-    and(/^the ingredients are "(.*)"$/, ingredientsAre);
+    then(/^the recipe "(.*)" lists "(.*)"$/, async (title: string, lines: string) => {
+      await expect(shownRecipe()).resolves.toStrictEqual(expectedRecipe(title, lines));
+    });
+    and(/^the ingredients are "(.*)"$/, (names: string) => {
+      expect(ingredientNames()).toStrictEqual(names.split(', '));
+    });
   });
 
   test('The new ingredient can be kept', ({ and, given, then, when }) => {
@@ -188,24 +196,31 @@ defineFeature(feature, (test) => {
       );
     });
     and('I save the recipe', saveTheRecipe);
-    then(/^the recipe "(.*)" lists "(.*)"$/, recipeLists);
-    and(/^the ingredients are "(.*)"$/, ingredientsAre);
+    then(/^the recipe "(.*)" lists "(.*)"$/, async (title: string, lines: string) => {
+      await expect(shownRecipe()).resolves.toStrictEqual(expectedRecipe(title, lines));
+    });
+    and(/^the ingredients are "(.*)"$/, (names: string) => {
+      expect(ingredientNames()).toStrictEqual(names.split(', '));
+    });
   });
 
   test('What I typed before stays', ({ and, given, then, when }) => {
-    given(
-      /^I typed the title "(.*)" and the steps "(.*)"$/,
-      async (title: string, steps: string) => {
+    given(/^the ingredients "(.*)" exist$/, givenIngredients);
+    and(
+      /^I typed the title "(.*)", the steps "(.*)" and "(.*)" with the quantity "(.*)"$/,
+      async (title: string, steps: string, name: string, amount: string) => {
         await openNewRecipe();
         await fireEvent.changeText(screen.getByLabelText('Title'), title);
         await fireEvent.changeText(screen.getByLabelText('Recipe text'), steps);
+        await fireEvent.press(screen.getByRole('button', { name: `Add ${name}` }));
+        await fireEvent.changeText(screen.getByLabelText(`Quantity of ${name}`), amount);
       },
     );
     when(
       /^I fill in the recipe from a photo of "(.*)" listing "(.*)"$/,
       async (title: string, lines: string) => {
         await scanPhoto(readPage(title, lines.split(', ')));
-        await screen.findByText('leeks');
+        await screen.findByText('water');
       },
     );
     then(/^the title is still "(.*)"$/, (title: string) => {
@@ -213,6 +228,13 @@ defineFeature(feature, (test) => {
     });
     and(/^the steps read "(.*)" then the photo's steps$/, (steps: string) => {
       expect(screen.getByLabelText('Recipe text')).toHaveDisplayValue(`${steps}\n\n${PHOTO_STEPS}`);
+    });
+    and(/^"(.*)" is listed once, with the quantity "(.*)"$/, (name: string, amount: string) => {
+      expect(screen.getAllByLabelText(`Quantity of ${name}`)).toHaveLength(1);
+      expect(screen.getByLabelText(`Quantity of ${name}`)).toHaveDisplayValue(amount);
+    });
+    and(/^"(.*)" has the quantity "(.*)"$/, (name: string, amount: string) => {
+      expect(screen.getByLabelText(`Quantity of ${name}`)).toHaveDisplayValue(amount);
     });
   });
 
