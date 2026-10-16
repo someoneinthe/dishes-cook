@@ -11,6 +11,7 @@ import { getPagingProps } from '@/components/paging-props';
 import { screenScrollProps } from '@/components/screen-scroll-props';
 import { TextField } from '@/components/text-field';
 import { useFocusRing } from '@/components/use-focus-ring';
+import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import type { RecipeFilterValues } from './components/recipe-filters';
@@ -50,7 +51,7 @@ export function RecipesScreen() {
     <>
       <Drawer.Screen
         options={{
-          headerRight: newRecipeHeaderAction,
+          headerRight: recipesHeaderActions,
         }}
       />
       <FlatList
@@ -119,7 +120,12 @@ function describeRecipeRow(item: RecipeListItem, t: Messages): string {
 }
 
 // Read-only on a TV: recipes are written on the phone.
-const newRecipeHeaderAction = isTv ? undefined : headerActions(<NewRecipeButton />);
+const recipesHeaderActions = headerActions(
+  <>
+    <SyncStatusButton />
+    {!isTv && <NewRecipeButton />}
+  </>,
+);
 
 // Opens the form of a new recipe.
 function NewRecipeButton() {

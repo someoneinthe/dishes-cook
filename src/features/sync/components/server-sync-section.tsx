@@ -14,10 +14,15 @@ import type { SyncState } from '../sync-store';
 import { normalizeServerUrl, serverHost, SyncError } from '../sync-api';
 import { connect, disconnect, syncNow, useSyncState } from '../sync-store';
 
+type ServerSyncSectionProps = Readonly<{
+  // Opened from the header's sync status on a TV: the remote's focus goes to Sync now.
+  isSyncNowFocused?: boolean;
+}>;
+
 type Storage = 'local' | 'server';
 
 // Settings › Data storage: on this device only, or synced with a server (address + account).
-export function ServerSyncSection() {
+export function ServerSyncSection({ isSyncNowFocused = false }: ServerSyncSectionProps) {
   const t = useMessages();
   const database = useDatabase();
   const syncState = useSyncState();
@@ -47,7 +52,13 @@ export function ServerSyncSection() {
         optionList={storageOptionList(t)}
         value={isConnected || isConnectFormShown ? 'server' : 'local'}
       />
-      {isConnected && <SyncStatus onSyncNow={() => void syncNow(database)} state={syncState} />}
+      {isConnected && (
+        <SyncStatus
+          isSyncNowFocused={isSyncNowFocused}
+          onSyncNow={() => void syncNow(database)}
+          state={syncState}
+        />
+      )}
       {!isConnected && isConnectFormShown && <ConnectForm />}
       {!isConnected && !isConnectFormShown && (
         <Text style={styles.text}>{t.sync.localOnlyDescription}</Text>
@@ -154,7 +165,11 @@ function storageOptionList(t: Messages): readonly SegmentedOption<Storage>[] {
   ];
 }
 
-function SyncStatus({ onSyncNow, state }: Readonly<{ onSyncNow: () => void; state: SyncState }>) {
+function SyncStatus({
+  isSyncNowFocused,
+  onSyncNow,
+  state,
+}: Readonly<{ isSyncNowFocused: boolean; onSyncNow: () => void; state: SyncState }>) {
   const t = useMessages();
   const { connection, error, isAppUpdateAvailable, isSyncing, lastSyncedAt } = state;
   if (!connection) {
@@ -185,6 +200,7 @@ function SyncStatus({ onSyncNow, state }: Readonly<{ onSyncNow: () => void; stat
       <Button
         icon="sync"
         isDisabled={isSyncing}
+        isTvPreferredFocus={isSyncNowFocused}
         label={t.sync.syncNow}
         onPress={onSyncNow}
         variant="secondary"

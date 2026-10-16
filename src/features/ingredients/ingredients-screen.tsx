@@ -10,6 +10,7 @@ import { getPagingProps } from '@/components/paging-props';
 import { TextField } from '@/components/text-field';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useDatabase } from '@/db/database-context';
+import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import { cleanName } from '@/lib/text';
@@ -73,14 +74,17 @@ function IngredientCatalog() {
         options={{
           // Adds what's typed in the search field (Enter does the same).
           headerRight: headerActions(
-            <Button
-              accessibilityHint={t.ingredients.addHint}
-              accessibilityLabel={t.ingredients.addLabel}
-              icon="plus"
-              isIconOnly
-              label={t.ingredients.add}
-              onPress={addIngredient}
-            />,
+            <>
+              <SyncStatusButton />
+              <Button
+                accessibilityHint={t.ingredients.addHint}
+                accessibilityLabel={t.ingredients.addLabel}
+                icon="plus"
+                isIconOnly
+                label={t.ingredients.add}
+                onPress={addIngredient}
+              />
+            </>,
           ),
         }}
       />

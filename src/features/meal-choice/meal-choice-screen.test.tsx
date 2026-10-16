@@ -5,7 +5,7 @@ import { deleteRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { MealChoiceScreen } from './meal-choice-screen';
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+jest.mock('expo-router', () => ({ router: { push: jest.fn() }, useIsFocused: () => true }));
 
 describe('mealChoiceScreen', () => {
   let connection: DatabaseConnection;

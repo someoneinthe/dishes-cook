@@ -21,6 +21,7 @@ jest.mock('expo-router', () => ({
   Stack: {
     Screen: jest.requireActual<NavigationMock>('@/test/navigation-mock').ScreenWithHeaderButtons,
   },
+  useIsFocused: () => true,
   useLocalSearchParams: jest.fn(),
 }));
 

@@ -224,6 +224,22 @@ export const fr: Messages = {
     serverAddressHint: 'Par exemple recettes.exemple.fr',
     signInDescription:
       'Connectez-vous avec le compte créé sur votre serveur. L’appareil garde ses données et les fusionne avec celles du serveur.',
+    statusFailed: 'Échec de la synchronisation',
+    statusFailedLabel: (pendingCount: number) =>
+      pendingCount === 0
+        ? 'Échec de la synchronisation'
+        : plural(
+            pendingCount,
+            'Échec de la synchronisation, 1 modification attend sur cet appareil',
+            `Échec de la synchronisation, ${pendingCount} modifications attendent sur cet appareil`,
+          ),
+    statusHint: 'Ouvre les réglages de synchronisation',
+    statusWaiting: (pendingCount: number) =>
+      plural(
+        pendingCount,
+        `${pendingCount} modification à synchroniser`,
+        `${pendingCount} modifications à synchroniser`,
+      ),
     stopSyncing: 'Arrêter',
     stopSyncingMessage: 'Vos données restent sur cet appareil et sur le serveur.',
     stopSyncingTitle: `Arrêter la synchronisation avec le serveur${NARROW_SPACE}?`,

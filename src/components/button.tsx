@@ -1,6 +1,7 @@
 import { Pressable, Text } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { usePreferences } from '@/features/settings/preferences';
+import { isTv } from '@/lib/device';
 import type { IconName } from './icon';
 import { Icon } from './icon';
 import { useFocusRing } from './use-focus-ring';
@@ -14,6 +15,10 @@ type ButtonProps = Readonly<
     isDisabled?: boolean;
     // For a button that shows or hides a section: read as expanded or collapsed.
     isExpanded?: boolean;
+    // Takes the remote's focus on a TV when it turns true, its view being on screen. Ignored on a
+    // phone: it would make the button focusable by touch, so a first tap would focus it instead of
+    // pressing it.
+    isTvPreferredFocus?: boolean;
     // Read by screen readers; shown unless `isIconOnly`.
     label: string;
     onPress: () => void;
@@ -49,6 +54,7 @@ export function Button({
   isDisabled = false,
   isExpanded,
   isIconOnly = false,
+  isTvPreferredFocus = false,
   label,
   onPress,
   variant = 'primary',
@@ -75,6 +81,9 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, expanded: isExpanded }}
       disabled={isDisabled}
+      // Android requests the focus when this turns true (the typings only mention Apple TV).
+      // eslint-disable-next-line sonarjs/deprecation
+      hasTVPreferredFocus={isTv && isTvPreferredFocus}
       onPress={onPress}
       {...focusProps}
       style={({ pressed }) => [styles.button, (pressed || isDisabled) && styles.dimmed, focusStyle]}

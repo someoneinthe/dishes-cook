@@ -1,10 +1,12 @@
-import { cleanup, fireEvent, screen } from '@testing-library/react-native';
+import { act, cleanup, fireEvent, screen } from '@testing-library/react-native';
 import { asc } from 'drizzle-orm';
+import { router } from 'expo-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import type { DatabaseConnection } from '@/db/types';
 import { recipes } from '@/db/schema';
 import { saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { SettingsScreen } from '@/features/settings/settings-screen';
+import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { spyOnAlert } from '@/test/alert';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
@@ -12,6 +14,13 @@ import { SERVER_MIGRATION_LIST, SYNC_VERSION } from './server-version';
 import { createSyncApi, signIn } from './sync-api';
 import { INITIAL_CURSORS, synchronize } from './sync-engine';
 import { connect, disconnect, getSyncState } from './sync-store';
+
+jest.mock('expo-router', () => ({
+  router: { navigate: jest.fn(), setParams: jest.fn() },
+  useFocusEffect: jest.fn(),
+  useIsFocused: () => true,
+  useLocalSearchParams: () => ({}),
+}));
 
 const feature = loadFeature('./server-sync.feature', { loadRelativePath: true });
 
@@ -37,10 +46,21 @@ defineFeature(feature, (test) => {
   });
 
   const theSettingsAreOpen = async () => {
-    await renderWithDatabase(<SettingsScreen />, connection);
+    // With the sync status the header of the menu's other screens shows.
+    await renderWithDatabase(
+      <>
+        <SyncStatusButton />
+        <SettingsScreen />
+      </>,
+      connection,
+    );
   };
-  const theRecipeOnThisPhone = (title: string) => {
-    saveRecipe(connection.db, { ingredientIdList: [], instructions: '', season: 'both', title });
+  // In act: the header's count of waiting changes is refreshed after the write.
+  const theRecipeOnThisPhone = async (title: string) => {
+    await act(async () => {
+      saveRecipe(connection.db, { ingredientIdList: [], instructions: '', season: 'both', title });
+      await Promise.resolve();
+    });
   };
   const thePhoneIsSyncedWithTheServer = async () => {
     await connect(connection.db, { ...ACCOUNT, serverUrl: SERVER_URL });
@@ -198,6 +218,50 @@ defineFeature(feature, (test) => {
     and('the phone is still synced', () => {
       expect(getSyncState().error).toBeUndefined();
       expect(screen.getByText(/^Last sync: /)).toBeOnTheScreen();
+    });
+  });
+
+  test('Changes waiting for the server show in the header', ({ and, given, then, when }) => {
+    given('the phone is synced with the server', thePhoneIsSyncedWithTheServer);
+    and(/^the recipe "(.*)" on this phone$/, theRecipeOnThisPhone);
+    then('the header shows 1 change to sync', async () => {
+      await expect(
+        screen.findByRole('button', { name: '1 change to sync' }),
+      ).resolves.toBeOnTheScreen();
+    });
+    when('I ask for a sync', requestSync);
+    then('the header shows nothing about the sync', async () => {
+      await expect(screen.findByText(/^Last sync: /)).resolves.toBeOnTheScreen();
+
+      expect(screen.queryByRole('button', { name: /to sync$|^Sync failed/ })).toBeNull();
+    });
+  });
+
+  test('A failed sync shows in the header, which leads to the settings', ({
+    and,
+    given,
+    then,
+    when,
+  }) => {
+    given('the phone is synced with the server', thePhoneIsSyncedWithTheServer);
+    and("the server can't be reached", () => {
+      server.setReachable(false);
+    });
+    and(/^the recipe "(.*)" on this phone$/, theRecipeOnThisPhone);
+    when('I ask for a sync', requestSync);
+    then('the header shows that the sync failed with 1 change waiting', async () => {
+      await expect(
+        screen.findByRole('button', { name: 'Sync failed, 1 change waits on this device' }),
+      ).resolves.toBeOnTheScreen();
+    });
+    when('I press the sync status in the header', async () => {
+      await fireEvent.press(screen.getByRole('button', { name: /^Sync failed/ }));
+    });
+    then('the data storage settings open', () => {
+      expect(router.navigate).toHaveBeenCalledWith({
+        params: { section: 'sync' },
+        pathname: '/settings',
+      });
     });
   });
 

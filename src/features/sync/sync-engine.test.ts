@@ -1,11 +1,13 @@
 import type { Phone } from '@/test/sync-scenarios';
+import { recipes } from '@/db/schema';
+import { deleteRecipe } from '@/features/recipes/db/recipe-queries';
 import { toIngredientSyncId } from '@/lib/sync-id';
 import { toNameKey } from '@/lib/text';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
 import { addRecipe, describeSyncScenarios, recipeOf, titlesOf } from '@/test/sync-scenarios';
 import { createTestConnection } from '@/test/test-database';
 import { createSyncApi, signIn } from './sync-api';
-import { INITIAL_CURSORS, synchronize } from './sync-engine';
+import { countPendingChanges, INITIAL_CURSORS, synchronize } from './sync-engine';
 
 const ACCOUNT = { email: 'home@example.org', password: 'test-password' };
 const SERVER_URL = 'https://sync.example.org';
@@ -110,6 +112,43 @@ describe('synchronize', () => {
       ),
     ).rejects.toMatchObject({ kind: 'unreachable' });
     expect(titlesOf(phoneA)).toStrictEqual(['Soup']);
+  });
+
+  it('counts the changes the next sync sends', async () => {
+    const pendingCount = (phone: Phone) => countPendingChanges(phone.db, phone.cursors.pushedFrom);
+    // Syncs started a millisecond later: a change made in the same millisecond as a sync's start is
+    // pushed again by the next one, so it would still count.
+    const syncLater = async (phone: Phone) => {
+      const api = createSyncApi({
+        fetch: server.fetch,
+        serverUrl: SERVER_URL,
+        token: await signInPhone(),
+      });
+      phone.cursors = await synchronize(phone.db, api, phone.cursors, () => Date.now() + 1);
+    };
+    const id = addRecipe(phoneA, 'Soup', ['Leek']);
+
+    // The recipe and its new ingredient.
+    expect(pendingCount(phoneA)).toBe(2);
+
+    await syncLater(phoneA);
+    await syncLater(phoneB);
+
+    expect(pendingCount(phoneA)).toBe(0);
+    // Pulled from the server: nothing to send back.
+    expect(pendingCount(phoneB)).toBe(0);
+
+    // Pulled from a phone whose clock is a minute ahead: not a change of this one.
+    phoneB.db
+      .update(recipes)
+      .set({ updatedAt: Date.now() + 60_000 })
+      .run();
+
+    expect(pendingCount(phoneB)).toBe(0);
+
+    deleteRecipe(phoneA.db, id);
+
+    expect(pendingCount(phoneA)).toBe(1);
   });
 
   // The same scenarios run against a real PocketBase in sync-engine.pocketbase.test.ts.

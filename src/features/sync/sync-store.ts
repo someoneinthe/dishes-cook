@@ -6,7 +6,7 @@ import type { SyncErrorKind } from './sync-api';
 import type { SyncCursors } from './sync-engine';
 import { checkServerVersion } from './server-version';
 import { createSyncApi, signIn, SyncError } from './sync-api';
-import { INITIAL_CURSORS, synchronize } from './sync-engine';
+import { countPendingChanges, INITIAL_CURSORS, synchronize } from './sync-engine';
 
 // The sync server the phone is connected to, and how the last sync went. Without a server, the
 // recipes stay on the phone only. The address, email and sync progress are kept in expo-sqlite's
@@ -71,6 +71,12 @@ export async function disconnect(): Promise<void> {
   state.error = undefined;
   state.isAppUpdateAvailable = false;
   publish();
+}
+
+// How many changes wait on the phone for the next sync; 0 when not connected.
+export function getPendingChangeCount(database: AppDatabase): number {
+  const stored = read();
+  return stored ? countPendingChanges(database, stored.cursors.pushedFrom) : 0;
 }
 
 export function getSyncState(): SyncState {
