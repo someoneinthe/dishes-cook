@@ -1,12 +1,20 @@
 import type { Locale } from 'expo-localization';
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { useLocales } from 'expo-localization';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 import { Appearance } from 'react-native';
 import { UnistylesRuntime } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { AppLanguage } from '@/test/app-language';
 import { getPreferences, updatePreferences } from './preferences';
 import { SettingsScreen } from './settings-screen';
+
+jest.mock('expo-router', () => ({
+  router: { setParams: jest.fn() },
+  useFocusEffect: jest.fn(),
+  useLocalSearchParams: jest.fn(() => ({})),
+}));
 
 // Tested on its own (server-sync-section.test.tsx); it needs a database these tests don't.
 jest.mock('../sync/components/server-sync-section', () => ({ ServerSyncSection: () => null }));
@@ -23,6 +31,22 @@ describe('settingsScreen', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it('scrolls to Data storage when opened from the header’s sync status', async () => {
+    jest.mocked(useLocalSearchParams).mockReturnValue({ section: 'sync' });
+    // Focused as soon as shown.
+    jest.mocked(useFocusEffect).mockImplementation((effect) => {
+      useEffect(effect, [effect]);
+    });
+    await render(<SettingsScreen />);
+
+    await fireEvent(screen.getByTestId('data-storage'), 'layout', {
+      nativeEvent: { layout: { height: 200, width: 400, x: 0, y: 600 } },
+    });
+
+    // Scrolled once: opening Settings again starts at the top.
+    expect(router.setParams).toHaveBeenCalledWith({ section: undefined });
   });
 
   it('forces the dark theme', async () => {

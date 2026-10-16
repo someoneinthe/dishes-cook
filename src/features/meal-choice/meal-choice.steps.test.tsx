@@ -7,7 +7,7 @@ import { saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { MealChoiceScreen } from './meal-choice-screen';
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+jest.mock('expo-router', () => ({ router: { push: jest.fn() }, useIsFocused: () => true }));
 
 const feature = loadFeature('./meal-choice.feature', { loadRelativePath: true });
 

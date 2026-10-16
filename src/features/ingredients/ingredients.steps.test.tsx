@@ -6,6 +6,9 @@ import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { findOrCreateIngredient } from './db/ingredient-queries';
 import { IngredientsScreen } from './ingredients-screen';
 
+// The header's sync status reads whether its screen is shown.
+jest.mock('expo-router', () => ({ useIsFocused: () => true }));
+
 const feature = loadFeature('./ingredients.feature', { loadRelativePath: true });
 
 defineFeature(feature, (test) => {

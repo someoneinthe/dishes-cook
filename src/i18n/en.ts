@@ -257,6 +257,18 @@ export const en = {
     serverAddressHint: 'For example recipes.example.org',
     signInDescription:
       'Sign in with the account created on your server. The device keeps its data and merges it with the server’s.',
+    statusFailed: 'Sync failed',
+    statusFailedLabel: (pendingCount: number) =>
+      pendingCount === 0
+        ? 'Sync failed'
+        : plural(
+            pendingCount,
+            'Sync failed, 1 change waits on this device',
+            `Sync failed, ${pendingCount} changes wait on this device`,
+          ),
+    statusHint: 'Opens the sync settings',
+    statusWaiting: (pendingCount: number) =>
+      plural(pendingCount, '1 change to sync', `${pendingCount} changes to sync`),
     stopSyncing: 'Stop syncing',
     stopSyncingMessage: 'Your data stays on this device and on the server.',
     stopSyncingTitle: 'Stop syncing with the server?',

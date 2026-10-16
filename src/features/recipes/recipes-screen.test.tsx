@@ -8,7 +8,7 @@ import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { saveRecipe } from './db/recipe-queries';
 import { RecipesScreen } from './recipes-screen';
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+jest.mock('expo-router', () => ({ router: { push: jest.fn() }, useIsFocused: () => true }));
 
 describe('recipesScreen', () => {
   let connection: DatabaseConnection;

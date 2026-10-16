@@ -1,3 +1,5 @@
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useRef, useState } from 'react';
 import { ScrollView, Switch, Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { SegmentedOption } from '@/components/segmented-control';
@@ -18,11 +20,25 @@ export function SettingsScreen() {
   const { colorScheme, isShowingButtonLabels, language, units } = usePreferences();
   // Switch colors are props, not styles.
   const { theme } = useUnistyles();
+  const scrollViewRef = useRef<ScrollView>(null);
+  // Opened from the header's sync status: scrolled to Data storage, which tells more.
+  const { section } = useLocalSearchParams<{ section?: 'sync' }>();
+  const [syncSectionY, setSyncSectionY] = useState<number>();
+  // Kept stable between renders by React Compiler: runs again only when its values change.
+  useFocusEffect(() => {
+    if (section !== 'sync' || syncSectionY === undefined) {
+      return;
+    }
+    scrollViewRef.current?.scrollTo({ animated: false, y: syncSectionY });
+    // Done: opening Settings again (from the menu) starts at the top as usual.
+    router.setParams({ section: undefined });
+  });
 
   return (
     <ScrollView
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      ref={scrollViewRef}
       style={styles.screen}
       {...screenScrollProps}
     >
@@ -55,7 +71,9 @@ export function SettingsScreen() {
           value={isShowingButtonLabels}
         />
       </View>
-      <ServerSyncSection />
+      <View onLayout={(event) => setSyncSectionY(event.nativeEvent.layout.y)} testID="data-storage">
+        <ServerSyncSection isSyncNowFocused={isTv && section === 'sync'} />
+      </View>
     </ScrollView>
   );
 }

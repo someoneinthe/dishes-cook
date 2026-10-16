@@ -16,6 +16,7 @@ import {
 } from '@/features/recipes/components/recipe-filters';
 import { pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
 import { useRecipe, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
+import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import { SuggestionCard } from './components/suggestion-card';
@@ -70,7 +71,14 @@ export function MealChoiceScreen() {
     );
   const header = (
     <Drawer.Screen
-      options={{ headerRight: headerButton ? headerActions(headerButton) : undefined }}
+      options={{
+        headerRight: headerActions(
+          <>
+            <SyncStatusButton />
+            {headerButton}
+          </>,
+        ),
+      }}
     />
   );
 

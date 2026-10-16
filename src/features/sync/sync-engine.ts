@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, ne, or, sql } from 'drizzle-orm';
+import { and, asc, count, eq, gt, inArray, lte, ne, or, sql } from 'drizzle-orm';
 import type { Course, Season, SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { Quantity } from '@/lib/units';
@@ -33,6 +33,25 @@ export type SyncCursors = Readonly<{
 export const INITIAL_CURSORS: SyncCursors = { pulledUntil: '', pushedFrom: 0 };
 
 type PushCursor = Readonly<{ id: number; updatedAt: number }>;
+
+// How many changes wait for the next sync: the deletions, and the rows changed since the last push,
+// counted in SQL. Rows dated after `now` aren't this phone's changes (its own are dated by its
+// clock): they were pulled from a phone whose clock is ahead, and counting them would show changes
+// waiting after a sync that worked. The next sync pushes them back anyway, harmlessly.
+export function countPendingChanges(
+  database: AppDatabase,
+  pushedFrom: number,
+  now: number = Date.now(),
+): number {
+  const countChanged = (table: typeof ingredients | typeof recipes) =>
+    database
+      .select({ count: count() })
+      .from(table)
+      .where(and(changedSince(table, pushedFrom, undefined), lte(table.updatedAt, now)))
+      .get()?.count ?? 0;
+  const deletionCount = database.select({ count: count() }).from(syncDeletions).get()?.count ?? 0;
+  return deletionCount + countChanged(ingredients) + countChanged(recipes);
+}
 
 export async function synchronize(
   database: AppDatabase,

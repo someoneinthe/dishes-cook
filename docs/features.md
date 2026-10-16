@@ -11,7 +11,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [On a TV](#on-a-tv): 4 scenarios
 - [Recipe list](#recipe-list): 9 scenarios
 - [Recipes](#recipes): 3 scenarios
-- [Server sync](#server-sync): 8 scenarios
+- [Server sync](#server-sync): 10 scenarios
 
 ## Ingredient quantities
 
@@ -348,6 +348,24 @@ Your data (recipes and ingredients today) is kept on the phone. It can also be s
 - **When** I ask for a sync
 - **Then** I am told that an app update exists
 - **And** the phone is still synced
+
+### Changes waiting for the server show in the header
+
+- **Given** the phone is synced with the server
+- **And** the recipe "Pie" on this phone
+- **Then** the header shows 1 change to sync
+- **When** I ask for a sync
+- **Then** the header shows nothing about the sync
+
+### A failed sync shows in the header, which leads to the settings
+
+- **Given** the phone is synced with the server
+- **And** the server can't be reached
+- **And** the recipe "Pie" on this phone
+- **When** I ask for a sync
+- **Then** the header shows that the sync failed with 1 change waiting
+- **When** I press the sync status in the header
+- **Then** the data storage settings open
 
 ### Stopping the sync keeps the data
 
