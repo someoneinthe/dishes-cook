@@ -1,5 +1,6 @@
 import type { Rect, Text, TextLine } from '@infinitered/react-native-mlkit-text-recognition';
 import { recognizeText } from '@infinitered/react-native-mlkit-text-recognition';
+import { Directory, Paths } from 'expo-file-system';
 import {
   launchCameraAsync,
   launchImageLibraryAsync,
@@ -10,6 +11,10 @@ import { Alert } from 'react-native';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { ScannedBlock, ScannedRecipe } from '../recipe-from-text';
 import { readRecipeText } from '../recipe-from-text';
+
+// The photo picker copies the taken or chosen photo, and its crop, to this folder of the app's
+// cache, and leaves them there.
+const PICKED_PHOTO_FOLDER = 'ImagePicker';
 
 // Where the photo comes from: the camera, or the phone's photos.
 export type PhotoSource = 'camera' | 'library';
@@ -25,7 +30,8 @@ export function toScannedBlocks(text: Text): ScannedBlock[] {
 }
 
 // A recipe read from a photo, taken or chosen by the user: the text is recognized on the phone
-// (ML Kit, no network) and the photo isn't kept. `onRead` gets the recipe when some text was found.
+// (ML Kit, no network) and the photo isn't kept: the picker's copies are deleted once read, or
+// when the reading failed or was cancelled. `onRead` gets the recipe when some text was found.
 export function useRecipeScan(onRead: (recipe: ScannedRecipe) => void) {
   const t = useMessages();
   const [isReading, setIsReading] = useState(false);
@@ -44,15 +50,15 @@ export function useRecipeScan(onRead: (recipe: ScannedRecipe) => void) {
     }
     // Cropping to the recipe leaves out the rest of the page (another recipe, a second column).
     const options = { allowsEditing: true, mediaTypes: 'images' as const };
-    const result = await (source === 'camera'
-      ? launchCameraAsync(options)
-      : launchImageLibraryAsync(options));
-    const uri = result.canceled ? undefined : result.assets[0]?.uri;
-    if (uri === undefined) {
-      return;
-    }
-    setIsReading(true);
     try {
+      const result = await (source === 'camera'
+        ? launchCameraAsync(options)
+        : launchImageLibraryAsync(options));
+      const uri = result.canceled ? undefined : result.assets[0]?.uri;
+      if (uri === undefined) {
+        return;
+      }
+      setIsReading(true);
       const recipe = readRecipeText(toScannedBlocks(await recognizeText(uri)));
       if (recipe.title || recipe.instructions || recipe.ingredientList.length > 0) {
         onRead(recipe);
@@ -60,6 +66,7 @@ export function useRecipeScan(onRead: (recipe: ScannedRecipe) => void) {
         showMessage(t.recipeScan.nothingFoundTitle, t.recipeScan.nothingFoundMessage);
       }
     } finally {
+      deletePickedPhotos();
       setIsReading(false);
     }
   };
@@ -79,6 +86,19 @@ export function useRecipeScan(onRead: (recipe: ScannedRecipe) => void) {
     // Reads a photo from this source, without asking (the user already chose it).
     readFrom,
   };
+}
+
+// Deletes the photo picker's copies (the user's own photos are elsewhere, untouched). A copy that
+// can't be deleted stays in the cache, which Android clears when it needs room.
+function deletePickedPhotos() {
+  try {
+    const folder = new Directory(Paths.cache, PICKED_PHOTO_FOLDER);
+    if (folder.exists) {
+      folder.delete();
+    }
+  } catch {
+    // Nothing the user can do about it: the recipe was read all the same.
+  }
 }
 
 function frameHeight({ bottom, top }: Rect): number {

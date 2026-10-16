@@ -63,3 +63,10 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(() => Promise.resolve({ assets: null, canceled: true })),
   requestCameraPermissionsAsync: jest.fn(() => Promise.resolve({ granted: true })),
 }));
+
+// The app's files are native (expo-file-system): every folder exists, tests check which ones were
+// deleted (jest.mocked(Directory).mock.results).
+jest.mock('expo-file-system', () => ({
+  Directory: jest.fn(() => ({ delete: jest.fn(), exists: true })),
+  Paths: { cache: { uri: 'file:///data/cache/' } },
+}));
