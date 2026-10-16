@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react-native
 import { useLocales } from 'expo-localization';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
-import { Appearance } from 'react-native';
+import { Appearance, ScrollView } from 'react-native';
 import { UnistylesRuntime } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { AppLanguage } from '@/test/app-language';
@@ -39,12 +39,14 @@ describe('settingsScreen', () => {
     jest.mocked(useFocusEffect).mockImplementation((effect) => {
       useEffect(effect, [effect]);
     });
+    const scrollToSpy = jest.spyOn(ScrollView.prototype, 'scrollTo');
     await render(<SettingsScreen />);
 
     await fireEvent(screen.getByTestId('data-storage'), 'layout', {
       nativeEvent: { layout: { height: 200, width: 400, x: 0, y: 600 } },
     });
 
+    expect(scrollToSpy).toHaveBeenCalledWith({ animated: false, y: 600 });
     // Scrolled once: opening Settings again starts at the top.
     expect(router.setParams).toHaveBeenCalledWith({ section: undefined });
   });
