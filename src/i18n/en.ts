@@ -122,8 +122,8 @@ export const en = {
     image: (description: string) => (description ? `Image: ${description}` : 'Image'),
   },
   mealChoice: {
-    addRecipe: 'Add a recipe',
     another: 'Another one',
+    createRecipe: 'Create a recipe',
     emptyMessage: 'Add a few recipes, then come back to let chance decide what to eat.',
     open: 'Open',
     openLabel: (title: string) => `Open ${title}`,
@@ -184,7 +184,7 @@ export const en = {
         : plural(count, '1 recipe matches.', `${count} recipes match.`),
     // Label of the add-recipe buttons, shown with Settings › Show button labels.
     new: 'New',
-    newHint: 'Opens an empty recipe form',
+    newHint: 'Asks whether to write it or to read it from a photo',
     newRecipe: 'New recipe',
     noIngredients: 'No ingredients listed.',
     noInstructions: 'No instructions written yet.',

@@ -125,7 +125,8 @@ function applyIngredients(database: AppDatabase, rowList: readonly ServerIngredi
 }
 
 function applyRecipe(tx: AppDatabase, row: ServerRecipe): void {
-  const title = cleanName(typeof row.title === 'string' ? row.title : '');
+  // Saved in lowercase, whatever the other phone or the server had (shown with toDisplayName).
+  const title = cleanName(typeof row.title === 'string' ? row.title : '').toLowerCase();
   if (!title || !isValidRow(row)) {
     return;
   }

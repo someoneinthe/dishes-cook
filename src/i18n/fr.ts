@@ -97,8 +97,8 @@ export const fr: Messages = {
     image: (description) => (description ? `Image${NARROW_SPACE}: ${description}` : 'Image'),
   },
   mealChoice: {
-    addRecipe: 'Ajouter une recette',
     another: 'Une autre',
+    createRecipe: 'Créer une recette',
     emptyMessage: 'Ajoutez quelques recettes, puis revenez laisser le hasard choisir le repas.',
     open: 'Ouvrir',
     openLabel: (title) => `Ouvrir ${title}`,
@@ -158,7 +158,7 @@ export const fr: Messages = {
         ? 'Aucune recette ne correspond à ces filtres.'
         : plural(count, '1 recette correspond.', `${count} recettes correspondent.`),
     new: 'Nouvelle',
-    newHint: 'Ouvre un formulaire de recette vide',
+    newHint: 'Demande s’il faut l’écrire ou la lire sur une photo',
     newRecipe: 'Nouvelle recette',
     noIngredients: 'Aucun ingrédient indiqué.',
     noInstructions: 'Pas encore d’instructions.',

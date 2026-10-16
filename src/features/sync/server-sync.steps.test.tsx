@@ -7,6 +7,7 @@ import { recipes } from '@/db/schema';
 import { saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { SettingsScreen } from '@/features/settings/settings-screen';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
+import { toDisplayName } from '@/lib/text';
 import { spyOnAlert } from '@/test/alert';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
@@ -79,13 +80,14 @@ defineFeature(feature, (test) => {
     ).resolves.toBeOnTheScreen();
     expect(screen.getByRole('radio', { name: 'This device only' })).toBeChecked();
   };
+  // The phone's recipe titles as shown (saved in lowercase).
   const phoneTitles = () =>
     connection.db
       .select({ title: recipes.title })
       .from(recipes)
       .orderBy(asc(recipes.sortKey))
       .all()
-      .map(({ title }) => title);
+      .map(({ title }) => toDisplayName(title));
 
   test('Data is kept on the phone only at first', ({ given, then }) => {
     given('the settings are open', theSettingsAreOpen);
@@ -129,7 +131,8 @@ defineFeature(feature, (test) => {
     and(/^the server has the recipe "(.*)"$/, (title: string) => {
       const titleList = [...server.collection('recipes').values()].map((row) => row.title);
 
-      expect(titleList).toContain(title);
+      // The phone sends titles as it saves them: in lowercase.
+      expect(titleList).toContain(title.toLowerCase());
     });
   });
 
