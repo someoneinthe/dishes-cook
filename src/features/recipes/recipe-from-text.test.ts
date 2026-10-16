@@ -200,17 +200,42 @@ describe('recipe-from-text', () => {
       ]);
     });
 
-    it('takes the largest of the first lines as the title when there is no ingredients heading', () => {
+    it('takes the ingredients from the short lines before the steps when there is no heading', () => {
       expect(
         readRecipeText([
-          block(['Page 12']),
           block(['Tarte aux pommes'], 36),
-          block(['Bon appétit']),
+          block(['4 pommes']),
+          block(['1 pâte brisée']),
+          block(['Préparation']),
+          block(['Étaler la pâte, couper les pommes en lamelles et les poser dessus.']),
         ]),
       ).toStrictEqual({
-        ingredientList: [],
-        instructions: 'Page 12\n\nBon appétit',
+        ingredientList: [
+          { name: 'pommes', quantity: { amount: 4 } },
+          { name: 'pâte brisée', quantity: { amount: 1 } },
+        ],
+        instructions: 'Étaler la pâte, couper les pommes en lamelles et les poser dessus.',
         title: 'Tarte aux pommes',
+      });
+    });
+
+    it('keeps sentences and what follows the first step as instructions without a heading', () => {
+      expect(
+        readRecipeText([
+          block(['A quick soup for cold evenings, ready in no time at all.']),
+          block(['2 leeks']),
+          block(['Step 1']),
+          block(['Cook the leeks.']),
+          block(['Serve hot']),
+        ]),
+      ).toStrictEqual({
+        ingredientList: [{ name: 'leeks', quantity: { amount: 2 } }],
+        instructions: [
+          'A quick soup for cold evenings, ready in no time at all.',
+          '1. Cook the leeks.',
+          'Serve hot',
+        ].join('\n\n'),
+        title: '',
       });
     });
 

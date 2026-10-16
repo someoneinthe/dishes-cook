@@ -10,7 +10,8 @@ import { toReadingOrder } from './page-layout';
 //   website's menu isn't a title);
 // - the ingredients: the lines under an "Ingredients" heading, each with its quantity when it
 //   starts with one ("200 g de farine", "2 tbsp olive oil", "3 poireaux"); a quantity and its name
-//   on two lines, as on recipe websites' ingredient cards ("100 g" / "de beurre"), are one;
+//   on two lines, as on recipe websites' ingredient cards ("100 g" / "de beurre"), are one.
+//   Without that heading (a cropped page, a book), the short blocks before the steps;
 // - the instructions: what follows, one paragraph per block of text; "Étape 2" numbers its step.
 // What comes before the ingredients' heading (menus, servings) is left out.
 
@@ -57,8 +58,10 @@ const MAX_INGREDIENT_WORDS = 8;
 const MAX_INGREDIENTS = 40;
 // The title is looked for among the first lines when there is no ingredients heading.
 const TITLE_LOOKUP_LINES = 5;
-// A title is at least this much larger than the ingredients' heading.
+// A title is at least this much larger than the ingredients' heading, or, without a heading, than
+// most of the text (a slanted photo makes some words look a third larger).
 const TITLE_HEADING_RATIO = 1.25;
+const TITLE_TEXT_RATIO = 1.5;
 
 // Units as written in recipes, compared without case nor accents. An alias only matches a whole
 // word ("g" isn't the start of "gousses"), so their order doesn't matter.
@@ -249,11 +252,13 @@ export function readRecipeText(blockList: readonly ScannedBlock[]): ScannedRecip
 }
 
 // The largest line before the ingredients (or among the first lines), the first one on a tie; it
-// must be clearly larger than the ingredients' heading.
+// must be clearly larger than the ingredients' heading (or than most of the text).
 function findTitleIndex(lineList: readonly Line[], ingredientHeadingIndex: number): number {
   const heading = lineList[ingredientHeadingIndex];
   const end = heading ? ingredientHeadingIndex : TITLE_LOOKUP_LINES;
-  const minHeight = heading ? heading.height * TITLE_HEADING_RATIO : 0;
+  const minHeight = heading
+    ? heading.height * TITLE_HEADING_RATIO
+    : medianHeight(lineList) * TITLE_TEXT_RATIO;
   const candidateList = lineList.slice(0, end);
   let titleIndex = -1;
   for (const [index, line] of candidateList.entries()) {
@@ -356,6 +361,12 @@ function matchUnit(text: string): Readonly<{ length: number; unit: Unit }> | und
   return { length: key.charAt(alias.length) === '.' ? alias.length + 1 : alias.length, unit };
 }
 
+// The height of most of the text: the middle one.
+function medianHeight(lineList: readonly Line[]): number {
+  const heightList = lineList.map(({ height }) => height).sort((first, second) => first - second);
+  return heightList[Math.floor(heightList.length / 2)] ?? 0;
+}
+
 // "ÉTAPE 2" alone, then its text: "2. Its text" (a Markdown numbered step).
 function numberSteps(paragraphList: readonly string[]): string[] {
   const numberedList: string[] = [];
@@ -389,6 +400,33 @@ function stripColon(text: string): string {
   return trimmed.endsWith(':') ? trimmed.slice(0, -1).trimEnd() : trimmed;
 }
 
+// No ingredients heading (a cropped page, a book): before the steps (their heading or "Étape 1"),
+// the blocks of short lines are the ingredients ("100 g / de beurre", "poivre"); a block with a
+// sentence is instructions.
+function toKindsWithoutHeading(lineList: readonly Line[], titleIndex: number): LineKind[] {
+  const stepsIndex = lineList.findIndex(
+    ({ text }) => isInstructionHeading(text) || STEP_START_PATTERN.test(text),
+  );
+  const sentenceBlockSet = new Set(
+    lineList
+      .filter(({ text }) => wordCount(text) > MAX_INGREDIENT_WORDS)
+      .map(({ blockIndex }) => blockIndex),
+  );
+  return lineList.map((line, index): LineKind => {
+    if (index === titleIndex) {
+      return 'title';
+    }
+    if (isInstructionHeading(line.text)) {
+      return 'heading';
+    }
+    if (isServings(line.text) || isTiming(line.text)) {
+      return 'other';
+    }
+    const isBeforeSteps = stepsIndex === -1 || index < stepsIndex;
+    return isBeforeSteps && !sentenceBlockSet.has(line.blockIndex) ? 'ingredient' : 'instruction';
+  });
+}
+
 // What each line is: the title, a heading, then the ingredients under their heading, until the
 // instructions' heading or a sentence; everything else is instructions.
 function toLineKinds(
@@ -396,6 +434,9 @@ function toLineKinds(
   ingredientHeadingIndex: number,
   titleIndex: number,
 ): LineKind[] {
+  if (ingredientHeadingIndex === -1) {
+    return toKindsWithoutHeading(lineList, titleIndex);
+  }
   let section: 'ingredients' | 'instructions' | 'top' = 'top';
   return lineList.map((line, index): LineKind => {
     if (index === titleIndex) {
