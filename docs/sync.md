@@ -11,6 +11,7 @@ The phone's database is the source of truth: the app works the same without a se
 - **When the server can't be reached** (away from home, server down), the sync fails quietly: Settings shows it, and the next sync catches up. Nothing is lost: changes stay on the phone until they're pushed.
 - **Sync status in the header**: the menu's screens (except Settings) show an icon at the top right while changes wait to be pushed (cloud with an arrow, read as "3 changes to sync"; it also shows for the few seconds before the sync that follows an edit) or when the last sync failed (cloud with an exclamation mark, read with the number of changes waiting). It opens Settings scrolled to Data storage, which tells why (on a TV, the remote's focus goes to _Sync now_, and Back brings it back to the icon). Hidden when everything is synced, or without a server. The waiting changes are counted in SQL: the deletions, and the rows changed since the last push and dated no later than now (rows pulled from a phone whose clock is ahead aren't this phone's changes). Code: `src/features/sync/use-sync-status.ts`.
 - **Stopping the sync** keeps the recipes on the phone and on the server. Connecting again merges them again.
+- **Menu › About** tells people what syncs and with whom: a change to the synced data (a new field or table) updates it too (`about` in `src/i18n/en.ts` and `fr.ts`).
 
 ## How it works
 

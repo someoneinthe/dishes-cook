@@ -5,6 +5,7 @@
 What the app does, scenario by scenario. Every scenario runs as a test (jest-cucumber), so this page only describes behaviour that is checked.
 
 - [A recipe from a photo](#a-recipe-from-a-photo): 8 scenarios
+- [About](#about): 2 scenarios
 - [Ingredient quantities](#ingredient-quantities): 3 scenarios
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
@@ -77,6 +78,24 @@ Adding a recipe asks whether to write it or to fill it in from a photo of a reci
 
 - **When** I fill in a new recipe from a photo without text
 - **Then** I am told that no recipe was found
+
+## About
+
+The About page, in the menu, tells how the app handles your data: what stays on the device, what goes to your own sync server if you set one up, and that nothing is sent to anyone else. It also shows the app's version.
+
+### The About page tells where my data goes
+
+- **When** I open the About page
+- **Then** I read what stays on this device
+- **And** I read what goes to my own server, only if I choose to sync with it
+- **And** I read that nothing is sent to anyone else
+- **And** I see the app's version
+
+### The About page speaks my language
+
+- **Given** the app is in French
+- **When** I open the About page
+- **Then** I read "Sur cet appareil"
 
 ## Ingredient quantities
 

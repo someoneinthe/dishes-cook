@@ -53,6 +53,7 @@ const lightColors = {
   // Ring around the control focused with a TV remote (contrast with the background ≥ 3:1).
   focus: '#1D4ED8',
   // Menu entry icons, one color each (contrast with the background ≥ 3:1).
+  menuAbout: '#0F766E',
   menuIngredients: '#C2410C',
   menuMealChoice: '#1D4ED8',
   menuRecipes: '#15803D',
@@ -85,6 +86,7 @@ const darkColors: ThemeColors = {
   courseStarter: '#34D399',
   danger: '#F87171',
   focus: '#60A5FA',
+  menuAbout: '#2DD4BF',
   menuIngredients: '#FB923C',
   menuMealChoice: '#60A5FA',
   menuRecipes: '#4ADE80',
