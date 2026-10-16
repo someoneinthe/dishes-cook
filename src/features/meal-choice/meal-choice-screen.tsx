@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
@@ -15,6 +14,7 @@ import {
   toQueryFilters,
 } from '@/features/recipes/components/recipe-filters';
 import { pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
+import { useNewRecipe } from '@/features/recipes/hooks/use-new-recipe';
 import { useRecipe, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
@@ -27,6 +27,7 @@ const INITIAL_FILTERS: RecipeFilterValues = { ...NO_FILTERS, course: 'main' };
 // Proposes a random recipe of the chosen season and course, and another one on request.
 export function MealChoiceScreen() {
   const t = useMessages();
+  const newRecipe = useNewRecipe();
   const database = useDatabase();
   const [filterValues, setFilterValues] = useState(INITIAL_FILTERS);
   const pick = (values: RecipeFilterValues, excludedId?: number) =>
@@ -51,9 +52,10 @@ export function MealChoiceScreen() {
       accessibilityHint={t.recipes.newHint}
       accessibilityLabel={t.mealChoice.addRecipe}
       icon="plus"
+      isDisabled={newRecipe.isReading}
       isIconOnly
       label={t.recipes.new}
-      onPress={() => router.push('/recipe/new')}
+      onPress={newRecipe.start}
     />
   );
   const headerButton =

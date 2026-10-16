@@ -1,5 +1,5 @@
 import type { ScannedBlock } from './recipe-from-text';
-import { readIngredientLine, readRecipeText } from './recipe-from-text';
+import { parseScannedRecipe, readIngredientLine, readRecipeText } from './recipe-from-text';
 
 // A block of lines in body text, or in a larger print.
 function block(lineList: readonly string[], height = 20): ScannedBlock {
@@ -95,6 +95,41 @@ describe('recipe-from-text', () => {
     it('reads nothing from a line without letters', () => {
       expect(readIngredientLine('- 12')).toBeUndefined();
       expect(readIngredientLine('•')).toBeUndefined();
+    });
+  });
+
+  describe('parseScannedRecipe', () => {
+    it('reads back a recipe passed as text, keeping only what is usable', () => {
+      expect(
+        parseScannedRecipe(
+          JSON.stringify({
+            ingredientList: [
+              { name: 'leeks', quantity: { amount: 2 } },
+              { name: 'flour', quantity: { amount: 200, unit: 'g' } },
+              { name: 'salt', quantity: { amount: -1 } },
+              { name: ' ' },
+              'egg',
+            ],
+            instructions: 'Cook.',
+            title: 'Soup',
+          }),
+        ),
+      ).toStrictEqual({
+        ingredientList: [
+          { name: 'leeks', quantity: { amount: 2 } },
+          { name: 'flour', quantity: { amount: 200, unit: 'g' } },
+          { name: 'salt' },
+        ],
+        instructions: 'Cook.',
+        title: 'Soup',
+      });
+    });
+
+    it('reads nothing from text that is not a recipe', () => {
+      expect(parseScannedRecipe(undefined)).toBeUndefined();
+      expect(parseScannedRecipe('{')).toBeUndefined();
+      expect(parseScannedRecipe('"soup"')).toBeUndefined();
+      expect(parseScannedRecipe('{"title":"Soup"}')).toBeUndefined();
     });
   });
 

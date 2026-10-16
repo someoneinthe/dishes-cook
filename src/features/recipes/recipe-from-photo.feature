@@ -7,6 +7,12 @@ Feature: A recipe from a photo
   other accents: "carrot" and "Carrots"), its row asks which to keep, and the recipe can't be saved
   until the user chooses.
 
+  Scenario: Adding a recipe asks how to start
+    When I add a recipe from the recipe list
+    Then I am asked whether to write it, choose a photo or take one
+    When I choose a photo of "Leek soup" listing "2 leeks"
+    Then the new recipe opens filled in with "Leek soup" and "leeks: 2"
+
   Scenario: A photo fills in a new recipe
     Given the ingredients "Leek" exist
     When I fill in a new recipe from a photo of "Leek soup" listing "2 leek, 500 g potatoes"

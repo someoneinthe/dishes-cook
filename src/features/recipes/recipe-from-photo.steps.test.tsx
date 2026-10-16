@@ -3,6 +3,7 @@ import type { ImagePickerResult } from 'expo-image-picker';
 import { recognizeText } from '@infinitered/react-native-mlkit-text-recognition';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
@@ -14,13 +15,16 @@ import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { RecipeDetails } from './components/recipe-details';
 import { getRecipe } from './db/recipe-queries';
 import { RecipeFormScreen } from './recipe-form-screen';
+import { RecipesScreen } from './recipes-screen';
 
+// The form's route parameters: none, or the recipe a scan passed (useNewRecipe).
 jest.mock('expo-router', () => ({
-  router: { back: jest.fn(), replace: jest.fn() },
+  router: { back: jest.fn(), push: jest.fn(), replace: jest.fn() },
   Stack: {
     Screen: jest.requireActual<NavigationMock>('@/test/navigation-mock').ScreenWithHeaderButtons,
   },
-  useLocalSearchParams: () => ({}),
+  useIsFocused: () => true,
+  useLocalSearchParams: jest.fn(() => ({})),
 }));
 
 const feature = loadFeature('./recipe-from-photo.feature', { loadRelativePath: true });
@@ -53,6 +57,7 @@ defineFeature(feature, (test) => {
   let alert: ReturnType<typeof spyOnAlert>;
 
   beforeEach(() => {
+    jest.mocked(useLocalSearchParams).mockReturnValue({});
     connection = createTestConnection();
     updatePreferences({ units: 'metric' });
     alert = spyOnAlert();
@@ -103,6 +108,42 @@ defineFeature(feature, (test) => {
       names ? names.split(', ') : [],
     );
   };
+
+  test('Adding a recipe asks how to start', ({ then, when }) => {
+    when('I add a recipe from the recipe list', async () => {
+      await renderWithDatabase(<RecipesScreen />, connection);
+      await fireEvent.press(screen.getByRole('button', { name: 'New recipe' }));
+    });
+    then('I am asked whether to write it, choose a photo or take one', () => {
+      const buttonList = alert.spy.mock.lastCall?.[2] ?? [];
+
+      expect(buttonList.map(({ text }) => text)).toStrictEqual([
+        'Write it',
+        'Choose a photo',
+        'Take a photo',
+      ]);
+    });
+    when(/^I choose a photo of "(.*)" listing "(.*)"$/, async (title: string, lines: string) => {
+      jest.mocked(recognizeText).mockResolvedValue(readPage(title, lines.split(', ')));
+      await alert.press('Choose a photo');
+      await waitFor(() => expect(router.push).toHaveBeenCalledTimes(1));
+    });
+    then(
+      /^the new recipe opens filled in with "(.*)" and "(.*)"$/,
+      async (title: string, ingredient: string) => {
+        const [target] = jest.mocked(router.push).mock.lastCall ?? [];
+        const params = typeof target === 'object' ? target.params : undefined;
+        const scanned = typeof params?.scanned === 'string' ? params.scanned : '';
+        jest.mocked(useLocalSearchParams).mockReturnValue({ scanned });
+        await renderWithDatabase(<RecipeFormScreen />, connection);
+        const [name = '', amount = ''] = ingredient.split(': ', 2);
+
+        expect(screen.getByLabelText('Title')).toHaveDisplayValue(title);
+        expect(screen.getByLabelText(`Quantity of ${name}`)).toHaveDisplayValue(amount);
+        expect(screen.getByLabelText('Recipe text')).toHaveDisplayValue(PHOTO_STEPS);
+      },
+    );
+  });
 
   test('A photo fills in a new recipe', ({ and, given, then, when }) => {
     given(/^the ingredients "(.*)" exist$/, givenIngredients);

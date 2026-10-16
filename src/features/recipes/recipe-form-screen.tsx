@@ -22,6 +22,7 @@ import { formatAmount, parseAmount, toDisplay, toStored } from '@/lib/units';
 import type { QuantityDraft } from './components/ingredient-quantity-row';
 import type { Recipe } from './db/recipe-queries';
 import type { AddedIngredient } from './hooks/use-new-ingredients';
+import type { ScannedRecipe } from './recipe-from-text';
 import { IngredientQuantityRow } from './components/ingredient-quantity-row';
 import { InstructionsField } from './components/instructions-field';
 import { SelectedIngredient } from './components/selected-ingredient';
@@ -29,11 +30,14 @@ import { courseOptionList } from './course';
 import { getRecipe, saveRecipe } from './db/recipe-queries';
 import { useNewIngredients } from './hooks/use-new-ingredients';
 import { useRecipeScan } from './hooks/use-recipe-scan';
+import { parseScannedRecipe } from './recipe-from-text';
 import { seasonOptionList } from './season';
 
 type RecipeFormProps = Readonly<{
   // Undefined for a new recipe.
   initialRecipe: Recipe | undefined;
+  // A new recipe started from a photo (useNewRecipe): the form starts filled in with it.
+  scannedRecipe: ScannedRecipe | undefined;
   screenTitle: string;
 }>;
 
@@ -47,28 +51,39 @@ export function RecipeFormScreen() {
   return <RecipeFormRoute />;
 }
 
-function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
+function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormProps) {
   const database = useDatabase();
   const t = useMessages();
-  const [title, setTitle] = useState(initialRecipe?.title ?? '');
+  // A recipe started from a photo: its ingredients, matched to the existing ones.
+  const newIngredients = useNewIngredients(scannedRecipe?.ingredientList);
+  const [title, setTitle] = useState(() => startingText(initialRecipe, scannedRecipe, 'title'));
   const [season, setSeason] = useState<Season>(initialRecipe?.season ?? 'both');
   // Every recipe has a course: a main course unless chosen otherwise.
   const [course, setCourse] = useState<Course>(initialRecipe?.course ?? 'main');
   const [selectedIngredientList, setSelectedIngredientList] = useState<Ingredient[]>(
-    initialRecipe?.ingredientList ?? [],
+    () =>
+      initialRecipe?.ingredientList ??
+      newIngredients.initialAddedList.map(({ id, name }) => ({ id, name })),
   );
-  const [instructions, setInstructions] = useState(initialRecipe?.instructions ?? '');
+  const [instructions, setInstructions] = useState(() =>
+    startingText(initialRecipe, scannedRecipe, 'instructions'),
+  );
   const [titleError, setTitleError] = useState<string>();
   const { units } = usePreferences();
   // The saved quantities, as shown (Settings › Units) and as stored, by ingredient id.
   const [savedMap] = useState(() => savedQuantities(initialRecipe, t, units));
-  // Quantities as typed, by ingredient id (kept when an ingredient is removed then added back).
-  const [draftMap, setDraftMap] = useState(
-    () => new Map([...savedMap].map(([id, { draft }]) => [id, draft])),
+  // Quantities as typed, by ingredient id (kept when an ingredient is removed then added back);
+  // a recipe started from a photo starts with the quantities read.
+  const [draftMap, setDraftMap] = useState(() =>
+    withScannedDrafts(
+      new Map([...savedMap].map(([id, { draft }]) => [id, draft])),
+      newIngredients.initialAddedList,
+      t,
+      units,
+    ),
   );
   // Ingredients whose amount isn't a number, shown after a save attempt.
   const [invalidIdSet, setInvalidIdSet] = useState<ReadonlySet<number>>(new Set());
-  const newIngredients = useNewIngredients();
   // Save was pressed while a new ingredient looked like an existing one: the rows ask to choose.
   const [isChoiceMissing, setIsChoiceMissing] = useState(false);
   const { isReading, scan } = useRecipeScan((scanned) => {
@@ -200,11 +215,14 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
 // Creates a recipe (/recipe/new) or edits one (/recipe/[id]/edit).
 function RecipeFormRoute() {
   const database = useDatabase();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, scanned } = useLocalSearchParams<{ id?: string; scanned?: string }>();
   const recipeId = id === undefined ? undefined : Number(id);
   // The form starts from the saved recipe; reads are synchronous, so it's ready on first render.
   const [initialRecipe] = useState(() =>
     recipeId === undefined ? undefined : getRecipe(database, recipeId),
+  );
+  const [scannedRecipe] = useState(() =>
+    recipeId === undefined ? parseScannedRecipe(scanned) : undefined,
   );
   const t = useMessages();
   const screenTitle = recipeId === undefined ? t.recipes.newRecipe : t.recipes.editRecipe;
@@ -217,7 +235,13 @@ function RecipeFormRoute() {
       </View>
     );
   }
-  return <RecipeForm initialRecipe={initialRecipe} screenTitle={screenTitle} />;
+  return (
+    <RecipeForm
+      initialRecipe={initialRecipe}
+      scannedRecipe={scannedRecipe}
+      screenTitle={screenTitle}
+    />
+  );
 }
 
 const EMPTY_DRAFT: QuantityDraft = { amountText: '' };
@@ -340,6 +364,15 @@ function savedQuantities(
     }
   }
   return savedMap;
+}
+
+// The title or the instructions the form starts with: the saved recipe's, or the photo's.
+function startingText(
+  recipe: Recipe | undefined,
+  scanned: ScannedRecipe | undefined,
+  field: 'instructions' | 'title',
+): string {
+  return recipe?.[field] ?? scanned?.[field] ?? '';
 }
 
 // The existing ingredient takes the new one's place, or the new one goes when it's already there.

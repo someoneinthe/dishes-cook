@@ -229,9 +229,12 @@ export const en = {
     readFailed: 'The photo couldn’t be read. If it happens again, close the app and open it again.',
     reading: 'Reading…',
     similarMessage: (existing: string) => `You already have “${existing}”. Use it instead?`,
+    startMessage:
+      'Write it yourself, or fill it in from a photo of a recipe page: the text is read on your phone and the photo isn’t kept.',
     takePhoto: 'Take a photo',
     useSimilar: (existing: string) => `Use “${existing}”`,
     useSimilarHint: 'Uses your existing ingredient instead of creating a new one',
+    write: 'Write it',
   },
   seasons: {
     both: 'Both',

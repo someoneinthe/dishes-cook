@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { UnistylesRuntime } from 'react-native-unistyles';
 import type { DatabaseConnection } from '@/db/types';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
+import { spyOnAlert } from '@/test/alert';
 import { iconColorIn } from '@/test/icons';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { saveRecipe } from './db/recipe-queries';
@@ -26,7 +27,17 @@ describe('recipesScreen', () => {
 
     expect(screen.getByRole('header', { name: 'No recipes yet' })).toBeOnTheScreen();
 
+    const alert = spyOnAlert();
     await fireEvent.press(screen.getByRole('button', { name: 'New recipe' }));
+
+    expect(alert.spy).toHaveBeenLastCalledWith(
+      'New recipe',
+      expect.stringContaining('fill it in from a photo'),
+      expect.anything(),
+      { cancelable: true },
+    );
+
+    await alert.press('Write it');
 
     expect(router.push).toHaveBeenCalledWith('/recipe/new');
   });

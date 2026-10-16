@@ -1,6 +1,6 @@
 import type { Quantity, Unit } from '@/lib/units';
 import { cleanName, toNameKey, toSearchText } from '@/lib/text';
-import { parseAmount } from '@/lib/units';
+import { parseAmount, toQuantity } from '@/lib/units';
 
 // A recipe read from a photo (text recognized on the phone): a draft the user checks in the recipe
 // form before saving. Recipe pages vary a lot, so this guesses, in English and French:
@@ -134,6 +134,24 @@ const LINK_WORD_PATTERN = /^(?:de\s+|d['’]\s*|of\s+)/i;
 const STEP_START_PATTERN = /^(?:\d+[.)]\s|(?:étape|etape|step)\s?\d)/i;
 const UNICODE_FRACTIONS: Readonly<Record<string, string>> = { '½': '1/2', '¼': '1/4', '¾': '3/4' };
 
+// A recipe passed as text (the new-recipe form's `scanned` parameter, from useNewRecipe), checked
+// field by field; undefined when it isn't one.
+export function parseScannedRecipe(json: string | undefined): ScannedRecipe | undefined {
+  try {
+    const value: unknown = json === undefined ? undefined : JSON.parse(json);
+    if (!isRecord(value) || !Array.isArray(value.ingredientList)) {
+      return undefined;
+    }
+    return {
+      ingredientList: value.ingredientList.flatMap((item: unknown) => toScannedIngredient(item)),
+      instructions: typeof value.instructions === 'string' ? value.instructions : '',
+      title: typeof value.title === 'string' ? value.title : '',
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 // "200 g de farine" -> farine, 200 g; "Sel" -> Sel, no quantity; undefined when no name is left.
 export function readIngredientLine(text: string): ScannedIngredient | undefined {
   // Composed accents ("é" as one character): matchUnit counts characters on an accent-free copy.
@@ -216,6 +234,11 @@ function isInstructionHeading(text: string): boolean {
   return INSTRUCTION_HEADING_SET.has(headingKey(text));
 }
 
+// "Ingrédients :" -> "Ingrédients".
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 // The unit at the start of the text, followed by a space, a dot or the end ("200 gr." / "200 g").
 function matchUnit(text: string): Readonly<{ length: number; unit: Unit }> | undefined {
   const key = toSearchText(text);
@@ -251,7 +274,6 @@ function readIngredientLines(lineList: readonly Line[]): ScannedIngredient[] {
   return ingredientList;
 }
 
-// "Ingrédients :" -> "Ingrédients".
 function stripColon(text: string): string {
   const trimmed = text.trimEnd();
   return trimmed.endsWith(':') ? trimmed.slice(0, -1).trimEnd() : trimmed;
@@ -300,6 +322,17 @@ function toParagraphs(lineList: readonly Line[]): string {
   }
   flush();
   return paragraphList.join('\n\n');
+}
+
+// An ingredient of a parsed recipe: kept when it has a name, its quantity when usable.
+function toScannedIngredient(value: unknown): ScannedIngredient[] {
+  if (!isRecord(value) || typeof value.name !== 'string' || !cleanName(value.name)) {
+    return [];
+  }
+  const quantity = isRecord(value.quantity)
+    ? toQuantity(value.quantity.amount, value.quantity.unit)
+    : undefined;
+  return [quantity ? { name: value.name, quantity } : { name: value.name }];
 }
 
 function wordCount(text: string): number {

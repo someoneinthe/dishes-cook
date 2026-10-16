@@ -4,7 +4,7 @@
 
 What the app does, scenario by scenario. Every scenario runs as a test (jest-cucumber), so this page only describes behaviour that is checked.
 
-- [A recipe from a photo](#a-recipe-from-a-photo): 7 scenarios
+- [A recipe from a photo](#a-recipe-from-a-photo): 8 scenarios
 - [Ingredient quantities](#ingredient-quantities): 3 scenarios
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
@@ -17,6 +17,13 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 ## A recipe from a photo
 
 A new recipe can be filled in from a photo of a recipe page, taken with the camera or chosen among the phone's photos. The text is read on the phone: the photo is neither sent nor kept. The title, the ingredients with their quantities and the steps fill in the form, to check before saving. An ingredient that already exists (same name, ignoring case) is used; a new one is only created when the recipe is saved. When a new one looks like an existing one (singular or plural, other accents: "carrot" and "Carrots"), its row asks which to keep, and the recipe can't be saved until the user chooses.
+
+### Adding a recipe asks how to start
+
+- **When** I add a recipe from the recipe list
+- **Then** I am asked whether to write it, choose a photo or take one
+- **When** I choose a photo of "Leek soup" listing "2 leeks"
+- **Then** the new recipe opens filled in with "Leek soup" and "leeks: 2"
 
 ### A photo fills in a new recipe
 

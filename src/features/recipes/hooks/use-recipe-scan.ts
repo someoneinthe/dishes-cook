@@ -11,7 +11,8 @@ import { useMessages } from '@/i18n/i18n-provider';
 import type { ScannedBlock, ScannedRecipe } from '../recipe-from-text';
 import { readRecipeText } from '../recipe-from-text';
 
-type PhotoSource = 'camera' | 'library';
+// Where the photo comes from: the camera, or the phone's photos.
+export type PhotoSource = 'camera' | 'library';
 
 // The text recognition's result as the recipe reader takes it: blocks of lines with their height.
 export function toScannedBlocks(text: Text): ScannedBlock[] {
@@ -75,6 +76,8 @@ export function useRecipeScan(onRead: (recipe: ScannedRecipe) => void) {
 
   return {
     isReading,
+    // Reads a photo from this source, without asking (the user already chose it).
+    readFrom,
     // Asks where the photo comes from, then reads it.
     scan: () => {
       Alert.alert(t.recipeScan.chooseTitle, t.recipeScan.chooseMessage, [

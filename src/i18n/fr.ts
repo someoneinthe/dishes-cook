@@ -204,9 +204,11 @@ export const fr: Messages = {
     reading: 'Lecture…',
     similarMessage: (existing) =>
       `Vous avez déjà ${quote(existing)}. L’utiliser à la place${NARROW_SPACE}?`,
+    startMessage: `Écrivez-la vous-même, ou remplissez-la depuis la photo d’une recette${NARROW_SPACE}: le texte est lu sur votre téléphone et la photo n’est pas gardée.`,
     takePhoto: 'Prendre une photo',
     useSimilar: (existing) => `Utiliser ${quote(existing)}`,
     useSimilarHint: 'Utilise votre ingrédient existant au lieu d’en créer un nouveau',
+    write: 'L’écrire',
   },
   seasons: {
     both: 'Les deux',

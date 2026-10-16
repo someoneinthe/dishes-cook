@@ -2,6 +2,7 @@ import { fireEvent, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import type { DatabaseConnection } from '@/db/types';
 import { deleteRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
+import { spyOnAlert } from '@/test/alert';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { MealChoiceScreen } from './meal-choice-screen';
 
@@ -24,7 +25,9 @@ describe('mealChoiceScreen', () => {
 
     expect(screen.getByRole('header', { name: 'No recipes yet' })).toBeOnTheScreen();
 
+    const alert = spyOnAlert();
     await fireEvent.press(screen.getByRole('button', { name: 'Add a recipe' }));
+    await alert.press('Write it');
 
     expect(router.push).toHaveBeenCalledWith('/recipe/new');
   });
