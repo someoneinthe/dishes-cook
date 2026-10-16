@@ -26,6 +26,9 @@ export type RenameResult = 'blank' | 'duplicate' | 'renamed';
 // apostrophes stay, all written ' ("d’agneau" = "d'agneau").
 const NOT_A_WORD = /[^\p{L}\p{N}']+/gu;
 const CURLY_APOSTROPHE = '’';
+// The separators a saved name may have, made spaces in SQL as NOT_A_WORD does in JavaScript
+// (SQLite has no regular expressions): "vin-rouge" = "vin rouge", "sel, poivre" = "sel poivre".
+const SEPARATOR_LIST = ['-', ',', '.', ';', ':', '/', '(', ')', '!', '?', '"', '+', '&'];
 
 // Number of recipes using the ingredient, read from the (ingredient_id, recipe_id) index. Written
 // out qualified: Drizzle renders `${ingredients.id}` as a bare "id" inside a select.
@@ -127,7 +130,7 @@ export function findSimilarIngredient(database: AppDatabase, name: string): Ingr
     (form) => ` ${form.replaceAll(CURLY_APOSTROPHE, "'").replaceAll(NOT_A_WORD, ' ').trim()} `,
   );
   // The stored key with its apostrophes written ' too.
-  const storedKey = sql`replace(${ingredients.sortKey}, ${CURLY_APOSTROPHE}, '''')`;
+  const storedKey = toWordsInSql(ingredients.sortKey);
   const inNameWhere = or(
     ...paddedList.map((padded) => sql`instr(${padded}, ' ' || ${storedKey} || ' ') > 0`),
   );
@@ -236,4 +239,14 @@ function searchWhere(search: string): SQL | undefined {
 // A row with its name as shown (saved in lowercase).
 function shown<Row extends Readonly<{ name: string }>>(row: Row): Row {
   return { ...row, name: toDisplayName(row.name) };
+}
+
+// The saved key as words separated by one space, apostrophes written ', like the name's forms.
+function toWordsInSql(key: typeof ingredients.sortKey): SQL {
+  let words: SQL = sql`replace(${key}, ${CURLY_APOSTROPHE}, '''')`;
+  for (const separator of SEPARATOR_LIST) {
+    words = sql`replace(${words}, ${separator}, ' ')`;
+  }
+  // "sel, poivre" -> "sel  poivre" -> "sel poivre" (one space, as cleanName leaves at most one).
+  return sql`trim(replace(replace(${words}, '   ', ' '), '  ', ' '))`;
 }

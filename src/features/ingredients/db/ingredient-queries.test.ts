@@ -98,6 +98,20 @@ describe('ingredient queries', () => {
     });
   });
 
+  it('compares whole words whatever the separators of the saved name', () => {
+    const redWine = findOrCreateIngredient(database, 'Vin-rouge');
+    const saltPepper = findOrCreateIngredient(database, 'Sel, poivre');
+
+    expect(findSimilarIngredient(database, 'bouteille de vin rouge')).toStrictEqual({
+      id: redWine.id,
+      name: 'Vin-rouge',
+    });
+    expect(findSimilarIngredient(database, 'sel poivre du moulin')).toStrictEqual({
+      id: saltPepper.id,
+      name: 'Sel, poivre',
+    });
+  });
+
   it('finds no similar ingredient for the same name or an unrelated one', () => {
     findOrCreateIngredient(database, 'Carrots');
 
