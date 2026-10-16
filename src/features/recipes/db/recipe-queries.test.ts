@@ -1,5 +1,8 @@
 import type { AppDatabase } from '@/db/types';
-import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
+import {
+  findIngredientByName,
+  findOrCreateIngredient,
+} from '@/features/ingredients/db/ingredient-queries';
 import { firstRecipePage } from '@/test/queries';
 import { createTestConnection } from '@/test/test-database';
 import {
@@ -119,6 +122,48 @@ describe('recipe queries', () => {
       { id: carrotId, name: 'carrot' },
       { id: leekId, name: 'leek' },
     ]);
+  });
+
+  // Ingredients read from a photo are created only when the recipe is saved.
+  it('creates the new ingredients with the recipe, reusing one that exists by then', () => {
+    const id = saveRecipe(database, {
+      ...soupInput,
+      ingredientIdList: [carrotId, -1, -2],
+      newIngredientNames: new Map([
+        [-2, 'Leek'],
+        [-1, 'Celery'],
+      ]),
+      quantities: new Map([[-1, { amount: 2 }]]),
+    });
+
+    const celeryId = findIngredientByName(database, 'celery')?.id;
+
+    expect(getRecipe(database, id)?.ingredientList).toStrictEqual([
+      { id: carrotId, name: 'carrot' },
+      { id: celeryId, name: 'Celery', quantity: { amount: 2 } },
+      { id: leekId, name: 'leek' },
+    ]);
+  });
+
+  it('only creates the new ingredients the recipe still has', () => {
+    saveRecipe(database, {
+      ...soupInput,
+      ingredientIdList: [carrotId],
+      newIngredientNames: new Map([[-1, 'Celery']]),
+    });
+
+    expect(findIngredientByName(database, 'Celery')).toBeUndefined();
+  });
+
+  it('creates no new ingredient when the save fails', () => {
+    expect(() =>
+      saveRecipe(database, {
+        ...soupInput,
+        ingredientIdList: [999, -1],
+        newIngredientNames: new Map([[-1, 'Celery']]),
+      }),
+    ).toThrow('FOREIGN KEY');
+    expect(findIngredientByName(database, 'Celery')).toBeUndefined();
   });
 
   it('sets and changes the course', () => {

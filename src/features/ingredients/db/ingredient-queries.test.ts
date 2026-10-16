@@ -5,6 +5,7 @@ import { createTestConnection } from '@/test/test-database';
 import {
   deleteIngredient,
   findOrCreateIngredient,
+  findSimilarIngredient,
   renameIngredient,
   suggestIngredients,
 } from './ingredient-queries';
@@ -30,6 +31,29 @@ describe('ingredient queries', () => {
     findOrCreateIngredient(database, 'pâté');
 
     expect(firstIngredientPage(database)).toHaveLength(2);
+  });
+
+  it('finds an ingredient written in the other number or with other accents', () => {
+    const carrots = findOrCreateIngredient(database, 'Carrots');
+    const leek = findOrCreateIngredient(database, 'poireau');
+    const pate = findOrCreateIngredient(database, 'Pâte');
+
+    expect(findSimilarIngredient(database, 'carrot')).toStrictEqual({
+      id: carrots.id,
+      name: 'Carrots',
+    });
+    expect(findSimilarIngredient(database, 'Poireaux')).toStrictEqual({
+      id: leek.id,
+      name: 'poireau',
+    });
+    expect(findSimilarIngredient(database, 'pâté')).toStrictEqual({ id: pate.id, name: 'Pâte' });
+  });
+
+  it('finds no similar ingredient for the same name or an unrelated one', () => {
+    findOrCreateIngredient(database, 'Carrots');
+
+    expect(findSimilarIngredient(database, 'carrots')).toBeUndefined();
+    expect(findSimilarIngredient(database, 'carrot cake')).toBeUndefined();
   });
 
   it('refuses a blank name', () => {

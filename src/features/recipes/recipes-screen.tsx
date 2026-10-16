@@ -24,6 +24,7 @@ import {
   toQueryFilters,
 } from './components/recipe-filters';
 import { CourseLabel, SeasonLabel } from './components/recipe-labels';
+import { useNewRecipe } from './hooks/use-new-recipe';
 import { useRecipeCount, useRecipePages } from './hooks/use-recipes';
 import { describeSeason } from './season';
 
@@ -130,15 +131,17 @@ const recipesHeaderActions = headerActions(
 // Opens the form of a new recipe.
 function NewRecipeButton() {
   const t = useMessages();
+  const { isReading, start } = useNewRecipe();
 
   return (
     <Button
       accessibilityHint={t.recipes.newHint}
       accessibilityLabel={t.recipes.newRecipe}
       icon="plus"
+      isDisabled={isReading}
       isIconOnly
       label={t.recipes.new}
-      onPress={() => router.push('/recipe/new')}
+      onPress={start}
     />
   );
 }

@@ -18,18 +18,25 @@ import { usePreferences } from '@/features/settings/preferences';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import { cleanName } from '@/lib/text';
-import { formatAmount, parseAmount, toDisplay } from '@/lib/units';
+import { formatAmount, parseAmount, toDisplay, toStored } from '@/lib/units';
 import type { QuantityDraft } from './components/ingredient-quantity-row';
 import type { Recipe } from './db/recipe-queries';
+import type { ScannedRecipe } from './recipe-from-text';
 import { IngredientQuantityRow } from './components/ingredient-quantity-row';
 import { InstructionsField } from './components/instructions-field';
+import { SelectedIngredient } from './components/selected-ingredient';
 import { courseOptionList } from './course';
 import { getRecipe, saveRecipe } from './db/recipe-queries';
+import { useNewIngredients } from './hooks/use-new-ingredients';
+import { useRecipeScan } from './hooks/use-recipe-scan';
+import { parseScannedRecipe } from './recipe-from-text';
 import { seasonOptionList } from './season';
 
 type RecipeFormProps = Readonly<{
   // Undefined for a new recipe.
   initialRecipe: Recipe | undefined;
+  // A new recipe started from a photo (useNewRecipe): the form starts filled in with it.
+  scannedRecipe: ScannedRecipe | undefined;
   screenTitle: string;
 }>;
 
@@ -43,27 +50,59 @@ export function RecipeFormScreen() {
   return <RecipeFormRoute />;
 }
 
-function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
+function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormProps) {
   const database = useDatabase();
   const t = useMessages();
-  const [title, setTitle] = useState(initialRecipe?.title ?? '');
+  // A recipe started from a photo: its ingredients, matched to the existing ones.
+  const newIngredients = useNewIngredients(scannedRecipe?.ingredientList);
+  const [title, setTitle] = useState(() => startingText(initialRecipe, scannedRecipe, 'title'));
   const [season, setSeason] = useState<Season>(initialRecipe?.season ?? 'both');
   // Every recipe has a course: a main course unless chosen otherwise.
   const [course, setCourse] = useState<Course>(initialRecipe?.course ?? 'main');
   const [selectedIngredientList, setSelectedIngredientList] = useState<Ingredient[]>(
-    initialRecipe?.ingredientList ?? [],
+    () => initialRecipe?.ingredientList ?? newIngredients.initial.addedList,
   );
-  const [instructions, setInstructions] = useState(initialRecipe?.instructions ?? '');
+  const [instructions, setInstructions] = useState(() =>
+    startingText(initialRecipe, scannedRecipe, 'instructions'),
+  );
   const [titleError, setTitleError] = useState<string>();
   const { units } = usePreferences();
   // The saved quantities, as shown (Settings › Units) and as stored, by ingredient id.
   const [savedMap] = useState(() => savedQuantities(initialRecipe, t, units));
-  // Quantities as typed, by ingredient id (kept when an ingredient is removed then added back).
-  const [draftMap, setDraftMap] = useState(
-    () => new Map([...savedMap].map(([id, { draft }]) => [id, draft])),
+  // Quantities as typed, by ingredient id (kept when an ingredient is removed then added back);
+  // a recipe started from a photo starts with the quantities read.
+  const [draftMap, setDraftMap] = useState(() =>
+    withScannedDrafts(
+      new Map([...savedMap].map(([id, { draft }]) => [id, draft])),
+      newIngredients.initial.quantityList,
+      t,
+      units,
+    ),
   );
   // Ingredients whose amount isn't a number, shown after a save attempt.
   const [invalidIdSet, setInvalidIdSet] = useState<ReadonlySet<number>>(new Set());
+  // Save was pressed while a new ingredient looked like an existing one: the rows ask to choose.
+  const [isChoiceMissing, setIsChoiceMissing] = useState(false);
+  const { isReading, scan } = useRecipeScan((scanned) => {
+    const { addedList, quantityList } = newIngredients.add(
+      scanned.ingredientList,
+      selectedIngredientList,
+    );
+    if (!cleanName(title)) {
+      setTitle(scanned.title);
+      setTitleError(undefined);
+    }
+    setSelectedIngredientList((previous) => withAdded(previous, addedList));
+    setDraftMap((previous) => withScannedDrafts(previous, quantityList, t, units));
+    setInstructions((previous) =>
+      [previous.trim(), scanned.instructions].filter(Boolean).join('\n\n'),
+    );
+  });
+  const chooseSimilar = (ingredient: Ingredient, similar: Ingredient) => {
+    newIngredients.chooseSimilar(ingredient.id);
+    setSelectedIngredientList((previous) => swapIngredient(previous, ingredient.id, similar));
+    setDraftMap((previous) => moveDraft(previous, ingredient.id, similar.id));
+  };
 
   const save = () => {
     const { invalidIdList, quantities } = readQuantities(
@@ -72,16 +111,19 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
       savedMap,
     );
     setInvalidIdSet(new Set(invalidIdList));
+    const undecidedIdList = newIngredients.undecidedIdList(selectedIngredientList);
+    setIsChoiceMissing(undecidedIdList.length > 0);
     if (!cleanName(title)) {
       setTitleError(t.recipes.titleRequired);
     }
-    if (!cleanName(title) || invalidIdList.length > 0) {
+    if (!cleanName(title) || invalidIdList.length > 0 || undecidedIdList.length > 0) {
       return;
     }
     const input = {
       course,
       ingredientIdList: selectedIngredientList.map((ingredient) => ingredient.id),
       instructions,
+      newIngredientNames: newIngredients.nameMap,
       quantities,
       season,
       title,
@@ -101,20 +143,12 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
       keyboardShouldPersistTaps="handled"
       style={styles.screen}
     >
-      <Stack.Screen
-        options={{
-          headerRight: headerActions(
-            <Button
-              accessibilityHint={t.recipes.saveHint}
-              accessibilityLabel={t.recipes.saveRecipe}
-              icon="check"
-              isIconOnly
-              label={t.common.save}
-              onPress={save}
-            />,
-          ),
-          title: screenTitle,
-        }}
+      <FormHeader
+        isNew={!initialRecipe}
+        isReading={isReading}
+        onSave={save}
+        onScan={scan}
+        title={screenTitle}
       />
       <TextField
         error={titleError}
@@ -147,18 +181,26 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
           return { id, name: createdName };
         }}
         renderSelected={(ingredient, remove) => (
-          <IngredientQuantityRow
-            draft={draftMap.get(ingredient.id) ?? EMPTY_DRAFT}
-            error={invalidIdSet.has(ingredient.id) ? t.quantities.invalidAmount : undefined}
+          <SelectedIngredient
             ingredient={ingredient}
-            onChange={(draft) => {
-              setDraftMap((previous) => new Map(previous).set(ingredient.id, draft));
-              if (invalidIdSet.has(ingredient.id)) {
-                setInvalidIdSet((previous) => withoutId(previous, ingredient.id));
-              }
-            }}
-            onRemove={remove}
-          />
+            isChoiceMissing={isChoiceMissing}
+            onChooseSimilar={(similar) => chooseSimilar(ingredient, similar)}
+            onKeepNew={() => newIngredients.keepNew(ingredient.id)}
+            similar={newIngredients.similarOf(ingredient.id)}
+          >
+            <IngredientQuantityRow
+              draft={draftMap.get(ingredient.id) ?? EMPTY_DRAFT}
+              error={invalidIdSet.has(ingredient.id) ? t.quantities.invalidAmount : undefined}
+              ingredient={ingredient}
+              onChange={(draft) => {
+                setDraftMap((previous) => new Map(previous).set(ingredient.id, draft));
+                if (invalidIdSet.has(ingredient.id)) {
+                  setInvalidIdSet((previous) => withoutId(previous, ingredient.id));
+                }
+              }}
+              onRemove={remove}
+            />
+          </SelectedIngredient>
         )}
         selectedList={selectedIngredientList}
       />
@@ -170,11 +212,14 @@ function RecipeForm({ initialRecipe, screenTitle }: RecipeFormProps) {
 // Creates a recipe (/recipe/new) or edits one (/recipe/[id]/edit).
 function RecipeFormRoute() {
   const database = useDatabase();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, scanned } = useLocalSearchParams<{ id?: string; scanned?: string }>();
   const recipeId = id === undefined ? undefined : Number(id);
   // The form starts from the saved recipe; reads are synchronous, so it's ready on first render.
   const [initialRecipe] = useState(() =>
     recipeId === undefined ? undefined : getRecipe(database, recipeId),
+  );
+  const [scannedRecipe] = useState(() =>
+    recipeId === undefined ? parseScannedRecipe(scanned) : undefined,
   );
   const t = useMessages();
   const screenTitle = recipeId === undefined ? t.recipes.newRecipe : t.recipes.editRecipe;
@@ -187,7 +232,13 @@ function RecipeFormRoute() {
       </View>
     );
   }
-  return <RecipeForm initialRecipe={initialRecipe} screenTitle={screenTitle} />;
+  return (
+    <RecipeForm
+      initialRecipe={initialRecipe}
+      scannedRecipe={scannedRecipe}
+      screenTitle={screenTitle}
+    />
+  );
 }
 
 const EMPTY_DRAFT: QuantityDraft = { amountText: '' };
@@ -196,6 +247,68 @@ const EMPTY_DRAFT: QuantityDraft = { amountText: '' };
 type RowReading = Readonly<{ isInvalid: boolean; quantity?: Quantity }>;
 
 type SavedQuantity = Readonly<{ draft: QuantityDraft; stored: Quantity }>;
+
+// The form's header: Save, and for a new recipe, filling it in from a photo of a recipe page.
+function FormHeader({
+  isNew,
+  isReading,
+  onSave,
+  onScan,
+  title,
+}: Readonly<{
+  isNew: boolean;
+  isReading: boolean;
+  onSave: () => void;
+  onScan: () => void;
+  title: string;
+}>) {
+  const t = useMessages();
+  return (
+    <Stack.Screen
+      options={{
+        headerRight: headerActions(
+          <>
+            {isNew && (
+              <Button
+                accessibilityHint={t.recipeScan.buttonHint}
+                accessibilityLabel={isReading ? t.recipeScan.reading : t.recipeScan.buttonLabel}
+                icon="camera-outline"
+                isDisabled={isReading}
+                label={isReading ? t.recipeScan.reading : t.recipeScan.button}
+                onPress={onScan}
+                variant="secondary"
+              />
+            )}
+            <Button
+              accessibilityHint={t.recipes.saveHint}
+              accessibilityLabel={t.recipes.saveRecipe}
+              icon="check"
+              isIconOnly
+              label={t.common.save}
+              onPress={onSave}
+            />
+          </>,
+        ),
+        title,
+      }}
+    />
+  );
+}
+
+// The typed quantity follows the ingredient it was typed for, unless the other one has its own.
+function moveDraft(
+  draftMap: ReadonlyMap<number, QuantityDraft>,
+  fromId: number,
+  toId: number,
+): Map<number, QuantityDraft> {
+  const next = new Map(draftMap);
+  const draft = draftMap.get(fromId);
+  if (draft && !draftMap.get(toId)?.amountText) {
+    next.set(toId, draft);
+  }
+  next.delete(fromId);
+  return next;
+}
 
 // The quantities of the selected ingredients; an empty amount = no quantity.
 function readQuantities(
@@ -250,6 +363,30 @@ function savedQuantities(
   return savedMap;
 }
 
+// The title or the instructions the form starts with: the saved recipe's, or the photo's.
+function startingText(
+  recipe: Recipe | undefined,
+  scanned: ScannedRecipe | undefined,
+  field: 'instructions' | 'title',
+): string {
+  return recipe?.[field] ?? scanned?.[field] ?? '';
+}
+
+// The existing ingredient takes the new one's place, or the new one goes when it's already there.
+function swapIngredient(
+  selectedList: readonly Ingredient[],
+  fromId: number,
+  to: Ingredient,
+): Ingredient[] {
+  const isSelected = selectedList.some((ingredient) => ingredient.id === to.id);
+  return selectedList.flatMap((ingredient) => {
+    if (ingredient.id !== fromId) {
+      return [ingredient];
+    }
+    return isSelected ? [] : [to];
+  });
+}
+
 // A stored quantity, and how the form shows it.
 function toSaved(quantity: Quantity, t: Messages, units: UnitSystem): SavedQuantity {
   const shown = toDisplay(quantity, units);
@@ -262,9 +399,31 @@ function toSaved(quantity: Quantity, t: Messages, units: UnitSystem): SavedQuant
   };
 }
 
+// The selected ingredients, then the added ones that aren't there yet.
+function withAdded(selectedList: readonly Ingredient[], addedList: readonly Ingredient[]) {
+  const selectedIdSet = new Set(selectedList.map(({ id }) => id));
+  return [...selectedList, ...addedList.filter(({ id }) => !selectedIdSet.has(id))];
+}
+
 function withoutId(idSet: ReadonlySet<number>, id: number): ReadonlySet<number> {
   const next = new Set(idSet);
   next.delete(id);
+  return next;
+}
+
+// The quantities read from a photo, in the reader's units ("2 cups" shows as 473 ml in European
+// units), where no amount was typed: what the user typed stays.
+function withScannedDrafts(
+  draftMap: ReadonlyMap<number, QuantityDraft>,
+  quantityList: readonly (readonly [number, Quantity])[],
+  t: Messages,
+  units: UnitSystem,
+): Map<number, QuantityDraft> {
+  const next = new Map(draftMap);
+  const emptyList = quantityList.filter(([id]) => !draftMap.get(id)?.amountText.trim());
+  for (const [id, quantity] of emptyList) {
+    next.set(id, toSaved(toStored(quantity), t, units).draft);
+  }
   return next;
 }
 

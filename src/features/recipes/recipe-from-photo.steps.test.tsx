@@ -1,0 +1,280 @@
+import type { Text } from '@infinitered/react-native-mlkit-text-recognition';
+import type { ImagePickerResult } from 'expo-image-picker';
+import { recognizeText } from '@infinitered/react-native-mlkit-text-recognition';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
+import { defineFeature, loadFeature } from 'jest-cucumber';
+import type { DatabaseConnection } from '@/db/types';
+import type { NavigationMock } from '@/test/navigation-mock';
+import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
+import { updatePreferences } from '@/features/settings/preferences';
+import { spyOnAlert } from '@/test/alert';
+import { firstIngredientPage, firstRecipePage } from '@/test/queries';
+import { createTestConnection, renderWithDatabase } from '@/test/test-database';
+import { RecipeDetails } from './components/recipe-details';
+import { getRecipe } from './db/recipe-queries';
+import { RecipeFormScreen } from './recipe-form-screen';
+import { RecipesScreen } from './recipes-screen';
+
+// The form's route parameters: none, or the recipe a scan passed (useNewRecipe).
+jest.mock('expo-router', () => ({
+  router: { back: jest.fn(), push: jest.fn(), replace: jest.fn() },
+  Stack: {
+    Screen: jest.requireActual<NavigationMock>('@/test/navigation-mock').ScreenWithHeaderButtons,
+  },
+  useIsFocused: () => true,
+  useLocalSearchParams: jest.fn(() => ({})),
+}));
+
+const feature = loadFeature('./recipe-from-photo.feature', { loadRelativePath: true });
+const PHOTO_OF = /^I fill in a new recipe from a photo of "(.*)" listing "(.*)"$/;
+const PHOTO_STEPS = 'Simmer for 30 minutes.';
+const CHOSEN_PHOTO: ImagePickerResult = {
+  assets: [{ height: 1600, uri: 'file:///recipe-page.jpg', width: 1200 }],
+  canceled: false,
+};
+
+// What the text recognition reads on a page: the title in large print, then each line on its own.
+function readPage(title: string, lineList: readonly string[]): Text {
+  const toBlock = (text: string, height: number) => {
+    const frame = { bottom: height, left: 0, right: 100, top: 0 };
+    return {
+      frame,
+      lines: [{ elements: [], frame, recognizedLanguages: [], text }],
+      recognizedLanguages: [],
+      text,
+    };
+  };
+  const blockList = [title, 'Ingredients', ...lineList, 'Method', PHOTO_STEPS].map((text, index) =>
+    toBlock(text, index === 0 ? 40 : 20),
+  );
+  return { blocks: blockList, text: '' };
+}
+
+defineFeature(feature, (test) => {
+  let connection: DatabaseConnection;
+  let alert: ReturnType<typeof spyOnAlert>;
+
+  beforeEach(() => {
+    jest.mocked(useLocalSearchParams).mockReturnValue({});
+    connection = createTestConnection();
+    updatePreferences({ units: 'metric' });
+    alert = spyOnAlert();
+    jest.mocked(launchImageLibraryAsync).mockResolvedValue(CHOSEN_PHOTO);
+  });
+
+  const givenIngredients = (names: string) => {
+    for (const name of names.split(', ')) {
+      findOrCreateIngredient(connection.db, name);
+    }
+  };
+  const openNewRecipe = async () => {
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+  };
+  const scanPhoto = async (page: Text) => {
+    jest.mocked(recognizeText).mockResolvedValue(page);
+    await fireEvent.press(screen.getByRole('button', { name: 'Fill in from a photo' }));
+    await alert.press('Choose a photo');
+    await waitFor(() => expect(recognizeText).toHaveBeenCalledWith(CHOSEN_PHOTO.assets?.[0]?.uri));
+  };
+  const fillInFromPhoto = async (page: Text) => {
+    await openNewRecipe();
+    await scanPhoto(page);
+  };
+  const fillInRecipe = async (title: string, lines: string) => {
+    await fillInFromPhoto(readPage(title, lines.split(', ')));
+    await screen.findByDisplayValue(title);
+  };
+  const saveTheRecipe = async () => {
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+  };
+  // The saved recipe as its screen shows it: title, then the lines of its ingredient list.
+  const shownRecipe = async () => {
+    const [recipe] = firstRecipePage(connection.db);
+    await renderWithDatabase(
+      <RecipeDetails recipe={getRecipe(connection.db, recipe?.id ?? -1)!} />,
+      connection,
+    );
+    return {
+      lineList: screen.getAllByText(/^• /).map((element) => element.props.children as string),
+      title: recipe?.title,
+    };
+  };
+  const expectedRecipe = (title: string, lines: string) => ({
+    lineList: lines.split(', ').map((line) => `• ${line}`),
+    title,
+  });
+  const ingredientNames = () => firstIngredientPage(connection.db).map(({ name }) => name);
+
+  test('Adding a recipe asks how to start', ({ then, when }) => {
+    when('I add a recipe from the recipe list', async () => {
+      await renderWithDatabase(<RecipesScreen />, connection);
+      await fireEvent.press(screen.getByRole('button', { name: 'New recipe' }));
+    });
+    then('I am asked whether to write it, choose a photo or take one', () => {
+      const buttonList = alert.spy.mock.lastCall?.[2] ?? [];
+
+      expect(buttonList.map(({ text }) => text)).toStrictEqual([
+        'Write it',
+        'Choose a photo',
+        'Take a photo',
+      ]);
+    });
+    when(/^I choose a photo of "(.*)" listing "(.*)"$/, async (title: string, lines: string) => {
+      jest.mocked(recognizeText).mockResolvedValue(readPage(title, lines.split(', ')));
+      await alert.press('Choose a photo');
+      await waitFor(() => expect(router.push).toHaveBeenCalledTimes(1));
+    });
+    then(
+      /^the new recipe opens filled in with "(.*)" and "(.*)"$/,
+      async (title: string, ingredient: string) => {
+        const [target] = jest.mocked(router.push).mock.lastCall ?? [];
+        const params = typeof target === 'object' ? target.params : undefined;
+        const scanned = typeof params?.scanned === 'string' ? params.scanned : '';
+        jest.mocked(useLocalSearchParams).mockReturnValue({ scanned });
+        await renderWithDatabase(<RecipeFormScreen />, connection);
+        const [name = '', amount = ''] = ingredient.split(': ', 2);
+
+        expect(screen.getByLabelText('Title')).toHaveDisplayValue(title);
+        expect(screen.getByLabelText(`Quantity of ${name}`)).toHaveDisplayValue(amount);
+        expect(screen.getByLabelText('Recipe text')).toHaveDisplayValue(PHOTO_STEPS);
+      },
+    );
+  });
+
+  test('A photo fills in a new recipe', ({ and, given, then, when }) => {
+    given(/^the ingredients "(.*)" exist$/, givenIngredients);
+    when(PHOTO_OF, fillInRecipe);
+    and('I save the recipe', saveTheRecipe);
+    then(/^the recipe "(.*)" lists "(.*)"$/, async (title: string, lines: string) => {
+      await expect(shownRecipe()).resolves.toStrictEqual(expectedRecipe(title, lines));
+    });
+    and(/^the ingredients are "(.*)"$/, (names: string) => {
+      expect(ingredientNames()).toStrictEqual(names.split(', '));
+    });
+  });
+
+  test('New ingredients are only created when the recipe is saved', ({ then, when }) => {
+    when(PHOTO_OF, fillInRecipe);
+    then('no ingredient exists yet', () => {
+      expect(ingredientNames()).toStrictEqual([]);
+    });
+  });
+
+  test('An ingredient like an existing one asks which to keep', ({ and, given, then, when }) => {
+    given(/^the ingredients "(.*)" exist$/, givenIngredients);
+    when(PHOTO_OF, fillInRecipe);
+    then(/^I am told I already have "(.*)"$/, (name: string) => {
+      expect(screen.getByText(`You already have “${name}”. Use it instead?`)).toBeOnTheScreen();
+    });
+    when('I save the recipe', saveTheRecipe);
+    then('I am asked to choose before saving', () => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/choose one to save the recipe/);
+    });
+    and('no recipe is saved', () => {
+      expect(firstRecipePage(connection.db)).toStrictEqual([]);
+    });
+    when(/^I use "(.*)"$/, async (name: string) => {
+      await fireEvent.press(screen.getByRole('button', { name: `Use “${name}”` }));
+    });
+    and('I save the recipe', saveTheRecipe);
+    then(/^the recipe "(.*)" lists "(.*)"$/, async (title: string, lines: string) => {
+      await expect(shownRecipe()).resolves.toStrictEqual(expectedRecipe(title, lines));
+    });
+    and(/^the ingredients are "(.*)"$/, (names: string) => {
+      expect(ingredientNames()).toStrictEqual(names.split(', '));
+    });
+  });
+
+  test('The new ingredient can be kept', ({ and, given, then, when }) => {
+    given(/^the ingredients "(.*)" exist$/, givenIngredients);
+    when(PHOTO_OF, fillInRecipe);
+    and(/^I keep the new "(.*)"$/, async (name: string) => {
+      await fireEvent.press(
+        screen.getByRole('button', { name: `Keep “${name}” as a new ingredient` }),
+      );
+    });
+    and('I save the recipe', saveTheRecipe);
+    then(/^the recipe "(.*)" lists "(.*)"$/, async (title: string, lines: string) => {
+      await expect(shownRecipe()).resolves.toStrictEqual(expectedRecipe(title, lines));
+    });
+    and(/^the ingredients are "(.*)"$/, (names: string) => {
+      expect(ingredientNames()).toStrictEqual(names.split(', '));
+    });
+  });
+
+  test('What I typed before stays', ({ and, given, then, when }) => {
+    given(/^the ingredients "(.*)" exist$/, givenIngredients);
+    and(
+      /^I typed the title "(.*)", the steps "(.*)" and "(.*)" with the quantity "(.*)"$/,
+      async (title: string, steps: string, name: string, amount: string) => {
+        await openNewRecipe();
+        await fireEvent.changeText(screen.getByLabelText('Title'), title);
+        await fireEvent.changeText(screen.getByLabelText('Recipe text'), steps);
+        await fireEvent.press(screen.getByRole('button', { name: `Add ${name}` }));
+        await fireEvent.changeText(screen.getByLabelText(`Quantity of ${name}`), amount);
+      },
+    );
+    when(
+      /^I fill in the recipe from a photo of "(.*)" listing "(.*)"$/,
+      async (title: string, lines: string) => {
+        await scanPhoto(readPage(title, lines.split(', ')));
+        await screen.findByText('water');
+      },
+    );
+    then(/^the title is still "(.*)"$/, (title: string) => {
+      expect(screen.getByLabelText('Title')).toHaveDisplayValue(title);
+    });
+    and(/^the steps read "(.*)" then the photo's steps$/, (steps: string) => {
+      expect(screen.getByLabelText('Recipe text')).toHaveDisplayValue(`${steps}\n\n${PHOTO_STEPS}`);
+    });
+    and(/^"(.*)" is listed once, with the quantity "(.*)"$/, (name: string, amount: string) => {
+      expect(screen.getAllByLabelText(`Quantity of ${name}`)).toHaveLength(1);
+      expect(screen.getByLabelText(`Quantity of ${name}`)).toHaveDisplayValue(amount);
+    });
+    and(/^"(.*)" has the quantity "(.*)"$/, (name: string, amount: string) => {
+      expect(screen.getByLabelText(`Quantity of ${name}`)).toHaveDisplayValue(amount);
+    });
+  });
+
+  test('The camera needs my permission', ({ given, then, when }) => {
+    given('I refuse the camera', () => {
+      jest.mocked(requestCameraPermissionsAsync).mockResolvedValueOnce({
+        canAskAgain: false,
+        expires: 'never',
+        granted: false,
+        status: 'denied' as never,
+      });
+    });
+    when('I try to take a photo for a new recipe', async () => {
+      await openNewRecipe();
+      await fireEvent.press(screen.getByRole('button', { name: 'Fill in from a photo' }));
+      await alert.press('Take a photo');
+    });
+    then('I am told to allow the camera or to choose an existing photo', async () => {
+      await waitFor(() =>
+        expect(alert.spy).toHaveBeenLastCalledWith(
+          'Read a recipe from a photo',
+          'Allow the camera in the phone’s settings to take a photo, or choose an existing one.',
+          expect.anything(),
+        ),
+      );
+    });
+  });
+
+  test('A photo without text', ({ then, when }) => {
+    when('I fill in a new recipe from a photo without text', async () => {
+      await fillInFromPhoto({ blocks: [], text: '' });
+    });
+    then('I am told that no recipe was found', async () => {
+      await waitFor(() =>
+        expect(alert.spy).toHaveBeenLastCalledWith(
+          'No recipe found',
+          expect.stringContaining('No text could be read'),
+          expect.anything(),
+        ),
+      );
+    });
+  });
+});

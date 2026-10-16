@@ -3,6 +3,8 @@ appId: io.github.someoneinthe.dishescook
 ---
 # The keyboard covers the lower fields: close it, and scroll to a field, before tapping it.
 - tapOn: Add a recipe
+# Write it, or fill it in from a photo: Android shows dialog buttons in capitals.
+- tapOn: (?i)write it
 - tapOn: e.g. Pumpkin soup
 - inputText: ${TITLE}
 - hideKeyboard

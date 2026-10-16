@@ -181,6 +181,35 @@ export const fr: Messages = {
     titleRequired: 'Donnez un titre à la recette.',
     write: 'Écrire',
   },
+  recipeScan: {
+    button: 'Photo',
+    buttonHint: 'Lit le titre, les ingrédients et les étapes sur la photo d’une recette',
+    buttonLabel: 'Remplir depuis une photo',
+    cameraDenied:
+      'Autorisez l’appareil photo dans les réglages du téléphone pour prendre une photo, ou choisissez-en une existante.',
+    choiceRequired: (existing) =>
+      `Vous avez déjà ${quote(existing)}${NARROW_SPACE}: faites votre choix pour enregistrer la recette.`,
+    chooseMessage:
+      'Le texte est lu sur votre téléphone et la photo n’est pas gardée. Vérifiez ce qui a été lu avant d’enregistrer.',
+    choosePhoto: 'Choisir une photo',
+    chooseTitle: 'Lire une recette sur une photo',
+    keepNew: 'Garder le nouveau',
+    keepNewHint: 'Crée cet ingrédient à l’enregistrement de la recette',
+    keepNewLabel: (name) => `Garder ${quote(name)} comme nouvel ingrédient`,
+    nothingFoundMessage:
+      'Aucun texte n’a pu être lu. Essayez une photo nette et bien éclairée de la page.',
+    nothingFoundTitle: 'Aucune recette trouvée',
+    readFailed:
+      'Impossible de lire la photo. Si cela se reproduit, fermez l’application et rouvrez-la.',
+    reading: 'Lecture…',
+    similarMessage: (existing) =>
+      `Vous avez déjà ${quote(existing)}. L’utiliser à la place${NARROW_SPACE}?`,
+    startMessage: `Écrivez-la vous-même, ou remplissez-la depuis la photo d’une recette${NARROW_SPACE}: le texte est lu sur votre téléphone et la photo n’est pas gardée.`,
+    takePhoto: 'Prendre une photo',
+    useSimilar: (existing) => `Utiliser ${quote(existing)}`,
+    useSimilarHint: 'Utilise votre ingrédient existant au lieu d’en créer un nouveau',
+    write: 'L’écrire',
+  },
   seasons: {
     both: 'Les deux',
     summer: 'Été',
