@@ -55,7 +55,7 @@ export const en = {
     intro:
       'Dishes Cook keeps your recipes on your device. Here is where your data goes, and where it doesn’t.',
     othersList: [
-      'Reading a recipe from a photo happens on your phone, with Google’s ML Kit text recognition built into the app. The photo isn’t saved with the recipe and never leaves your phone.',
+      'Reading a recipe from a photo happens on your phone, with Google’s ML Kit text recognition built into the app. The app deletes its copy of the photo as soon as the text is read: the photo isn’t saved with the recipe and never leaves your phone.',
       'ML Kit would report how it’s used to Google: the app blocks this.',
       'No account with us, no ads, no analytics, no tracking. The app connects to nothing but your sync server, if you set one up.',
     ],
