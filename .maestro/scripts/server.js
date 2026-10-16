@@ -1,7 +1,8 @@
 /* global ACTION, EMAIL, ID, PASSWORD, SERVER_URL, TITLE, http, json, output */
 // Reads or writes the test sync server directly, as another phone would (runs on the computer that
 // runs Maestro). ACTION: 'add' adds a recipe (ID, TITLE); 'read' and 'wait-deleted' set
-// output.serverRecipes to the server's recipes: { [title]: deleted time, 0 while it exists }.
+// output.serverRecipes to the server's recipes: { [title in lowercase]: deleted time, 0 while it
+// exists } (phones save and send titles in lowercase).
 const headers = { 'Content-Type': 'application/json' };
 const signIn = http.post(`${SERVER_URL}/api/collections/users/auth-with-password`, {
   body: JSON.stringify({ identity: EMAIL, password: PASSWORD }),
@@ -40,7 +41,7 @@ if (ACTION === 'add') {
 }
 
 function isDeleted(title) {
-  return output.serverRecipes[title] > 0;
+  return output.serverRecipes[title.toLowerCase()] > 0;
 }
 
 // Maestro's scripts have no timers: waits by checking the clock.
@@ -55,7 +56,7 @@ function readRecipes() {
   const list = http.get(`${SERVER_URL}/api/collections/recipes/records?perPage=50`, { headers });
   const recipes = {};
   for (const item of json(list.body).items) {
-    recipes[item.title] = item.deleted;
+    recipes[item.title.toLowerCase()] = item.deleted;
   }
   return recipes;
 }
