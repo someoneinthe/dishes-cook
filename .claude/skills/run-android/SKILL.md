@@ -114,9 +114,9 @@ $ADB logcat -d -s ReactNativeJS | tail -50              # console.log/warn/error
 
 Expected startup: native splash (plate on white / `#121212` in dark mode) → full illustration (~1.5 s) → home screen. The illustration is short: take screenshots in a quick loop to catch it.
 
-## 7. Android TV (emulator, then a real TV)
+## 7. Android TV (emulator; a real TV when asked)
 
-The same APK runs on Android TV, read-only (`isTv`), driven with the D-pad. Check TV-facing changes on the TV emulator first, then on the real TV.
+The same APK runs on Android TV, read-only (`isTv`), driven with the D-pad. Check TV-facing changes on the TV emulator: it's enough for most changes. Use the real TV only when the maintainer asks, or for what the emulator can't show (launcher entry and banner, a real remote).
 
 - **Emulator**: AVD `Television_1080p` (Android TV 14, arm64; created with `avdmanager create avd -n Television_1080p -k "system-images;android-34;android-tv;arm64-v8a" -d tv_1080p`). Boot it on its own port so it never takes another emulator's serial: `emulator -avd Television_1080p -port 5580 …`, then `export ANDROID_SERIAL=emulator-5580`.
 - **Open the app**: `adb shell am start -n io.github.someoneinthe.dishescook/.MainActivity` (`monkey -p …` doesn't start it on TV).
