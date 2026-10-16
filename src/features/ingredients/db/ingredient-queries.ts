@@ -5,7 +5,14 @@ import type { AppDatabase } from '@/db/types';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, syncDeletions } from '@/db/schema';
 import { toIngredientSyncId } from '@/lib/sync-id';
-import { cleanName, toLikeContains, toNameKey, toSortKey, toWordForms } from '@/lib/text';
+import {
+  cleanName,
+  toDisplayName,
+  toLikeContains,
+  toNameKey,
+  toSortKey,
+  toWordForms,
+} from '@/lib/text';
 
 export type DeleteResult = 'deleted' | 'in-use';
 
@@ -56,11 +63,12 @@ export function deleteIngredient(database: AppDatabase, id: number): DeleteResul
 }
 
 export function findIngredientByName(database: AppDatabase, name: string): Ingredient | undefined {
-  return database
+  const found = database
     .select({ id: ingredients.id, name: ingredients.name })
     .from(ingredients)
     .where(eq(ingredients.nameKey, toNameKey(name)))
     .get();
+  return found && shown(found);
 }
 
 // Returns the ingredient with this name, creating it if needed (names are unique, ignoring case).
@@ -77,7 +85,7 @@ export function findOrCreateIngredient(
   const created = database
     .insert(ingredients)
     .values({
-      name: cleanedName,
+      name: nameKey,
       nameKey,
       sortKey: toSortKey(cleanedName),
       syncId: toIngredientSyncId(nameKey),
@@ -86,7 +94,7 @@ export function findOrCreateIngredient(
     .returning({ id: ingredients.id, name: ingredients.name })
     .get();
   if (created) {
-    return { ...created, isNew: true };
+    return { ...shown(created), isNew: true };
   }
   const existing = findIngredientByName(database, cleanedName);
   if (!existing) {
@@ -112,7 +120,7 @@ export function findSimilarIngredient(database: AppDatabase, name: string): Ingr
     .limit(1)
     .get();
   if (sameForm) {
-    return sameForm;
+    return shown(sameForm);
   }
   // ' vin rouge ' inside ' bouteille de vin rouge assez bon ': whole words only.
   const paddedList = formList.map(
@@ -123,7 +131,7 @@ export function findSimilarIngredient(database: AppDatabase, name: string): Ingr
   const inNameWhere = or(
     ...paddedList.map((padded) => sql`instr(${padded}, ' ' || ${storedKey} || ' ') > 0`),
   );
-  return database
+  const inName = database
     .select({ id: ingredients.id, name: ingredients.name })
     .from(ingredients)
     .where(and(inNameWhere, otherNameWhere))
@@ -134,6 +142,7 @@ export function findSimilarIngredient(database: AppDatabase, name: string): Ingr
     )
     .limit(1)
     .get();
+  return inName && shown(inName);
 }
 
 // One page (PAGE_SIZE) of the alphabetical ingredient list with usage counts, optionally filtered
@@ -157,7 +166,10 @@ export function listIngredientPage(
     .orderBy(order(ingredients.sortKey), order(ingredients.id))
     .limit(PAGE_SIZE + 1)
     .all();
-  return toPage(rowList, pageParam);
+  return toPage(
+    rowList.map((row) => shown(row)),
+    pageParam,
+  );
 }
 
 export function renameIngredient(database: AppDatabase, id: number, name: string): RenameResult {
@@ -176,7 +188,7 @@ export function renameIngredient(database: AppDatabase, id: number, name: string
   }
   database
     .update(ingredients)
-    .set({ name: cleanedName, nameKey, sortKey: toSortKey(cleanedName), updatedAt: NOW_MS })
+    .set({ name: nameKey, nameKey, sortKey: toSortKey(cleanedName), updatedAt: NOW_MS })
     .where(eq(ingredients.id, id))
     .run();
   return 'renamed';
@@ -195,7 +207,7 @@ export function suggestIngredients(
 ): Ingredient[] {
   const { excludeIdList, isUsedOnly, limit, search } = options;
   const searchedNameKey = toNameKey(search);
-  return database
+  const rowList = database
     .select({ id: ingredients.id, name: ingredients.name })
     .from(ingredients)
     .where(
@@ -212,10 +224,16 @@ export function suggestIngredients(
     )
     .limit(limit)
     .all();
+  return rowList.map((row) => shown(row));
 }
 
 function searchWhere(search: string): SQL | undefined {
   return cleanName(search)
     ? sql`${ingredients.sortKey} like ${toLikeContains(search)} escape '\\'`
     : undefined;
+}
+
+// A row with its name as shown (saved in lowercase).
+function shown<Row extends Readonly<{ name: string }>>(row: Row): Row {
+  return { ...row, name: toDisplayName(row.name) };
 }

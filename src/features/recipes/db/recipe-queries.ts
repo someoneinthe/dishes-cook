@@ -8,7 +8,7 @@ import type { Quantity } from '@/lib/units';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, recipes, syncDeletions } from '@/db/schema';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
-import { cleanName, toLikeContains, toSortKey } from '@/lib/text';
+import { cleanName, toDisplayName, toLikeContains, toSortKey } from '@/lib/text';
 import { toQuantity, toStored } from '@/lib/units';
 
 export type Recipe = Readonly<{
@@ -119,7 +119,10 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
   // Not paginated: a recipe's own ingredients, bounded by what the form lets you add.
   const ingredientList = linkList.map(({ amount, id: ingredientId, name, unit }) => {
     const quantity = toQuantity(amount, unit);
-    return quantity ? { id: ingredientId, name, quantity } : { id: ingredientId, name };
+    const shownName = toDisplayName(name);
+    return quantity
+      ? { id: ingredientId, name: shownName, quantity }
+      : { id: ingredientId, name: shownName };
   });
   return { ...recipe, ingredientList };
 }

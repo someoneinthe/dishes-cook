@@ -3,6 +3,7 @@ import { defineFeature, loadFeature } from 'jest-cucumber';
 import type { Course, Season } from '@/db/schema';
 import type { DatabaseConnection } from '@/db/types';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
+import { toDisplayName } from '@/lib/text';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { saveRecipe } from './db/recipe-queries';
 import { RecipesScreen } from './recipes-screen';
@@ -54,7 +55,7 @@ defineFeature(feature, (test) => {
   };
 
   const selectTheIngredient = async (name: string) => {
-    await fireEvent.press(screen.getByRole('button', { name: `Add ${name}` }));
+    await fireEvent.press(screen.getByRole('button', { name: `Add ${toDisplayName(name)}` }));
   };
 
   // Titles of the listed rows, in order: each row is read "title, season[, course]".

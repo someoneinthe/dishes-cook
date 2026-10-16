@@ -18,8 +18,8 @@ Feature: A recipe from a photo
     Given the ingredients "Leek" exist
     When I fill in a new recipe from a photo of "Leek soup" listing "2 leek, 500 g potatoes"
     And I save the recipe
-    Then the recipe "Leek soup" lists "Leek: 2, potatoes: 500 g"
-    And the ingredients are "Leek, potatoes"
+    Then the recipe "Leek soup" lists "Leek: 2, Potatoes: 500 g"
+    And the ingredients are "Leek, Potatoes"
 
   Scenario: New ingredients are only created when the recipe is saved
     When I fill in a new recipe from a photo of "Leek soup" listing "2 leeks"
@@ -47,8 +47,8 @@ Feature: A recipe from a photo
     When I fill in a new recipe from a photo of "Carrot salad" listing "3 carrot"
     And I keep the new "carrot"
     And I save the recipe
-    Then the recipe "Carrot salad" lists "carrot: 3"
-    And the ingredients are "carrot, Carrots"
+    Then the recipe "Carrot salad" lists "Carrot: 3"
+    And the ingredients are "Carrot, Carrots"
 
   Scenario: The camera needs my permission
     Given I refuse the camera

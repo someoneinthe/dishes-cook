@@ -104,7 +104,8 @@ function applyIngredient(tx: AppDatabase, row: ServerIngredient): void {
   ) {
     return;
   }
-  const values = { name, nameKey, sortKey: toSortKey(name), updatedAt: row.modified };
+  // Saved in lowercase, whatever the other phone or the server had (shown with toDisplayName).
+  const values = { name: nameKey, nameKey, sortKey: toSortKey(name), updatedAt: row.modified };
   if (local) {
     tx.update(ingredients).set(values).where(eq(ingredients.id, local.id)).run();
   } else {

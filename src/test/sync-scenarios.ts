@@ -175,7 +175,8 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
 
     expect(titlesOf(phoneB)).toStrictEqual(['Salad']);
     // The ingredient isn't deleted with the recipe.
-    expect(ingredientNamesOf(phoneB)).toStrictEqual(['Leek']);
+    // Names are saved in lowercase (and shown with a capital first letter).
+    expect(ingredientNamesOf(phoneB)).toStrictEqual(['leek']);
     expect(phoneA.db.select().from(syncDeletions).all()).toStrictEqual([]);
   });
 

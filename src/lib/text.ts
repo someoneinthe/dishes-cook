@@ -8,13 +8,20 @@ export function cleanName(name: string): string {
   return name.trim().replaceAll(WHITESPACE_RUN, ' ');
 }
 
+// An ingredient's name as shown: its first letter capitalized ("huile d'olive" -> "Huile d'olive").
+// Names are saved in lowercase (toNameKey).
+export function toDisplayName(name: string): string {
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 // `%` and `_` typed by the user match themselves in a `LIKE … ESCAPE '\\'` pattern.
 export function toLikeContains(search: string): string {
   const escaped = toSearchText(search).replaceAll(/[\\%_]/g, (character) => `\\${character}`);
   return `%${escaped}%`;
 }
 
-// Identity of an ingredient: case-insensitive but accent-sensitive ("pâte" and "pâté" differ).
+// Identity of an ingredient: case-insensitive but accent-sensitive ("pâte" and "pâté" differ). It
+// is also the saved name: ingredients are saved in lowercase and shown with toDisplayName.
 export function toNameKey(name: string): string {
   return cleanName(name).toLowerCase();
 }

@@ -15,6 +15,13 @@
       "when": 1792069688509,
       "tag": "0001_ingredient-quantities",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792153831500,
+      "tag": "0002_ingredient-names-lowercase",
+      "breakpoints": true
     }
   ]
 }
