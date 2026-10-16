@@ -1,6 +1,6 @@
 Feature: A recipe from a photo
-  A new recipe can be filled in from a photo of a recipe page, taken with the camera or chosen
-  among the phone's photos. The text is read on the phone: the photo is neither sent nor kept.
+  Adding a recipe asks whether to write it or to fill it in from a photo of a recipe page, taken
+  with the camera or chosen among the phone's photos (a book, a recipe website on a screen…). The text is read on the phone: the photo is neither sent nor kept.
   The title, the ingredients with their quantities and the steps fill in the form, to check before
   saving. An ingredient that already exists (same name, ignoring case) is used; a new one is only
   created when the recipe is saved. When a new one looks like an existing one (singular or plural,
@@ -43,15 +43,6 @@ Feature: A recipe from a photo
     And I save the recipe
     Then the recipe "Carrot salad" lists "carrot: 3"
     And the ingredients are "carrot, Carrots"
-
-  Scenario: What I typed before stays
-    Given the ingredients "Leek" exist
-    And I typed the title "Grandma's soup", the steps "Serve hot." and "Leek" with the quantity "3"
-    When I fill in the recipe from a photo of "Leek soup" listing "2 leek, 1 l water"
-    Then the title is still "Grandma's soup"
-    And the steps read "Serve hot." then the photo's steps
-    And "Leek" is listed once, with the quantity "3"
-    And "water" has the quantity "1"
 
   Scenario: The camera needs my permission
     Given I refuse the camera

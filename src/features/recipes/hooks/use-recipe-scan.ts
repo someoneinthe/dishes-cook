@@ -1,4 +1,4 @@
-import type { Text } from '@infinitered/react-native-mlkit-text-recognition';
+import type { Rect, Text, TextLine } from '@infinitered/react-native-mlkit-text-recognition';
 import { recognizeText } from '@infinitered/react-native-mlkit-text-recognition';
 import {
   launchCameraAsync,
@@ -14,13 +14,13 @@ import { readRecipeText } from '../recipe-from-text';
 // Where the photo comes from: the camera, or the phone's photos.
 export type PhotoSource = 'camera' | 'library';
 
-// The text recognition's result as the recipe reader takes it: blocks of lines with their height.
+// The text recognition's result as the recipe reader takes it: blocks of lines, where they are on
+// the page, and the height of their letters: the middle height of their words (a slanted photo
+// makes a long line's box taller than its letters).
 export function toScannedBlocks(text: Text): ScannedBlock[] {
   return text.blocks.map((block) => ({
-    lineList: block.lines.map((line) => ({
-      height: line.frame.bottom - line.frame.top,
-      text: line.text,
-    })),
+    frame: block.frame,
+    lineList: block.lines.map((line) => ({ height: letterHeight(line), text: line.text })),
   }));
 }
 
@@ -78,13 +78,15 @@ export function useRecipeScan(onRead: (recipe: ScannedRecipe) => void) {
     isReading,
     // Reads a photo from this source, without asking (the user already chose it).
     readFrom,
-    // Asks where the photo comes from, then reads it.
-    scan: () => {
-      Alert.alert(t.recipeScan.chooseTitle, t.recipeScan.chooseMessage, [
-        { style: 'cancel', text: t.common.cancel },
-        { onPress: () => void readFrom('library'), text: t.recipeScan.choosePhoto },
-        { onPress: () => void readFrom('camera'), text: t.recipeScan.takePhoto },
-      ]);
-    },
   };
+}
+
+function frameHeight({ bottom, top }: Rect): number {
+  return bottom - top;
+}
+
+function letterHeight(line: TextLine): number {
+  const heightList = line.elements.map(({ frame }) => frameHeight(frame));
+  const sortedList = [...heightList].sort((first, second) => first - second);
+  return sortedList[Math.floor(sortedList.length / 2)] ?? frameHeight(line.frame);
 }

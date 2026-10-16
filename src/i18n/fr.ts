@@ -182,15 +182,10 @@ export const fr: Messages = {
     write: 'Écrire',
   },
   recipeScan: {
-    button: 'Photo',
-    buttonHint: 'Lit le titre, les ingrédients et les étapes sur la photo d’une recette',
-    buttonLabel: 'Remplir depuis une photo',
     cameraDenied:
       'Autorisez l’appareil photo dans les réglages du téléphone pour prendre une photo, ou choisissez-en une existante.',
     choiceRequired: (existing) =>
       `Vous avez déjà ${quote(existing)}${NARROW_SPACE}: faites votre choix pour enregistrer la recette.`,
-    chooseMessage:
-      'Le texte est lu sur votre téléphone et la photo n’est pas gardée. Vérifiez ce qui a été lu avant d’enregistrer.',
     choosePhoto: 'Choisir une photo',
     chooseTitle: 'Lire une recette sur une photo',
     keepNew: 'Garder le nouveau',
@@ -201,7 +196,6 @@ export const fr: Messages = {
     nothingFoundTitle: 'Aucune recette trouvée',
     readFailed:
       'Impossible de lire la photo. Si cela se reproduit, fermez l’application et rouvrez-la.',
-    reading: 'Lecture…',
     similarMessage: (existing) =>
       `Vous avez déjà ${quote(existing)}. L’utiliser à la place${NARROW_SPACE}?`,
     startMessage: `Écrivez-la vous-même, ou remplissez-la depuis la photo d’une recette${NARROW_SPACE}: le texte est lu sur votre téléphone et la photo n’est pas gardée.`,

@@ -37,8 +37,10 @@ const CHOSEN_PHOTO: ImagePickerResult = {
 
 // What the text recognition reads on a page: the title in large print, then each line on its own.
 function readPage(title: string, lineList: readonly string[]): Text {
-  const toBlock = (text: string, height: number) => {
-    const frame = { bottom: height, left: 0, right: 100, top: 0 };
+  // One block per line, one under the other.
+  const toBlock = (text: string, index: number) => {
+    const height = index === 0 ? 40 : 20;
+    const frame = { bottom: index * 60 + height, left: 0, right: 100, top: index * 60 };
     return {
       frame,
       lines: [{ elements: [], frame, recognizedLanguages: [], text }],
@@ -47,7 +49,7 @@ function readPage(title: string, lineList: readonly string[]): Text {
     };
   };
   const blockList = [title, 'Ingredients', ...lineList, 'Method', PHOTO_STEPS].map((text, index) =>
-    toBlock(text, index === 0 ? 40 : 20),
+    toBlock(text, index),
   );
   return { blocks: blockList, text: '' };
 }
@@ -57,6 +59,7 @@ defineFeature(feature, (test) => {
   let alert: ReturnType<typeof spyOnAlert>;
 
   beforeEach(() => {
+    jest.mocked(router.push).mockClear();
     jest.mocked(useLocalSearchParams).mockReturnValue({});
     connection = createTestConnection();
     updatePreferences({ units: 'metric' });
@@ -69,21 +72,29 @@ defineFeature(feature, (test) => {
       findOrCreateIngredient(connection.db, name);
     }
   };
-  const openNewRecipe = async () => {
-    await renderWithDatabase(<RecipeFormScreen />, connection);
+  // Recipes › + : the question how to start the recipe.
+  const startNewRecipe = async () => {
+    await renderWithDatabase(<RecipesScreen />, connection);
+    await fireEvent.press(screen.getByRole('button', { name: 'New recipe' }));
   };
-  const scanPhoto = async (page: Text) => {
+  const choosePhoto = async (page: Text) => {
     jest.mocked(recognizeText).mockResolvedValue(page);
-    await fireEvent.press(screen.getByRole('button', { name: 'Fill in from a photo' }));
     await alert.press('Choose a photo');
     await waitFor(() => expect(recognizeText).toHaveBeenCalledWith(CHOSEN_PHOTO.assets?.[0]?.uri));
   };
-  const fillInFromPhoto = async (page: Text) => {
-    await openNewRecipe();
-    await scanPhoto(page);
+  // The form the read photo opens (router.push), with its parameters.
+  const openReadForm = async () => {
+    await waitFor(() => expect(router.push).toHaveBeenCalledTimes(1));
+    const [target] = jest.mocked(router.push).mock.lastCall ?? [];
+    const params = typeof target === 'object' ? target.params : undefined;
+    const scanned = typeof params?.scanned === 'string' ? params.scanned : '';
+    jest.mocked(useLocalSearchParams).mockReturnValue({ scanned });
+    await renderWithDatabase(<RecipeFormScreen />, connection);
   };
   const fillInRecipe = async (title: string, lines: string) => {
-    await fillInFromPhoto(readPage(title, lines.split(', ')));
+    await startNewRecipe();
+    await choosePhoto(readPage(title, lines.split(', ')));
+    await openReadForm();
     await screen.findByDisplayValue(title);
   };
   const saveTheRecipe = async () => {
@@ -108,10 +119,7 @@ defineFeature(feature, (test) => {
   const ingredientNames = () => firstIngredientPage(connection.db).map(({ name }) => name);
 
   test('Adding a recipe asks how to start', ({ then, when }) => {
-    when('I add a recipe from the recipe list', async () => {
-      await renderWithDatabase(<RecipesScreen />, connection);
-      await fireEvent.press(screen.getByRole('button', { name: 'New recipe' }));
-    });
+    when('I add a recipe from the recipe list', startNewRecipe);
     then('I am asked whether to write it, choose a photo or take one', () => {
       const buttonList = alert.spy.mock.lastCall?.[2] ?? [];
 
@@ -122,18 +130,12 @@ defineFeature(feature, (test) => {
       ]);
     });
     when(/^I choose a photo of "(.*)" listing "(.*)"$/, async (title: string, lines: string) => {
-      jest.mocked(recognizeText).mockResolvedValue(readPage(title, lines.split(', ')));
-      await alert.press('Choose a photo');
-      await waitFor(() => expect(router.push).toHaveBeenCalledTimes(1));
+      await choosePhoto(readPage(title, lines.split(', ')));
     });
     then(
       /^the new recipe opens filled in with "(.*)" and "(.*)"$/,
       async (title: string, ingredient: string) => {
-        const [target] = jest.mocked(router.push).mock.lastCall ?? [];
-        const params = typeof target === 'object' ? target.params : undefined;
-        const scanned = typeof params?.scanned === 'string' ? params.scanned : '';
-        jest.mocked(useLocalSearchParams).mockReturnValue({ scanned });
-        await renderWithDatabase(<RecipeFormScreen />, connection);
+        await openReadForm();
         const [name = '', amount = ''] = ingredient.split(': ', 2);
 
         expect(screen.getByLabelText('Title')).toHaveDisplayValue(title);
@@ -204,40 +206,6 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('What I typed before stays', ({ and, given, then, when }) => {
-    given(/^the ingredients "(.*)" exist$/, givenIngredients);
-    and(
-      /^I typed the title "(.*)", the steps "(.*)" and "(.*)" with the quantity "(.*)"$/,
-      async (title: string, steps: string, name: string, amount: string) => {
-        await openNewRecipe();
-        await fireEvent.changeText(screen.getByLabelText('Title'), title);
-        await fireEvent.changeText(screen.getByLabelText('Recipe text'), steps);
-        await fireEvent.press(screen.getByRole('button', { name: `Add ${name}` }));
-        await fireEvent.changeText(screen.getByLabelText(`Quantity of ${name}`), amount);
-      },
-    );
-    when(
-      /^I fill in the recipe from a photo of "(.*)" listing "(.*)"$/,
-      async (title: string, lines: string) => {
-        await scanPhoto(readPage(title, lines.split(', ')));
-        await screen.findByText('water');
-      },
-    );
-    then(/^the title is still "(.*)"$/, (title: string) => {
-      expect(screen.getByLabelText('Title')).toHaveDisplayValue(title);
-    });
-    and(/^the steps read "(.*)" then the photo's steps$/, (steps: string) => {
-      expect(screen.getByLabelText('Recipe text')).toHaveDisplayValue(`${steps}\n\n${PHOTO_STEPS}`);
-    });
-    and(/^"(.*)" is listed once, with the quantity "(.*)"$/, (name: string, amount: string) => {
-      expect(screen.getAllByLabelText(`Quantity of ${name}`)).toHaveLength(1);
-      expect(screen.getByLabelText(`Quantity of ${name}`)).toHaveDisplayValue(amount);
-    });
-    and(/^"(.*)" has the quantity "(.*)"$/, (name: string, amount: string) => {
-      expect(screen.getByLabelText(`Quantity of ${name}`)).toHaveDisplayValue(amount);
-    });
-  });
-
   test('The camera needs my permission', ({ given, then, when }) => {
     given('I refuse the camera', () => {
       jest.mocked(requestCameraPermissionsAsync).mockResolvedValueOnce({
@@ -248,8 +216,7 @@ defineFeature(feature, (test) => {
       });
     });
     when('I try to take a photo for a new recipe', async () => {
-      await openNewRecipe();
-      await fireEvent.press(screen.getByRole('button', { name: 'Fill in from a photo' }));
+      await startNewRecipe();
       await alert.press('Take a photo');
     });
     then('I am told to allow the camera or to choose an existing photo', async () => {
@@ -265,7 +232,8 @@ defineFeature(feature, (test) => {
 
   test('A photo without text', ({ then, when }) => {
     when('I fill in a new recipe from a photo without text', async () => {
-      await fillInFromPhoto({ blocks: [], text: '' });
+      await startNewRecipe();
+      await choosePhoto({ blocks: [], text: '' });
     });
     then('I am told that no recipe was found', async () => {
       await waitFor(() =>

@@ -134,7 +134,7 @@ describe('recipe-from-text', () => {
   });
 
   describe('readRecipeText', () => {
-    it('reads the title, the ingredients and the instructions of a French page', () => {
+    it('reads the title, the ingredients and the instructions of a French page, without the servings', () => {
       expect(
         readRecipeText([
           block(['Soupe de poireaux'], 40),
@@ -153,7 +153,6 @@ describe('recipe-from-text', () => {
           { name: 'Sel' },
         ],
         instructions: [
-          'Pour 4 personnes',
           'Laver et couper les poireaux en rondelles. Éplucher les pommes de terre.',
           'Cuire 30 minutes dans le bouillon, puis mixer.',
         ].join('\n\n'),
@@ -212,6 +211,45 @@ describe('recipe-from-text', () => {
         ingredientList: [],
         instructions: 'Page 12\n\nBon appétit',
         title: 'Tarte aux pommes',
+      });
+    });
+
+    it('reads a recipe website: menu, ingredient cards, step numbers and times, in any order', () => {
+      // Where each text is, as on a photo of the screen: (left, top), letters 20 high (40 for the
+      // headings); a card's quantity and name are one block, or two ("4" / "onions").
+      const at = (lineList: readonly string[], left: number, top: number, height = 20) => ({
+        frame: { bottom: top + lineList.length * (height + 5), left, right: left + 200, top },
+        lineList: lineList.map((text) => ({ height, text })),
+      });
+
+      expect(
+        readRecipeText([
+          at(['STEP 2'], 0, 700),
+          at(['Peel the onions, then cook them slowly in the butter for a long time.'], 0, 530),
+          at(['What shall we eat tonight?'], 0, 0, 30),
+          at(['Cooking time: 1 h 30'], 0, 410),
+          at(['pepper'], 300, 205),
+          at(['Ingredients'], 0, 100, 40),
+          at(['Veggie version'], 600, 100),
+          at(['4 people'], 0, 160),
+          at(['100 g', 'of butter'], 0, 200),
+          at(['4'], 600, 200),
+          at(['onions'], 600, 230),
+          at(['Method'], 0, 350, 40),
+          at(['STEP 1'], 0, 480),
+          at(['Add a little water and serve.'], 0, 750),
+        ]),
+      ).toStrictEqual({
+        ingredientList: [
+          { name: 'butter', quantity: { amount: 100, unit: 'g' } },
+          { name: 'pepper' },
+          { name: 'onions', quantity: { amount: 4 } },
+        ],
+        instructions: [
+          '1. Peel the onions, then cook them slowly in the butter for a long time.',
+          '2. Add a little water and serve.',
+        ].join('\n\n'),
+        title: '',
       });
     });
 
