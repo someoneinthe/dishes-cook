@@ -7,7 +7,7 @@ import {
   findIngredientByName,
   findSimilarIngredient,
 } from '@/features/ingredients/db/ingredient-queries';
-import { toNameKey } from '@/lib/text';
+import { toDisplayName, toNameKey } from '@/lib/text';
 import type { ScannedIngredient } from '../recipe-from-text';
 
 // The ingredients a recipe read from a photo starts with, and the quantities read, by id.
@@ -82,7 +82,9 @@ function resolveScanned(
   const newSimilarList: [number, Ingredient][] = [];
   const quantityList: [number, Quantity][] = [];
   const addedList = [...pickedByKey.values()].map(({ existing, scanned }) => {
-    const ingredient = existing ?? { id: -1 - newNameList.length, name: scanned.name };
+    // Shown like the saved ones: a capital first letter (it's saved in lowercase).
+    const shownName = toDisplayName(toNameKey(scanned.name));
+    const ingredient = existing ?? { id: -1 - newNameList.length, name: shownName };
     if (!existing) {
       newNameList.push([ingredient.id, scanned.name]);
       const similar = findSimilarIngredient(database, scanned.name);

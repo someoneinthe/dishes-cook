@@ -12,12 +12,13 @@ Feature: A recipe from a photo
     When I add a recipe from the recipe list
     Then I am asked whether to write it, choose a photo or take one
     When I choose a photo of "Leek soup" listing "2 leeks"
-    Then the new recipe opens filled in with "Leek soup" and "leeks: 2"
+    Then the new recipe opens filled in with "Leek soup" and "Leeks: 2"
 
   Scenario: A photo fills in a new recipe
     Given the ingredients "Leek" exist
     When I fill in a new recipe from a photo of "Leek soup" listing "2 leek, 500 g potatoes"
-    And I save the recipe
+    Then the new ingredient "Potatoes" is listed with a capital first letter
+    When I save the recipe
     Then the recipe "Leek soup" lists "Leek: 2, Potatoes: 500 g"
     And the ingredients are "Leek, Potatoes"
 
@@ -45,7 +46,7 @@ Feature: A recipe from a photo
   Scenario: The new ingredient can be kept
     Given the ingredients "Carrots" exist
     When I fill in a new recipe from a photo of "Carrot salad" listing "3 carrot"
-    And I keep the new "carrot"
+    And I keep the new "Carrot"
     And I save the recipe
     Then the recipe "Carrot salad" lists "Carrot: 3"
     And the ingredients are "Carrot, Carrots"

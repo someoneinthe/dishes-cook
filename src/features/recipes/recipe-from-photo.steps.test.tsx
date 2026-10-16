@@ -148,7 +148,10 @@ defineFeature(feature, (test) => {
   test('A photo fills in a new recipe', ({ and, given, then, when }) => {
     given(/^the ingredients "(.*)" exist$/, givenIngredients);
     when(PHOTO_OF, fillInRecipe);
-    and('I save the recipe', saveTheRecipe);
+    then(/^the new ingredient "(.*)" is listed with a capital first letter$/, (name: string) => {
+      expect(screen.getByRole('button', { name: `Remove ${name}` })).toBeOnTheScreen();
+    });
+    when('I save the recipe', saveTheRecipe);
     then(/^the recipe "(.*)" lists "(.*)"$/, async (title: string, lines: string) => {
       await expect(shownRecipe()).resolves.toStrictEqual(expectedRecipe(title, lines));
     });
