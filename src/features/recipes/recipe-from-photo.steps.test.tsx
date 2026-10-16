@@ -118,14 +118,12 @@ defineFeature(feature, (test) => {
     lineList: lines.split(', ').map((line) => `• ${line}`),
     title,
   });
-  // The photo picker's folder in the app's cache, where it leaves its copies of the photo.
-  const expectPhotoCopiesDeleted = async () => {
+  // How the photo picker's folder in the app's cache, where it leaves its copies of the photo, was
+  // deleted (its `delete` mock), once the photo was read.
+  const pickedPhotoFolderDeletion = async () => {
     await waitFor(() => expect(Directory).toHaveBeenLastCalledWith(Paths.cache, 'ImagePicker'));
-    const [deleteFolder] = jest
-      .mocked(Directory)
-      .mock.results.map(({ value }) => (value as { delete: jest.Mock }).delete);
-
-    expect(deleteFolder).toHaveBeenCalledTimes(1);
+    const [folder] = jest.mocked(Directory).mock.results;
+    return (folder?.value as undefined | { delete: jest.Mock })?.delete;
   };
   const ingredientNames = () => firstIngredientPage(connection.db).map(({ name }) => name);
 
@@ -270,7 +268,9 @@ defineFeature(feature, (test) => {
 
   test("The photo isn't kept", ({ then, when }) => {
     when(PHOTO_OF, fillInRecipe);
-    then('the copies of the photo are deleted', expectPhotoCopiesDeleted);
+    then('the copies of the photo are deleted', async () => {
+      await expect(pickedPhotoFolderDeletion()).resolves.toHaveBeenCalledTimes(1);
+    });
   });
 
   test("The photo isn't kept when it can't be read", ({ and, then, when }) => {
@@ -288,6 +288,8 @@ defineFeature(feature, (test) => {
         ),
       );
     });
-    and('the copies of the photo are deleted', expectPhotoCopiesDeleted);
+    and('the copies of the photo are deleted', async () => {
+      await expect(pickedPhotoFolderDeletion()).resolves.toHaveBeenCalledTimes(1);
+    });
   });
 });
