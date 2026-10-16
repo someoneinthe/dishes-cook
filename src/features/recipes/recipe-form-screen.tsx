@@ -92,10 +92,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
       setTitle(scanned.title);
       setTitleError(undefined);
     }
-    setSelectedIngredientList((previous) => [
-      ...previous,
-      ...addedList.filter(({ id }) => previous.every((ingredient) => ingredient.id !== id)),
-    ]);
+    setSelectedIngredientList((previous) => withAdded(previous, addedList));
     setDraftMap((previous) => withScannedDrafts(previous, quantityList, t, units));
     setInstructions((previous) =>
       [previous.trim(), scanned.instructions].filter(Boolean).join('\n\n'),
@@ -400,6 +397,12 @@ function toSaved(quantity: Quantity, t: Messages, units: UnitSystem): SavedQuant
     },
     stored: quantity,
   };
+}
+
+// The selected ingredients, then the added ones that aren't there yet.
+function withAdded(selectedList: readonly Ingredient[], addedList: readonly Ingredient[]) {
+  const selectedIdSet = new Set(selectedList.map(({ id }) => id));
+  return [...selectedList, ...addedList.filter(({ id }) => !selectedIdSet.has(id))];
 }
 
 function withoutId(idSet: ReadonlySet<number>, id: number): ReadonlySet<number> {

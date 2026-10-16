@@ -237,10 +237,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 // The unit at the start of the text, followed by a space, a dot or the end ("200 gr." / "200 g").
 function matchUnit(text: string): Readonly<{ length: number; unit: Unit }> | undefined {
   const key = toSearchText(text);
-  const isWordStart = (alias: string) => {
-    const next = key.charAt(alias.length);
+  const isWordStart = (candidate: string) => {
+    const next = key.charAt(candidate.length);
     return (
-      key.startsWith(alias) && (next === '' || next === ' ' || next === '.' || alias.endsWith('.'))
+      key.startsWith(candidate) &&
+      (next === '' || next === ' ' || next === '.' || candidate.endsWith('.'))
     );
   };
   const [alias, unit] = UNIT_ALIAS_LIST.find(([candidate]) => isWordStart(candidate)) ?? [];
