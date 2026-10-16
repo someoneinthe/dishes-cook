@@ -44,6 +44,31 @@ const UNIT_WORDS: Readonly<Record<WordUnit, readonly [one: string, other: string
 };
 
 export const en = {
+  // The About screen: where people's data goes. It must stay true: a change to what the app keeps
+  // or sends (sync, a new network call, analytics…) updates it in every language (CONTRIBUTING.md).
+  about: {
+    deviceList: [
+      'Your recipes, ingredients and settings are saved in a database on this device. It’s the reference copy: the app works fully without a server or an internet connection.',
+      'Android’s backup doesn’t save them: without a sync server, uninstalling the app deletes them.',
+    ],
+    deviceTitle: 'On this device',
+    intro:
+      'Dishes Cook keeps your recipes on your device. Here is where your data goes, and where it doesn’t.',
+    othersList: [
+      'Reading a recipe from a photo happens on your phone, with Google’s ML Kit text recognition built into the app. The photo isn’t saved with the recipe and never leaves your phone.',
+      'ML Kit would report how it’s used to Google: the app blocks this.',
+      'No account with us, no ads, no analytics, no tracking. The app connects to nothing but your sync server, if you set one up.',
+    ],
+    othersTitle: 'Nothing for anyone else',
+    serverList: [
+      'Off by default. In Settings › Data storage, you can sync with a PocketBase server that you install and run yourself, to share your recipes between your devices.',
+      'Only that server receives your data: your recipes (title, course, season, instructions, ingredients and quantities), your ingredients, and which ones you deleted. Settings stay on each device.',
+      'The device keeps the server’s address, your email and an encrypted sign-in token, never your password. The connection is encrypted (HTTPS).',
+      'The server is yours: no one else runs it, and the app’s developers can’t see it.',
+    ],
+    serverTitle: 'On your own server, if you choose',
+    version: (version: string) => `Version ${version}`,
+  },
   common: {
     back: 'Go back',
     cancel: 'Cancel',
@@ -139,6 +164,7 @@ export const en = {
     suggestRecipe: 'Suggest a recipe',
   },
   menu: {
+    about: 'About',
     close: 'Close the menu',
     ingredients: 'Ingredients',
     mealChoice: 'Meal choice',

@@ -11,7 +11,7 @@ import { isTv } from '@/lib/device';
 // eslint-disable-next-line @typescript-eslint/naming-convention -- name required by Expo Router.
 export const unstable_settings = { initialRouteName: 'index' };
 
-// The burger menu. Drinks will be added here as a fourth entry (icon: 'glass-cocktail').
+// The burger menu. Drinks will be added here as an entry (icon: 'glass-cocktail').
 export default function DrawerLayout() {
   // Navigation options aren't styles, so the theme is read here; it updates on light/dark changes.
   const { theme } = useUnistyles();
@@ -67,6 +67,10 @@ export default function DrawerLayout() {
       <Drawer.Screen
         name="settings"
         options={menuEntryOptions(t.menu.settings, MENU_ICONS.settings, theme.colors.menuSettings)}
+      />
+      <Drawer.Screen
+        name="about"
+        options={menuEntryOptions(t.menu.about, MENU_ICONS.about, theme.colors.menuAbout)}
       />
     </Drawer>
   );

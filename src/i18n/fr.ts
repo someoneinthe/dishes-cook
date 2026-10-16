@@ -21,6 +21,29 @@ const UNIT_WORDS: Readonly<Record<WordUnit, readonly [one: string, other: string
 };
 
 export const fr: Messages = {
+  about: {
+    deviceList: [
+      `Vos recettes, ingrédients et paramètres sont enregistrés dans une base de données sur cet appareil. C’est la copie de référence${NARROW_SPACE}: l’application fonctionne entièrement sans serveur ni connexion internet.`,
+      `La sauvegarde d’Android ne les inclut pas${NARROW_SPACE}: sans serveur de synchronisation, désinstaller l’application les supprime.`,
+    ],
+    deviceTitle: 'Sur cet appareil',
+    intro:
+      'Dishes Cook garde vos recettes sur votre appareil. Voici où vont vos données, et où elles ne vont pas.',
+    othersList: [
+      'La lecture d’une recette depuis une photo se fait sur votre téléphone, avec la reconnaissance de texte ML Kit de Google intégrée à l’application. La photo n’est pas enregistrée avec la recette et ne quitte jamais votre téléphone.',
+      `ML Kit signalerait son utilisation à Google${NARROW_SPACE}: l’application le bloque.`,
+      'Pas de compte chez nous, pas de publicité, pas de statistiques d’utilisation, pas de pistage. L’application ne se connecte qu’à votre serveur de synchronisation, si vous en configurez un.',
+    ],
+    othersTitle: 'Rien pour personne d’autre',
+    serverList: [
+      'Désactivée par défaut. Dans Paramètres › Stockage des données, vous pouvez synchroniser avec un serveur PocketBase que vous installez et gérez vous-même, pour partager vos recettes entre vos appareils.',
+      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes (titre, type de plat, saison, instructions, ingrédients et quantités), vos ingrédients, et ceux que vous avez supprimés. Les paramètres restent sur chaque appareil.`,
+      'L’appareil garde l’adresse du serveur, votre e-mail et un jeton de connexion chiffré, jamais votre mot de passe. La connexion est chiffrée (HTTPS).',
+      `Le serveur est à vous${NARROW_SPACE}: personne d’autre ne le gère, et les développeurs de l’application ne peuvent pas le voir.`,
+    ],
+    serverTitle: 'Sur votre propre serveur, si vous le souhaitez',
+    version: (version) => `Version ${version}`,
+  },
   common: {
     back: 'Retour',
     cancel: 'Annuler',
@@ -114,6 +137,7 @@ export const fr: Messages = {
     suggestRecipe: 'Suggérer une recette',
   },
   menu: {
+    about: 'À propos',
     close: 'Fermer le menu',
     ingredients: 'Ingrédients',
     mealChoice: 'Choix du repas',
