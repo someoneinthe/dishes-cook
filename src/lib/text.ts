@@ -28,3 +28,53 @@ export function toSearchText(text: string): string {
 export function toSortKey(text: string): string {
   return toSearchText(text);
 }
+
+// Most sort keys an ingredient's name is compared with (one per mix of word forms).
+const MAX_WORD_FORMS = 32;
+// Shorter words ("de", "of", "à") have no plural to guess.
+const MIN_INFLECTED_LENGTH = 3;
+
+// The sort keys of the name with each word in the singular or the plural (English and French
+// rules of thumb: "carrot" / "carrots", "poireau" / "poireaux", "tomato" / "tomatoes",
+// "cherry" / "cherries"), to find an ingredient written another way.
+export function toWordForms(name: string): string[] {
+  let formList = [''];
+  for (const word of toSearchText(name).split(' ')) {
+    const wordFormList = toInflections(word);
+    formList = formList
+      .flatMap((start) => wordFormList.map((form) => (start ? `${start} ${form}` : form)))
+      .slice(0, MAX_WORD_FORMS);
+  }
+  return formList;
+}
+
+// Endings and what they may be in the other number, in order: the first ending that matches is
+// used ('' matches any word: "carrot" -> "carrots").
+const INFLECTION_RULE_LIST: readonly (readonly [ending: string, replacementList: string[]])[] = [
+  ['eaux', ['eau']],
+  ['ies', ['y']],
+  ['es', ['e', '']],
+  ['s', ['']],
+  ['x', ['']],
+  ['eau', ['eaux']],
+  ['eu', ['eux']],
+  ['y', ['ies', 'ys']],
+  ['o', ['oes', 'os']],
+  ['ch', ['ches']],
+  ['sh', ['shes']],
+  ['', ['s']],
+];
+
+// A word (lowercase, no accents), then its likely singulars or plurals.
+function toInflections(word: string): string[] {
+  if (word.length < MIN_INFLECTED_LENGTH) {
+    return [word];
+  }
+  // The '' rule matches every word.
+  const [ending, replacementList] = INFLECTION_RULE_LIST.find(([rule]) => word.endsWith(rule)) ?? [
+    '',
+    [],
+  ];
+  const stem = word.slice(0, word.length - ending.length);
+  return [word, ...replacementList.map((replacement) => stem.concat(replacement))];
+}

@@ -209,6 +209,30 @@ export const en = {
     titleRequired: 'Give the recipe a title.',
     write: 'Write',
   },
+  recipeScan: {
+    button: 'Photo',
+    buttonHint: 'Reads the title, ingredients and steps from a photo of a recipe page',
+    buttonLabel: 'Fill in from a photo',
+    cameraDenied:
+      'Allow the camera in the phone’s settings to take a photo, or choose an existing one.',
+    choiceRequired: (existing: string) =>
+      `You already have “${existing}”: choose one to save the recipe.`,
+    chooseMessage:
+      'The text is read on your phone and the photo isn’t kept. Check what was read before saving.',
+    choosePhoto: 'Choose a photo',
+    chooseTitle: 'Read a recipe from a photo',
+    keepNew: 'Keep the new one',
+    keepNewHint: 'Creates this ingredient when the recipe is saved',
+    keepNewLabel: (name: string) => `Keep “${name}” as a new ingredient`,
+    nothingFoundMessage: 'No text could be read. Try a sharp, well-lit photo of the page.',
+    nothingFoundTitle: 'No recipe found',
+    readFailed: 'The photo couldn’t be read. If it happens again, close the app and open it again.',
+    reading: 'Reading…',
+    similarMessage: (existing: string) => `You already have “${existing}”. Use it instead?`,
+    takePhoto: 'Take a photo',
+    useSimilar: (existing: string) => `Use “${existing}”`,
+    useSimilarHint: 'Uses your existing ingredient instead of creating a new one',
+  },
   seasons: {
     both: 'Both',
     summer: 'Summer',

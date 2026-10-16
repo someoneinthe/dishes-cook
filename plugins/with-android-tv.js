@@ -20,8 +20,11 @@ const BANNER_RESOURCE = 'tv_banner';
 const LEANBACK_LAUNCHER = 'android.intent.category.LEANBACK_LAUNCHER';
 const MARKER = '// @generated with-android-tv';
 
-// `screen.portrait` is implied by the portrait orientation of phones (app.config.ts): optional too.
+// `screen.portrait` is implied by the portrait orientation of phones (app.config.ts), the camera
+// by the CAMERA permission (expo-image-picker: a recipe from a photo): optional too.
 const OPTIONAL_FEATURE_LIST = [
+  'android.hardware.camera',
+  'android.hardware.camera.autofocus',
   'android.hardware.screen.portrait',
   'android.hardware.touchscreen',
   'android.software.leanback',

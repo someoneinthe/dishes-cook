@@ -17,6 +17,11 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
         foregroundImage: './assets/images/android-icon-foreground.png',
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
+      // expo-image-picker's manifest asks for them, but Android's photo picker needs none.
+      blockedPermissions: [
+        'android.permission.READ_EXTERNAL_STORAGE',
+        'android.permission.WRITE_EXTERNAL_STORAGE',
+      ],
       package: 'io.github.someoneinthe.dishescook',
       predictiveBackGestureEnabled: false,
       versionCode,
@@ -49,6 +54,17 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
       // The sync server's sign-in token, encrypted. The plugin keeps it out of Android Auto Backup
       // (a restored copy couldn't be decrypted anyway: the Keystore key stays on the device).
       'expo-secure-store',
+      // A recipe from a photo: camera or Android's photo picker (no storage permission needed).
+      [
+        'expo-image-picker',
+        {
+          cameraPermission: 'Dishes Cook uses the camera to read a recipe from a photo.',
+          microphonePermission: false,
+          photosPermission: 'Dishes Cook reads a recipe from a photo you choose.',
+        },
+      ],
+      // ML Kit (text recognition) would report its usage to Google: the app sends nothing but the sync.
+      './plugins/with-no-mlkit-reporting.js',
       // Android TV: TV launcher entry with its banner (from assets/source/app-icon.jpg), landscape.
       ['./plugins/with-android-tv.js', { banner: './assets/images/tv-banner.png' }],
       [

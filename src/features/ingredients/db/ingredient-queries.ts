@@ -1,11 +1,11 @@
 import type { SQL } from 'drizzle-orm';
-import { and, asc, desc, eq, ne, notInArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import type { Page, PageRequest } from '@/db/pagination';
 import type { AppDatabase } from '@/db/types';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, syncDeletions } from '@/db/schema';
 import { toIngredientSyncId } from '@/lib/sync-id';
-import { cleanName, toLikeContains, toNameKey, toSortKey } from '@/lib/text';
+import { cleanName, toLikeContains, toNameKey, toSortKey, toWordForms } from '@/lib/text';
 
 export type DeleteResult = 'deleted' | 'in-use';
 
@@ -88,6 +88,21 @@ export function findOrCreateIngredient(
     throw new Error(`Ingredient "${cleanedName}" could not be created`);
   }
   return { ...existing, isNew: false };
+}
+
+// An ingredient written another way than this name, but likely the same one: with other accents
+// or in the other number ("carrot" for "carrots", "Poireau" for "poireaux"); the most used one.
+// Plan: a lookup per word form on the (sort_key, id) index.
+export function findSimilarIngredient(database: AppDatabase, name: string): Ingredient | undefined {
+  const otherFormWhere = inArray(ingredients.sortKey, toWordForms(name));
+  const otherNameWhere = ne(ingredients.nameKey, toNameKey(name));
+  return database
+    .select({ id: ingredients.id, name: ingredients.name })
+    .from(ingredients)
+    .where(and(otherFormWhere, otherNameWhere))
+    .orderBy(desc(RECIPE_COUNT), asc(ingredients.sortKey))
+    .limit(1)
+    .get();
 }
 
 // One page (PAGE_SIZE) of the alphabetical ingredient list with usage counts, optionally filtered

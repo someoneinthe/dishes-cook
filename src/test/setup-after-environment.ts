@@ -52,3 +52,14 @@ VirtualizedList.defaultProps = {
   // An hour: never during a test.
   updateCellsBatchingPeriod: 3_600_000,
 };
+
+// Text recognition (ML Kit) and the photo picker are native: tests choose what they return
+// (jest.mocked(recognizeText), jest.mocked(launchImageLibraryAsync)…). By default, the user cancels.
+jest.mock('@infinitered/react-native-mlkit-text-recognition', () => ({
+  recognizeText: jest.fn(() => Promise.resolve({ blocks: [], text: '' })),
+}));
+jest.mock('expo-image-picker', () => ({
+  launchCameraAsync: jest.fn(() => Promise.resolve({ assets: null, canceled: true })),
+  launchImageLibraryAsync: jest.fn(() => Promise.resolve({ assets: null, canceled: true })),
+  requestCameraPermissionsAsync: jest.fn(() => Promise.resolve({ granted: true })),
+}));

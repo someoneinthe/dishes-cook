@@ -7,6 +7,7 @@ import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import type { Quantity } from '@/lib/units';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, recipes, syncDeletions } from '@/db/schema';
+import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { cleanName, toLikeContains, toSortKey } from '@/lib/text';
 import { toQuantity, toStored } from '@/lib/units';
 
@@ -36,8 +37,11 @@ export type RecipeIngredient = Ingredient & Readonly<{ quantity?: Quantity }>;
 export type RecipeInput = Readonly<{
   // A main course when left out.
   course?: Course;
+  // Ids below 0: ingredients to create when the recipe is saved, named in `newIngredientNames`.
   ingredientIdList: readonly number[];
   instructions: string;
+  // Names of the ingredients to create (e.g. read from a photo), by their temporary id (below 0).
+  newIngredientNames?: ReadonlyMap<number, string>;
   // Quantities by ingredient id; an ingredient without one has no quantity.
   quantities?: ReadonlyMap<number, Quantity>;
   season: Season;
@@ -176,7 +180,8 @@ export function pickRandomRecipeId(
 }
 
 // Creates (no id) or updates a recipe and its ingredients (with their quantities) in one
-// transaction; returns its id. Only the ingredient links that changed are written.
+// transaction, creating the new ingredients too; returns its id. Only the ingredient links that
+// changed are written.
 export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: number): number {
   const title = cleanName(input.title);
   if (!title) {
@@ -189,9 +194,24 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
     sortKey: toSortKey(title),
     title,
   };
-  const ingredientIdList = [...new Set(input.ingredientIdList)];
-
   return database.transaction((tx) => {
+    // Only the new ingredients still in the recipe; one may exist by now (same name, ignoring
+    // case): it's used then.
+    const realIdMap = new Map(
+      [...(input.newIngredientNames ?? [])]
+        .filter(([temporaryId]) => input.ingredientIdList.includes(temporaryId))
+        .map(([temporaryId, name]) => [temporaryId, findOrCreateIngredient(tx, name).id]),
+    );
+    const toRealId = (ingredientId: number) => realIdMap.get(ingredientId) ?? ingredientId;
+    const ingredientIdList = [
+      ...new Set(input.ingredientIdList.map((ingredientId) => toRealId(ingredientId))),
+    ];
+    const quantities = new Map(
+      [...(input.quantities ?? [])].map(([ingredientId, quantity]) => [
+        toRealId(ingredientId),
+        quantity,
+      ]),
+    );
     const recipeId =
       id === undefined
         ? tx.insert(recipes).values(values).returning({ id: recipes.id }).get().id
@@ -209,7 +229,7 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
       tx.insert(recipeIngredients)
         .values(
           ingredientIdList.map((ingredientId) => {
-            const quantity = input.quantities?.get(ingredientId);
+            const quantity = quantities.get(ingredientId);
             const typed = quantity && toQuantity(quantity.amount, quantity.unit);
             // Weights in grams, volumes in millilitres (src/lib/units.ts).
             const checked = typed && toStored(typed);
