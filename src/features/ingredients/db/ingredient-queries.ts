@@ -15,8 +15,10 @@ export type IngredientListItem = Ingredient & Readonly<{ recipeCount: number; so
 
 export type RenameResult = 'blank' | 'duplicate' | 'renamed';
 
-// Separators between words of a name, for whole-word comparisons ("Sel, poivre" = "sel poivre").
+// Separators between words of a name, for whole-word comparisons ("Sel, poivre" = "sel poivre");
+// apostrophes stay, all written ' ("d’agneau" = "d'agneau").
 const NOT_A_WORD = /[^\p{L}\p{N}']+/gu;
+const CURLY_APOSTROPHE = '’';
 
 // Number of recipes using the ingredient, read from the (ingredient_id, recipe_id) index. Written
 // out qualified: Drizzle renders `${ingredients.id}` as a bare "id" inside a select.
@@ -113,9 +115,13 @@ export function findSimilarIngredient(database: AppDatabase, name: string): Ingr
     return sameForm;
   }
   // ' vin rouge ' inside ' bouteille de vin rouge assez bon ': whole words only.
-  const paddedList = formList.map((form) => ` ${form.replaceAll(NOT_A_WORD, ' ').trim()} `);
+  const paddedList = formList.map(
+    (form) => ` ${form.replaceAll(CURLY_APOSTROPHE, "'").replaceAll(NOT_A_WORD, ' ').trim()} `,
+  );
+  // The stored key with its apostrophes written ' too.
+  const storedKey = sql`replace(${ingredients.sortKey}, ${CURLY_APOSTROPHE}, '''')`;
   const inNameWhere = or(
-    ...paddedList.map((padded) => sql`instr(${padded}, ' ' || ${ingredients.sortKey} || ' ') > 0`),
+    ...paddedList.map((padded) => sql`instr(${padded}, ' ' || ${storedKey} || ' ') > 0`),
   );
   return database
     .select({ id: ingredients.id, name: ingredients.name })

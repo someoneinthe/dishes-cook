@@ -65,6 +65,20 @@ describe('ingredient queries', () => {
     expect(findSimilarIngredient(database, 'selle d’agneau')).toBeUndefined();
   });
 
+  it('compares whole words whatever the apostrophes', () => {
+    const lamb = findOrCreateIngredient(database, 'Gigot d’agneau');
+    const chop = findOrCreateIngredient(database, "Côte d'agneau");
+
+    expect(findSimilarIngredient(database, "un gigot d'agneau fermier")).toStrictEqual({
+      id: lamb.id,
+      name: 'Gigot d’agneau',
+    });
+    expect(findSimilarIngredient(database, 'côte d’agneau grillée')).toStrictEqual({
+      id: chop.id,
+      name: "Côte d'agneau",
+    });
+  });
+
   it('finds no similar ingredient for the same name or an unrelated one', () => {
     findOrCreateIngredient(database, 'Carrots');
 
