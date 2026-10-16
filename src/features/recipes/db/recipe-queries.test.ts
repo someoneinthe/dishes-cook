@@ -43,8 +43,8 @@ describe('recipe queries', () => {
       course: 'main',
       id,
       ingredientList: [
-        { id: carrotId, name: 'carrot' },
-        { id: leekId, name: 'leek' },
+        { id: carrotId, name: 'Carrot' },
+        { id: leekId, name: 'Leek' },
       ],
       instructions: 'Simmer for 30 minutes.',
       season: 'winter',
@@ -63,8 +63,8 @@ describe('recipe queries', () => {
 
     expect(getRecipe(database, id)).toMatchObject({
       ingredientList: [
-        { id: leekId, name: 'leek' },
-        { id: tomatoId, name: 'tomato' },
+        { id: leekId, name: 'Leek' },
+        { id: tomatoId, name: 'Tomato' },
       ],
       season: 'both',
       title: 'Leek soup',
@@ -83,9 +83,9 @@ describe('recipe queries', () => {
     });
 
     expect(getRecipe(database, id)?.ingredientList).toStrictEqual([
-      { id: carrotId, name: 'carrot', quantity: { amount: 500, unit: 'g' } },
-      { id: leekId, name: 'leek', quantity: { amount: 2 } },
-      { id: tomatoId, name: 'tomato' },
+      { id: carrotId, name: 'Carrot', quantity: { amount: 500, unit: 'g' } },
+      { id: leekId, name: 'Leek', quantity: { amount: 2 } },
+      { id: tomatoId, name: 'Tomato' },
     ]);
 
     saveRecipe(
@@ -102,9 +102,9 @@ describe('recipe queries', () => {
     );
 
     expect(getRecipe(database, id)?.ingredientList).toStrictEqual([
-      { id: carrotId, name: 'carrot', quantity: { amount: 500, unit: 'g' } },
-      { id: leekId, name: 'leek' },
-      { id: tomatoId, name: 'tomato', quantity: { amount: 1, unit: 'can' } },
+      { id: carrotId, name: 'Carrot', quantity: { amount: 500, unit: 'g' } },
+      { id: leekId, name: 'Leek' },
+      { id: tomatoId, name: 'Tomato', quantity: { amount: 1, unit: 'can' } },
     ]);
   });
 
@@ -119,8 +119,8 @@ describe('recipe queries', () => {
     });
 
     expect(getRecipe(database, id)?.ingredientList).toStrictEqual([
-      { id: carrotId, name: 'carrot' },
-      { id: leekId, name: 'leek' },
+      { id: carrotId, name: 'Carrot' },
+      { id: leekId, name: 'Leek' },
     ]);
   });
 
@@ -139,9 +139,9 @@ describe('recipe queries', () => {
     const celeryId = findIngredientByName(database, 'celery')?.id;
 
     expect(getRecipe(database, id)?.ingredientList).toStrictEqual([
-      { id: carrotId, name: 'carrot' },
+      { id: carrotId, name: 'Carrot' },
       { id: celeryId, name: 'Celery', quantity: { amount: 2 } },
-      { id: leekId, name: 'leek' },
+      { id: leekId, name: 'Leek' },
     ]);
   });
 

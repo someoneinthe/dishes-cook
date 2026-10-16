@@ -1,11 +1,18 @@
 import type { SQL } from 'drizzle-orm';
-import { and, asc, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, notInArray, or, sql } from 'drizzle-orm';
 import type { Page, PageRequest } from '@/db/pagination';
 import type { AppDatabase } from '@/db/types';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, syncDeletions } from '@/db/schema';
 import { toIngredientSyncId } from '@/lib/sync-id';
-import { cleanName, toLikeContains, toNameKey, toSortKey, toWordForms } from '@/lib/text';
+import {
+  cleanName,
+  toDisplayName,
+  toLikeContains,
+  toNameKey,
+  toSortKey,
+  toWordForms,
+} from '@/lib/text';
 
 export type DeleteResult = 'deleted' | 'in-use';
 
@@ -14,6 +21,14 @@ export type Ingredient = Readonly<{ id: number; name: string }>;
 export type IngredientListItem = Ingredient & Readonly<{ recipeCount: number; sortKey: string }>;
 
 export type RenameResult = 'blank' | 'duplicate' | 'renamed';
+
+// Separators between words of a name, for whole-word comparisons ("Sel, poivre" = "sel poivre");
+// apostrophes stay, all written ' ("d’agneau" = "d'agneau").
+const NOT_A_WORD = /[^\p{L}\p{N}']+/gu;
+const CURLY_APOSTROPHE = '’';
+// The separators a saved name may have, made spaces in SQL as NOT_A_WORD does in JavaScript
+// (SQLite has no regular expressions): "vin-rouge" = "vin rouge", "sel, poivre" = "sel poivre".
+const SEPARATOR_LIST = ['-', ',', '.', ';', ':', '/', '(', ')', '!', '?', '"', '+', '&'];
 
 // Number of recipes using the ingredient, read from the (ingredient_id, recipe_id) index. Written
 // out qualified: Drizzle renders `${ingredients.id}` as a bare "id" inside a select.
@@ -51,11 +66,12 @@ export function deleteIngredient(database: AppDatabase, id: number): DeleteResul
 }
 
 export function findIngredientByName(database: AppDatabase, name: string): Ingredient | undefined {
-  return database
+  const found = database
     .select({ id: ingredients.id, name: ingredients.name })
     .from(ingredients)
     .where(eq(ingredients.nameKey, toNameKey(name)))
     .get();
+  return found && shown(found);
 }
 
 // Returns the ingredient with this name, creating it if needed (names are unique, ignoring case).
@@ -72,7 +88,7 @@ export function findOrCreateIngredient(
   const created = database
     .insert(ingredients)
     .values({
-      name: cleanedName,
+      name: nameKey,
       nameKey,
       sortKey: toSortKey(cleanedName),
       syncId: toIngredientSyncId(nameKey),
@@ -81,7 +97,7 @@ export function findOrCreateIngredient(
     .returning({ id: ingredients.id, name: ingredients.name })
     .get();
   if (created) {
-    return { ...created, isNew: true };
+    return { ...shown(created), isNew: true };
   }
   const existing = findIngredientByName(database, cleanedName);
   if (!existing) {
@@ -91,18 +107,45 @@ export function findOrCreateIngredient(
 }
 
 // An ingredient written another way than this name, but likely the same one: with other accents
-// or in the other number ("carrot" for "carrots", "Poireau" for "poireaux"); the most used one.
-// Plan: a lookup per word form on the (sort_key, id) index.
+// or in the other number ("carrot" for "carrots", "Poireau" for "poireaux"), else one whose name is
+// in this one as whole words ("vin rouge" in "bouteille de vin rouge", "Sel" in "Sel, poivre"):
+// the most used one, the longest name for words.
+// Plan: a lookup per word form on the (sort_key, id) index; for words, a scan of the ingredients
+// (a household's list), each compared with the name's forms, LIMIT 1.
 export function findSimilarIngredient(database: AppDatabase, name: string): Ingredient | undefined {
-  const otherFormWhere = inArray(ingredients.sortKey, toWordForms(name));
+  const formList = toWordForms(name);
   const otherNameWhere = ne(ingredients.nameKey, toNameKey(name));
-  return database
+  const sameForm = database
     .select({ id: ingredients.id, name: ingredients.name })
     .from(ingredients)
-    .where(and(otherFormWhere, otherNameWhere))
+    .where(and(inArray(ingredients.sortKey, formList), otherNameWhere))
     .orderBy(desc(RECIPE_COUNT), asc(ingredients.sortKey))
     .limit(1)
     .get();
+  if (sameForm) {
+    return shown(sameForm);
+  }
+  // ' vin rouge ' inside ' bouteille de vin rouge assez bon ': whole words only.
+  const paddedList = formList.map(
+    (form) => ` ${form.replaceAll(CURLY_APOSTROPHE, "'").replaceAll(NOT_A_WORD, ' ').trim()} `,
+  );
+  // The stored key with its apostrophes written ' too.
+  const storedKey = toWordsInSql(ingredients.sortKey);
+  const inNameWhere = or(
+    ...paddedList.map((padded) => sql`instr(${padded}, ' ' || ${storedKey} || ' ') > 0`),
+  );
+  const inName = database
+    .select({ id: ingredients.id, name: ingredients.name })
+    .from(ingredients)
+    .where(and(inNameWhere, otherNameWhere))
+    .orderBy(
+      desc(sql`length(${ingredients.sortKey})`),
+      desc(RECIPE_COUNT),
+      asc(ingredients.sortKey),
+    )
+    .limit(1)
+    .get();
+  return inName && shown(inName);
 }
 
 // One page (PAGE_SIZE) of the alphabetical ingredient list with usage counts, optionally filtered
@@ -126,7 +169,10 @@ export function listIngredientPage(
     .orderBy(order(ingredients.sortKey), order(ingredients.id))
     .limit(PAGE_SIZE + 1)
     .all();
-  return toPage(rowList, pageParam);
+  return toPage(
+    rowList.map((row) => shown(row)),
+    pageParam,
+  );
 }
 
 export function renameIngredient(database: AppDatabase, id: number, name: string): RenameResult {
@@ -145,7 +191,7 @@ export function renameIngredient(database: AppDatabase, id: number, name: string
   }
   database
     .update(ingredients)
-    .set({ name: cleanedName, nameKey, sortKey: toSortKey(cleanedName), updatedAt: NOW_MS })
+    .set({ name: nameKey, nameKey, sortKey: toSortKey(cleanedName), updatedAt: NOW_MS })
     .where(eq(ingredients.id, id))
     .run();
   return 'renamed';
@@ -164,7 +210,7 @@ export function suggestIngredients(
 ): Ingredient[] {
   const { excludeIdList, isUsedOnly, limit, search } = options;
   const searchedNameKey = toNameKey(search);
-  return database
+  const rowList = database
     .select({ id: ingredients.id, name: ingredients.name })
     .from(ingredients)
     .where(
@@ -181,10 +227,26 @@ export function suggestIngredients(
     )
     .limit(limit)
     .all();
+  return rowList.map((row) => shown(row));
 }
 
 function searchWhere(search: string): SQL | undefined {
   return cleanName(search)
     ? sql`${ingredients.sortKey} like ${toLikeContains(search)} escape '\\'`
     : undefined;
+}
+
+// A row with its name as shown (saved in lowercase).
+function shown<Row extends Readonly<{ name: string }>>(row: Row): Row {
+  return { ...row, name: toDisplayName(row.name) };
+}
+
+// The saved key as words separated by one space, apostrophes written ', like the name's forms.
+function toWordsInSql(key: typeof ingredients.sortKey): SQL {
+  let words: SQL = sql`replace(${key}, ${CURLY_APOSTROPHE}, '''')`;
+  for (const separator of SEPARATOR_LIST) {
+    words = sql`replace(${words}, ${separator}, ' ')`;
+  }
+  // "sel, poivre" -> "sel  poivre" -> "sel poivre" (one space, as cleanName leaves at most one).
+  return sql`trim(replace(replace(${words}, '   ', ' '), '  ', ' '))`;
 }

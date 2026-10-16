@@ -97,8 +97,8 @@ export const fr: Messages = {
     image: (description) => (description ? `Image${NARROW_SPACE}: ${description}` : 'Image'),
   },
   mealChoice: {
-    addRecipe: 'Ajouter une recette',
     another: 'Une autre',
+    createRecipe: 'Créer une recette',
     emptyMessage: 'Ajoutez quelques recettes, puis revenez laisser le hasard choisir le repas.',
     open: 'Ouvrir',
     openLabel: (title) => `Ouvrir ${title}`,
@@ -158,7 +158,7 @@ export const fr: Messages = {
         ? 'Aucune recette ne correspond à ces filtres.'
         : plural(count, '1 recette correspond.', `${count} recettes correspondent.`),
     new: 'Nouvelle',
-    newHint: 'Ouvre un formulaire de recette vide',
+    newHint: 'Demande s’il faut l’écrire ou la lire sur une photo',
     newRecipe: 'Nouvelle recette',
     noIngredients: 'Aucun ingrédient indiqué.',
     noInstructions: 'Pas encore d’instructions.',
@@ -182,15 +182,10 @@ export const fr: Messages = {
     write: 'Écrire',
   },
   recipeScan: {
-    button: 'Photo',
-    buttonHint: 'Lit le titre, les ingrédients et les étapes sur la photo d’une recette',
-    buttonLabel: 'Remplir depuis une photo',
     cameraDenied:
       'Autorisez l’appareil photo dans les réglages du téléphone pour prendre une photo, ou choisissez-en une existante.',
     choiceRequired: (existing) =>
       `Vous avez déjà ${quote(existing)}${NARROW_SPACE}: faites votre choix pour enregistrer la recette.`,
-    chooseMessage:
-      'Le texte est lu sur votre téléphone et la photo n’est pas gardée. Vérifiez ce qui a été lu avant d’enregistrer.',
     choosePhoto: 'Choisir une photo',
     chooseTitle: 'Lire une recette sur une photo',
     keepNew: 'Garder le nouveau',
@@ -201,7 +196,6 @@ export const fr: Messages = {
     nothingFoundTitle: 'Aucune recette trouvée',
     readFailed:
       'Impossible de lire la photo. Si cela se reproduit, fermez l’application et rouvrez-la.',
-    reading: 'Lecture…',
     similarMessage: (existing) =>
       `Vous avez déjà ${quote(existing)}. L’utiliser à la place${NARROW_SPACE}?`,
     startMessage: `Écrivez-la vous-même, ou remplissez-la depuis la photo d’une recette${NARROW_SPACE}: le texte est lu sur votre téléphone et la photo n’est pas gardée.`,

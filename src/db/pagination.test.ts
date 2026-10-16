@@ -68,7 +68,7 @@ describe('keyset pagination', () => {
     const page = listIngredientPage(database, { pageParam: null, search: '' });
     const found = listIngredientPage(database, { pageParam: null, search: 'ECHA' });
 
-    expect(names(page.itemList).slice(0, 2)).toStrictEqual(['ail', 'Échalote']);
+    expect(names(page.itemList).slice(0, 2)).toStrictEqual(['Ail', 'Échalote']);
     expect(names(found.itemList)).toStrictEqual(['Échalote']);
   });
 

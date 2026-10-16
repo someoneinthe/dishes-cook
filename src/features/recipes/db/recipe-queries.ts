@@ -8,7 +8,7 @@ import type { Quantity } from '@/lib/units';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, recipes, syncDeletions } from '@/db/schema';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
-import { cleanName, toLikeContains, toSortKey } from '@/lib/text';
+import { cleanName, toDisplayName, toLikeContains, toSortKey } from '@/lib/text';
 import { toQuantity, toStored } from '@/lib/units';
 
 export type Recipe = Readonly<{
@@ -119,9 +119,12 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
   // Not paginated: a recipe's own ingredients, bounded by what the form lets you add.
   const ingredientList = linkList.map(({ amount, id: ingredientId, name, unit }) => {
     const quantity = toQuantity(amount, unit);
-    return quantity ? { id: ingredientId, name, quantity } : { id: ingredientId, name };
+    const shownName = toDisplayName(name);
+    return quantity
+      ? { id: ingredientId, name: shownName, quantity }
+      : { id: ingredientId, name: shownName };
   });
-  return { ...recipe, ingredientList };
+  return { ...recipe, ingredientList, title: toDisplayName(recipe.title) };
 }
 
 // One page (PAGE_SIZE) of the alphabetical recipe list, narrowed by the filters (title search,
@@ -147,7 +150,10 @@ export function listRecipePage(
     .orderBy(order(recipes.sortKey), order(recipes.id))
     .limit(PAGE_SIZE + 1)
     .all();
-  return toPage(rowList, pageParameter);
+  return toPage(
+    rowList.map((row) => ({ ...row, title: toDisplayName(row.title) })),
+    pageParameter,
+  );
 }
 
 // A random recipe among those matching the filters, other than `excludedId` when possible (asking
@@ -183,7 +189,8 @@ export function pickRandomRecipeId(
 // transaction, creating the new ingredients too; returns its id. Only the ingredient links that
 // changed are written.
 export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: number): number {
-  const title = cleanName(input.title);
+  // Saved in lowercase, shown with a capital first letter (toDisplayName), like ingredients.
+  const title = cleanName(input.title).toLowerCase();
   if (!title) {
     throw new Error('A recipe title cannot be blank');
   }

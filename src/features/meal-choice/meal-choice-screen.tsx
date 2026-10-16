@@ -46,31 +46,17 @@ export function MealChoiceScreen() {
     setSuggestedId(pick(values));
   };
 
-  // Read-only on a TV: recipes are written on the phone, so there's nothing to add there.
-  const newRecipeButton = isTv ? null : (
+  // Disabled while there's no recipe to suggest (none yet, or none matching the filters).
+  const headerButton = (
     <Button
-      accessibilityHint={t.recipes.newHint}
-      accessibilityLabel={t.mealChoice.addRecipe}
-      icon="plus"
-      isDisabled={newRecipe.isReading}
-      isIconOnly
-      label={t.recipes.new}
-      onPress={newRecipe.start}
+      accessibilityHint={t.mealChoice.suggestHint}
+      accessibilityLabel={suggestion ? t.mealChoice.suggestAnother : t.mealChoice.suggestRecipe}
+      icon="dice-multiple"
+      isDisabled={matchCount === 0}
+      label={t.mealChoice.suggest}
+      onPress={suggestAnother}
     />
   );
-  const headerButton =
-    recipeCount === 0 ? (
-      newRecipeButton
-    ) : (
-      <Button
-        accessibilityHint={t.mealChoice.suggestHint}
-        accessibilityLabel={suggestion ? t.mealChoice.suggestAnother : t.mealChoice.suggestRecipe}
-        icon="dice-multiple"
-        isDisabled={matchCount === 0}
-        label={t.mealChoice.suggest}
-        onPress={suggestAnother}
-      />
-    );
   const header = (
     <Drawer.Screen
       options={{
@@ -91,7 +77,18 @@ export function MealChoiceScreen() {
         <EmptyState
           message={isTv ? t.recipes.emptyMessageOnTv : t.mealChoice.emptyMessage}
           title={t.recipes.emptyTitle}
-        />
+        >
+          {/* Read-only on a TV: recipes are written on the phone. */}
+          {!isTv && (
+            <Button
+              accessibilityHint={t.recipes.newHint}
+              icon="plus"
+              isDisabled={newRecipe.isReading}
+              label={t.mealChoice.createRecipe}
+              onPress={newRecipe.start}
+            />
+          )}
+        </EmptyState>
       </View>
     );
   }

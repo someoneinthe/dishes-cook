@@ -16,22 +16,23 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 
 ## A recipe from a photo
 
-A new recipe can be filled in from a photo of a recipe page, taken with the camera or chosen among the phone's photos. The text is read on the phone: the photo is neither sent nor kept. The title, the ingredients with their quantities and the steps fill in the form, to check before saving. An ingredient that already exists (same name, ignoring case) is used; a new one is only created when the recipe is saved. When a new one looks like an existing one (singular or plural, other accents: "carrot" and "Carrots"), its row asks which to keep, and the recipe can't be saved until the user chooses.
+Adding a recipe asks whether to write it or to fill it in from a photo of a recipe page, taken with the camera or chosen among the phone's photos (a book, a recipe website on a screen…). The text is read on the phone: the photo is neither sent nor kept. The title, the ingredients with their quantities and the steps fill in the form, to check before saving. An ingredient that already exists (same name, ignoring case) is used; a new one is only created when the recipe is saved. When a new one looks like an existing one (singular or plural, other accents: "carrot" and "Carrots"), or contains one ("bouteille de vin rouge" and "Vin rouge"), its row asks which to keep, and the recipe can't be saved until the user chooses.
 
 ### Adding a recipe asks how to start
 
 - **When** I add a recipe from the recipe list
 - **Then** I am asked whether to write it, choose a photo or take one
 - **When** I choose a photo of "Leek soup" listing "2 leeks"
-- **Then** the new recipe opens filled in with "Leek soup" and "leeks: 2"
+- **Then** the new recipe opens filled in with "Leek soup" and "Leeks: 2"
 
 ### A photo fills in a new recipe
 
 - **Given** the ingredients "Leek" exist
 - **When** I fill in a new recipe from a photo of "Leek soup" listing "2 leek, 500 g potatoes"
-- **And** I save the recipe
-- **Then** the recipe "Leek soup" lists "Leek: 2, potatoes: 500 g"
-- **And** the ingredients are "Leek, potatoes"
+- **Then** the new ingredient "Potatoes" is listed with a capital first letter
+- **When** I save the recipe
+- **Then** the recipe "Leek soup" lists "Leek: 2, Potatoes: 500 g"
+- **And** the ingredients are "Leek, Potatoes"
 
 ### New ingredients are only created when the recipe is saved
 
@@ -51,24 +52,20 @@ A new recipe can be filled in from a photo of a recipe page, taken with the came
 - **Then** the recipe "Carrot salad" lists "Carrots: 3"
 - **And** the ingredients are "Carrots"
 
+### A read name containing an existing ingredient asks too
+
+- **Given** the ingredients "Vin rouge" exist
+- **When** I fill in a new recipe from a photo of "Bœuf bourguignon" listing "1 bouteille de vin rouge"
+- **Then** I am told I already have "Vin rouge"
+
 ### The new ingredient can be kept
 
 - **Given** the ingredients "Carrots" exist
 - **When** I fill in a new recipe from a photo of "Carrot salad" listing "3 carrot"
-- **And** I keep the new "carrot"
+- **And** I keep the new "Carrot"
 - **And** I save the recipe
-- **Then** the recipe "Carrot salad" lists "carrot: 3"
-- **And** the ingredients are "carrot, Carrots"
-
-### What I typed before stays
-
-- **Given** the ingredients "Leek" exist
-- **And** I typed the title "Grandma's soup", the steps "Serve hot." and "Leek" with the quantity "3"
-- **When** I fill in the recipe from a photo of "Leek soup" listing "2 leek, 1 l water"
-- **Then** the title is still "Grandma's soup"
-- **And** the steps read "Serve hot." then the photo's steps
-- **And** "Leek" is listed once, with the quantity "3"
-- **And** "water" has the quantity "1"
+- **Then** the recipe "Carrot salad" lists "Carrot: 3"
+- **And** the ingredients are "Carrot, Carrots"
 
 ### The camera needs my permission
 

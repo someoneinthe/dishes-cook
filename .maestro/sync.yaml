@@ -69,7 +69,7 @@ name: Server sync
     file: scripts/server.js
     env:
       ACTION: read
-- assertTrue: ${output.serverRecipes['Leek soup'] === 0}
+- assertTrue: ${output.serverRecipes['leek soup'] === 0}
 
 # A deletion reaches the server, marked deleted there.
 - tapOn: Pumpkin pie.*
@@ -91,5 +91,5 @@ name: Server sync
     env:
       ACTION: wait-deleted
       TITLE: Pumpkin pie
-- assertTrue: ${output.serverRecipes['Pumpkin pie'] > 0}
-- assertTrue: ${output.serverRecipes['Leek soup'] === 0}
+- assertTrue: ${output.serverRecipes['pumpkin pie'] > 0}
+- assertTrue: ${output.serverRecipes['leek soup'] === 0}

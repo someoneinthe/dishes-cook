@@ -25,8 +25,10 @@ describe('mealChoiceScreen', () => {
 
     expect(screen.getByRole('header', { name: 'No recipes yet' })).toBeOnTheScreen();
 
+    expect(screen.getByRole('button', { name: 'Suggest a recipe' })).toBeDisabled();
+
     const alert = spyOnAlert();
-    await fireEvent.press(screen.getByRole('button', { name: 'Add a recipe' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Create a recipe' }));
     await alert.press('Write it');
 
     expect(router.push).toHaveBeenCalledWith('/recipe/new');

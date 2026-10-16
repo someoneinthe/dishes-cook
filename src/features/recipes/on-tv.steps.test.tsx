@@ -89,7 +89,9 @@ defineFeature(feature, (test) => {
       expect(screen.getByText(ON_PHONE_MESSAGE)).toBeOnTheScreen();
     });
     and('no recipe can be added', () => {
-      expect(screen.queryByRole('button')).not.toBeOnTheScreen();
+      // Only the (disabled) Suggest button, as on a phone.
+      expect(screen.getAllByRole('button')).toHaveLength(1);
+      expect(screen.getByRole('button', { name: 'Suggest a recipe' })).toBeDisabled();
     });
   });
 

@@ -1,4 +1,5 @@
 import type { AppDatabase } from '@/db/types';
+import { ingredients } from '@/db/schema';
 import { saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { firstIngredientPage } from '@/test/queries';
 import { createTestConnection } from '@/test/test-database';
@@ -26,6 +27,24 @@ describe('ingredient queries', () => {
     expect(firstIngredientPage(database)).toHaveLength(1);
   });
 
+  it('saves names in lowercase and shows them with a capital first letter', () => {
+    const wine = findOrCreateIngredient(database, 'VIN Rouge');
+    renameIngredient(database, findOrCreateIngredient(database, 'Œuf').id, 'ŒUF DE CAILLE');
+    const savedNameList = database
+      .select({ name: ingredients.name })
+      .from(ingredients)
+      .orderBy(ingredients.sortKey)
+      .all()
+      .map(({ name }) => name);
+
+    expect(wine.name).toBe('Vin rouge');
+    expect(savedNameList).toStrictEqual(['vin rouge', 'œuf de caille']);
+    expect(firstIngredientPage(database).map(({ name }) => name)).toStrictEqual([
+      'Vin rouge',
+      'Œuf de caille',
+    ]);
+  });
+
   it('keeps accents significant', () => {
     findOrCreateIngredient(database, 'pâte');
     findOrCreateIngredient(database, 'pâté');
@@ -44,16 +63,60 @@ describe('ingredient queries', () => {
     });
     expect(findSimilarIngredient(database, 'Poireaux')).toStrictEqual({
       id: leek.id,
-      name: 'poireau',
+      name: 'Poireau',
     });
     expect(findSimilarIngredient(database, 'pâté')).toStrictEqual({ id: pate.id, name: 'Pâte' });
+  });
+
+  it('finds an ingredient whose name is in the new one as whole words, the longest first', () => {
+    findOrCreateIngredient(database, 'vin');
+    const redWine = findOrCreateIngredient(database, 'Vin rouge');
+    const salt = findOrCreateIngredient(database, 'Sel');
+
+    expect(findSimilarIngredient(database, 'bouteille de vin rouge assez bon')).toStrictEqual({
+      id: redWine.id,
+      name: 'Vin rouge',
+    });
+    expect(findSimilarIngredient(database, 'Sel, poivre')).toStrictEqual({
+      id: salt.id,
+      name: 'Sel',
+    });
+    expect(findSimilarIngredient(database, 'selle d’agneau')).toBeUndefined();
+  });
+
+  it('compares whole words whatever the apostrophes', () => {
+    const lamb = findOrCreateIngredient(database, 'Gigot d’agneau');
+    const chop = findOrCreateIngredient(database, "Côte d'agneau");
+
+    expect(findSimilarIngredient(database, "un gigot d'agneau fermier")).toStrictEqual({
+      id: lamb.id,
+      name: 'Gigot d’agneau',
+    });
+    expect(findSimilarIngredient(database, 'côte d’agneau grillée')).toStrictEqual({
+      id: chop.id,
+      name: "Côte d'agneau",
+    });
+  });
+
+  it('compares whole words whatever the separators of the saved name', () => {
+    const redWine = findOrCreateIngredient(database, 'Vin-rouge');
+    const saltPepper = findOrCreateIngredient(database, 'Sel, poivre');
+
+    expect(findSimilarIngredient(database, 'bouteille de vin rouge')).toStrictEqual({
+      id: redWine.id,
+      name: 'Vin-rouge',
+    });
+    expect(findSimilarIngredient(database, 'sel poivre du moulin')).toStrictEqual({
+      id: saltPepper.id,
+      name: 'Sel, poivre',
+    });
   });
 
   it('finds no similar ingredient for the same name or an unrelated one', () => {
     findOrCreateIngredient(database, 'Carrots');
 
     expect(findSimilarIngredient(database, 'carrots')).toBeUndefined();
-    expect(findSimilarIngredient(database, 'carrot cake')).toBeUndefined();
+    expect(findSimilarIngredient(database, 'pumpkin')).toBeUndefined();
   });
 
   it('refuses a blank name', () => {
@@ -78,9 +141,9 @@ describe('ingredient queries', () => {
     });
 
     expect(firstIngredientPage(database)).toStrictEqual([
-      { id: carrot.id, name: 'carrot', recipeCount: 2, sortKey: 'carrot' },
+      { id: carrot.id, name: 'Carrot', recipeCount: 2, sortKey: 'carrot' },
       { id: shallot.id, name: 'Échalote', recipeCount: 1, sortKey: 'echalote' },
-      expect.objectContaining({ name: 'zucchini', recipeCount: 0 }),
+      expect.objectContaining({ name: 'Zucchini', recipeCount: 0 }),
     ]);
   });
 
@@ -93,8 +156,8 @@ describe('ingredient queries', () => {
     expect(renameIngredient(database, carrot.id, 'Carrot')).toBe('renamed');
     expect(renameIngredient(database, carrot.id, 'carrot')).toBe('renamed');
     expect(firstIngredientPage(database).map((ingredient) => ingredient.name)).toStrictEqual([
-      'carrot',
-      'leek',
+      'Carrot',
+      'Leek',
     ]);
   });
 
@@ -111,7 +174,7 @@ describe('ingredient queries', () => {
     expect(deleteIngredient(database, carrot.id)).toBe('in-use');
     expect(deleteIngredient(database, leek.id)).toBe('deleted');
     expect(firstIngredientPage(database).map((ingredient) => ingredient.name)).toStrictEqual([
-      'carrot',
+      'Carrot',
     ]);
   });
 
@@ -135,10 +198,10 @@ describe('ingredient queries', () => {
         ...options,
       }).map((ingredient) => ingredient.name);
 
-    expect(suggest({})).toStrictEqual(['carrot', 'baby carrot', 'carrot cake spice']);
-    expect(suggest({ excludeIdList: [carrot.id], limit: 1 })).toStrictEqual(['baby carrot']);
-    expect(suggest({ isUsedOnly: true })).toStrictEqual(['baby carrot']);
-    expect(suggest({ search: '' }).at(0)).toBe('baby carrot');
+    expect(suggest({})).toStrictEqual(['Carrot', 'Baby carrot', 'Carrot cake spice']);
+    expect(suggest({ excludeIdList: [carrot.id], limit: 1 })).toStrictEqual(['Baby carrot']);
+    expect(suggest({ isUsedOnly: true })).toStrictEqual(['Baby carrot']);
+    expect(suggest({ search: '' }).at(0)).toBe('Baby carrot');
     expect(carrotCake.isNew).toBe(true);
   });
 });

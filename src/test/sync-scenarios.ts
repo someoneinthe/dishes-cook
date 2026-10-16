@@ -11,6 +11,7 @@ import {
 import { deleteRecipe, getRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { createSyncApi, signIn } from '@/features/sync/sync-api';
 import { INITIAL_CURSORS, synchronize } from '@/features/sync/sync-engine';
+import { toDisplayName } from '@/lib/text';
 import { createTestConnection } from './test-database';
 
 export type Phone = { cursors: SyncCursors; db: AppDatabase };
@@ -150,7 +151,11 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     addRecipe(phoneA, 'Soup');
     await syncBoth();
     const setTitle = (phone: Phone, title: string, updatedAt: number) =>
-      phone.db.update(recipes).set({ sortKey: title.toLowerCase(), title, updatedAt }).run();
+      // As the app saves a title: in lowercase.
+      phone.db
+        .update(recipes)
+        .set({ sortKey: title.toLowerCase(), title: title.toLowerCase(), updatedAt })
+        .run();
     const later = Date.now() + 60_000;
     setTitle(phoneB, 'Soup by B', later + 1000);
     setTitle(phoneA, 'Soup by A', later);
@@ -160,8 +165,8 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     await sync(phoneA);
     await sync(phoneB);
 
-    expect(titlesOf(phoneA)).toStrictEqual(['Soup by B']);
-    expect(titlesOf(phoneB)).toStrictEqual(['Soup by B']);
+    expect(titlesOf(phoneA)).toStrictEqual(['Soup by b']);
+    expect(titlesOf(phoneB)).toStrictEqual(['Soup by b']);
   });
 
   it('deletes on the other phone a recipe deleted on one, then forgets the deletion', async () => {
@@ -175,7 +180,8 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
 
     expect(titlesOf(phoneB)).toStrictEqual(['Salad']);
     // The ingredient isn't deleted with the recipe.
-    expect(ingredientNamesOf(phoneB)).toStrictEqual(['Leek']);
+    // Names are saved in lowercase (and shown with a capital first letter).
+    expect(ingredientNamesOf(phoneB)).toStrictEqual(['leek']);
     expect(phoneA.db.select().from(syncDeletions).all()).toStrictEqual([]);
   });
 
@@ -244,18 +250,22 @@ export function recipeOf(phone: Phone, title: string) {
   const row = phone.db
     .select({ id: recipes.id })
     .from(recipes)
-    .where(eq(recipes.title, title))
+    // Saved in lowercase.
+    .where(eq(recipes.title, title.toLowerCase()))
     .get();
   return row && getRecipe(phone.db, row.id);
 }
 
 export function titlesOf(phone: Phone) {
-  return phone.db
-    .select({ title: recipes.title })
-    .from(recipes)
-    .orderBy(asc(recipes.sortKey))
-    .all()
-    .map(({ title }) => title);
+  return (
+    phone.db
+      .select({ title: recipes.title })
+      .from(recipes)
+      .orderBy(asc(recipes.sortKey))
+      .all()
+      // As shown: titles are saved in lowercase.
+      .map(({ title }) => toDisplayName(title))
+  );
 }
 
 function ingredientNamesOf(phone: Phone) {
