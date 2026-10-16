@@ -278,6 +278,19 @@ describe('recipe-from-text', () => {
       });
     });
 
+    it('never gives a quantity to the next card', () => {
+      // A lone "2" with nothing right under it, then another card on the next row.
+      const at = (text: string, left: number, top: number) => ({
+        frame: { bottom: top + 20, left, right: left + 100, top },
+        lineList: [{ height: 20, text }],
+      });
+
+      expect(
+        readRecipeText([at('Ingredients', 0, 0), at('2', 300, 100), at('salt', 0, 300)])
+          .ingredientList,
+      ).toStrictEqual([{ name: 'salt' }]);
+    });
+
     it('reads an empty page as an empty recipe', () => {
       expect(readRecipeText([block(['  ', ''])])).toStrictEqual({
         ingredientList: [],

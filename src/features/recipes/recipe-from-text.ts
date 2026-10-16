@@ -147,7 +147,6 @@ const LINK_WORD_PATTERN = /^(?:de\s+|d['’]\s*|of\s+)/i;
 // "4 personnes", "Serves 4": the servings, not an ingredient (the word is one of SERVINGS_WORD_SET).
 const SERVINGS_PATTERN = /^(?:pour\s|serves\s)?\d+\s*(\p{L}*)\.?$/iu;
 const SERVINGS_WORD_SET = new Set([
-  '',
   'parts',
   'people',
   'pers',
@@ -235,7 +234,7 @@ export function readIngredientLine(text: string): ScannedIngredient | undefined 
 
 // The recipe read from a page's blocks of text; a field is empty when nothing was found for it.
 export function readRecipeText(blockList: readonly ScannedBlock[]): ScannedRecipe {
-  const lineList = toReadingOrder(blockList).flatMap((block, blockIndex) =>
+  const lineList = toReadingOrder(attachQuantities(blockList)).flatMap((block, blockIndex) =>
     block.lineList
       .map((line) => ({ ...line, blockIndex, row: block.row, text: cleanName(line.text) }))
       .filter((line) => line.text !== ''),
@@ -249,6 +248,37 @@ export function readRecipeText(blockList: readonly ScannedBlock[]): ScannedRecip
     instructions: toParagraphs(linesOf('instruction')),
     title: stripColon(lineList[titleIndex]?.text ?? ''),
   };
+}
+
+// A one-line block that is only a quantity ("4", "100 g": no name) goes on top of the block right
+// under it, as on recipe websites' cards where the quantity is above the name and read apart.
+// Without positions, the blocks stay as they are.
+function attachQuantities(blockList: readonly ScannedBlock[]): ScannedBlock[] {
+  const isQuantityOnly = (block: ScannedBlock) => {
+    const [line, ...restList] = block.lineList;
+    return (
+      line !== undefined &&
+      restList.length === 0 &&
+      AMOUNT_PATTERN.test(cleanName(line.text)) &&
+      readIngredientLine(line.text) === undefined
+    );
+  };
+  const quantityList = blockList.filter((block) => block.frame && isQuantityOnly(block));
+  const attachedSet = new Set<ScannedBlock>();
+  const nameList = blockList.map((block) => {
+    const quantity = quantityList.find(
+      (candidate) => !attachedSet.has(candidate) && isRightAbove(candidate, block),
+    );
+    if (!quantity?.frame || !block.frame) {
+      return block;
+    }
+    attachedSet.add(quantity);
+    return {
+      frame: { ...block.frame, top: quantity.frame.top },
+      lineList: [...quantity.lineList, ...block.lineList],
+    };
+  });
+  return nameList.filter((block) => !attachedSet.has(block));
 }
 
 // The largest line before the ingredients (or among the first lines), the first one on a tie; it
@@ -304,6 +334,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+// Whether `upper` is right above `lower`: overlapping columns, with less than a line between them.
+function isRightAbove(upper: ScannedBlock, lower: ScannedBlock): boolean {
+  if (upper === lower || !upper.frame || !lower.frame) {
+    return false;
+  }
+  const lineHeight = upper.lineList[0]?.height ?? 0;
+  const gap = lower.frame.top - upper.frame.bottom;
+  const isSameColumn = upper.frame.left < lower.frame.right && lower.frame.left < upper.frame.right;
+  return gap < lineHeight && gap >= -lineHeight / 2 && isSameColumn;
+}
+
 function isServings(text: string): boolean {
   const word = SERVINGS_PATTERN.exec(text)?.[1];
   return word !== undefined && SERVINGS_WORD_SET.has(word.toLowerCase());
@@ -323,17 +364,18 @@ function isTiming(text: string): boolean {
   );
 }
 
-// One text per ingredient. A line without a name joins the next one ("100 g" + "de beurre",
-// "4" + "oignons"), and so does a line followed, in its block, by "de…" / "of…" ("1 bouteille" +
-// "de vin rouge"); the lowercase lines after it in the block end the name ("assez" + "bon").
+// One text per ingredient. In a block (a card), a line without a name joins the next one ("100 g"
+// + "de beurre", "4" + "oignons"), and so does a line followed by "de…" / "of…" ("1 bouteille" +
+// "de vin rouge"); the lowercase lines after it end the name ("assez" + "bon"). Across blocks
+// nothing joins: the next block may be another card (a quantity above its name is in the name's
+// block already, see attachQuantities).
 function joinIngredientLines(lineList: readonly Line[]): string[] {
   const textList: string[] = [];
   let pending: Line | undefined;
   for (const line of lineList) {
     const isContinued =
-      pending !== undefined &&
-      (readIngredientLine(pending.text) === undefined ||
-        (pending.blockIndex === line.blockIndex && isNameContinuation(line.text)));
+      pending?.blockIndex === line.blockIndex &&
+      (readIngredientLine(pending.text) === undefined || isNameContinuation(line.text));
     const text = pending && isContinued ? `${pending.text} ${line.text}` : line.text;
     if (pending && !isContinued) {
       textList.push(pending.text);
