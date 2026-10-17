@@ -11,7 +11,8 @@ import { connect, disconnect, getSyncState, syncNow } from './sync-store';
 
 const ACCOUNT = { email: 'home@example.org', password: 'test-password' };
 const SERVER_URL = 'https://sync.example.org';
-const OTHER_SERVER_URL = 'https://other.example.org';
+const OTHER_SERVER_HOST = 'other.example.org';
+const OTHER_SERVER_URL = `https://${OTHER_SERVER_HOST}`;
 
 describe('sync store', () => {
   let database: AppDatabase;
@@ -24,8 +25,8 @@ describe('sync store', () => {
     otherServer = createFakeSyncServer(ACCOUNT);
     // Each address is its own server.
     jest.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
-      const url = input instanceof Request ? input.url : String(input);
-      return (url.startsWith(OTHER_SERVER_URL) ? otherServer : server).fetch(input, init);
+      const { host } = new URL(input instanceof Request ? input.url : String(input));
+      return (host === OTHER_SERVER_HOST ? otherServer : server).fetch(input, init);
     });
   });
 

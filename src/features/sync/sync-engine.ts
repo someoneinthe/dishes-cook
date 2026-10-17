@@ -332,7 +332,7 @@ function linkArrivedIngredients(
   row: ServerRecipe,
 ): number {
   const syncIdList = ingredientSyncIdsOf(row);
-  if (!local || local.updatedAt !== row.modified || row.deleted > 0 || syncIdList.length === 0) {
+  if (local?.updatedAt !== row.modified || row.deleted > 0 || syncIdList.length === 0) {
     return 0;
   }
   const recipeId = local.id;
