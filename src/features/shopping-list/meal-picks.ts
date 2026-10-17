@@ -1,39 +1,46 @@
 import { useSyncExternalStore } from 'react';
 
-// The meals picked for the shopping list (recipe ids), in the order they were picked. Kept in
-// memory only, on purpose (user's choice): the list is shared, not saved. It's forgotten when the
-// app closes, or once its meals are marked as cooked.
+// The meals picked for the shopping list, by recipe sync id (stable: SQLite can give a deleted
+// recipe's integer id to a new one), in the order they were picked. Kept in memory only, on
+// purpose (user's choice): the list is shared, not saved. It's forgotten when the app closes, or
+// once its meals are marked as cooked.
 
 // At most this many meals: the shopping list's queries stay bounded.
 export const MAX_PICKS = 50;
 
-const state: { pickList: readonly number[] } = { pickList: [] };
+const state: { pickList: readonly string[] } = { pickList: [] };
 const listenerSet = new Set<() => void>();
 
-export function addPick(recipeId: number): void {
-  if (state.pickList.includes(recipeId) || state.pickList.length >= MAX_PICKS) {
-    return;
+// 'full': not added, the list already holds MAX_PICKS meals.
+export function addPick(syncId: string): 'added' | 'full' {
+  if (state.pickList.includes(syncId)) {
+    return 'added';
   }
-  publish([...state.pickList, recipeId]);
+  if (state.pickList.length >= MAX_PICKS) {
+    return 'full';
+  }
+  publish([...state.pickList, syncId]);
+  return 'added';
 }
 
 export function clearPicks(): void {
   publish([]);
 }
 
-export function getPicks(): readonly number[] {
+export function getPicks(): readonly string[] {
   return state.pickList;
 }
 
-export function removePick(recipeId: number): void {
-  publish(state.pickList.filter((id) => id !== recipeId));
+export function removePick(syncId: string): void {
+  publish(state.pickList.filter((id) => id !== syncId));
 }
 
-export function usePicks(): readonly number[] {
+// A new list on each change: compared by identity, it tells whether the list changed.
+export function usePicks(): readonly string[] {
   return useSyncExternalStore(subscribe, getPicks);
 }
 
-function publish(pickList: readonly number[]): void {
+function publish(pickList: readonly string[]): void {
   state.pickList = pickList;
   for (const listener of listenerSet) {
     listener();

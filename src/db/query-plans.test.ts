@@ -141,10 +141,13 @@ describe('query plans', () => {
     ]);
   });
 
-  it('reads the shopping list from the links of the picked meals, by primary key', () => {
-    listShoppingLines(database, [1, 2]);
+  it('reads the shopping list from the picked meals by sync id, then their links', () => {
+    listShoppingLines(database, ['aaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbb']);
     const planList = lastPlan();
 
+    expect(planList).toContainEqual(
+      expect.stringMatching(/^SEARCH recipes USING (COVERING )?INDEX recipes_sync_id_unique/),
+    );
     expect(planList).toContainEqual(
       expect.stringMatching(
         /^SEARCH recipe_ingredients USING INDEX sqlite_autoindex\S+ \(recipe_id=\?\)/,

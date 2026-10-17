@@ -330,6 +330,8 @@ export const en = {
     emptyMessage:
       'Add meals from the meal choice or from a recipe: their ingredients are listed here, ready to share.',
     emptyTitle: 'No meals picked yet',
+    // On a disabled add button: why nothing can be added.
+    fullHint: (max: number) => `The shopping list is full: ${max} meals at most`,
     ingredients: 'Ingredients',
     markCooked: 'Mark as cooked',
     markCookedHint: 'The meal choice then skips them for a while',

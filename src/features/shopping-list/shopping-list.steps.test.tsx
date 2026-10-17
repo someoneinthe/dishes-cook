@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react-native';
+import { act, fireEvent, screen } from '@testing-library/react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { Share } from 'react-native';
@@ -8,7 +8,7 @@ import type { NavigationMock } from '@/test/navigation-mock';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { MealChoiceScreen } from '@/features/meal-choice/meal-choice-screen';
 import { getLastCookedMeal } from '@/features/meal-history/db/cooked-meal-queries';
-import { saveRecipe } from '@/features/recipes/db/recipe-queries';
+import { getRecipeSyncId, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { RecipeDetailScreen } from '@/features/recipes/recipe-detail-screen';
 import { calendarDaysAgo } from '@/lib/dates';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
@@ -73,8 +73,8 @@ defineFeature(feature, (test) => {
     }
   };
   const inTheList = (first: string, second: string) => {
-    addPick(idByTitle.get(first)!);
-    addPick(idByTitle.get(second)!);
+    addPick(getRecipeSyncId(connection.db, idByTitle.get(first)!)!);
+    addPick(getRecipeSyncId(connection.db, idByTitle.get(second)!)!);
   };
 
   // Title of the suggested recipe, shown as a header on its card.
@@ -97,12 +97,9 @@ defineFeature(feature, (test) => {
     jest.mocked(useLocalSearchParams).mockReturnValue({ id: String(idByTitle.get(title)) });
     await renderWithDatabase(<RecipeDetailScreen />, connection);
   };
-  // "Leek: 5", "Pastry", "Potato: 800 g" and "Salt": exactly these ingredients, in this order.
-  const itListsIngredients = (...nameList: string[]) => {
-    expect(screen.getAllByText(/^• /).map((line) => line.props.children as string)).toStrictEqual(
-      nameList.map((name) => `• ${name}`),
-    );
-  };
+  // The ingredient lines shown, without their bullet.
+  const shownIngredients = () =>
+    screen.getAllByText(/^• /).map((line) => (line.props.children as string).slice(2));
 
   test('The suggestion can be added to the list, and another recipe is proposed', ({
     and,
@@ -159,7 +156,9 @@ defineFeature(feature, (test) => {
     given('these recipes:', theseRecipes);
     given(/^"(.*)" and "(.*)" are in the shopping list$/, inTheList);
     when('I open the shopping list', openTheShoppingList);
-    then(/^it lists "(.*)", "(.*)", "(.*)" and "(.*)"$/, itListsIngredients);
+    then(/^it lists "(.*)", "(.*)", "(.*)" and "(.*)"$/, (...nameList: string[]) => {
+      expect(shownIngredients()).toStrictEqual(nameList);
+    });
   });
 
   test('Sharing the list, then marking its meals as cooked', ({ and, given, then, when }) => {
@@ -197,7 +196,49 @@ defineFeature(feature, (test) => {
     and(/^I take "(.*)" out of the list$/, async (title: string) => {
       await fireEvent.press(screen.getByRole('button', { name: `Remove ${title} from the list` }));
     });
-    then(/^it lists "(.*)", "(.*)" and "(.*)"$/, itListsIngredients);
+    then(/^it lists "(.*)", "(.*)" and "(.*)"$/, (...nameList: string[]) => {
+      expect(shownIngredients()).toStrictEqual(nameList);
+    });
+  });
+
+  test('A suggestion added to the list from its page is replaced', ({ and, given, then, when }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the meal choice', openTheMealChoice);
+    and('the suggestion is added to the list on its page', async () => {
+      await act(() => {
+        addPick(getRecipeSyncId(connection.db, idByTitle.get(firstSuggestion!)!)!);
+      });
+    });
+    then('the other recipe is suggested', () => {
+      expect(currentSuggestion()).toBeDefined();
+      expect(currentSuggestion()).not.toBe(firstSuggestion);
+    });
+  });
+
+  test('The offer to mark the meals as cooked goes once the list changes', ({
+    and,
+    given,
+    then,
+    when,
+  }) => {
+    given('these recipes:', theseRecipes);
+    given(/^"(.*)" is in the shopping list$/, (title: string) => {
+      addPick(getRecipeSyncId(connection.db, idByTitle.get(title)!)!);
+    });
+    when('I open the shopping list', openTheShoppingList);
+    and('I share it', async () => {
+      await fireEvent.press(screen.getByRole('button', { name: 'Share' }));
+
+      expect(screen.getByRole('button', { name: 'Mark as cooked' })).toBeOnTheScreen();
+    });
+    and(/^"(.*)" is added to the list$/, async (title: string) => {
+      await act(() => {
+        addPick(getRecipeSyncId(connection.db, idByTitle.get(title)!)!);
+      });
+    });
+    then("I'm not offered to mark the meals as cooked", () => {
+      expect(screen.queryByRole('button', { name: 'Mark as cooked' })).not.toBeOnTheScreen();
+    });
   });
 
   test('A recipe can be added to the list from its page', ({ and, given, then, when }) => {

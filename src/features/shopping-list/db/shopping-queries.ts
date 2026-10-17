@@ -8,7 +8,7 @@ import { toDisplayName } from '@/lib/text';
 // added up in SQL. Quantities are stored normalized (grams, millilitres; spoons and counted units as
 // written), so the amounts of one unit add up directly.
 
-export type PickedMeal = Readonly<{ id: number; title: string }>;
+export type PickedMeal = Readonly<{ id: number; syncId: string; title: string }>;
 
 // An ingredient of the list in one unit: "leek, 3" (pieces) and "leek, 300 g" are two lines.
 export type ShoppingLine = Readonly<{
@@ -22,30 +22,30 @@ export type ShoppingLine = Readonly<{
 // At most this many lines (50 meals of 20 ingredients each): the query stays bounded.
 const MAX_LINES = 1000;
 
-// The picked meals that still exist (one may have been deleted since), by title.
+// The picked meals (by sync id) that still exist (one may have been deleted since), by title.
 export function listPickedMeals(
   database: AppDatabase,
-  recipeIdList: readonly number[],
+  syncIdList: readonly string[],
 ): PickedMeal[] {
-  return recipeIdList.length === 0
+  return syncIdList.length === 0
     ? []
     : database
-        .select({ id: recipes.id, title: recipes.title })
+        .select({ id: recipes.id, syncId: recipes.syncId, title: recipes.title })
         .from(recipes)
-        .where(inArray(recipes.id, [...recipeIdList]))
+        .where(inArray(recipes.syncId, [...syncIdList]))
         .orderBy(asc(recipes.sortKey), asc(recipes.id))
         .all()
         .map((meal) => ({ ...meal, title: toDisplayName(meal.title) }));
 }
 
-// The ingredients of the meals, by name, one line per unit, the amounts added up. Plan: the links
-// of the meals from the (recipe_id, ingredient_id) primary key, each ingredient by primary key,
-// grouped and sorted (a few hundred rows at most).
+// The ingredients of the meals (by sync id), by name, one line per unit, the amounts added up.
+// Plan: the meals from the sync id index, their links from the (recipe_id, ingredient_id) primary
+// key, each ingredient by primary key, grouped and sorted (a few hundred rows at most).
 export function listShoppingLines(
   database: AppDatabase,
-  recipeIdList: readonly number[],
+  syncIdList: readonly string[],
 ): ShoppingLine[] {
-  if (recipeIdList.length === 0) {
+  if (syncIdList.length === 0) {
     return [];
   }
   return database
@@ -55,9 +55,10 @@ export function listShoppingLines(
       name: ingredients.name,
       unit: recipeIngredients.unit,
     })
-    .from(recipeIngredients)
+    .from(recipes)
+    .innerJoin(recipeIngredients, eq(recipeIngredients.recipeId, recipes.id))
     .innerJoin(ingredients, eq(ingredients.id, recipeIngredients.ingredientId))
-    .where(inArray(recipeIngredients.recipeId, [...recipeIdList]))
+    .where(inArray(recipes.syncId, [...syncIdList]))
     .groupBy(ingredients.id, recipeIngredients.unit)
     .orderBy(asc(ingredients.sortKey), asc(ingredients.id), asc(recipeIngredients.unit))
     .limit(MAX_LINES)

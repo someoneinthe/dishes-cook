@@ -10,6 +10,7 @@ import {
   countRecipes,
   deleteRecipe,
   getRecipe,
+  getRecipeSyncId,
   pickRandomRecipeId,
   type RecipeFilters,
   type RecipeInput,
@@ -320,14 +321,17 @@ describe('recipe queries', () => {
       expect(
         [0, 0.5, 0.99].map((value) =>
           pickRandomRecipeId(database, winterFilters, {
-            omittedIdList: [winterSoupId],
+            omittedSyncIdList: [getRecipeSyncId(database, winterSoupId)!],
             random: () => value,
           }),
         ),
       ).toStrictEqual([allYearStewId, allYearStewId, allYearStewId]);
       expect(
         pickRandomRecipeId(database, winterFilters, {
-          omittedIdList: [winterSoupId, allYearStewId],
+          omittedSyncIdList: [
+            getRecipeSyncId(database, winterSoupId)!,
+            getRecipeSyncId(database, allYearStewId)!,
+          ],
         }),
       ).toBeUndefined();
     });

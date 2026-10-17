@@ -14,12 +14,12 @@ import {
   RecipeFilters,
   toQueryFilters,
 } from '@/features/recipes/components/recipe-filters';
-import { pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
+import { getRecipeSyncId, pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
 import { useNewRecipe } from '@/features/recipes/hooks/use-new-recipe';
-import { useRecipe, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
+import { useRecipe, useRecipeCount, useRecipeSyncId } from '@/features/recipes/hooks/use-recipes';
 import { usePreferences } from '@/features/settings/preferences';
 import { ShoppingListButton } from '@/features/shopping-list/components/shopping-list-button';
-import { addPick, getPicks, usePicks } from '@/features/shopping-list/meal-picks';
+import { addPick, getPicks, MAX_PICKS, usePicks } from '@/features/shopping-list/meal-picks';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
 import { startOfLastDays } from '@/lib/dates';
@@ -43,7 +43,7 @@ export function MealChoiceScreen() {
     pickRandomRecipeId(database, toQueryFilters(values, ''), {
       excludedId,
       // Read when picking: a meal just added to the list is left out at once.
-      omittedIdList: getPicks(),
+      omittedSyncIdList: getPicks(),
       skipCookedSince: recentMealDays === 0 ? undefined : startOfLastDays(recentMealDays),
     });
   // A recipe is proposed as soon as the screen opens (reads are synchronous).
@@ -52,11 +52,19 @@ export function MealChoiceScreen() {
   const matchCount = useRecipeCount(toQueryFilters(filterValues, ''));
   // Undefined once the suggested recipe is deleted.
   const suggestion = useRecipe(suggestedId);
+  // The suggestion added to the shopping list on its own screen: another one is proposed.
+  const suggestedSyncId = useRecipeSyncId(suggestedId);
+  if (suggestedSyncId !== undefined && pickList.includes(suggestedSyncId)) {
+    setSuggestedId(pick(filterValues, suggestedId));
+  }
 
   const suggestAnother = () => setSuggestedId(pick(filterValues, suggestedId));
+  // Another one is proposed once it's in the list (not when the list is full).
   const addToList = (recipeId: number) => {
-    addPick(recipeId);
-    setSuggestedId(pick(filterValues, recipeId));
+    const syncId = getRecipeSyncId(database, recipeId);
+    if (syncId !== undefined && addPick(syncId) === 'added') {
+      setSuggestedId(pick(filterValues, recipeId));
+    }
   };
   // Other filters: a matching recipe right away.
   const changeFilters = (values: RecipeFilterValues) => {
@@ -125,7 +133,8 @@ export function MealChoiceScreen() {
       {matchCount > 0 &&
         (suggestion ? (
           <SuggestionCard
-            onAddToList={isTv ? undefined : addToList}
+            isAddDisabled={pickList.length >= MAX_PICKS}
+            onAddToList={addToList}
             onAnother={suggestAnother}
             recipe={suggestion}
           />

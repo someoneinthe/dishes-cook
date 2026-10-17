@@ -37,16 +37,20 @@ function ShoppingList() {
   const pickList = usePicks();
   const mealList = usePickedMeals(pickList);
   const itemList = toShoppingItems(useShoppingLines(pickList));
-  const [isAskingCooked, setIsAskingCooked] = useState(false);
+  // The list as it was shared: the offer to mark its meals as cooked goes once the list changes
+  // (a meal added since wasn't shared).
+  const [sharedPickList, setSharedPickList] = useState<readonly string[]>();
+  const isAskingCooked = sharedPickList !== undefined && sharedPickList === pickList;
 
   const share = async () => {
+    const sharedList = pickList;
     try {
       await Share.share({ message: toShoppingText(t, { itemList, mealList, units }) });
     } catch {
       // Closed without sharing.
       return;
     }
-    setIsAskingCooked(true);
+    setSharedPickList(sharedList);
   };
   const markCooked = () => {
     markAllCooked(
@@ -54,7 +58,7 @@ function ShoppingList() {
       mealList.map(({ id }) => id),
     );
     clearPicks();
-    setIsAskingCooked(false);
+    setSharedPickList(undefined);
   };
 
   const header = (
@@ -94,7 +98,7 @@ function ShoppingList() {
           <View style={styles.actions}>
             <Button
               label={t.shoppingList.notNow}
-              onPress={() => setIsAskingCooked(false)}
+              onPress={() => setSharedPickList(undefined)}
               variant="secondary"
             />
             <Button
@@ -111,7 +115,7 @@ function ShoppingList() {
         {t.shoppingList.meals(mealList.length)}
       </Text>
       <View accessibilityRole="list" style={styles.list}>
-        {mealList.map(({ id, title }) => (
+        {mealList.map(({ id, syncId, title }) => (
           <View key={id} style={styles.mealRow}>
             <Text style={styles.mealTitle}>{title}</Text>
             <Button
@@ -120,7 +124,7 @@ function ShoppingList() {
               icon="close"
               isIconOnly
               label={t.shoppingList.removeFromList}
-              onPress={() => removePick(id)}
+              onPress={() => removePick(syncId)}
               variant="secondary"
             />
           </View>

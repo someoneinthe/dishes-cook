@@ -30,8 +30,8 @@ describe('shopping text', () => {
   it('shares the meals, then the ingredients', () => {
     const itemList = toShoppingItems(lineList);
     const mealList = [
-      { id: 1, title: 'Leek soup' },
-      { id: 2, title: 'Gratin' },
+      { id: 1, syncId: 'aaaaaaaaaaaaaaa', title: 'Leek soup' },
+      { id: 2, syncId: 'bbbbbbbbbbbbbbb', title: 'Gratin' },
     ];
 
     expect(toShoppingText(en, { itemList, mealList, units: 'metric' })).toBe(

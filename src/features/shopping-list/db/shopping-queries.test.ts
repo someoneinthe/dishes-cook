@@ -1,7 +1,9 @@
+import { eq } from 'drizzle-orm';
 import type { AppDatabase } from '@/db/types';
 import type { Quantity } from '@/lib/units';
+import { recipes } from '@/db/schema';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
-import { deleteRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
+import { deleteRecipe, getRecipeSyncId, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { createTestConnection } from '@/test/test-database';
 import { listPickedMeals, listShoppingLines } from './shopping-queries';
 
@@ -18,16 +20,23 @@ describe('shopping queries', () => {
     saltId = findOrCreateIngredient(database, 'salt').id;
   });
 
-  const addRecipe = (title: string, quantities: readonly (readonly [number, Quantity?])[]) =>
-    saveRecipe(database, {
-      ingredientIdList: quantities.map(([id]) => id),
+  // Its sync id: the shopping list's picks.
+  const addRecipe = (title: string, quantities: readonly (readonly [number, Quantity?])[]) => {
+    const quantityMap = new Map(
+      quantities.flatMap(([id, quantity]) => (quantity ? [[id, quantity] as const] : [])),
+    );
+    const id = saveRecipe(database, {
+      ingredientIdList: quantities.map(([ingredientId]) => ingredientId),
       instructions: '',
-      quantities: new Map(
-        quantities.flatMap(([id, quantity]) => (quantity ? [[id, quantity] as const] : [])),
-      ),
+      quantities: quantityMap,
       season: 'both',
       title,
     });
+    return toSyncId(id);
+  };
+  const toSyncId = (id: number) => getRecipeSyncId(database, id)!;
+  const idOf = (syncId: string) =>
+    database.select({ id: recipes.id }).from(recipes).where(eq(recipes.syncId, syncId)).get()!.id;
 
   it('adds up the quantities of an ingredient in each unit, and lists each ingredient once', () => {
     const soupId = addRecipe('Leek soup', [
@@ -57,14 +66,19 @@ describe('shopping queries', () => {
   });
 
   it('lists the picked meals that still exist, by title', () => {
-    const soupId = addRecipe('Leek soup', []);
-    const gratinId = addRecipe('Gratin', []);
-    const pieId = addRecipe('Pie', []);
-    deleteRecipe(database, pieId);
+    const soup = addRecipe('Leek soup', []);
+    const gratin = addRecipe('Gratin', []);
+    const pie = addRecipe('Pie', []);
+    deleteRecipe(database, idOf(pie));
 
-    expect(listPickedMeals(database, [soupId, pieId, gratinId])).toStrictEqual([
-      { id: gratinId, title: 'Gratin' },
-      { id: soupId, title: 'Leek soup' },
+    expect(
+      listPickedMeals(database, [soup, pie, gratin]).map(({ syncId, title }) => ({
+        syncId,
+        title,
+      })),
+    ).toStrictEqual([
+      { syncId: gratin, title: 'Gratin' },
+      { syncId: soup, title: 'Leek soup' },
     ]);
   });
 });

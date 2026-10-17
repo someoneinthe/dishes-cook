@@ -4,7 +4,7 @@ Feature: Shopping list
   reader's units, and shares them as text with another app (notes, messages,
   email…). Once shared, it offers to mark the meals as cooked (the meal
   history), which empties the list. The list isn't saved: it's forgotten when
-  the app closes. Not on a TV.
+  the app closes. It holds 50 meals at most. Not on a TV.
 
   Background:
     Given these recipes:
@@ -49,6 +49,18 @@ Feature: Shopping list
     When I open the shopping list
     And I take "Leek pie" out of the list
     Then it lists "Leek: 3", "Potato: 500 g" and "Salt"
+
+  Scenario: A suggestion added to the list from its page is replaced
+    When I open the meal choice
+    And the suggestion is added to the list on its page
+    Then the other recipe is suggested
+
+  Scenario: The offer to mark the meals as cooked goes once the list changes
+    Given "Leek soup" is in the shopping list
+    When I open the shopping list
+    And I share it
+    And "Leek pie" is added to the list
+    Then I'm not offered to mark the meals as cooked
 
   Scenario: A recipe can be added to the list from its page
     When I open "Leek soup"

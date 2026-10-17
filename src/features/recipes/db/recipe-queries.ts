@@ -68,8 +68,8 @@ const INGREDIENT_COUNT = sql<number>`(select count(*) from "recipe_ingredients" 
 export type PickOptions = Readonly<{
   // The current suggestion: another one is picked when possible (asking again must change it).
   excludedId?: number;
-  // Never picked (the meals already in the shopping list): at most MAX_PICKS ids.
-  omittedIdList?: readonly number[];
+  // Never picked, by sync id (the meals already in the shopping list): at most MAX_PICKS.
+  omittedSyncIdList?: readonly string[];
   // Returns a number in [0, 1).
   random?: () => number;
   // Recipes cooked at or after this time (ms) are skipped (the meal history); undefined = none.
@@ -143,6 +143,13 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
   return { ...recipe, ingredientList, title: toDisplayName(recipe.title) };
 }
 
+// The recipe's sync id: its identity across devices, which is never reused (unlike its integer id,
+// SQLite's rowid, which a new recipe can get once the last one is deleted).
+export function getRecipeSyncId(database: AppDatabase, id: number): string | undefined {
+  return database.select({ syncId: recipes.syncId }).from(recipes).where(eq(recipes.id, id)).get()
+    ?.syncId;
+}
+
 // Whether the recipe is still saved (it may have been deleted by a sync while being edited).
 export function isRecipeSaved(database: AppDatabase, id: number): boolean {
   return (
@@ -187,12 +194,12 @@ export function pickRandomRecipeId(
   filters: RecipeFilters,
   options: PickOptions = {},
 ): number | undefined {
-  const { excludedId, omittedIdList = [], random = Math.random, skipCookedSince } = options;
+  const { excludedId, omittedSyncIdList = [], random = Math.random, skipCookedSince } = options;
   const filtersMatch = filtersWhere(database, filters);
   const matchingWhere =
-    omittedIdList.length === 0
+    omittedSyncIdList.length === 0
       ? filtersMatch
-      : and(filtersMatch, notInArray(recipes.id, [...omittedIdList]));
+      : and(filtersMatch, notInArray(recipes.syncId, [...omittedSyncIdList]));
   return skipCookedSince === undefined
     ? pickAtRandom(database, matchingWhere, excludedId, random)
     : (pickAtRandom(

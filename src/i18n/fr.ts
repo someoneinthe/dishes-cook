@@ -295,6 +295,7 @@ export const fr: Messages = {
     addToListHint: 'Ajoute ses ingrédients à la liste de courses',
     emptyMessage: `Ajoutez des repas depuis le choix du repas ou une recette${NARROW_SPACE}: leurs ingrédients sont listés ici, prêts à partager.`,
     emptyTitle: 'Aucun repas choisi',
+    fullHint: (max) => `La liste de courses est pleine${NARROW_SPACE}: ${max}\u{A0}repas au plus`,
     ingredients: 'Ingrédients',
     markCooked: 'Noter comme cuisinés',
     markCookedHint: 'Le choix du repas les évite ensuite pendant un temps',

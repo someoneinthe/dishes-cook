@@ -15,7 +15,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Recipe list](#recipe-list): 9 scenarios
 - [Recipes](#recipes): 3 scenarios
 - [Server sync](#server-sync): 10 scenarios
-- [Shopping list](#shopping-list): 7 scenarios
+- [Shopping list](#shopping-list): 9 scenarios
 
 ## A recipe from a photo
 
@@ -569,7 +569,7 @@ Your data (recipes and ingredients today) is kept on the phone. It can also be s
 
 ## Shopping list
 
-Meals are picked on the meal choice ("Add to list", which proposes another recipe) or on a recipe. The shopping list adds up their ingredients, in the reader's units, and shares them as text with another app (notes, messages, email…). Once shared, it offers to mark the meals as cooked (the meal history), which empties the list. The list isn't saved: it's forgotten when the app closes. Not on a TV.
+Meals are picked on the meal choice ("Add to list", which proposes another recipe) or on a recipe. The shopping list adds up their ingredients, in the reader's units, and shares them as text with another app (notes, messages, email…). Once shared, it offers to mark the meals as cooked (the meal history), which empties the list. The list isn't saved: it's forgotten when the app closes. It holds 50 meals at most. Not on a TV.
 
 **For every scenario:**
 
@@ -623,6 +623,20 @@ Meals are picked on the meal choice ("Add to list", which proposes another recip
 - **When** I open the shopping list
 - **And** I take "Leek pie" out of the list
 - **Then** it lists "Leek: 3", "Potato: 500 g" and "Salt"
+
+### A suggestion added to the list from its page is replaced
+
+- **When** I open the meal choice
+- **And** the suggestion is added to the list on its page
+- **Then** the other recipe is suggested
+
+### The offer to mark the meals as cooked goes once the list changes
+
+- **Given** "Leek soup" is in the shopping list
+- **When** I open the shopping list
+- **And** I share it
+- **And** "Leek pie" is added to the list
+- **Then** I'm not offered to mark the meals as cooked
 
 ### A recipe can be added to the list from its page
 
