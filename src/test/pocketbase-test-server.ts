@@ -1,5 +1,5 @@
 import { env } from 'node:process';
-import type { SyncedTable } from '@/db/schema';
+import { SYNCED_TABLE_LIST } from '@/db/schema';
 import type { StoredRow, SyncTestServer } from './sync-scenarios';
 import { nodeFetch } from './node-fetch';
 
@@ -8,7 +8,6 @@ import { nodeFetch } from './node-fetch';
 export const POCKETBASE_URL = environment('POCKETBASE_URL');
 
 const ACCOUNT = { email: 'home@example.org', password: 'test-password' };
-const SYNCED_TABLES: SyncedTable[] = ['ingredients', 'recipes'];
 
 // The real server, emptied: its collections truncated, with an account for the phones.
 export async function createPocketBaseServer(serverUrl: string): Promise<SyncTestServer> {
@@ -24,7 +23,7 @@ export async function createPocketBaseServer(serverUrl: string): Promise<SyncTes
     return response.status === 204 ? undefined : ((await response.json()) as unknown);
   };
 
-  for (const table of SYNCED_TABLES) {
+  for (const table of SYNCED_TABLE_LIST) {
     await call(`collections/${table}/truncate`, { method: 'DELETE' });
   }
   await call('collections/users/truncate', { method: 'DELETE' });

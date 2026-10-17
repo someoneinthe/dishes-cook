@@ -25,6 +25,7 @@ describe('settingsScreen', () => {
       colorScheme: 'system',
       isShowingButtonLabels: false,
       language: 'system',
+      recentMealDays: 14,
       units: 'metric',
     });
   });
@@ -121,6 +122,20 @@ describe('settingsScreen', () => {
     await fireEvent.press(screen.getByRole('radio', { name: 'US (oz, cups)' }));
 
     expect(getPreferences().units).toBe('us');
+  });
+
+  it('skips the meals of the last 14 days by default, and as long as chosen', async () => {
+    await render(<SettingsScreen />);
+
+    expect(screen.getByRole('radio', { name: '14 days' })).toBeChecked();
+
+    await fireEvent.press(screen.getByRole('radio', { name: '30 days' }));
+
+    expect(getPreferences().recentMealDays).toBe(30);
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'Off' }));
+
+    expect(getPreferences().recentMealDays).toBe(0);
   });
 
   it('switches the app to French, then back to English', async () => {

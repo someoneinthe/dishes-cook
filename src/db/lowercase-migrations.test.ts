@@ -1,30 +1,7 @@
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-
-const MIGRATIONS = path.join(__dirname, 'migrations');
-
-// A migrations folder with only the first `count` migrations (before names and titles were saved
-// in lowercase).
-function firstMigrations(count: number): string {
-  const folder = mkdtempSync(path.join(tmpdir(), 'migrations-'));
-  mkdirSync(path.join(folder, 'meta'));
-  const journal = JSON.parse(readFileSync(path.join(MIGRATIONS, 'meta/_journal.json'), 'utf8')) as {
-    entries: { tag: string }[];
-  };
-  const entryList = journal.entries.slice(0, count);
-  writeFileSync(
-    path.join(folder, 'meta/_journal.json'),
-    JSON.stringify({ ...journal, entries: entryList }),
-  );
-  for (const { tag } of entryList) {
-    copyFileSync(path.join(MIGRATIONS, `${tag}.sql`), path.join(folder, `${tag}.sql`));
-  }
-  return folder;
-}
+import { firstMigrations, MIGRATIONS } from '@/test/migrations';
 
 describe('lowercase migrations', () => {
   describe('0002_ingredient-names-lowercase', () => {

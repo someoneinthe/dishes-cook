@@ -29,6 +29,13 @@
       "when": 1792156073746,
       "tag": "0003_recipe-titles-lowercase",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1792264482668,
+      "tag": "0004_meal-history",
+      "breakpoints": true
     }
   ]
 }

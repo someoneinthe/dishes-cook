@@ -6,6 +6,7 @@ import {
   listIngredientPage,
   suggestIngredients,
 } from '@/features/ingredients/db/ingredient-queries';
+import { getLastCookedMeal, markCooked } from '@/features/meal-history/db/cooked-meal-queries';
 import {
   countRecipes,
   getRecipe,
@@ -98,10 +99,44 @@ describe('query plans', () => {
   });
 
   it('picks a random recipe without filters in the (sort_key, id) index', () => {
-    pickRandomRecipeId(database, { ingredientIdList: [] }, undefined, () => 0);
+    pickRandomRecipeId(database, { ingredientIdList: [] }, { random: () => 0 });
 
     expect(lastPlan()).toStrictEqual([
       expect.stringMatching(/^SCAN recipes USING COVERING INDEX recipes_sort_key_id_idx/),
+    ]);
+  });
+
+  const COOKED_INDEX =
+    /^SEARCH cooked_meals USING COVERING INDEX cooked_meals_recipe_cooked_at_idx/;
+
+  it('skips the recently cooked recipes with one lookup of the meal index each', () => {
+    pickRandomRecipeId(database, { ingredientIdList: [] }, { random: () => 0, skipCookedSince: 1 });
+    const planList = lastPlan();
+
+    expect(planList[0]).toMatch(/^SCAN recipes USING COVERING INDEX recipes_sort_key_id_idx/);
+    expect(planList).toContainEqual(
+      expect.stringMatching(
+        /^SEARCH cooked_meals USING COVERING INDEX cooked_meals_recipe_cooked_at_idx \(recipe_id=\? AND cooked_at>\?\)/,
+      ),
+    );
+  });
+
+  it('picks the recipe cooked longest ago with the meal index when all were cooked recently', () => {
+    markCooked(database, 1, Date.now());
+    queryList = [];
+    pickRandomRecipeId(database, { ingredientIdList: [] }, { random: () => 0, skipCookedSince: 1 });
+
+    expect(lastQuery()?.query).toContain('max("cooked_meals"."cooked_at")');
+    expect(lastPlan()).toContainEqual(expect.stringMatching(COOKED_INDEX));
+  });
+
+  it('reads the last time a recipe was cooked from the end of the meal index', () => {
+    getLastCookedMeal(database, 1);
+
+    expect(lastPlan()).toStrictEqual([
+      expect.stringMatching(
+        /^SEARCH cooked_meals USING COVERING INDEX cooked_meals_recipe_cooked_at_idx \(recipe_id=\?\)/,
+      ),
     ]);
   });
 
@@ -170,7 +205,12 @@ describe('query plans', () => {
     ['counts', () => countRecipes(database, { ingredientIdList: [1, 2], season: 'winter' })],
     [
       'picks',
-      () => pickRandomRecipeId(database, { ingredientIdList: [1], season: 'winter' }, 1, () => 0),
+      () =>
+        pickRandomRecipeId(
+          database,
+          { ingredientIdList: [1], season: 'winter' },
+          { excludedId: 1, random: () => 0 },
+        ),
     ],
   ])('%s recipes filtered by ingredient from the ingredient index', (_, run) => {
     run();
@@ -190,7 +230,7 @@ describe('query plans', () => {
     expect(lastQuery()?.query).toMatch(/limit \?$/);
   });
 
-  it.each(['ingredients', 'recipes'])(
+  it.each(['ingredients', 'recipes', 'cooked_meals'])(
     'finds the %s to push with their (updated_at, id) index, in its order',
     async (table) => {
       // A server with nothing new, that accepts everything.

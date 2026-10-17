@@ -13,7 +13,19 @@ export type PullPosition = Readonly<
 >;
 
 // What a push sends: the row's fields, without what the server sets.
-export type RowUpload<Table extends SyncedTable> = Omit<ServerRowOf<Table>, 'id' | 'updated'>;
+export type RowUpload<Table extends SyncedTable> = Omit<
+  ServerRowOf<Table>,
+  'created' | 'id' | 'updated'
+>;
+
+// One time a recipe was cooked (the meal history).
+export type ServerCookedMeal = Readonly<{
+  // When it was cooked, in ms.
+  cooked_at: number;
+  // The recipe's sync id.
+  recipe: string;
+}> &
+  ServerRow;
 
 export type ServerIngredient = Readonly<{ name: string }> & ServerRow;
 
@@ -31,6 +43,8 @@ export type ServerRecipe = Readonly<{
 
 // Every synced row carries these, next to its own fields.
 export type ServerRow = Readonly<{
+  // Set by the server when the row is created, in the format of `updated`.
+  created?: unknown;
   // Deletion time in ms; 0 while the row exists.
   deleted: number;
   id: string;
@@ -42,7 +56,9 @@ export type ServerRow = Readonly<{
 
 export type ServerRowOf<Table extends SyncedTable> = Table extends 'ingredients'
   ? ServerIngredient
-  : ServerRecipe;
+  : Table extends 'recipes'
+    ? ServerRecipe
+    : ServerCookedMeal;
 
 export type SyncApi = Readonly<{
   // The server's migrations and the oldest app it accepts; undefined for a server without that

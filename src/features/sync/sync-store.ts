@@ -1,6 +1,7 @@
 import { deleteItemAsync, getItem, setItem } from 'expo-secure-store';
 import Storage from 'expo-sqlite/kv-store';
 import { useSyncExternalStore } from 'react';
+import type { SyncedTable } from '@/db/schema';
 import type { AppDatabase, DatabaseConnection } from '@/db/types';
 import type { SyncErrorKind } from './sync-api';
 import type { SyncCursors } from './sync-engine';
@@ -148,13 +149,19 @@ function read(): StoredSync | undefined {
 
 // The pull cursors as stored. Before one per table, a single time was kept for both, which could
 // skip rows (ingredients written while recipes were pulled): everything is pulled again once,
-// which only brings what's missing here.
+// which only brings what's missing here. A table added since (the meal history) is pulled from
+// the start.
 function readPulledUntil(value: unknown): SyncCursors['pulledUntil'] {
   const cursors =
     typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+  const cursorOf = (table: SyncedTable) => {
+    const cursor = cursors[table];
+    return typeof cursor === 'string' ? cursor : '';
+  };
   return {
-    ingredients: typeof cursors.ingredients === 'string' ? cursors.ingredients : '',
-    recipes: typeof cursors.recipes === 'string' ? cursors.recipes : '',
+    cooked_meals: cursorOf('cooked_meals'),
+    ingredients: cursorOf('ingredients'),
+    recipes: cursorOf('recipes'),
   };
 }
 

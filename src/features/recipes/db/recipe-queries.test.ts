@@ -3,6 +3,7 @@ import {
   findIngredientByName,
   findOrCreateIngredient,
 } from '@/features/ingredients/db/ingredient-queries';
+import { markCooked } from '@/features/meal-history/db/cooked-meal-queries';
 import { firstRecipePage } from '@/test/queries';
 import { createTestConnection } from '@/test/test-database';
 import {
@@ -213,7 +214,7 @@ describe('recipe queries', () => {
     const findSortedIds = (filters: RecipeFilters) => {
       const total = countRecipes(database, filters);
       return Array.from({ length: total }, (_, index) =>
-        pickRandomRecipeId(database, filters, undefined, () => index / total),
+        pickRandomRecipeId(database, filters, { random: () => index / total }),
       );
     };
 
@@ -290,22 +291,92 @@ describe('recipe queries', () => {
     it('never picks the excluded recipe when another one matches', () => {
       const winterFilters = { ingredientIdList: [], season: 'winter' } as const;
 
-      expect(pickRandomRecipeId(database, winterFilters, winterSoupId, () => 0)).toBe(
-        allYearStewId,
-      );
-      expect(pickRandomRecipeId(database, winterFilters, allYearStewId, () => 0.99)).toBe(
-        winterSoupId,
-      );
+      expect(
+        pickRandomRecipeId(database, winterFilters, { excludedId: winterSoupId, random: () => 0 }),
+      ).toBe(allYearStewId);
+      expect(
+        pickRandomRecipeId(database, winterFilters, {
+          excludedId: allYearStewId,
+          random: () => 0.99,
+        }),
+      ).toBe(winterSoupId);
     });
 
     it('picks the excluded recipe again when it is the only match', () => {
       const filters = { ingredientIdList: [leekId], season: 'summer' } as const;
 
-      expect(pickRandomRecipeId(database, filters, allYearStewId)).toBe(allYearStewId);
+      expect(pickRandomRecipeId(database, filters, { excludedId: allYearStewId })).toBe(
+        allYearStewId,
+      );
     });
 
     it('picks nothing when no recipe matches', () => {
       expect(pickRandomRecipeId(database, { ingredientIdList: [leekId, 999] })).toBeUndefined();
+    });
+
+    describe('skipping the recipes cooked recently', () => {
+      const DAY = 24 * 60 * 60 * 1000;
+      const now = Date.UTC(2026, 9, 17, 12);
+      const lastWeek = now - 7 * DAY;
+      const winterFilters = { ingredientIdList: [], season: 'winter' } as const;
+      // Every id the pick can return when skipping the meals cooked in the last week.
+      const findSkippingIds = () =>
+        [0, 0.5, 0.99].map((value) =>
+          pickRandomRecipeId(database, winterFilters, {
+            random: () => value,
+            skipCookedSince: lastWeek,
+          }),
+        );
+
+      it('never picks a recipe cooked since then while another one matches', () => {
+        markCooked(database, winterSoupId, now - DAY);
+
+        expect(new Set(findSkippingIds())).toStrictEqual(new Set([allYearStewId]));
+      });
+
+      it('picks again the recipes cooked before then', () => {
+        markCooked(database, winterSoupId, now - 10 * DAY);
+
+        expect(new Set(findSkippingIds())).toStrictEqual(new Set([allYearStewId, winterSoupId]));
+      });
+
+      it('picks the recipe cooked longest ago when all matches were cooked since then', () => {
+        markCooked(database, winterSoupId, now - 6 * DAY);
+        markCooked(database, winterSoupId, now - 3 * DAY);
+        markCooked(database, allYearStewId, now - 5 * DAY);
+
+        expect(new Set(findSkippingIds())).toStrictEqual(new Set([allYearStewId]));
+        // Asking again: the next one cooked longest ago.
+        expect(
+          pickRandomRecipeId(database, winterFilters, {
+            excludedId: allYearStewId,
+            skipCookedSince: lastWeek,
+          }),
+        ).toBe(winterSoupId);
+      });
+
+      it('still never picks the excluded recipe when another one was not cooked', () => {
+        markCooked(database, allYearStewId, now - DAY);
+
+        expect(
+          pickRandomRecipeId(database, winterFilters, {
+            excludedId: winterSoupId,
+            skipCookedSince: lastWeek,
+          }),
+        ).toBe(winterSoupId);
+        expect(
+          pickRandomRecipeId(database, winterFilters, {
+            excludedId: allYearStewId,
+            skipCookedSince: lastWeek,
+          }),
+        ).toBe(winterSoupId);
+      });
+
+      it('ignores the meals of the recipes that do not match', () => {
+        markCooked(database, summerSaladId, now - DAY);
+
+        expect(new Set(findSkippingIds())).toStrictEqual(new Set([allYearStewId, winterSoupId]));
+      });
     });
   });
 });

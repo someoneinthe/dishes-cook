@@ -2,12 +2,17 @@ import { asc, eq } from 'drizzle-orm';
 import type { SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { SyncCursors } from '@/features/sync/sync-engine';
-import { ingredients, recipes, syncDeletions } from '@/db/schema';
+import { cookedMeals, ingredients, recipes, syncDeletions } from '@/db/schema';
 import {
   deleteIngredient,
   findIngredientByName,
   findOrCreateIngredient,
 } from '@/features/ingredients/db/ingredient-queries';
+import {
+  getLastCookedMeal,
+  markCooked,
+  removeCookedMeal,
+} from '@/features/meal-history/db/cooked-meal-queries';
 import { deleteRecipe, getRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { createSyncApi, signIn } from '@/features/sync/sync-api';
 import { INITIAL_CURSORS, synchronize } from '@/features/sync/sync-engine';
@@ -35,6 +40,20 @@ export function addRecipe(phone: Phone, title: string, ingredientNameList: strin
     season: 'both',
     title,
   });
+}
+
+// Every time the recipe was cooked on the phone, oldest first ([]: never, or no such recipe).
+export function cookedDatesOf(phone: Phone, title: string) {
+  const recipe = recipeOf(phone, title);
+  return recipe
+    ? phone.db
+        .select({ cookedAt: cookedMeals.cookedAt })
+        .from(cookedMeals)
+        .where(eq(cookedMeals.recipeId, recipe.id))
+        .orderBy(asc(cookedMeals.cookedAt))
+        .all()
+        .map(({ cookedAt }) => cookedAt)
+    : [];
 }
 
 // Two phones syncing with the same server: what the sync must do whatever the server is.
@@ -229,6 +248,90 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     ]);
   });
 
+  it('brings the meal history to the other phone, without changing the recipe', async () => {
+    const soupId = addRecipe(phoneA, 'Soup');
+    // Changed a while ago: not in the same millisecond as a sync below starts.
+    phoneA.db
+      .update(recipes)
+      .set({ updatedAt: Date.now() - 10_000 })
+      .run();
+    await syncBoth();
+    const [recipeBefore] = await server.rowsOf('recipes');
+
+    markCooked(phoneA.db, soupId, Date.UTC(2026, 9, 10, 19));
+    markCooked(phoneA.db, soupId, Date.UTC(2026, 9, 16, 19));
+    await syncBoth();
+
+    expect(lastCookedAtOf(phoneB, 'Soup')).toBe(Date.UTC(2026, 9, 16, 19));
+    await expect(server.rowsOf('cooked_meals')).resolves.toHaveLength(2);
+    // Marking it cooked didn't push the recipe again: an edit made on B meanwhile is kept.
+    const [recipeAfter] = await server.rowsOf('recipes');
+    expect(recipeAfter?.updated).toBe(recipeBefore?.updated);
+  });
+
+  it('removes on the other phone a time cooked removed on one', async () => {
+    const soupId = addRecipe(phoneA, 'Soup');
+    markCooked(phoneA.db, soupId, Date.UTC(2026, 9, 10, 19));
+    const lastId = markCooked(phoneA.db, soupId, Date.UTC(2026, 9, 16, 19));
+    await syncBoth();
+
+    removeCookedMeal(phoneA.db, lastId);
+    await syncBoth();
+
+    expect(lastCookedAtOf(phoneB, 'Soup')).toBe(Date.UTC(2026, 9, 10, 19));
+  });
+
+  describe('gets back the meals of a recipe deleted here and brought back by an edit on the other phone', () => {
+    const cookedAt = Date.UTC(2026, 9, 16, 19);
+    // R cooked on A and synced to B; then A deletes R, and B edits it after that.
+    const deleteHereThenEditThere = async (isDeletionPushed: boolean) => {
+      const soupId = addRecipe(phoneA, 'Soup');
+      markCooked(phoneA.db, soupId, cookedAt);
+      await syncBoth();
+      // A later meal, pulled since: A's pull of meals is past Soup's.
+      markCooked(phoneB.db, addRecipe(phoneB, 'Pie'), cookedAt + 1);
+      await syncBoth();
+      const later = Date.now() + 60_000;
+      deleteRecipe(phoneA.db, soupId);
+      phoneA.db.update(syncDeletions).set({ deletedAt: later }).run();
+      if (isDeletionPushed) {
+        await sync(phoneA);
+      }
+      phoneB.db
+        .update(recipes)
+        .set({ instructions: 'Simmer.', updatedAt: later + 1000 })
+        .run();
+      await sync(phoneB);
+      await sync(phoneA);
+    };
+
+    it('before A told the server about the deletion', async () => {
+      await deleteHereThenEditThere(false);
+
+      expect(recipeOf(phoneA, 'Soup')?.instructions).toBe('Simmer.');
+      expect(lastCookedAtOf(phoneA, 'Soup')).toBe(cookedAt);
+    });
+
+    it('after A told the server about the deletion', async () => {
+      await deleteHereThenEditThere(true);
+
+      expect(recipeOf(phoneA, 'Soup')?.instructions).toBe('Simmer.');
+      expect(lastCookedAtOf(phoneA, 'Soup')).toBe(cookedAt);
+    });
+  });
+
+  it('forgets the meals of a recipe deleted on the other phone', async () => {
+    const soupId = addRecipe(phoneA, 'Soup');
+    markCooked(phoneA.db, soupId, Date.UTC(2026, 9, 16, 19));
+    await syncBoth();
+
+    deleteRecipe(phoneA.db, soupId);
+    await syncBoth();
+
+    expect(titlesOf(phoneB)).toStrictEqual([]);
+    expect(phoneB.db.select().from(cookedMeals).all()).toStrictEqual([]);
+  });
+
   it('only sends the rows changed since the last sync', async () => {
     addRecipe(phoneA, 'Soup');
     // Changed a while ago: not in the same millisecond as the sync below starts.
@@ -244,6 +347,12 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     const [after] = await server.rowsOf('recipes');
     expect(after?.updated).toBe(before?.updated);
   });
+}
+
+// When the recipe was last cooked on the phone (undefined: never, or no such recipe).
+export function lastCookedAtOf(phone: Phone, title: string) {
+  const recipe = recipeOf(phone, title);
+  return recipe && getLastCookedMeal(phone.db, recipe.id)?.cookedAt;
 }
 
 export function recipeOf(phone: Phone, title: string) {

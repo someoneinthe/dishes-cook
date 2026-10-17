@@ -4,6 +4,7 @@ import type { AppDatabase } from '@/db/types';
 import type { Quantity } from '@/lib/units';
 import { PAGE_SIZE } from '@/db/pagination';
 import {
+  cookedMeals,
   COURSE_LIST,
   ingredients,
   NOW_MS,
@@ -17,6 +18,7 @@ import { cleanName, toNameKey, toSortKey } from '@/lib/text';
 import { toQuantity, toStored } from '@/lib/units';
 import type {
   PullPosition,
+  ServerCookedMeal,
   ServerIngredient,
   ServerRecipe,
   ServerRow,
@@ -26,7 +28,8 @@ import type {
 import { SyncError } from './sync-api';
 
 // Two-way sync between the phone's database and the sync server (see docs/sync.md):
-// 1. pull the rows written on the server since the last pull, and apply the newer ones;
+// 1. pull the rows written on the server since the last pull, and apply the newer ones (ingredients,
+//    then recipes, then the meal history: each links to the previous);
 // 2. push the deletions, then the rows changed here since the last push.
 // The newest change of a row wins (`updated_at` here, `modified` there). Applying a pulled row
 // keeps its `modified` as `updated_at`, so it isn't pushed back.
@@ -40,7 +43,7 @@ export type SyncCursors = Readonly<{
 }>;
 
 export const INITIAL_CURSORS: SyncCursors = {
-  pulledUntil: { ingredients: '', recipes: '' },
+  pulledUntil: { cooked_meals: '', ingredients: '', recipes: '' },
   pushedFrom: 0,
 };
 
@@ -55,6 +58,8 @@ type PullKey = Readonly<{ id: string; updated: string }>;
 
 type PushCursor = Readonly<{ id: number; updatedAt: number }>;
 
+type SyncedTableSchema = typeof cookedMeals | typeof ingredients | typeof recipes;
+
 // How many changes wait for the next sync: the deletions, and the rows changed since the last push,
 // counted in SQL. Rows dated after `now` aren't this phone's changes (its own are dated by its
 // clock): they were pulled from a phone whose clock is ahead, and counting them would show changes
@@ -64,14 +69,16 @@ export function countPendingChanges(
   pushedFrom: number,
   now: number = Date.now(),
 ): number {
-  const countChanged = (table: typeof ingredients | typeof recipes) =>
+  const countChanged = (table: SyncedTableSchema) =>
     database
       .select({ count: count() })
       .from(table)
       .where(and(changedSince(table, pushedFrom, undefined), lte(table.updatedAt, now)))
       .get()?.count ?? 0;
   const deletionCount = database.select({ count: count() }).from(syncDeletions).get()?.count ?? 0;
-  return deletionCount + countChanged(ingredients) + countChanged(recipes);
+  return (
+    deletionCount + countChanged(ingredients) + countChanged(recipes) + countChanged(cookedMeals)
+  );
 }
 
 // `holdChanges` runs each batch of writes (see DatabaseConnection.holdSyncChanges): screens refresh
@@ -91,27 +98,138 @@ export async function synchronize(
     });
   // Ingredients first: pulled recipes link to them.
   let ingredientsPulledUntil = await pullIngredients(cursors.pulledUntil.ingredients);
-  // Recipes with ingredients not here yet: another phone pushed both after the pull above (its
-  // ingredients first). Linked once those are pulled too.
-  const unlinkedList: ServerRecipe[] = [];
-  const recipesPulledUntil = await pull(api, 'recipes', cursors.pulledUntil.recipes, (rowList) => {
-    holdChanges(() => {
-      unlinkedList.push(...applyRecipes(database, rowList));
+  // The server creation time of the oldest recipe this sync added here ('' = none).
+  let oldestAddedCreated = '';
+  const pullRecipes = async (since: string) => {
+    // Recipes with ingredients not here yet: another phone pushed both after the pull above (its
+    // ingredients first). Linked once those are pulled too.
+    const unlinkedList: ServerRecipe[] = [];
+    const apply = (rowList: readonly ServerRecipe[]) => {
+      const applied = applyRecipes(database, rowList);
+      oldestAddedCreated = earliest(oldestAddedCreated, applied.oldestAddedCreated);
+      return applied.unlinkedList;
+    };
+    const pulledUntil = await pull(api, 'recipes', since, (rowList) => {
+      holdChanges(() => {
+        unlinkedList.push(...apply(rowList));
+      });
     });
-  });
-  if (unlinkedList.length > 0) {
-    ingredientsPulledUntil = await pullIngredients(ingredientsPulledUntil);
-    holdChanges(() => {
-      applyRecipes(database, unlinkedList);
+    if (unlinkedList.length > 0) {
+      ingredientsPulledUntil = await pullIngredients(ingredientsPulledUntil);
+      holdChanges(() => {
+        apply(unlinkedList);
+      });
+    }
+    return pulledUntil;
+  };
+  let recipesPulledUntil = await pullRecipes(cursors.pulledUntil.recipes);
+  // A recipe added here that the server had before the last pull of meals: one deleted here and
+  // brought back by a newer edit on another phone, whose meals went with it (ON DELETE CASCADE),
+  // and that pull is past them. Every meal is pulled again then: only the missing ones are written.
+  const hasMealsBehindCursor = () =>
+    oldestAddedCreated !== '' &&
+    oldestAddedCreated.localeCompare(cursors.pulledUntil.cooked_meals) < 0;
+  // Meals of recipes not here yet (pushed by another phone after the pull above): applied once
+  // the recipes are pulled again. Still missing then, the recipe was deleted: the meal goes too.
+  const unmatchedList: ServerCookedMeal[] = [];
+  const pullCookedMeals = (since: string) =>
+    pull(api, 'cooked_meals', since, (rowList) => {
+      holdChanges(() => {
+        unmatchedList.push(...applyCookedMeals(database, rowList));
+      });
     });
+  const isFromStart = hasMealsBehindCursor();
+  let cookedMealsPulledUntil = await pullCookedMeals(
+    isFromStart ? '' : cursors.pulledUntil.cooked_meals,
+  );
+  if (unmatchedList.length > 0) {
+    recipesPulledUntil = await pullRecipes(recipesPulledUntil);
+    const retryList = unmatchedList.splice(0);
+    holdChanges(() => {
+      applyCookedMeals(database, retryList);
+    });
+    // The recipes pulled again brought one back (edited, and cooked, on another phone meanwhile).
+    if (!isFromStart && hasMealsBehindCursor()) {
+      cookedMealsPulledUntil = latest(cookedMealsPulledUntil, await pullCookedMeals(''));
+    }
   }
   await pushDeletions(database, api, holdChanges);
   await pushIngredients(database, api, cursors.pushedFrom);
   await pushRecipes(database, api, cursors.pushedFrom);
+  await pushCookedMeals(database, api, cursors.pushedFrom);
   return {
-    pulledUntil: { ingredients: ingredientsPulledUntil, recipes: recipesPulledUntil },
+    pulledUntil: {
+      cooked_meals: cookedMealsPulledUntil,
+      ingredients: ingredientsPulledUntil,
+      recipes: recipesPulledUntil,
+    },
     pushedFrom: startedAt,
   };
+}
+
+// Applies a pulled meal; 'recipe-missing' when its recipe isn't here (yet).
+function applyCookedMeal(tx: AppDatabase, row: ServerCookedMeal): 'done' | 'recipe-missing' {
+  const cookedAt: unknown = row.cooked_at;
+  if (
+    !isValidRow(row) ||
+    !isSyncId(row.recipe) ||
+    !Number.isSafeInteger(cookedAt) ||
+    (cookedAt as number) < 0
+  ) {
+    return 'done';
+  }
+  const local = tx
+    .select({ id: cookedMeals.id, updatedAt: cookedMeals.updatedAt })
+    .from(cookedMeals)
+    .where(eq(cookedMeals.syncId, row.id))
+    .get();
+  if (!isNewerThan(row, local)) {
+    return 'done';
+  }
+  if (row.deleted > 0) {
+    if (local) {
+      // No deletion kept: the server has it.
+      tx.delete(cookedMeals).where(eq(cookedMeals.id, local.id)).run();
+    }
+    return 'done';
+  }
+  if (isDeletedHereLater(tx, 'cooked_meals', row)) {
+    return 'done';
+  }
+  const recipe = tx
+    .select({ id: recipes.id })
+    .from(recipes)
+    .where(eq(recipes.syncId, row.recipe))
+    .get();
+  if (!recipe) {
+    return 'recipe-missing';
+  }
+  const values = { cookedAt: cookedAt as number, recipeId: recipe.id, updatedAt: row.modified };
+  if (local) {
+    tx.update(cookedMeals).set(values).where(eq(cookedMeals.id, local.id)).run();
+  } else {
+    tx.insert(cookedMeals)
+      .values({ ...values, syncId: row.id })
+      .run();
+    forgetDeletion(tx, 'cooked_meals', row.id);
+  }
+  return 'done';
+}
+
+// Applies pulled meals; returns those whose recipe isn't here (yet).
+function applyCookedMeals(
+  database: AppDatabase,
+  rowList: readonly ServerCookedMeal[],
+): readonly ServerCookedMeal[] {
+  const unmatchedList: ServerCookedMeal[] = [];
+  database.transaction((tx) => {
+    for (const row of rowList) {
+      if (applyCookedMeal(tx, row) === 'recipe-missing') {
+        unmatchedList.push(row);
+      }
+    }
+  });
+  return unmatchedList;
 }
 
 function applyIngredient(tx: AppDatabase, row: ServerIngredient): void {
@@ -161,8 +279,9 @@ function applyIngredients(database: AppDatabase, rowList: readonly ServerIngredi
   });
 }
 
-// Applies a pulled recipe; returns how many of its ingredients aren't here (yet).
-function applyRecipe(tx: AppDatabase, row: ServerRecipe): number {
+// Applies a pulled recipe (`onAdded` is called when it's new here); returns how many of its
+// ingredients aren't here (yet).
+function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): number {
   // Saved in lowercase, whatever the other phone or the server had (shown with toDisplayName).
   const title = cleanName(typeof row.title === 'string' ? row.title : '').toLowerCase();
   if (!title || !isValidRow(row)) {
@@ -204,30 +323,38 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe): number {
     .returning({ id: recipes.id })
     .get();
   forgetDeletion(tx, 'recipes', row.id);
+  onAdded();
   return linkIngredients(tx, id, row);
 }
 
-// Applies pulled recipes; returns those with ingredients not here (yet).
+// Applies pulled recipes; returns those with ingredients not here (yet), and the server creation
+// time of the oldest one added here ('' = none, or no usable time).
 function applyRecipes(
   database: AppDatabase,
   rowList: readonly ServerRecipe[],
-): readonly ServerRecipe[] {
+): Readonly<{ oldestAddedCreated: string; unlinkedList: readonly ServerRecipe[] }> {
   const unlinkedList: ServerRecipe[] = [];
+  let oldestAddedCreated = '';
   database.transaction((tx) => {
     for (const row of rowList) {
-      if (applyRecipe(tx, row) > 0) {
+      const onAdded = () => {
+        if (typeof row.created === 'string' && SERVER_TIME.test(row.created)) {
+          oldestAddedCreated = earliest(oldestAddedCreated, row.created);
+        }
+      };
+      if (applyRecipe(tx, row, onAdded) > 0) {
         unlinkedList.push(row);
       }
     }
   });
-  return unlinkedList;
+  return { oldestAddedCreated, unlinkedList };
 }
 
 // Rows changed at or after `pushedFrom`, after the keyset cursor (the last row of the previous
 // page), in (updated_at, id) order: the order of the *_updated_at_id_idx indexes. After a cursor
 // (itself changed at or after `pushedFrom`), a row value: the index is read from the cursor on.
 function changedSince(
-  table: typeof ingredients | typeof recipes,
+  table: SyncedTableSchema,
   pushedFrom: number,
   cursor: PushCursor | undefined,
 ) {
@@ -251,7 +378,12 @@ function deletePulledIngredient(tx: AppDatabase, id: number): void {
   }
 }
 
-function forgetDeletion(tx: AppDatabase, tableName: 'ingredients' | 'recipes', syncId: string) {
+// The earlier of two server times, '' standing for none.
+function earliest(time: string, other: string): string {
+  return time === '' || (other !== '' && other.localeCompare(time) < 0) ? other : time;
+}
+
+function forgetDeletion(tx: AppDatabase, tableName: SyncedTable, syncId: string) {
   tx.delete(syncDeletions)
     .where(and(eq(syncDeletions.tableName, tableName), eq(syncDeletions.syncId, syncId)))
     .run();
@@ -288,11 +420,7 @@ function isAfter(key: PullKey, position: PullPosition): boolean {
 }
 
 // Deleted here after the server's change: the deletion is pushed by this sync.
-function isDeletedHereLater(
-  tx: AppDatabase,
-  tableName: 'ingredients' | 'recipes',
-  row: ServerRow,
-): boolean {
+function isDeletedHereLater(tx: AppDatabase, tableName: SyncedTable, row: ServerRow): boolean {
   const deletion = tx
     .select({ deletedAt: syncDeletions.deletedAt })
     .from(syncDeletions)
@@ -448,6 +576,60 @@ function pulledQuantity(quantities: unknown, syncId: string): Quantity | undefin
   const stored = quantity && toStored(quantity);
   // Checked again once converted: "100000000 kg" is too much once in grams, and couldn't be pushed.
   return stored && toQuantity(stored.amount, stored.unit);
+}
+
+async function pushCookedMeals(
+  database: AppDatabase,
+  api: SyncApi,
+  pushedFrom: number,
+): Promise<void> {
+  let cursor: PushCursor | undefined;
+  for (;;) {
+    const rowList = database
+      .select({
+        cookedAt: cookedMeals.cookedAt,
+        id: cookedMeals.id,
+        recipeId: cookedMeals.recipeId,
+        syncId: cookedMeals.syncId,
+        updatedAt: cookedMeals.updatedAt,
+      })
+      .from(cookedMeals)
+      .where(changedSince(cookedMeals, pushedFrom, cursor))
+      .orderBy(asc(cookedMeals.updatedAt), asc(cookedMeals.id))
+      .limit(PAGE_SIZE)
+      .all();
+    // The page's recipes' sync ids in one query.
+    const recipeIdList = rowList.map(({ recipeId }) => recipeId);
+    const recipeList =
+      recipeIdList.length === 0
+        ? []
+        : database
+            .select({ id: recipes.id, syncId: recipes.syncId })
+            .from(recipes)
+            .where(inArray(recipes.id, recipeIdList))
+            .all();
+    const recipeSyncIdMap = new Map(recipeList.map(({ id, syncId }) => [id, syncId]));
+    await settleAll(
+      rowList.flatMap((row) => {
+        const recipeSyncId = recipeSyncIdMap.get(row.recipeId);
+        // Always found: a meal goes with its recipe (ON DELETE CASCADE).
+        return recipeSyncId === undefined
+          ? []
+          : [
+              api.upsert('cooked_meals', row.syncId, {
+                cooked_at: row.cookedAt,
+                deleted: 0,
+                modified: row.updatedAt,
+                recipe: recipeSyncId,
+              }),
+            ];
+      }),
+    );
+    cursor = rowList.at(-1);
+    if (rowList.length < PAGE_SIZE) {
+      return;
+    }
+  }
 }
 
 async function pushDeletions(

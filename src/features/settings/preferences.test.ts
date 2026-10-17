@@ -19,17 +19,23 @@ describe('preferences', () => {
       colorScheme: 'system',
       isShowingButtonLabels: false,
       language: 'system',
+      recentMealDays: 14,
       units: 'metric',
     });
   });
 
   it('keeps the changes for the next launch', () => {
-    loadPreferences().updatePreferences({ isShowingButtonLabels: true, units: 'us' });
+    loadPreferences().updatePreferences({
+      isShowingButtonLabels: true,
+      recentMealDays: 30,
+      units: 'us',
+    });
 
     expect(loadPreferences().getPreferences()).toStrictEqual({
       colorScheme: 'system',
       isShowingButtonLabels: true,
       language: 'system',
+      recentMealDays: 30,
       units: 'us',
     });
   });
@@ -53,13 +59,14 @@ describe('preferences', () => {
 
     Storage.setItemSync(
       'preferences',
-      '{"colorScheme":"sepia","isShowingButtonLabels":"yes","language":"tlh","units":"cubits"}',
+      '{"colorScheme":"sepia","isShowingButtonLabels":"yes","language":"tlh","recentMealDays":3,"units":"cubits"}',
     );
 
     expect(loadPreferences().getPreferences()).toStrictEqual({
       colorScheme: 'system',
       isShowingButtonLabels: false,
       language: 'system',
+      recentMealDays: 14,
       units: 'metric',
     });
   });

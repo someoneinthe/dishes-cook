@@ -98,7 +98,15 @@ export function createFakeSyncServer(
     if (rowMap.has(id)) {
       return json(400, { data: { id: { code: 'validation_not_unique' } } });
     }
-    const created = { deleted: 0, modified: 0, ...request.body, id, updated: now() } as StoredRow;
+    const time = now();
+    const created = {
+      deleted: 0,
+      modified: 0,
+      ...request.body,
+      created: time,
+      id,
+      updated: time,
+    } as StoredRow;
     rowMap.set(id, created);
     return json(200, created);
   };

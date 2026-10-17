@@ -1,12 +1,24 @@
 import type { Phone } from '@/test/sync-scenarios';
 import { PAGE_SIZE } from '@/db/pagination';
-import { recipes } from '@/db/schema';
+import { cookedMeals, recipes } from '@/db/schema';
 import { findIngredientByName } from '@/features/ingredients/db/ingredient-queries';
+import {
+  getLastCookedMeal,
+  markCooked,
+  removeCookedMeal,
+} from '@/features/meal-history/db/cooked-meal-queries';
 import { deleteRecipe } from '@/features/recipes/db/recipe-queries';
 import { toIngredientSyncId } from '@/lib/sync-id';
 import { toNameKey } from '@/lib/text';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
-import { addRecipe, describeSyncScenarios, recipeOf, titlesOf } from '@/test/sync-scenarios';
+import {
+  addRecipe,
+  cookedDatesOf,
+  describeSyncScenarios,
+  lastCookedAtOf,
+  recipeOf,
+  titlesOf,
+} from '@/test/sync-scenarios';
 import { createTestConnection } from '@/test/test-database';
 import type { SyncApi } from './sync-api';
 import { createSyncApi, signIn } from './sync-api';
@@ -156,20 +168,65 @@ describe('synchronize', () => {
     expect(pendingCount(phoneA)).toBe(1);
   });
 
+  it('skips meals of the server it cannot use, and those of recipes it does not have', async () => {
+    const soupId = addRecipe(phoneA, 'Soup');
+    await sync(phoneA);
+    const [soup] = [...server.collection('recipes').values()];
+    const meal = (id: string, fields: object) => ({
+      cooked_at: 1000,
+      deleted: 0,
+      id,
+      modified: 1,
+      recipe: soup!.id,
+      updated: '2026-06-01 00:00:00.000Z',
+      ...fields,
+    });
+    const rowMap = server.collection('cooked_meals');
+    rowMap.set('aaaaaaaaaaaaaaa', meal('aaaaaaaaaaaaaaa', { recipe: 'not a sync id' }));
+    rowMap.set('bbbbbbbbbbbbbbb', meal('bbbbbbbbbbbbbbb', { cooked_at: -5 }));
+    rowMap.set('ccccccccccccccc', meal('ccccccccccccccc', { cooked_at: '12' }));
+    // A recipe deleted since (or never pushed): no meal without its recipe.
+    rowMap.set('ddddddddddddddd', meal('ddddddddddddddd', { recipe: 'fffffffffffffff' }));
+    rowMap.set('eeeeeeeeeeeeeee', meal('eeeeeeeeeeeeeee', { cooked_at: 2000 }));
+
+    await sync(phoneA);
+
+    expect(getLastCookedMeal(phoneA.db, soupId)?.cookedAt).toBe(2000);
+    expect(phoneA.db.select().from(cookedMeals).all()).toHaveLength(1);
+  });
+
+  it('counts a meal cooked or removed as a change waiting for the sync', async () => {
+    const soupId = addRecipe(phoneA, 'Soup');
+    await sync(phoneA);
+    const pushedFrom = Date.now() + 1;
+
+    const mealId = markCooked(phoneA.db, soupId, 1000);
+    phoneA.db.update(cookedMeals).set({ updatedAt: pushedFrom }).run();
+
+    expect(countPendingChanges(phoneA.db, pushedFrom, pushedFrom)).toBe(1);
+
+    removeCookedMeal(phoneA.db, mealId);
+
+    expect(countPendingChanges(phoneA.db, pushedFrom, pushedFrom)).toBe(1);
+  });
+
   describe('while another phone writes during the pull', () => {
     // Server times later than the fake server's own (2026-01-01 00:00:00.001Z on).
     const LATER = '2026-06-01 00:00:00.000Z';
     const LATER_STILL = '2026-06-01 00:00:00.001Z';
 
-    // Calls `write` once, before the server reads its `count`-th list of recipes.
-    const beforeRecipeList = (count: number, write: () => void) => {
-      let recipeListCount = 0;
+    // Calls `write` once, before the server reads its `count`-th list of `table`.
+    const beforeList = (table: string, count: number, write: () => void) => {
+      let listCount = 0;
       server.setBeforeList((name) => {
-        recipeListCount += name === 'recipes' ? 1 : 0;
-        if (name === 'recipes' && recipeListCount === count) {
+        listCount += name === table ? 1 : 0;
+        if (name === table && listCount === count) {
           write();
         }
       });
+    };
+    const beforeRecipeList = (count: number, write: () => void) => {
+      beforeList('recipes', count, write);
     };
 
     it('gets an ingredient and the recipe using it, written while recipes were pulled', async () => {
@@ -202,6 +259,78 @@ describe('synchronize', () => {
 
       expect(write).toHaveBeenCalledTimes(1);
       expect(recipeOf(phoneA, 'Pesto')?.ingredientList).toMatchObject([{ name: 'Basil' }]);
+    });
+
+    it('gets back the older meals of a recipe brought back while meals were pulled', async () => {
+      const soupId = addRecipe(phoneA, 'Soup');
+      markCooked(phoneA.db, soupId, 1000);
+      const { syncId: soupSyncId } = phoneA.db.select().from(recipes).get()!;
+      await sync(phoneA);
+      await sync(phoneB);
+      // A later meal, pulled by A since: A's pull of meals is past Soup's.
+      markCooked(phoneB.db, addRecipe(phoneB, 'Pie'), 2000);
+      await sync(phoneB);
+      await sync(phoneA);
+      deleteRecipe(phoneA.db, soupId);
+      // Once A has pulled the recipes: another phone edits Soup (after A's deletion) and cooks it.
+      const write = jest.fn(() => {
+        const soup = server.collection('recipes').get(soupSyncId)!;
+        server.collection('recipes').set(soupSyncId, {
+          ...soup,
+          instructions: 'Simmer.',
+          modified: Date.now() + 60_000,
+          updated: LATER,
+        });
+        server.collection('cooked_meals').set('defdefdefdefdef', {
+          cooked_at: 3000,
+          deleted: 0,
+          id: 'defdefdefdefdef',
+          modified: 1,
+          recipe: soupSyncId,
+          updated: LATER_STILL,
+        });
+      });
+      beforeList('cooked_meals', 1, write);
+
+      await sync(phoneA);
+
+      const soup = recipeOf(phoneA, 'Soup');
+
+      expect(write).toHaveBeenCalledTimes(1);
+      expect(soup?.instructions).toBe('Simmer.');
+      expect(cookedDatesOf(phoneA, 'Soup')).toStrictEqual([1000, 3000]);
+    });
+
+    it('gets a meal and the recipe it was cooked from, written while meals were pulled', async () => {
+      // Pushed by another phone, its recipe first, after this one has pulled the recipes.
+      const write = jest.fn(() => {
+        server.collection('recipes').set('abcabcabcabcabc', {
+          course: 'main',
+          deleted: 0,
+          id: 'abcabcabcabcabc',
+          ingredients: [],
+          instructions: '',
+          modified: 1,
+          quantities: {},
+          season: 'both',
+          title: 'pesto',
+          updated: LATER,
+        });
+        server.collection('cooked_meals').set('defdefdefdefdef', {
+          cooked_at: 1_700_000_000_000,
+          deleted: 0,
+          id: 'defdefdefdefdef',
+          modified: 1,
+          recipe: 'abcabcabcabcabc',
+          updated: LATER_STILL,
+        });
+      });
+      beforeList('cooked_meals', 1, write);
+
+      await sync(phoneA);
+
+      expect(write).toHaveBeenCalledTimes(1);
+      expect(lastCookedAtOf(phoneA, 'Pesto')).toBe(1_700_000_000_000);
     });
 
     it('gets every row of a long pull when one of them changes meanwhile', async () => {

@@ -62,7 +62,7 @@ export const en = {
     othersTitle: 'Nothing for anyone else',
     serverList: [
       'Off by default. In Settings › Data storage, you can sync with a PocketBase server that you install and run yourself, to share your recipes between your devices.',
-      'Only that server receives your data: your recipes (title, course, season, instructions, ingredients and quantities), your ingredients, and which ones you deleted. Settings stay on each device.',
+      'Only that server receives your data: your recipes (title, course, season, instructions, ingredients and quantities), your ingredients, the dates you cooked each recipe, and what you deleted. Settings stay on each device.',
       'The device keeps the server’s address, your email and an encrypted sign-in token, never your password. The connection is encrypted (HTTPS).',
       'The server is yours: no one else runs it, and the app’s developers can’t see it.',
     ],
@@ -170,6 +170,26 @@ export const en = {
     suggestHint: 'Picks a matching recipe at random',
     suggestionIntro: 'How about…',
     suggestRecipe: 'Suggest a recipe',
+  },
+  mealHistory: {
+    cooked: 'I cooked it',
+    cookedHint: 'Records that you cooked it today: the meal choice skips it for a while',
+    // When the recipe was last cooked, from the number of calendar days since: "Cooked yesterday".
+    lastCooked: (daysAgo: number, time: number) => {
+      if (daysAgo <= 0) {
+        return 'Cooked today';
+      }
+      if (daysAgo === 1) {
+        return 'Cooked yesterday';
+      }
+      return daysAgo <= 30
+        ? `Cooked ${daysAgo} days ago`
+        : `Cooked on ${new Date(time).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    },
+    neverCooked: 'Not cooked yet',
+    remove: 'Remove',
+    removeLabel: 'Remove the last time it was cooked',
+    removeMessage: 'Only this date is removed, not the recipe.',
   },
   menu: {
     about: 'About',
@@ -286,6 +306,9 @@ export const en = {
     dark: 'Dark',
     language: 'Language',
     light: 'Light',
+    // Settings › Skip recent meals: Off, 7 days…
+    recentMeals: 'Skip recent meals',
+    recentMealsDays: (days: number) => (days === 0 ? 'Off' : `${days} days`),
     showButtonLabels: 'Show button labels',
     showButtonLabelsHint: 'Adds the text next to icon buttons',
     system: 'System',

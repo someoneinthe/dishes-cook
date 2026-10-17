@@ -8,6 +8,7 @@ import { headerActions } from '@/components/header-actions';
 import { screenScrollProps } from '@/components/screen-scroll-props';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useDatabase } from '@/db/database-context';
+import { LastCooked } from '@/features/meal-history/components/last-cooked';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import { RecipeDetails } from './components/recipe-details';
@@ -80,7 +81,9 @@ export function RecipeDetailScreen() {
           title: recipe.title,
         }}
       />
-      <RecipeDetails recipe={recipe} />
+      <RecipeDetails recipe={recipe}>
+        <LastCooked isRemovable recipeId={recipe.id} />
+      </RecipeDetails>
     </ScrollView>
   );
 }
