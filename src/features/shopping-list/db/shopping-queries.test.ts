@@ -50,7 +50,7 @@ describe('shopping queries', () => {
     ]);
     const gratinId = addRecipe('Gratin', [[leekId, { amount: 200, unit: 'g' }], [saltId]]);
 
-    expect(listShoppingLines(database, [soupId, pieId, gratinId])).toStrictEqual([
+    expect(listShoppingLines(database, [soupId, pieId, gratinId]).lineList).toStrictEqual([
       // Pieces and grams don't add up: two lines, grams (stored normalized) and pieces.
       { amount: 5, ingredientId: leekId, name: 'Leek' },
       { amount: 200, ingredientId: leekId, name: 'Leek', unit: 'g' },
@@ -60,8 +60,21 @@ describe('shopping queries', () => {
     ]);
   });
 
+  it('says when lines are left out, past the cap', () => {
+    const soupId = addRecipe('Leek soup', [[leekId], [potatoId], [saltId]]);
+
+    expect(listShoppingLines(database, [soupId], 2)).toStrictEqual({
+      isTruncated: true,
+      lineList: [
+        { ingredientId: leekId, name: 'Leek' },
+        { ingredientId: potatoId, name: 'Potato' },
+      ],
+    });
+    expect(listShoppingLines(database, [soupId], 3).isTruncated).toBe(false);
+  });
+
   it('lists nothing without meals', () => {
-    expect(listShoppingLines(database, [])).toStrictEqual([]);
+    expect(listShoppingLines(database, [])).toStrictEqual({ isTruncated: false, lineList: [] });
     expect(listPickedMeals(database, [])).toStrictEqual([]);
   });
 

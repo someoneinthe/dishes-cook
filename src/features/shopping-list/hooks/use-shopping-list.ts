@@ -14,14 +14,15 @@ export function usePickedMeals(pickList: readonly string[]) {
   return mealList;
 }
 
-// The ingredients of the picked meals, one line per ingredient and unit, amounts added up.
+// The ingredients of the picked meals, one line per ingredient and unit, amounts added up, and
+// whether some were left out (more than MAX_LINES).
 export function useShoppingLines(pickList: readonly string[]) {
   const database = useDatabase();
   const read = () => listShoppingLines(database, pickList);
-  const { data: lineList } = useQuery({
+  const { data: shoppingLines } = useQuery({
     initialData: read,
     queryFn: read,
     queryKey: ['shoppingList', 'lines', pickList],
   });
-  return lineList;
+  return shoppingLines;
 }

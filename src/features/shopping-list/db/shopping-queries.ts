@@ -19,8 +19,13 @@ export type ShoppingLine = Readonly<{
   unit?: Unit;
 }>;
 
-// At most this many lines (50 meals of 20 ingredients each): the query stays bounded.
-const MAX_LINES = 1000;
+// The lines of the list; `isTruncated` when there were more than the query reads (MAX_LINES): the
+// screen and the shared text then say so, rather than leaving lines out silently.
+export type ShoppingLines = Readonly<{ isTruncated: boolean; lineList: ShoppingLine[] }>;
+
+// At most this many lines (50 meals of 20 ingredients each): the query stays bounded. Not paged:
+// the whole list is shared at once.
+export const MAX_LINES = 1000;
 
 // The picked meals (by sync id) that still exist (one may have been deleted since), by title.
 export function listPickedMeals(
@@ -44,11 +49,13 @@ export function listPickedMeals(
 export function listShoppingLines(
   database: AppDatabase,
   syncIdList: readonly string[],
-): ShoppingLine[] {
+  maxLines: number = MAX_LINES,
+): ShoppingLines {
   if (syncIdList.length === 0) {
-    return [];
+    return { isTruncated: false, lineList: [] };
   }
-  return database
+  // One line more than shown: tells whether some were left out.
+  const rowList = database
     .select({
       amount: sql<null | number>`sum(${recipeIngredients.amount})`,
       ingredientId: ingredients.id,
@@ -61,12 +68,15 @@ export function listShoppingLines(
     .where(inArray(recipes.syncId, [...syncIdList]))
     .groupBy(ingredients.id, recipeIngredients.unit)
     .orderBy(asc(ingredients.sortKey), asc(ingredients.id), asc(recipeIngredients.unit))
-    .limit(MAX_LINES)
-    .all()
-    .map(({ amount, ingredientId, name, unit }) => ({
+    .limit(maxLines + 1)
+    .all();
+  return {
+    isTruncated: rowList.length > maxLines,
+    lineList: rowList.slice(0, maxLines).map(({ amount, ingredientId, name, unit }) => ({
       ingredientId,
       name: toDisplayName(name),
       ...(amount !== null && amount > 0 && { amount }),
       ...(unit !== null && { unit }),
-    }));
+    })),
+  };
 }

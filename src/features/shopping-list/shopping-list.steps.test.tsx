@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -28,6 +29,16 @@ const feature = loadFeature('./shopping-list.feature', { loadRelativePath: true 
 
 // "Leek: 3, Potato: 500 g, Salt": ingredients, with their quantity when they have one.
 type RecipeRow = Readonly<{ ingredients: string; title: string }>;
+
+// The meal choice, with the recipe screen opened over it (it stays mounted).
+function MealChoiceWithRecipe({ isRecipeOpen = false }: Readonly<{ isRecipeOpen?: boolean }>) {
+  return (
+    <>
+      <MealChoiceScreen />
+      {isRecipeOpen && <RecipeDetailScreen />}
+    </>
+  );
+}
 
 defineFeature(feature, (test) => {
   let connection: DatabaseConnection;
@@ -203,11 +214,21 @@ defineFeature(feature, (test) => {
 
   test('A suggestion added to the list from its page is replaced', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
-    when('I open the meal choice', openTheMealChoice);
-    and('the suggestion is added to the list on its page', async () => {
-      await act(() => {
-        addPick(getRecipeSyncId(connection.db, idByTitle.get(firstSuggestion!)!)!);
-      });
+    // The meal choice stays mounted under the recipe screen, as in the app's stack.
+    let rerender: (ui: ReactElement) => Promise<void>;
+    when('I open the meal choice', async () => {
+      ({ rerender } = await renderWithDatabase(<MealChoiceWithRecipe />, connection));
+      firstSuggestion = currentSuggestion();
+    });
+    and('I open the suggestion and add it to the shopping list', async () => {
+      jest
+        .mocked(useLocalSearchParams)
+        .mockReturnValue({ id: String(idByTitle.get(firstSuggestion!)) });
+      await rerender(<MealChoiceWithRecipe isRecipeOpen />);
+      await fireEvent.press(screen.getByRole('button', { name: 'Add to the shopping list' }));
+    });
+    and('I go back to the meal choice', async () => {
+      await rerender(<MealChoiceWithRecipe />);
     });
     then('the other recipe is suggested', () => {
       expect(currentSuggestion()).toBeDefined();

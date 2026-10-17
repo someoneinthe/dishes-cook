@@ -359,6 +359,8 @@ export const en = {
     share: 'Share',
     shareHint: 'Sends the list to another app: notes, messages, email…',
     title: 'Shopping list',
+    // More ingredient lines than the list reads: some are left out.
+    truncated: (max: number) => `Only the first ${max} lines are listed.`,
   },
   sync: {
     appUpdateAvailable:

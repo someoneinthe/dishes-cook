@@ -2,6 +2,7 @@ import type { Messages } from '@/i18n/en';
 import type { Quantity, UnitSystem } from '@/lib/units';
 import { formatQuantity } from '@/features/recipes/quantity';
 import type { PickedMeal, ShoppingLine } from './db/shopping-queries';
+import { MAX_LINES } from './db/shopping-queries';
 
 // An ingredient of the shopping list with its quantities, one per unit ("leek: 3 + 300 g"); none
 // when no meal gives one ("salt").
@@ -40,17 +41,20 @@ export function toShoppingItems(lineList: readonly ShoppingLine[]): ShoppingItem
 export function toShoppingText(
   t: Messages,
   options: Readonly<{
+    // Lines were left out (more than MAX_LINES): said at the end.
+    isTruncated?: boolean;
     itemList: readonly ShoppingItem[];
     mealList: readonly PickedMeal[];
     units: UnitSystem;
   }>,
 ): string {
-  const { itemList, mealList, units } = options;
+  const { isTruncated = false, itemList, mealList, units } = options;
   return [
     t.shoppingList.title,
     '',
     t.shoppingList.mealsLine(mealList.map(({ title }) => title)),
     '',
     ...itemList.map((item) => `• ${formatShoppingItem(t, item, units)}`),
+    ...(isTruncated ? ['', t.shoppingList.truncated(MAX_LINES)] : []),
   ].join('\n');
 }

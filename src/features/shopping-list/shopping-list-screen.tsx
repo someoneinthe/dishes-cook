@@ -13,6 +13,7 @@ import { usePreferences } from '@/features/settings/preferences';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
+import { MAX_LINES } from './db/shopping-queries';
 import { usePickedMeals, useShoppingLines } from './hooks/use-shopping-list';
 import { clearPicks, removePick, usePicks } from './meal-picks';
 import { formatShoppingItem, toShoppingItems, toShoppingText } from './shopping-text';
@@ -36,7 +37,8 @@ function ShoppingList() {
   const { units } = usePreferences();
   const pickList = usePicks();
   const mealList = usePickedMeals(pickList);
-  const itemList = toShoppingItems(useShoppingLines(pickList));
+  const { isTruncated, lineList } = useShoppingLines(pickList);
+  const itemList = toShoppingItems(lineList);
   // The list as it was shared: the offer to mark its meals as cooked goes once the list changes
   // (a meal added since wasn't shared).
   const [sharedPickList, setSharedPickList] = useState<readonly string[]>();
@@ -45,7 +47,7 @@ function ShoppingList() {
   const share = async () => {
     const sharedList = pickList;
     try {
-      await Share.share({ message: toShoppingText(t, { itemList, mealList, units }) });
+      await Share.share({ message: toShoppingText(t, { isTruncated, itemList, mealList, units }) });
     } catch {
       // Closed without sharing.
       return;
@@ -145,6 +147,7 @@ function ShoppingList() {
       ) : (
         <Text style={styles.muted}>{t.shoppingList.noIngredients}</Text>
       )}
+      {isTruncated && <Text style={styles.muted}>{t.shoppingList.truncated(MAX_LINES)}</Text>}
     </ScrollView>
   );
 }

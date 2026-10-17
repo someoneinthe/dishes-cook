@@ -45,6 +45,9 @@ describe('shopping text', () => {
         '• Salt',
       ].join('\n'),
     );
+    expect(toShoppingText(en, { isTruncated: true, itemList, mealList, units: 'metric' })).toMatch(
+      /\n\nOnly the first 1000 lines are listed\.$/,
+    );
     expect(toShoppingText(fr, { itemList, mealList, units: 'metric' })).toContain(
       '• Potato\u{202F}: 1,5 kg',
     );

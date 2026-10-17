@@ -319,6 +319,7 @@ export const fr: Messages = {
     share: 'Partager',
     shareHint: `Envoie la liste à une autre application${NARROW_SPACE}: notes, messages, e-mail…`,
     title: 'Liste de courses',
+    truncated: (max) => `Seules les ${max}\u{A0}premières lignes sont listées.`,
   },
   sync: {
     appUpdateAvailable: `Votre serveur a une version plus récente${NARROW_SPACE}: mettez l’application à jour pour profiter de ses nouveautés.`,

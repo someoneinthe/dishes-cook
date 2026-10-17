@@ -627,7 +627,8 @@ Meals are picked on the meal choice ("Add to list", which proposes another recip
 ### A suggestion added to the list from its page is replaced
 
 - **When** I open the meal choice
-- **And** the suggestion is added to the list on its page
+- **And** I open the suggestion and add it to the shopping list
+- **And** I go back to the meal choice
 - **Then** the other recipe is suggested
 
 ### The offer to mark the meals as cooked goes once the list changes
