@@ -17,6 +17,6 @@ export function openAppConnection() {
   } catch (error) {
     console.warn('Could not enable WAL, keeping the default journal mode', error);
   }
-  const { logger, subscribe } = createChangeNotifier();
-  return { db: drizzle(sqlite, { logger }), subscribe } satisfies DatabaseConnection;
+  const { logger, ...notifier } = createChangeNotifier();
+  return { db: drizzle(sqlite, { logger }), ...notifier } satisfies DatabaseConnection;
 }

@@ -46,6 +46,28 @@ describe('createChangeNotifier', () => {
     expect(errorSpy).toHaveBeenCalledTimes(1);
   });
 
+  it("holds a sync's writes and tells them once, as the sync's, apart from the app's", async () => {
+    const { holdSyncChanges, logger, releaseSyncChanges, subscribe } = createChangeNotifier();
+    const listener = jest.fn();
+    subscribe(listener);
+
+    holdSyncChanges(() => {
+      logger.logQuery('insert into "recipes" ("title") values (?)');
+    });
+    holdSyncChanges(() => {
+      logger.logQuery('update "recipes" set "title" = ?');
+    });
+    logger.logQuery('insert into "ingredients" ("name") values (?)');
+    await flushMicrotasks();
+
+    expect(listener.mock.calls).toStrictEqual([['app']]);
+
+    releaseSyncChanges();
+    releaseSyncChanges();
+
+    expect(listener.mock.calls).toStrictEqual([['app'], ['sync']]);
+  });
+
   it('stops notifying after unsubscribe', async () => {
     const { logger, subscribe } = createChangeNotifier();
     const listener = jest.fn();

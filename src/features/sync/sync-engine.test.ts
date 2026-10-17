@@ -127,7 +127,9 @@ describe('synchronize', () => {
         serverUrl: SERVER_URL,
         token: await signInPhone(),
       });
-      phone.cursors = await synchronize(phone.db, api, phone.cursors, () => Date.now() + 1);
+      phone.cursors = await synchronize(phone.db, api, phone.cursors, {
+        now: () => Date.now() + 1,
+      });
     };
     const id = addRecipe(phoneA, 'Soup', ['Leek']);
 

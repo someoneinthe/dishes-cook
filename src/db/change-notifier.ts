@@ -1,4 +1,4 @@
-import type { DatabaseChangeListener } from './types';
+import type { DatabaseChangeListener, DatabaseChangeSource } from './types';
 
 const WRITE_STATEMENT = /^\s*(?:insert|update|delete)\b/i;
 
@@ -8,28 +8,50 @@ const WRITE_STATEMENT = /^\s*(?:insert|update|delete)\b/i;
 // change events (sqlite3_update_hook via expo-sqlite) aren't used: they stop arriving when a dev
 // reload leaves the native listener flag off, and they miss nothing we'd need since no other code
 // writes to the database. Listeners aren't told which table changed: a delete cascades to other
-// tables, so every live query re-runs (they're sub-millisecond).
+// tables, so every live query re-runs (they're sub-millisecond). A sync's writes are held while it
+// runs and told once at its end, marked as the sync's (the auto-sync doesn't answer them).
 export function createChangeNotifier() {
   const listenerSet = new Set<DatabaseChangeListener>();
   let isPending = false;
+  // Writes of a sync: held (not notified) while running, then notified once.
+  let isHolding = false;
+  let hasHeld = false;
 
-  const notify = () => {
-    isPending = false;
+  const notifyAll = (source: DatabaseChangeSource) => {
     for (const listener of listenerSet) {
       // One failing listener must not keep the others (other screens) from refreshing.
       try {
-        listener();
+        listener(source);
       } catch (error) {
         console.error('A database change listener failed', error);
       }
     }
   };
+  const notify = () => {
+    isPending = false;
+    notifyAll('app');
+  };
 
   return {
+    holdSyncChanges: (write: () => void) => {
+      isHolding = true;
+      try {
+        write();
+      } finally {
+        isHolding = false;
+      }
+    },
     // Drizzle `logger` option.
     logger: {
       logQuery: (query: string) => {
-        if (isPending || !WRITE_STATEMENT.test(query)) {
+        if (!WRITE_STATEMENT.test(query)) {
+          return;
+        }
+        if (isHolding) {
+          hasHeld = true;
+          return;
+        }
+        if (isPending) {
           return;
         }
         isPending = true;
@@ -37,6 +59,14 @@ export function createChangeNotifier() {
         // is done, so a batch of writes notifies once.
         queueMicrotask(notify);
       },
+    },
+    releaseSyncChanges: () => {
+      if (!hasHeld) {
+        return;
+      }
+
+      hasHeld = false;
+      notifyAll('sync');
     },
     subscribe: (listener: DatabaseChangeListener) => {
       listenerSet.add(listener);

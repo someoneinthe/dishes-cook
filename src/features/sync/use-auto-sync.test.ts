@@ -1,21 +1,24 @@
 import { act, cleanup, renderHook } from '@testing-library/react-native';
 import { AppState } from 'react-native';
 import type { DatabaseConnection } from '@/db/types';
+import { recipes } from '@/db/schema';
 import { saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
 import { createDataWrapper, createTestConnection } from '@/test/test-database';
 import * as syncStore from './sync-store';
-import { useAutoSync, WRITE_SYNC_DELAY_MS } from './use-auto-sync';
+import { FOREGROUND_SYNC_INTERVAL_MS, useAutoSync, WRITE_SYNC_DELAY_MS } from './use-auto-sync';
 
 const ACCOUNT = { email: 'home@example.org', password: 'test-password' };
 
 describe('useAutoSync', () => {
   let connection: DatabaseConnection;
+  let server: ReturnType<typeof createFakeSyncServer>;
   let syncSpy: jest.SpyInstance;
 
   beforeEach(() => {
     connection = createTestConnection();
-    jest.spyOn(globalThis, 'fetch').mockImplementation(createFakeSyncServer(ACCOUNT).fetch);
+    server = createFakeSyncServer(ACCOUNT);
+    jest.spyOn(globalThis, 'fetch').mockImplementation(server.fetch);
   });
 
   afterEach(async () => {
@@ -26,7 +29,7 @@ describe('useAutoSync', () => {
   });
 
   const startConnected = async () => {
-    await syncStore.connect(connection.db, { ...ACCOUNT, serverUrl: 'https://sync.example.org' });
+    await syncStore.connect(connection, { ...ACCOUNT, serverUrl: 'https://sync.example.org' });
     syncSpy = jest.spyOn(syncStore, 'syncNow');
     jest.useFakeTimers();
     await renderHook(() => useAutoSync(), { wrapper: createDataWrapper(connection) });
@@ -67,21 +70,78 @@ describe('useAutoSync', () => {
     expect(syncSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('syncs when the app comes back to the foreground', async () => {
-    const listenerList: ((state: string) => void)[] = [];
-    jest.spyOn(AppState, 'addEventListener').mockImplementation((_, listener) => {
-      listenerList.push(listener as (state: string) => void);
-      return { remove: jest.fn() };
+  it('does not sync again after a sync that only brought changes from the server', async () => {
+    await syncStore.connect(connection, { ...ACCOUNT, serverUrl: 'https://sync.example.org' });
+    // From another phone, pulled by the sync the app starts with.
+    server.collection('recipes').set('abcabcabcabcabc', {
+      course: 'main',
+      deleted: 0,
+      id: 'abcabcabcabcabc',
+      ingredients: [],
+      instructions: '',
+      modified: 1,
+      quantities: {},
+      season: 'both',
+      title: 'soup',
+      updated: '2026-06-01 00:00:00.000Z',
     });
-    await startConnected();
-    syncSpy.mockClear();
+    syncSpy = jest.spyOn(syncStore, 'syncNow');
+    jest.useFakeTimers();
+    await renderHook(() => useAutoSync(), { wrapper: createDataWrapper(connection) });
 
-    await act(() => {
-      for (const listener of listenerList) {
-        listener('active');
-      }
-    });
+    await act(() => jest.advanceTimersByTimeAsync(WRITE_SYNC_DELAY_MS * 2));
 
+    expect(connection.db.select().from(recipes).all()).toHaveLength(1);
     expect(syncSpy).toHaveBeenCalledTimes(1);
+  });
+
+  describe('when the app comes back to the foreground', () => {
+    const listenerList: ((state: string) => void)[] = [];
+    const comeBack = () =>
+      act(() => {
+        for (const listener of listenerList) {
+          listener('active');
+        }
+      });
+
+    beforeEach(async () => {
+      listenerList.length = 0;
+      jest.spyOn(AppState, 'addEventListener').mockImplementation((_, listener) => {
+        listenerList.push(listener as (state: string) => void);
+        return { remove: jest.fn() };
+      });
+      await startConnected();
+      await act(() => jest.runOnlyPendingTimersAsync());
+      syncSpy.mockClear();
+    });
+
+    it('syncs a while after the last sync', async () => {
+      await act(() => jest.advanceTimersByTimeAsync(FOREGROUND_SYNC_INTERVAL_MS));
+      await comeBack();
+
+      expect(syncSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('syncs at once with changes waiting', async () => {
+      await addRecipe('Soup');
+      // Dated by the test's clock (SQLite dates it by the real one, ahead of the fake timers').
+      connection.db.update(recipes).set({ updatedAt: Date.now() }).run();
+      await comeBack();
+
+      expect(syncSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('syncs when the clock was set back since the last sync', async () => {
+      jest.setSystemTime(Date.now() - FOREGROUND_SYNC_INTERVAL_MS * 10);
+      await comeBack();
+
+      expect(syncSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not sync again right after a sync, with nothing to send', async () => {
+      await comeBack();
+
+      expect(syncSpy).not.toHaveBeenCalled();
+    });
   });
 });
