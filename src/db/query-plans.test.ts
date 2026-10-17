@@ -12,7 +12,7 @@ import {
   pickRandomRecipeId,
   saveRecipe,
 } from '@/features/recipes/db/recipe-queries';
-import { synchronize } from '@/features/sync/sync-engine';
+import { INITIAL_CURSORS, synchronize } from '@/features/sync/sync-engine';
 import { createTestConnection } from '@/test/test-database';
 import type { AppDatabase } from './types';
 
@@ -153,7 +153,7 @@ describe('query plans', () => {
         sendDeletion: () => Promise.resolve('saved'),
         upsert: () => Promise.resolve('saved'),
       };
-      await synchronize(database, api, { pulledUntil: '', pushedFrom: Date.now() - 1000 });
+      await synchronize(database, api, { ...INITIAL_CURSORS, pushedFrom: Date.now() - 1000 });
       const pushQuery = queryList.find((query) =>
         query.includes(`from "${table}" where "${table}"."updated_at" >=`),
       );

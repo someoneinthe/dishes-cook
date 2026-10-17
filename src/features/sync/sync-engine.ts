@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gt, inArray, lte, ne, or, sql } from 'drizzle-orm';
+import { and, asc, count, eq, gt, inArray, lte, ne, notExists, or, sql } from 'drizzle-orm';
 import type { Course, Season, SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { Quantity } from '@/lib/units';
@@ -15,7 +15,15 @@ import {
 import { isSyncId } from '@/lib/sync-id';
 import { cleanName, toNameKey, toSortKey } from '@/lib/text';
 import { toQuantity, toStored } from '@/lib/units';
-import type { ServerIngredient, ServerRecipe, ServerRow, ServerRowOf, SyncApi } from './sync-api';
+import type {
+  PullPosition,
+  ServerIngredient,
+  ServerRecipe,
+  ServerRow,
+  ServerRowOf,
+  SyncApi,
+} from './sync-api';
+import { SyncError } from './sync-api';
 
 // Two-way sync between the phone's database and the sync server (see docs/sync.md):
 // 1. pull the rows written on the server since the last pull, and apply the newer ones;
@@ -24,13 +32,26 @@ import type { ServerIngredient, ServerRecipe, ServerRow, ServerRowOf, SyncApi } 
 // keeps its `modified` as `updated_at`, so it isn't pushed back.
 
 export type SyncCursors = Readonly<{
-  // Server time of the last row pulled ('' = never pulled: everything).
-  pulledUntil: string;
+  // Server time of the last row pulled, per table ('' = never pulled: everything). One per table:
+  // a recipe pulled later than an ingredient written meanwhile mustn't move the ingredients past it.
+  pulledUntil: Readonly<Record<SyncedTable, string>>;
   // Rows changed here at or after this time (ms) are pushed (0 = everything: the first sync merges).
   pushedFrom: number;
 }>;
 
-export const INITIAL_CURSORS: SyncCursors = { pulledUntil: '', pushedFrom: 0 };
+export const INITIAL_CURSORS: SyncCursors = {
+  pulledUntil: { ingredients: '', recipes: '' },
+  pushedFrom: 0,
+};
+
+// At most this many pages pulled per table and per sync (a server that never stops sending rows
+// can't keep the phone syncing forever): the next sync carries on.
+const MAX_PULL_PAGES = 200;
+
+// A server time: "2026-10-14 18:03:59.794Z".
+const SERVER_TIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+type PullKey = Readonly<{ id: string; updated: string }>;
 
 type PushCursor = Readonly<{ id: number; updatedAt: number }>;
 
@@ -61,18 +82,27 @@ export async function synchronize(
 ): Promise<SyncCursors> {
   // Changes made from now on, even during this sync, are pushed next time.
   const startedAt = now();
+  const pullIngredients = (since: string) =>
+    pull(api, 'ingredients', since, (rowList) => {
+      applyIngredients(database, rowList);
+    });
   // Ingredients first: pulled recipes link to them.
-  const ingredientsPulledUntil = await pull(api, 'ingredients', cursors.pulledUntil, (rowList) =>
-    applyIngredients(database, rowList),
-  );
-  const recipesPulledUntil = await pull(api, 'recipes', cursors.pulledUntil, (rowList) =>
-    applyRecipes(database, rowList),
-  );
+  let ingredientsPulledUntil = await pullIngredients(cursors.pulledUntil.ingredients);
+  // Recipes with ingredients not here yet: another phone pushed both after the pull above (its
+  // ingredients first). Linked once those are pulled too.
+  const unlinkedList: ServerRecipe[] = [];
+  const recipesPulledUntil = await pull(api, 'recipes', cursors.pulledUntil.recipes, (rowList) => {
+    unlinkedList.push(...applyRecipes(database, rowList));
+  });
+  if (unlinkedList.length > 0) {
+    ingredientsPulledUntil = await pullIngredients(ingredientsPulledUntil);
+    applyRecipes(database, unlinkedList);
+  }
   await pushDeletions(database, api);
   await pushIngredients(database, api, cursors.pushedFrom);
   await pushRecipes(database, api, cursors.pushedFrom);
   return {
-    pulledUntil: latest(ingredientsPulledUntil, recipesPulledUntil),
+    pulledUntil: { ingredients: ingredientsPulledUntil, recipes: recipesPulledUntil },
     pushedFrom: startedAt,
   };
 }
@@ -124,11 +154,12 @@ function applyIngredients(database: AppDatabase, rowList: readonly ServerIngredi
   });
 }
 
-function applyRecipe(tx: AppDatabase, row: ServerRecipe): void {
+// Applies a pulled recipe; returns how many of its ingredients aren't here (yet).
+function applyRecipe(tx: AppDatabase, row: ServerRecipe): number {
   // Saved in lowercase, whatever the other phone or the server had (shown with toDisplayName).
   const title = cleanName(typeof row.title === 'string' ? row.title : '').toLowerCase();
   if (!title || !isValidRow(row)) {
-    return;
+    return 0;
   }
   const local = tx
     .select({ id: recipes.id, updatedAt: recipes.updatedAt })
@@ -136,17 +167,17 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe): void {
     .where(eq(recipes.syncId, row.id))
     .get();
   if (!isNewerThan(row, local)) {
-    return;
+    return linkArrivedIngredients(tx, local, row);
   }
   if (row.deleted > 0) {
     if (local) {
       // Its links go with it (ON DELETE CASCADE). No deletion kept: the server has it.
       tx.delete(recipes).where(eq(recipes.id, local.id)).run();
     }
-    return;
+    return 0;
   }
   if (isDeletedHereLater(tx, 'recipes', row)) {
-    return;
+    return 0;
   }
   const values = {
     course: toCourse(row.course),
@@ -158,8 +189,7 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe): void {
   };
   if (local) {
     tx.update(recipes).set(values).where(eq(recipes.id, local.id)).run();
-    linkIngredients(tx, local.id, row);
-    return;
+    return linkIngredients(tx, local.id, row);
   }
   const { id } = tx
     .insert(recipes)
@@ -167,15 +197,23 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe): void {
     .returning({ id: recipes.id })
     .get();
   forgetDeletion(tx, 'recipes', row.id);
-  linkIngredients(tx, id, row);
+  return linkIngredients(tx, id, row);
 }
 
-function applyRecipes(database: AppDatabase, rowList: readonly ServerRecipe[]): void {
+// Applies pulled recipes; returns those with ingredients not here (yet).
+function applyRecipes(
+  database: AppDatabase,
+  rowList: readonly ServerRecipe[],
+): readonly ServerRecipe[] {
+  const unlinkedList: ServerRecipe[] = [];
   database.transaction((tx) => {
     for (const row of rowList) {
-      applyRecipe(tx, row);
+      if (applyRecipe(tx, row) > 0) {
+        unlinkedList.push(row);
+      }
     }
   });
+  return unlinkedList;
 }
 
 // Rows changed at or after `pushedFrom`, after the keyset cursor (the last row of the previous
@@ -227,6 +265,23 @@ function hasOtherIngredientNamed(tx: AppDatabase, nameKey: string, id: number | 
   return sameName !== undefined;
 }
 
+// The sync ids of a pulled recipe's ingredients, once each.
+function ingredientSyncIdsOf(row: Pick<ServerRecipe, 'ingredients'>): string[] {
+  return Array.isArray(row.ingredients)
+    ? [...new Set(row.ingredients.filter((syncId) => isSyncId(syncId)))]
+    : [];
+}
+
+// Whether a row comes after a pull position, in the (updated, id) order.
+function isAfter(key: PullKey, position: PullPosition): boolean {
+  if ('since' in position) {
+    return key.updated.localeCompare(position.since) >= 0;
+  }
+  const { id, updated } = position.after;
+  const byTime = key.updated.localeCompare(updated);
+  return byTime > 0 || (byTime === 0 && key.id.localeCompare(id) > 0);
+}
+
 // Deleted here after the server's change: the deletion is pushed by this sync.
 function isDeletedHereLater(
   tx: AppDatabase,
@@ -246,6 +301,11 @@ function isNewerThan(row: ServerRow, local: Readonly<{ updatedAt: number }> | un
   return local === undefined || row.modified > local.updatedAt;
 }
 
+// An item of a pulled page is an object; its fields are checked when it's applied.
+function isServerRow(item: unknown): item is ServerRow {
+  return typeof item === 'object' && item !== null && !Array.isArray(item);
+}
+
 // Rows from the server are checked before use: a bad one is skipped, not a failed sync.
 function isValidRow(row: ServerRow): boolean {
   return (
@@ -262,19 +322,58 @@ function latest(time: string, other: unknown): string {
   return typeof other === 'string' && other.localeCompare(time) > 0 ? other : time;
 }
 
+// A recipe pulled again, not newer than the phone's: when it's the same version, links its
+// ingredients that weren't here when it was first pulled, if any arrived since (it writes nothing
+// otherwise). Returns how many are still missing (e.g. an ingredient this phone has under another
+// name, see docs/sync.md).
+function linkArrivedIngredients(
+  tx: AppDatabase,
+  local: Readonly<{ id: number; updatedAt: number }> | undefined,
+  row: ServerRecipe,
+): number {
+  const syncIdList = ingredientSyncIdsOf(row);
+  if (local?.updatedAt !== row.modified || row.deleted > 0 || syncIdList.length === 0) {
+    return 0;
+  }
+  const recipeId = local.id;
+  const linked = tx
+    .select({ recipeId: recipeIngredients.recipeId })
+    .from(recipeIngredients)
+    .where(
+      and(
+        eq(recipeIngredients.recipeId, recipeId),
+        eq(recipeIngredients.ingredientId, ingredients.id),
+      ),
+    );
+  const arrived = tx
+    .select({ id: ingredients.id })
+    .from(ingredients)
+    .where(and(inArray(ingredients.syncId, syncIdList), notExists(linked)))
+    .limit(1)
+    .get();
+  if (arrived) {
+    return linkIngredients(tx, recipeId, row);
+  }
+  const hereCount =
+    tx
+      .select({ count: count() })
+      .from(ingredients)
+      .where(inArray(ingredients.syncId, syncIdList))
+      .get()?.count ?? 0;
+  return syncIdList.length - hereCount;
+}
+
 // Replaces the recipe's ingredients (and their quantities) with the pulled ones; those not here
-// (yet) are left out, and so are quantities that aren't usable.
+// (yet) are left out, and so are quantities that aren't usable. Returns how many were left out.
 function linkIngredients(
   tx: AppDatabase,
   recipeId: number,
   row: Pick<ServerRecipe, 'ingredients' | 'quantities'>,
-): void {
+): number {
   tx.delete(recipeIngredients).where(eq(recipeIngredients.recipeId, recipeId)).run();
-  const syncIdList = Array.isArray(row.ingredients)
-    ? row.ingredients.filter((syncId) => isSyncId(syncId))
-    : [];
+  const syncIdList = ingredientSyncIdsOf(row);
   if (syncIdList.length === 0) {
-    return;
+    return 0;
   }
   const ingredientList = tx
     .select({ id: ingredients.id, syncId: ingredients.syncId })
@@ -296,24 +395,37 @@ function linkIngredients(
       )
       .run();
   }
+  return syncIdList.length - ingredientList.length;
 }
 
-// Pages through the rows written on the server since `since`; returns the last one's time.
+// Pages through the rows written on the server since `since`, applying each page; returns the
+// time of the last row pulled, where the next pull starts.
 async function pull<Table extends SyncedTable>(
   api: SyncApi,
   table: Table,
   since: string,
   apply: (rowList: readonly ServerRowOf<Table>[]) => void,
 ): Promise<string> {
+  let position: PullPosition = { since };
   let pulledUntil = since;
-  for (let page = 1; ; page++) {
-    const rowList = await api.listChanges(table, since, page);
-    apply(rowList);
-    pulledUntil = latest(pulledUntil, rowList.at(-1)?.updated);
-    if (rowList.length < PAGE_SIZE) {
+  for (let page = 0; page < MAX_PULL_PAGES; page++) {
+    const itemList = await api.listChanges(table, position);
+    apply(itemList.filter((item): item is ServerRowOf<Table> => isServerRow(item)));
+    for (const item of itemList) {
+      pulledUntil = latest(pulledUntil, toPullKey(item)?.updated);
+    }
+    if (itemList.length < PAGE_SIZE) {
       return pulledUntil;
     }
+    // The next page starts after this one's last row, which must come after where it started:
+    // a server sending the same rows again would keep the phone pulling forever.
+    const last = toPullKey(itemList.at(-1));
+    if (!last || !isAfter(last, position)) {
+      throw new SyncError('failed', `Unexpected page of ${table}`);
+    }
+    position = { after: last };
   }
+  return pulledUntil;
 }
 
 // The pulled quantity of an ingredient, if the server has a usable one.
@@ -328,7 +440,9 @@ function pulledQuantity(quantities: unknown, syncId: string): Quantity | undefin
   const { amount, unit } = value as Record<string, unknown>;
   // Stored like the phone's own: a server row written in another unit ("1.5 kg") is normalized.
   const quantity = toQuantity(amount, unit);
-  return quantity && toStored(quantity);
+  const stored = quantity && toStored(quantity);
+  // Checked again once converted: "100000000 kg" is too much once in grams, and couldn't be pushed.
+  return stored && toQuantity(stored.amount, stored.unit);
 }
 
 async function pushDeletions(database: AppDatabase, api: SyncApi): Promise<void> {
@@ -341,7 +455,7 @@ async function pushDeletions(database: AppDatabase, api: SyncApi): Promise<void>
       .all();
     // A page's rows are independent: sent together. Each deletion is forgotten once sent; when
     // it's missing on the server (never pushed) or changed there later, there's nothing more to tell.
-    await Promise.all(
+    await settleAll(
       deletionList.map(async (deletion) => {
         await api.sendDeletion(deletion.tableName, deletion.syncId, deletion.deletedAt);
         forgetDeletion(database, deletion.tableName, deletion.syncId);
@@ -372,7 +486,7 @@ async function pushIngredients(
       .orderBy(asc(ingredients.updatedAt), asc(ingredients.id))
       .limit(PAGE_SIZE)
       .all();
-    await Promise.all(
+    await settleAll(
       rowList.map((row) =>
         api.upsert('ingredients', row.syncId, {
           deleted: 0,
@@ -441,7 +555,7 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
       }
       quantitiesByRecipe.set(link.recipeId, quantities);
     }
-    await Promise.all(
+    await settleAll(
       rowList.map((row) =>
         api.upsert('recipes', row.syncId, {
           course: row.course,
@@ -462,8 +576,31 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
   }
 }
 
+// Waits for every request of a page, then fails with the first error if any: no request is left
+// running once the sync has ended (the next one could overlap it).
+async function settleAll(promiseList: readonly Promise<unknown>[]): Promise<void> {
+  const resultList = await Promise.allSettled(promiseList);
+  for (const result of resultList) {
+    if (result.status === 'rejected') {
+      throw result.reason;
+    }
+  }
+}
+
 function toCourse(value: string): Course {
   return COURSE_LIST.includes(value as Course) ? (value as Course) : 'main';
+}
+
+// Where a pulled row sits in the (updated, id) order; undefined for an item without a usable id
+// or time.
+function toPullKey(item: unknown): PullKey | undefined {
+  if (!isServerRow(item)) {
+    return undefined;
+  }
+  const { id, updated } = item as Partial<Record<keyof ServerRow, unknown>>;
+  return typeof updated === 'string' && SERVER_TIME.test(updated) && isSyncId(id)
+    ? { id, updated }
+    : undefined;
 }
 
 function toSeason(value: string): Season {

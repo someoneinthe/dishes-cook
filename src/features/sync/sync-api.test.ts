@@ -1,4 +1,5 @@
 import { createFakeSyncServer } from '@/test/fake-sync-server';
+import type { ServerIngredient } from './sync-api';
 import { createSyncApi, normalizeServerUrl, serverHost, signIn, SyncError } from './sync-api';
 
 const ACCOUNT = { email: 'home@example.org', password: 'test-password' };
@@ -111,17 +112,25 @@ describe('syncApi', () => {
       await expect(api.refreshToken()).rejects.toMatchObject({ kind: 'unauthorized' });
     });
 
-    it('lists the rows written since a time, oldest first', async () => {
+    it('lists the rows written since a time, or after a row, oldest first', async () => {
       const api = await signedInApi();
       await api.upsert('ingredients', 'aaaaaaaaaaaaaaa', { deleted: 0, modified: 1, name: 'A' });
       await api.upsert('ingredients', 'bbbbbbbbbbbbbbb', { deleted: 0, modified: 1, name: 'B' });
-      const [first, second] = await api.listChanges('ingredients', '', 1);
+      await api.upsert('ingredients', 'ccccccccccccccc', { deleted: 0, modified: 1, name: 'C' });
+      const namesOf = (itemList: unknown[]) =>
+        (itemList as { name: string }[]).map(({ name }) => name);
+      const allList = (await api.listChanges('ingredients', { since: '' })) as ServerIngredient[];
 
-      expect([first?.name, second?.name]).toStrictEqual(['A', 'B']);
+      expect(namesOf(allList)).toStrictEqual(['A', 'B', 'C']);
 
-      const sinceSecondList = await api.listChanges('ingredients', second!.updated, 1);
+      const [, second] = allList;
 
-      expect(sinceSecondList.map(({ name }) => name)).toStrictEqual(['B']);
+      expect(
+        namesOf(await api.listChanges('ingredients', { since: second!.updated })),
+      ).toStrictEqual(['B', 'C']);
+      expect(namesOf(await api.listChanges('ingredients', { after: second! }))).toStrictEqual([
+        'C',
+      ]);
     });
   });
 });
