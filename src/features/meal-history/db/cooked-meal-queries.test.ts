@@ -2,7 +2,12 @@ import type { AppDatabase } from '@/db/types';
 import { cookedMeals, recipes, syncDeletions } from '@/db/schema';
 import { deleteRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { createTestConnection } from '@/test/test-database';
-import { getLastCookedMeal, markCooked, removeCookedMeal } from './cooked-meal-queries';
+import {
+  getLastCookedMeal,
+  markAllCooked,
+  markCooked,
+  removeCookedMeal,
+} from './cooked-meal-queries';
 
 describe('cooked meal queries', () => {
   let database: AppDatabase;
@@ -60,6 +65,22 @@ describe('cooked meal queries', () => {
         .from(syncDeletions)
         .all(),
     ).toStrictEqual([{ syncId, tableName: 'cooked_meals' }]);
+  });
+
+  it('marks several recipes as cooked at once', () => {
+    const pieId = saveRecipe(database, {
+      ingredientIdList: [],
+      instructions: '',
+      season: 'both',
+      title: 'Pie',
+    });
+
+    markAllCooked(database, [soupId, pieId]);
+    markAllCooked(database, []);
+
+    expect(getLastCookedMeal(database, soupId)).toBeDefined();
+    expect(getLastCookedMeal(database, pieId)).toBeDefined();
+    expect(database.select().from(cookedMeals).all()).toHaveLength(2);
   });
 
   it('forgets the meals of a deleted recipe', () => {

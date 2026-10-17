@@ -5,6 +5,7 @@ import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
 import { IngredientsScreen } from '@/features/ingredients/ingredients-screen';
 import { MealChoiceScreen } from '@/features/meal-choice/meal-choice-screen';
+import { ShoppingListScreen } from '@/features/shopping-list/shopping-list-screen';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { saveRecipe } from './db/recipe-queries';
 import { RecipeDetailScreen } from './recipe-detail-screen';
@@ -106,6 +107,14 @@ defineFeature(feature, (test) => {
     });
     when('I open the ingredient list on the TV', async () => {
       await renderWithDatabase(<IngredientsScreen />, connection);
+    });
+    then('I am taken to the meal choice', () => {
+      expect(jest.mocked(Redirect).mock.calls.at(-1)?.[0]).toStrictEqual({ href: '/' });
+      expect(screen.queryByRole('button')).not.toBeOnTheScreen();
+    });
+    when('I open the shopping list on the TV', async () => {
+      jest.mocked(Redirect).mockClear();
+      await renderWithDatabase(<ShoppingListScreen />, connection);
     });
     then('I am taken to the meal choice', () => {
       expect(jest.mocked(Redirect).mock.calls.at(-1)?.[0]).toStrictEqual({ href: '/' });

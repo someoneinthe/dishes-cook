@@ -10,6 +10,7 @@ export const MENU_ICONS = {
   mealChoice: 'dice-multiple',
   recipes: 'book-open-page-variant',
   settings: 'cog-outline',
+  shoppingList: 'cart-outline',
 } as const satisfies Record<string, IconName>;
 
 // Options of a menu (drawer) entry: its icon, in its own color, in the menu and before the title

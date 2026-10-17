@@ -5,16 +5,27 @@ import type { Recipe } from '@/features/recipes/db/recipe-queries';
 import { Button } from '@/components/button';
 import { LastCooked } from '@/features/meal-history/components/last-cooked';
 import { CourseLabel, SeasonLabel } from '@/features/recipes/components/recipe-labels';
+import { MAX_PICKS } from '@/features/shopping-list/meal-picks';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isTv } from '@/lib/device';
 
 type SuggestionCardProps = Readonly<{
+  // The shopping list is full: nothing can be added.
+  isAddDisabled?: boolean;
+  // Adds it to the shopping list (then another one is proposed). No button on a TV.
+  onAddToList: (recipeId: number) => void;
   // Picks another recipe with the same filters.
   onAnother: () => void;
   recipe: Recipe;
 }>;
 
 // The suggested recipe, in short: Open shows it in full, Another one picks again.
-export function SuggestionCard({ onAnother, recipe }: SuggestionCardProps) {
+export function SuggestionCard({
+  isAddDisabled = false,
+  onAddToList,
+  onAnother,
+  recipe,
+}: SuggestionCardProps) {
   const t = useMessages();
 
   return (
@@ -31,6 +42,19 @@ export function SuggestionCard({ onAnother, recipe }: SuggestionCardProps) {
       </View>
       <LastCooked recipeId={recipe.id} />
       <View style={styles.actions}>
+        {!isTv && (
+          <Button
+            accessibilityHint={
+              isAddDisabled ? t.shoppingList.fullHint(MAX_PICKS) : t.shoppingList.addHint
+            }
+            accessibilityLabel={t.shoppingList.addLabel(recipe.title)}
+            icon="cart-plus"
+            isDisabled={isAddDisabled}
+            label={t.shoppingList.add}
+            onPress={() => onAddToList(recipe.id)}
+            variant="secondary"
+          />
+        )}
         <Button
           accessibilityHint={t.mealChoice.suggestHint}
           icon="dice-multiple"

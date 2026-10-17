@@ -14,10 +14,12 @@ import {
   RecipeFilters,
   toQueryFilters,
 } from '@/features/recipes/components/recipe-filters';
-import { pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
+import { getRecipeSyncId, pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
 import { useNewRecipe } from '@/features/recipes/hooks/use-new-recipe';
-import { useRecipe, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
+import { useRecipe, useRecipeCount, useRecipeSyncId } from '@/features/recipes/hooks/use-recipes';
 import { usePreferences } from '@/features/settings/preferences';
+import { ShoppingListButton } from '@/features/shopping-list/components/shopping-list-button';
+import { addPick, getPicks, MAX_PICKS, usePicks } from '@/features/shopping-list/meal-picks';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
 import { startOfLastDays } from '@/lib/dates';
@@ -28,16 +30,20 @@ import { SuggestionCard } from './components/suggestion-card';
 const INITIAL_FILTERS: RecipeFilterValues = { ...NO_FILTERS, course: 'main' };
 
 // Proposes a random recipe of the chosen season and course, and another one on request, skipping
-// the recipes cooked in the last days (Settings › Skip recent meals) while others match.
+// the recipes cooked in the last days (Settings › Skip recent meals) while others match, and those
+// already in the shopping list (a suggestion can be added to it, which proposes another one).
 export function MealChoiceScreen() {
   const t = useMessages();
   const newRecipe = useNewRecipe();
   const database = useDatabase();
   const { recentMealDays } = usePreferences();
+  const pickList = usePicks();
   const [filterValues, setFilterValues] = useState(INITIAL_FILTERS);
   const pick = (values: RecipeFilterValues, excludedId?: number) =>
     pickRandomRecipeId(database, toQueryFilters(values, ''), {
       excludedId,
+      // Read when picking: a meal just added to the list is left out at once.
+      omittedSyncIdList: getPicks(),
       skipCookedSince: recentMealDays === 0 ? undefined : startOfLastDays(recentMealDays),
     });
   // A recipe is proposed as soon as the screen opens (reads are synchronous).
@@ -46,8 +52,20 @@ export function MealChoiceScreen() {
   const matchCount = useRecipeCount(toQueryFilters(filterValues, ''));
   // Undefined once the suggested recipe is deleted.
   const suggestion = useRecipe(suggestedId);
+  // The suggestion added to the shopping list on its own screen: another one is proposed.
+  const suggestedSyncId = useRecipeSyncId(suggestedId);
+  if (suggestedSyncId !== undefined && pickList.includes(suggestedSyncId)) {
+    setSuggestedId(pick(filterValues, suggestedId));
+  }
 
   const suggestAnother = () => setSuggestedId(pick(filterValues, suggestedId));
+  // Another one is proposed once it's in the list (not when the list is full).
+  const addToList = (recipeId: number) => {
+    const syncId = getRecipeSyncId(database, recipeId);
+    if (syncId !== undefined && addPick(syncId) === 'added') {
+      setSuggestedId(pick(filterValues, recipeId));
+    }
+  };
   // Other filters: a matching recipe right away.
   const changeFilters = (values: RecipeFilterValues) => {
     setFilterValues(values);
@@ -71,6 +89,7 @@ export function MealChoiceScreen() {
         headerRight: headerActions(
           <>
             <SyncStatusButton />
+            <ShoppingListButton />
             {headerButton}
           </>,
         ),
@@ -113,11 +132,21 @@ export function MealChoiceScreen() {
       )}
       {matchCount > 0 &&
         (suggestion ? (
-          <SuggestionCard onAnother={suggestAnother} recipe={suggestion} />
+          <SuggestionCard
+            isAddDisabled={pickList.length >= MAX_PICKS}
+            onAddToList={addToList}
+            onAnother={suggestAnother}
+            recipe={suggestion}
+          />
         ) : (
-          // Recipes added after the screen opened, or the suggested one deleted.
+          // Every match in the shopping list, recipes added after the screen opened, or the
+          // suggested one deleted.
           <EmptyState
-            message={t.mealChoice.promptMessage(matchCount)}
+            message={
+              suggestedId === undefined && pickList.length > 0
+                ? t.mealChoice.allPicked
+                : t.mealChoice.promptMessage(matchCount)
+            }
             title={t.mealChoice.promptTitle}
           />
         ))}

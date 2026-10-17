@@ -10,6 +10,7 @@ import {
   countRecipes,
   deleteRecipe,
   getRecipe,
+  getRecipeSyncId,
   pickRandomRecipeId,
   type RecipeFilters,
   type RecipeInput,
@@ -312,6 +313,27 @@ describe('recipe queries', () => {
 
     it('picks nothing when no recipe matches', () => {
       expect(pickRandomRecipeId(database, { ingredientIdList: [leekId, 999] })).toBeUndefined();
+    });
+
+    it('never picks the recipes left out (those in the shopping list)', () => {
+      const winterFilters = { ingredientIdList: [], season: 'winter' } as const;
+
+      expect(
+        [0, 0.5, 0.99].map((value) =>
+          pickRandomRecipeId(database, winterFilters, {
+            omittedSyncIdList: [getRecipeSyncId(database, winterSoupId)!],
+            random: () => value,
+          }),
+        ),
+      ).toStrictEqual([allYearStewId, allYearStewId, allYearStewId]);
+      expect(
+        pickRandomRecipeId(database, winterFilters, {
+          omittedSyncIdList: [
+            getRecipeSyncId(database, winterSoupId)!,
+            getRecipeSyncId(database, allYearStewId)!,
+          ],
+        }),
+      ).toBeUndefined();
     });
 
     describe('skipping the recipes cooked recently', () => {
