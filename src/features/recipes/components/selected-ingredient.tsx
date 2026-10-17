@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
@@ -8,6 +8,8 @@ import { useMessages } from '@/i18n/i18n-provider';
 type SelectedIngredientProps = Readonly<{
   // The row (name, quantity).
   children: ReactNode;
+  // The question, to move the focus to it (when it's the first unanswered on Save).
+  choiceRef?: Ref<Text>;
   // The new ingredient, as read from the photo.
   ingredient: Ingredient;
   // Save was pressed before choosing: the question turns into an error.
@@ -22,6 +24,7 @@ type SelectedIngredientProps = Readonly<{
 // ("carrot" / "Carrots") asks which to keep, so the list doesn't get the same ingredient twice.
 export function SelectedIngredient({
   children,
+  choiceRef,
   ingredient,
   isChoiceMissing,
   onChooseSimilar,
@@ -38,6 +41,7 @@ export function SelectedIngredient({
       <Text
         accessibilityLiveRegion="polite"
         accessibilityRole={isChoiceMissing ? 'alert' : 'text'}
+        ref={choiceRef}
         style={isChoiceMissing ? styles.error : styles.message}
       >
         {isChoiceMissing

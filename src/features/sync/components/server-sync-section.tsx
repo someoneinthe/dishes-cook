@@ -14,6 +14,11 @@ import type { SyncState } from '../sync-store';
 import { isInsecureServerUrl, normalizeServerUrl, serverHost, SyncError } from '../sync-api';
 import { connect, disconnect, syncNow, useSyncState } from '../sync-store';
 
+// A refused connection: its message, and the field to fix ('form' when none is to blame).
+type ConnectError = Readonly<{ field: ConnectField; message: string }>;
+
+type ConnectField = 'address' | 'email' | 'form' | 'password';
+
 type ServerSyncSectionProps = Readonly<{
   // Opened from the header's sync status on a TV: the remote's focus goes to Sync now.
   isSyncNowFocused?: boolean;
@@ -73,21 +78,29 @@ function ConnectForm() {
   const [serverAddress, setServerAddress] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<ConnectError>();
   const [isConnecting, setIsConnecting] = useState(false);
+  const errorOf = (field: ConnectField) => (error?.field === field ? error.message : undefined);
+  // Editing a field clears its error, and the form's own; another field's error stays.
+  const edit = (field: ConnectField, setValue: (value: string) => void) => (value: string) => {
+    setValue(value);
+    if (error?.field === field || error?.field === 'form') {
+      setError(undefined);
+    }
+  };
 
   const onConnect = async () => {
     const serverUrl = normalizeServerUrl(serverAddress);
     if (!serverUrl) {
-      setError(t.sync.invalidAddress);
+      setError({ field: 'address', message: t.sync.invalidAddress });
       return;
     }
     if (isInsecureServerUrl(serverUrl)) {
-      setError(t.sync.insecureAddress);
+      setError({ field: 'address', message: t.sync.insecureAddress });
       return;
     }
     if (!password || !email.trim()) {
-      setError(t.sync.missingAccount);
+      setError({ field: email.trim() ? 'password' : 'email', message: t.sync.missingAccount });
       return;
     }
     setError(undefined);
@@ -96,8 +109,7 @@ function ConnectForm() {
       await connect(connection, { email, password, serverUrl });
     } catch (connectError) {
       const kind = connectError instanceof SyncError ? connectError.kind : 'failed';
-      // Signing in: "unauthorized" is a wrong email or password.
-      setError(kind === 'unauthorized' ? t.sync.wrongAccount : errorMessage(t, kind));
+      setError(signInError(t, kind));
       setIsConnecting(false);
     }
   };
@@ -110,10 +122,11 @@ function ConnectForm() {
         autoComplete="url"
         autoCorrect={false}
         editable={!isConnecting}
+        error={errorOf('address')}
         hint={t.sync.serverAddressHint}
         keyboardType="url"
         label={t.sync.serverAddress}
-        onChangeText={setServerAddress}
+        onChangeText={edit('address', setServerAddress)}
         value={serverAddress}
       />
       <TextField
@@ -121,9 +134,10 @@ function ConnectForm() {
         autoComplete="email"
         autoCorrect={false}
         editable={!isConnecting}
+        error={errorOf('email')}
         keyboardType="email-address"
         label={t.sync.email}
-        onChangeText={setEmail}
+        onChangeText={edit('email', setEmail)}
         textContentType="username"
         value={email}
       />
@@ -132,15 +146,20 @@ function ConnectForm() {
         autoComplete="current-password"
         autoCorrect={false}
         editable={!isConnecting}
-        error={error}
+        error={errorOf('password')}
         label={t.sync.password}
-        onChangeText={setPassword}
+        onChangeText={edit('password', setPassword)}
         onSubmitEditing={() => void onConnect()}
         returnKeyType="go"
         secureTextEntry
         textContentType="password"
         value={password}
       />
+      {error?.field === 'form' && (
+        <Text accessibilityLiveRegion="polite" accessibilityRole="alert" style={styles.error}>
+          {error.message}
+        </Text>
+      )}
       <Button
         icon="cloud-sync-outline"
         isDisabled={isConnecting}
@@ -160,6 +179,15 @@ function errorMessage(t: Messages, kind: SyncErrorKind): string {
     unreachable: t.sync.errorUnreachable,
   };
   return messages[kind];
+}
+
+// A refused sign-in, shown under the field to fix: a wrong email or password ("unauthorized"), a
+// server that doesn't answer; under the form otherwise.
+function signInError(t: Messages, kind: SyncErrorKind): ConnectError {
+  if (kind === 'unauthorized') {
+    return { field: 'password', message: t.sync.wrongAccount };
+  }
+  return { field: kind === 'unreachable' ? 'address' : 'form', message: errorMessage(t, kind) };
 }
 
 function storageOptionList(t: Messages): readonly SegmentedOption<Storage>[] {

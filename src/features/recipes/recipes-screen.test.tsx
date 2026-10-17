@@ -54,7 +54,9 @@ describe('recipesScreen', () => {
     await renderWithDatabase(<RecipesScreen />, connection);
 
     // Screen readers announce the row's labels with its title.
-    const row = screen.getByRole('button', { name: 'Carrot soup, Winter & summer, Starter' });
+    const row = screen.getByRole('button', {
+      name: 'Carrot soup, Winter & summer, Starter, 1 ingredient',
+    });
 
     expect(within(row).getByText('Winter & summer')).toBeOnTheScreen();
     expect(within(row).getByText('Starter')).toBeOnTheScreen();

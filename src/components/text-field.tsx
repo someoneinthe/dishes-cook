@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import type { TextInputProps } from 'react-native';
 import { Text, TextInput, View } from 'react-native';
 import { StyleSheet, withUnistyles } from 'react-native-unistyles';
@@ -29,39 +30,48 @@ type TextFieldProps = Readonly<
     | 'value'
   > & {
     error?: string;
+    // An error the caller shows elsewhere (e.g. under a whole row): a red border, and read with the
+    // field by screen readers, like `error`.
+    externalError?: string;
     // Help shown under the field (e.g. the accepted format).
     hint?: string;
-    // Red border without the `error` text under the field (the caller shows the message).
-    isInvalid?: boolean;
     // Hidden labels are still read by screen readers.
     isLabelHidden?: boolean;
     label: string;
+    // To move the focus to the field (e.g. the first invalid one on Save).
+    ref?: Ref<TextInput>;
   }
 >;
 
 export function TextField({
   error,
+  externalError,
   hint,
-  isInvalid = false,
   isLabelHidden = false,
   label,
   multiline,
   ...inputProps
 }: TextFieldProps) {
   const { focusProps, focusStyle } = useFocusRing();
+  const shownError = error ?? externalError;
 
   return (
     <View style={styles.field}>
-      {!isLabelHidden && <Text style={styles.label}>{label}</Text>}
+      {/* The field reads its label and help itself: screen readers skip the visible copies. */}
+      {!isLabelHidden && (
+        <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.label}>
+          {label}
+        </Text>
+      )}
       <ThemedTextInput
         // Read after the label: the error if any, else the help shown under the field.
-        accessibilityHint={error ?? hint}
+        accessibilityHint={shownError ?? hint}
         accessibilityLabel={label}
         multiline={multiline}
         style={[
           styles.input,
           multiline && styles.multiline,
-          (error !== undefined || isInvalid) && styles.invalid,
+          shownError !== undefined && styles.invalid,
           // On a TV, the remote's focus ring; a phone shows the cursor and the keyboard instead.
           isTv && focusStyle,
         ]}
@@ -69,7 +79,11 @@ export function TextField({
         {...focusProps}
         {...inputProps}
       />
-      {hint !== undefined && <Text style={styles.hint}>{hint}</Text>}
+      {hint !== undefined && (
+        <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.hint}>
+          {hint}
+        </Text>
+      )}
       {error !== undefined && (
         <Text accessibilityLiveRegion="polite" accessibilityRole="alert" style={styles.error}>
           {error}
@@ -94,7 +108,7 @@ const styles = StyleSheet.create((theme) => ({
   input: {
     ...theme.typography.body,
     backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.md,
     borderWidth: theme.borderWidth,
     color: theme.colors.text,

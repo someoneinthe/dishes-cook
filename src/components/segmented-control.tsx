@@ -41,7 +41,10 @@ export function SegmentedControl<T extends string>({
 
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+      {/* The group reads its label itself: screen readers skip the visible copy. */}
+      <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.label}>
+        {label}
+      </Text>
       <View
         accessibilityHint={t.common.chooseOneOption}
         accessibilityLabel={label}
@@ -104,7 +107,7 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.gap(1),
   },
   group: {
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.md,
     borderWidth: theme.borderWidth,
     flexDirection: 'row',

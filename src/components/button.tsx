@@ -1,3 +1,5 @@
+import type { Ref } from 'react';
+import type { View } from 'react-native';
 import { Pressable, Text } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { usePreferences } from '@/features/settings/preferences';
@@ -22,6 +24,8 @@ type ButtonProps = Readonly<
     // Read by screen readers; shown unless `isIconOnly`.
     label: string;
     onPress: () => void;
+    // To give it the screen reader's focus (e.g. back on Rename once a rename ends).
+    ref?: Ref<View>;
   } & (
     | {
         // Deletions always show an icon (e.g. `trash-can-outline`).
@@ -57,6 +61,7 @@ export function Button({
   isTvPreferredFocus = false,
   label,
   onPress,
+  ref,
   variant = 'primary',
 }: ButtonProps) {
   // Settings › "Show button labels" brings the text back on icon-only buttons.
@@ -85,6 +90,7 @@ export function Button({
       // eslint-disable-next-line sonarjs/deprecation
       hasTVPreferredFocus={isTv && isTvPreferredFocus}
       onPress={onPress}
+      ref={ref}
       {...focusProps}
       style={({ pressed }) => [styles.button, (pressed || isDisabled) && styles.dimmed, focusStyle]}
     >
@@ -123,7 +129,10 @@ const styles = StyleSheet.create((theme) => ({
           backgroundColor: theme.colors.actionPrimary,
           borderColor: theme.colors.actionPrimary,
         },
-        secondary: { backgroundColor: theme.colors.background, borderColor: theme.colors.border },
+        secondary: {
+          backgroundColor: theme.colors.background,
+          borderColor: theme.colors.borderStrong,
+        },
       },
     },
   },

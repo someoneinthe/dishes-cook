@@ -10,16 +10,17 @@ const base = {
   iconSize: { lg: 24, md: 20, sm: 16 },
   opacity: { disabled: 0.5, pressed: 0.6 },
   radius: { lg: 16, md: 8, sm: 4 },
-  // Heights: 44 = minimum touch target (Material/Apple guidelines).
+  // Heights: 48 = minimum touch target (Material; Apple asks for 44).
   // minText: width under which a row's text gives its line to the row's buttons.
   // maxContent: width of a screen's content on wide screens (TV), centered, so lines stay readable.
   size: {
+    // A chip's outline; its touch area is a touch target, the rest being transparent.
     chip: 36,
     maxContent: 720,
     minText: 160,
     multilineInput: 160,
     tableCell: 160,
-    touchTarget: 44,
+    touchTarget: 48,
     // The menu, always shown on the left of a TV screen.
     tvMenu: 240,
   },
@@ -43,7 +44,11 @@ const lightColors = {
   // blue border and content (contrast ≥ 4.5:1).
   actionSoft: '#DBEAFE',
   background: '#FFFFFF',
+  // Dividers and decorative outlines (cards, quotes, tables).
   border: '#E7E5E4',
+  // The outline of controls (fields, chips, outlined buttons, choices, an off switch): their only
+  // edge, so contrast with the background and the surface ≥ 3:1.
+  borderStrong: '#8A8580',
   // Course icons (contrast with the background ≥ 3:1).
   courseDessert: '#BE185D',
   courseMain: '#6D28D9',
@@ -81,6 +86,7 @@ const darkColors: ThemeColors = {
   actionSoft: '#172554',
   background: '#121212',
   border: '#3A3633',
+  borderStrong: '#77716C',
   courseDessert: '#F472B6',
   courseMain: '#A78BFA',
   courseStarter: '#34D399',

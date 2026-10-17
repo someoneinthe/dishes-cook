@@ -1,5 +1,7 @@
-import { fireEvent, screen } from '@testing-library/react-native';
+import type { TextInputProps } from 'react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { AccessibilityInfo, TextInput } from 'react-native';
 import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
@@ -124,10 +126,74 @@ describe('recipeFormScreen', () => {
     expect(firstRecipePage(connection.db)).toStrictEqual([]);
   });
 
+  it('brings the first wrong field into view and gives it the focus on Save', async () => {
+    // The mocked TextInput's focus is shared by every field: the title is the only one wrong.
+    const focus = jest.spyOn(TextInput.prototype, 'focus');
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+    await waitFor(() => expect(focus).toHaveBeenCalledWith());
+
+    // The title's field, by its label: no other field was focused. Each call's `this` is the mocked
+    // field component (an earlier test's Save may focus its own title here too).
+    const focusedList = focus.mock.contexts as Readonly<{ props: TextInputProps }>[];
+
+    expect(new Set(focusedList.map(({ props }) => props.accessibilityLabel))).toStrictEqual(
+      new Set(['Title']),
+    );
+  });
+
+  it('gives the focus to the first wrong amount on Save', async () => {
+    findOrCreateIngredient(connection.db, 'carrot');
+    const focus = jest.spyOn(TextInput.prototype, 'focus');
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+    await fireEvent.changeText(screen.getByLabelText('Title'), 'Soup');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add Carrot' }));
+    await fireEvent.changeText(screen.getByLabelText('Quantity of Carrot'), 'a lot');
+    focus.mockClear();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+    await waitFor(() => expect(focus).toHaveBeenCalledWith());
+
+    const focusedList = focus.mock.contexts as Readonly<{ props: TextInputProps }>[];
+
+    expect(new Set(focusedList.map(({ props }) => props.accessibilityLabel))).toStrictEqual(
+      new Set(['Quantity of Carrot']),
+    );
+  });
+
+  it('gives the screen reader the unanswered question about a similar ingredient on Save', async () => {
+    findOrCreateIngredient(connection.db, 'carrot');
+    const scanned = { ingredientList: [{ name: 'carrots' }], instructions: '', title: 'Soup' };
+    jest.mocked(useLocalSearchParams).mockReturnValue({ scanned: JSON.stringify(scanned) });
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+
+    await waitFor(() =>
+      expect(AccessibilityInfo.sendAccessibilityEvent).toHaveBeenCalledWith(
+        expect.anything(),
+        'focus',
+      ),
+    );
+
+    // The question, turned into an error: the screen reader reads it there.
+    // Jest's Text is a component instance with the props it was given.
+    const question = jest.mocked(AccessibilityInfo.sendAccessibilityEvent).mock.calls[0]?.[0] as
+      Readonly<{ props: Readonly<{ children: string }> }> | undefined;
+
+    expect(question?.props.children).toMatch(/^You already have “carrot”: choose one/i);
+  });
+
   it('explains that the recipe can be written in Markdown', async () => {
     await renderWithDatabase(<RecipeFormScreen />, connection);
 
-    expect(screen.getByText(/^Format it with Markdown: # Heading, \*\*bold\*\*/)).toBeOnTheScreen();
+    const hint = /^Format it with Markdown: # Heading, \*\*bold\*\*/;
+
+    // Shown under the field, and read by screen readers with the field (not a second time).
+    expect(screen.getByText(hint, { includeHiddenElements: true })).toBeOnTheScreen();
+    expect(screen.queryByText(hint)).not.toBeOnTheScreen();
+    expect(screen.getByHintText(hint)).toHaveAccessibleName('Recipe text');
   });
 
   it('has nothing to preview while the recipe is empty', async () => {
