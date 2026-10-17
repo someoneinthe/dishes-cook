@@ -77,7 +77,9 @@ start_pocketbase() {
   POCKETBASE_PORT="$(node -e 'const s = require("node:net").createServer().listen(0, "127.0.0.1", () => { console.log(s.address().port); s.close(); })')"
   POCKETBASE_URL="http://127.0.0.1:$POCKETBASE_PORT"
   POCKETBASE_SUPERUSER_EMAIL="superuser@example.org"
-  POCKETBASE_SUPERUSER_PASSWORD="$(node -e 'console.log(require("node:crypto").randomBytes(18).toString("base64url"))')"
+  # Starts with a letter: given on PocketBase's command line, a password starting with "-" (1 in 64
+  # random ones) would be read as an option.
+  POCKETBASE_SUPERUSER_PASSWORD="pw$(node -e 'console.log(require("node:crypto").randomBytes(18).toString("base64url"))')"
   export POCKETBASE_PORT POCKETBASE_URL POCKETBASE_SUPERUSER_EMAIL POCKETBASE_SUPERUSER_PASSWORD
 
   "$binary" superuser upsert "$POCKETBASE_SUPERUSER_EMAIL" "$POCKETBASE_SUPERUSER_PASSWORD" \
