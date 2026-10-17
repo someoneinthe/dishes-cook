@@ -95,9 +95,12 @@ describe('recipeFormScreen', () => {
       expect.stringContaining('Save your version as a new recipe?'),
       expect.anything(),
     );
-    expect(firstRecipePage(connection.db)).toStrictEqual([]);
 
     await alert.press('Save as new');
+    // A second alert, if Save was tapped twice before the first showed.
+    await alert.press('Save as new');
+
+    expect(firstRecipePage(connection.db)).toHaveLength(1);
 
     const [{ id: savedId } = { id: -1 }] = firstRecipePage(connection.db);
 
@@ -107,10 +110,9 @@ describe('recipeFormScreen', () => {
     });
     // The deleted recipe's screen, under the form, shows the new one instead.
     expect(router.back).toHaveBeenCalledTimes(1);
-    expect(router.replace).toHaveBeenCalledWith({
-      params: { id: String(savedId) },
-      pathname: '/recipe/[id]',
-    });
+    expect(jest.mocked(router.replace).mock.calls).toStrictEqual([
+      [{ params: { id: String(savedId) }, pathname: '/recipe/[id]' }],
+    ]);
   });
 
   it('requires a title', async () => {

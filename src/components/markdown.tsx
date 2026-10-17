@@ -14,23 +14,67 @@ type MarkdownProps = Readonly<{ text: string }>;
 // - links don't open (for now): only their text is shown.
 // Line breaks are kept as typed, like the plain text recipes were shown before.
 // Text from anywhere (pasted, or synced from another phone) can't freeze or crash the screen: only
-// its start is formatted (the time to parse grows faster than the text), and formatting nested
-// too deep (quotes in quotes…) is shown as typed.
+// its start is formatted (the time to parse grows faster than the text), and so many blocks or
+// list items that drawing them would take long, or formatting nested too deep (quotes in
+// quotes…), are shown as typed.
 export function Markdown({ text }: MarkdownProps) {
   const cut = formattedLength(text);
-  const formatted = text.slice(0, cut);
-  const rest = text.slice(cut).trim();
-  const tokenList = parse(formatted);
+  // The line break the cut is on is dropped; the rest keeps its indentation.
+  const rest = text.slice(cut).replace(/^\r?\n/, '');
+  const tokenList = parse(text.slice(0, cut)) ?? [];
+  const drawnCount = drawnTokenCount(tokenList);
+  const undrawn = tokenList
+    .slice(drawnCount)
+    .map((token) => token.raw)
+    .join('');
+  // Not formatted at all when the text can't be parsed.
+  const asTyped = tokenList.length === 0 ? text : [undrawn, rest].filter(Boolean).join('\n');
   return (
     <View style={styles.container}>
-      {tokenList ? renderBlockList(tokenList, 0) : <PlainText text={formatted} />}
-      {rest ? <PlainText text={rest} /> : null}
+      {renderBlockList(tokenList.slice(0, drawnCount), 0)}
+      {asTyped.trim() ? <PlainText text={asTyped} /> : null}
     </View>
   );
 }
 
 // Characters formatted at most: a long recipe is a few thousand. What follows is shown as typed.
 const MAX_FORMATTED_LENGTH = 10_000;
+// Blocks, list items and table cells drawn at most (each is native views; inline formatting is
+// drawn inside its block's text): a dense list within MAX_FORMATTED_LENGTH would make
+// thousands. What follows is shown as typed.
+const MAX_DRAWN_PIECES = 1000;
+
+// How many of the top-level tokens are drawn: while their pieces fit in MAX_DRAWN_PIECES.
+function drawnTokenCount(tokenList: readonly Token[]): number {
+  let pieceCount = 0;
+  for (const [index, token] of tokenList.entries()) {
+    pieceCount += pieceCountOf(token);
+    if (pieceCount > MAX_DRAWN_PIECES) {
+      return index;
+    }
+  }
+  return tokenList.length;
+}
+
+// A token and the blocks drawn inside it: list items and their blocks, quoted blocks, table cells.
+function pieceCountOf(token: Token): number {
+  const markedToken = token as MarkedToken;
+  switch (markedToken.type) {
+    case 'blockquote':
+    case 'list_item': {
+      return markedToken.tokens.reduce((count, child) => count + pieceCountOf(child), 1);
+    }
+    case 'list': {
+      return markedToken.items.reduce((count, item) => count + pieceCountOf(item), 1);
+    }
+    case 'table': {
+      return 1 + markedToken.header.length * (markedToken.rows.length + 1);
+    }
+    default: {
+      return 1;
+    }
+  }
+}
 // Levels of nested formatting drawn: deeper, the text is shown as typed.
 const MAX_DEPTH = 8;
 

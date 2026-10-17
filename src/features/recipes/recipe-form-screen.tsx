@@ -119,13 +119,17 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
       season,
       title,
     };
+    // Saved first, then marked and left: if saving throws, the form stays, and Save works again.
     const saveAsNew = () => {
-      isSavedRef.current = true;
       const newId = saveRecipe(database, input);
-      router.replace({ params: { id: String(newId) }, pathname: '/recipe/[id]' });
+      isSavedRef.current = true;
+      return newId;
+    };
+    const showRecipe = (id: number) => {
+      router.replace({ params: { id: String(id) }, pathname: '/recipe/[id]' });
     };
     if (!initialRecipe) {
-      saveAsNew();
+      showRecipe(saveAsNew());
       return;
     }
     // Deleted meanwhile, on another device (pulled by a sync): the edits aren't lost.
@@ -134,17 +138,22 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
         { style: 'cancel', text: t.common.cancel },
         {
           onPress: () => {
+            // Two alerts if Save was tapped twice before the first showed: saved once.
+            if (isSavedRef.current) {
+              return;
+            }
+            const newId = saveAsNew();
             // Back to the deleted recipe's screen, which then shows the new one instead.
             router.back();
-            saveAsNew();
+            showRecipe(newId);
           },
           text: t.recipes.saveAsNew,
         },
       ]);
       return;
     }
-    isSavedRef.current = true;
     saveRecipe(database, input, initialRecipe.id);
+    isSavedRef.current = true;
     router.back();
   };
 
