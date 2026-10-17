@@ -82,12 +82,6 @@ defineFeature(feature, (test) => {
     jest.mocked(useLocalSearchParams).mockReturnValue({ id: String(idByTitle.get(title)) });
     await renderWithDatabase(<RecipeDetailScreen />, connection);
   };
-  const theSuggestionIs = (title: string) => {
-    expect(currentSuggestion()).toBe(title);
-  };
-  const indexSee = (text: string) => {
-    expect(screen.getByText(text)).toBeOnTheScreen();
-  };
 
   test('The suggestion can be marked as cooked', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
@@ -97,7 +91,9 @@ defineFeature(feature, (test) => {
 
       await fireEvent.press(screen.getByRole('button', { name: 'I cooked it' }));
     });
-    then(/^the suggestion says "(.*)"$/, indexSee);
+    then(/^the suggestion says "(.*)"$/, (text: string) => {
+      expect(screen.getByText(text)).toBeOnTheScreen();
+    });
     and("it can't be marked as cooked again today", () => {
       expect(screen.queryByRole('button', { name: 'I cooked it' })).not.toBeOnTheScreen();
     });
@@ -106,7 +102,9 @@ defineFeature(feature, (test) => {
   test('A recipe shows when it was last cooked', ({ given, then, when }) => {
     given('these recipes:', theseRecipes);
     when(/^I open "(.*)"$/, openTheRecipe);
-    then(/^I see "(.*)"$/, indexSee);
+    then(/^I see "(.*)"$/, (text: string) => {
+      expect(screen.getByText(text)).toBeOnTheScreen();
+    });
   });
 
   test('The last time cooked can be removed, after confirming', ({ and, given, then, when }) => {
@@ -126,21 +124,29 @@ defineFeature(feature, (test) => {
     and('I confirm the removal', async () => {
       await alert.press('Delete');
     });
-    then(/^I see "(.*)"$/, indexSee);
+    then(/^I see "(.*)"$/, (text: string) => {
+      expect(screen.getByText(text)).toBeOnTheScreen();
+    });
   });
 
   test('The meal choice skips the recipes cooked recently', ({ given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the meal choice', openTheMealChoice);
-    then(/^the suggestion is "(.*)"$/, theSuggestionIs);
+    then(/^the suggestion is "(.*)"$/, (title: string) => {
+      expect(currentSuggestion()).toBe(title);
+    });
     when('I ask for another suggestion', askForAnotherSuggestion);
-    then(/^the suggestion is "(.*)"$/, theSuggestionIs);
+    then(/^the suggestion is "(.*)"$/, (title: string) => {
+      expect(currentSuggestion()).toBe(title);
+    });
   });
 
   test('The recipes cooked before the last 14 days are proposed again', ({ given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the meal choice', openTheMealChoice);
-    then(/^the suggestion is "(.*)"$/, theSuggestionIs);
+    then(/^the suggestion is "(.*)"$/, (title: string) => {
+      expect(currentSuggestion()).toBe(title);
+    });
   });
 
   test('When every recipe was cooked recently, the one cooked longest ago is proposed', ({
@@ -150,7 +156,9 @@ defineFeature(feature, (test) => {
   }) => {
     given('these recipes:', theseRecipes);
     when('I open the meal choice', openTheMealChoice);
-    then(/^the suggestion is "(.*)"$/, theSuggestionIs);
+    then(/^the suggestion is "(.*)"$/, (title: string) => {
+      expect(currentSuggestion()).toBe(title);
+    });
   });
 
   test('Recent meals are proposed too when the setting is off', ({ and, given, then, when }) => {

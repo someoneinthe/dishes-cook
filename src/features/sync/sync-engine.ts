@@ -98,37 +98,46 @@ export async function synchronize(
     });
   // Ingredients first: pulled recipes link to them.
   let ingredientsPulledUntil = await pullIngredients(cursors.pulledUntil.ingredients);
+  // The server creation time of the oldest recipe this sync added here ('' = none).
+  let oldestAddedCreated = '';
   const pullRecipes = async (since: string) => {
     // Recipes with ingredients not here yet: another phone pushed both after the pull above (its
     // ingredients first). Linked once those are pulled too.
     const unlinkedList: ServerRecipe[] = [];
+    const apply = (rowList: readonly ServerRecipe[]) => {
+      const applied = applyRecipes(database, rowList);
+      oldestAddedCreated = earliest(oldestAddedCreated, applied.oldestAddedCreated);
+      return applied.unlinkedList;
+    };
     const pulledUntil = await pull(api, 'recipes', since, (rowList) => {
       holdChanges(() => {
-        unlinkedList.push(...applyRecipes(database, rowList));
+        unlinkedList.push(...apply(rowList));
       });
     });
     if (unlinkedList.length > 0) {
       ingredientsPulledUntil = await pullIngredients(ingredientsPulledUntil);
       holdChanges(() => {
-        applyRecipes(database, unlinkedList);
+        apply(unlinkedList);
       });
     }
     return pulledUntil;
   };
   let recipesPulledUntil = await pullRecipes(cursors.pulledUntil.recipes);
+  // A recipe added here that the server had before the last pull of meals: one deleted here and
+  // brought back by a newer edit on another phone, whose meals went with it (ON DELETE CASCADE),
+  // and that pull is past them. Every meal is pulled again: only the missing ones are written.
+  const cookedMealsSince =
+    oldestAddedCreated !== '' && oldestAddedCreated < cursors.pulledUntil.cooked_meals
+      ? ''
+      : cursors.pulledUntil.cooked_meals;
   // Meals of recipes not here yet (pushed by another phone after the pull above): applied once
   // the recipes are pulled again. Still missing then, the recipe was deleted: the meal goes too.
   const unmatchedList: ServerCookedMeal[] = [];
-  const cookedMealsPulledUntil = await pull(
-    api,
-    'cooked_meals',
-    cursors.pulledUntil.cooked_meals,
-    (rowList) => {
-      holdChanges(() => {
-        unmatchedList.push(...applyCookedMeals(database, rowList));
-      });
-    },
-  );
+  const cookedMealsPulledUntil = await pull(api, 'cooked_meals', cookedMealsSince, (rowList) => {
+    holdChanges(() => {
+      unmatchedList.push(...applyCookedMeals(database, rowList));
+    });
+  });
   if (unmatchedList.length > 0) {
     recipesPulledUntil = await pullRecipes(recipesPulledUntil);
     holdChanges(() => {
@@ -261,8 +270,9 @@ function applyIngredients(database: AppDatabase, rowList: readonly ServerIngredi
   });
 }
 
-// Applies a pulled recipe; returns how many of its ingredients aren't here (yet).
-function applyRecipe(tx: AppDatabase, row: ServerRecipe): number {
+// Applies a pulled recipe (`onAdded` is called when it's new here); returns how many of its
+// ingredients aren't here (yet).
+function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): number {
   // Saved in lowercase, whatever the other phone or the server had (shown with toDisplayName).
   const title = cleanName(typeof row.title === 'string' ? row.title : '').toLowerCase();
   if (!title || !isValidRow(row)) {
@@ -304,23 +314,31 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe): number {
     .returning({ id: recipes.id })
     .get();
   forgetDeletion(tx, 'recipes', row.id);
+  onAdded();
   return linkIngredients(tx, id, row);
 }
 
-// Applies pulled recipes; returns those with ingredients not here (yet).
+// Applies pulled recipes; returns those with ingredients not here (yet), and the server creation
+// time of the oldest one added here ('' = none, or no usable time).
 function applyRecipes(
   database: AppDatabase,
   rowList: readonly ServerRecipe[],
-): readonly ServerRecipe[] {
+): Readonly<{ oldestAddedCreated: string; unlinkedList: readonly ServerRecipe[] }> {
   const unlinkedList: ServerRecipe[] = [];
+  let oldestAddedCreated = '';
   database.transaction((tx) => {
     for (const row of rowList) {
-      if (applyRecipe(tx, row) > 0) {
+      const onAdded = () => {
+        if (typeof row.created === 'string' && SERVER_TIME.test(row.created)) {
+          oldestAddedCreated = earliest(oldestAddedCreated, row.created);
+        }
+      };
+      if (applyRecipe(tx, row, onAdded) > 0) {
         unlinkedList.push(row);
       }
     }
   });
-  return unlinkedList;
+  return { oldestAddedCreated, unlinkedList };
 }
 
 // Rows changed at or after `pushedFrom`, after the keyset cursor (the last row of the previous
@@ -349,6 +367,11 @@ function deletePulledIngredient(tx: AppDatabase, id: number): void {
   } else {
     tx.delete(ingredients).where(eq(ingredients.id, id)).run();
   }
+}
+
+// The earlier of two server times, '' standing for none.
+function earliest(time: string, other: string): string {
+  return time === '' || (other !== '' && other.localeCompare(time) < 0) ? other : time;
 }
 
 function forgetDeletion(tx: AppDatabase, tableName: SyncedTable, syncId: string) {

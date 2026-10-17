@@ -154,14 +154,14 @@ function read(): StoredSync | undefined {
 function readPulledUntil(value: unknown): SyncCursors['pulledUntil'] {
   const cursors =
     typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
-  const read = (table: SyncedTable) => {
+  const cursorOf = (table: SyncedTable) => {
     const cursor = cursors[table];
     return typeof cursor === 'string' ? cursor : '';
   };
   return {
-    cooked_meals: read('cooked_meals'),
-    ingredients: read('ingredients'),
-    recipes: read('recipes'),
+    cooked_meals: cursorOf('cooked_meals'),
+    ingredients: cursorOf('ingredients'),
+    recipes: cursorOf('recipes'),
   };
 }
 

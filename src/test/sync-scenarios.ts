@@ -236,6 +236,11 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
 
   it('brings the meal history to the other phone, without changing the recipe', async () => {
     const soupId = addRecipe(phoneA, 'Soup');
+    // Changed a while ago: not in the same millisecond as a sync below starts.
+    phoneA.db
+      .update(recipes)
+      .set({ updatedAt: Date.now() - 10_000 })
+      .run();
     await syncBoth();
     const [recipeBefore] = await server.rowsOf('recipes');
 
@@ -260,6 +265,45 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     await syncBoth();
 
     expect(lastCookedAtOf(phoneB, 'Soup')).toBe(Date.UTC(2026, 9, 10, 19));
+  });
+
+  describe('gets back the meals of a recipe deleted here and brought back by an edit on the other phone', () => {
+    const cookedAt = Date.UTC(2026, 9, 16, 19);
+    // R cooked on A and synced to B; then A deletes R, and B edits it after that.
+    const deleteHereThenEditThere = async (isDeletionPushed: boolean) => {
+      const soupId = addRecipe(phoneA, 'Soup');
+      markCooked(phoneA.db, soupId, cookedAt);
+      await syncBoth();
+      // A later meal, pulled since: A's pull of meals is past Soup's.
+      markCooked(phoneB.db, addRecipe(phoneB, 'Pie'), cookedAt + 1);
+      await syncBoth();
+      const later = Date.now() + 60_000;
+      deleteRecipe(phoneA.db, soupId);
+      phoneA.db.update(syncDeletions).set({ deletedAt: later }).run();
+      if (isDeletionPushed) {
+        await sync(phoneA);
+      }
+      phoneB.db
+        .update(recipes)
+        .set({ instructions: 'Simmer.', updatedAt: later + 1000 })
+        .run();
+      await sync(phoneB);
+      await sync(phoneA);
+    };
+
+    it('before A told the server about the deletion', async () => {
+      await deleteHereThenEditThere(false);
+
+      expect(recipeOf(phoneA, 'Soup')?.instructions).toBe('Simmer.');
+      expect(lastCookedAtOf(phoneA, 'Soup')).toBe(cookedAt);
+    });
+
+    it('after A told the server about the deletion', async () => {
+      await deleteHereThenEditThere(true);
+
+      expect(recipeOf(phoneA, 'Soup')?.instructions).toBe('Simmer.');
+      expect(lastCookedAtOf(phoneA, 'Soup')).toBe(cookedAt);
+    });
   });
 
   it('forgets the meals of a recipe deleted on the other phone', async () => {
