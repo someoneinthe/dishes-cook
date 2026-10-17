@@ -65,7 +65,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   // Same frame as the text field, so switching doesn't make the screen jump.
   preview: {
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.md,
     borderWidth: theme.borderWidth,
     minHeight: theme.size.multilineInput,

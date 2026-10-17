@@ -15,12 +15,20 @@ describe('markdown', () => {
     expect(screen.getByText('gently')).toHaveStyle({ fontStyle: 'italic' });
   });
 
-  it('shows bulleted, numbered and task lists', async () => {
+  it('shows bulleted, numbered and task lists; screen readers skip the bullets', async () => {
     await render(<Markdown text={'- Pumpkin\n- Sage\n\n1. Roast\n2. Blend\n\n- [x] Peeled'} />);
 
-    expect(screen.getAllByText('•')).toHaveLength(2);
+    expect(screen.getAllByText('•', { includeHiddenElements: true })).toHaveLength(2);
+    expect(screen.queryByText('•')).not.toBeOnTheScreen();
     expect(screen.getByText('2.')).toBeOnTheScreen();
-    expect(screen.getByText('☑')).toBeOnTheScreen();
+    expect(screen.getByText('☑', { includeHiddenElements: true })).toBeOnTheScreen();
+  });
+
+  it('reads a task as a checkbox, ticked or not', async () => {
+    await render(<Markdown text={'- [x] Peeled\n- [ ] Seeded'} />);
+
+    expect(screen.getByRole('checkbox', { checked: true })).toHaveTextContent(/Peeled/);
+    expect(screen.getByRole('checkbox', { checked: false })).toHaveTextContent(/Seeded/);
   });
 
   it('keeps line breaks as typed', async () => {

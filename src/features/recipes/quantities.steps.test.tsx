@@ -89,7 +89,7 @@ defineFeature(feature, (test) => {
       async (name: string, amount: string, unit: string) => {
         await giveQuantity(name, amount);
         await fireEvent.press(screen.getByRole('button', { name: `Unit of ${name}: pieces` }));
-        await fireEvent.press(screen.getByRole('button', { name: unit }));
+        await fireEvent.press(screen.getByRole('radio', { name: unit }));
       },
     );
     and(/^I give "(.*)" the quantity "(.*)"$/, giveQuantity);
@@ -108,6 +108,10 @@ defineFeature(feature, (test) => {
     and('I save the recipe', saveTheRecipe);
     then('I am asked for a number like 1.5 or 1/2', () => {
       expect(screen.getByText('Enter a number, like 2, 1.5 or 1/2.')).toBeOnTheScreen();
+      // Screen readers hear it on the field, not only once when it shows.
+      expect(screen.getByHintText('Enter a number, like 2, 1.5 or 1/2.')).toHaveAccessibleName(
+        /^Quantity of /,
+      );
     });
     and('no recipe is saved', () => {
       expect(firstRecipePage(connection.db)).toStrictEqual([]);

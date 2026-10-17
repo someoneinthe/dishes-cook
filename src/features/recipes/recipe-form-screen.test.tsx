@@ -1,5 +1,6 @@
-import { fireEvent, screen } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { TextInput } from 'react-native';
 import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
@@ -124,10 +125,26 @@ describe('recipeFormScreen', () => {
     expect(firstRecipePage(connection.db)).toStrictEqual([]);
   });
 
+  it('brings the first wrong field into view and gives it the focus on Save', async () => {
+    // The mocked TextInput's focus is shared by every field: the title is the only one wrong.
+    const focus = jest.spyOn(TextInput.prototype, 'focus');
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+    await waitFor(() => expect(focus).toHaveBeenCalledWith());
+
+    expect(focus).toHaveBeenCalledTimes(1);
+  });
+
   it('explains that the recipe can be written in Markdown', async () => {
     await renderWithDatabase(<RecipeFormScreen />, connection);
 
-    expect(screen.getByText(/^Format it with Markdown: # Heading, \*\*bold\*\*/)).toBeOnTheScreen();
+    const hint = /^Format it with Markdown: # Heading, \*\*bold\*\*/;
+
+    // Shown under the field, and read by screen readers with the field (not a second time).
+    expect(screen.getByText(hint, { includeHiddenElements: true })).toBeOnTheScreen();
+    expect(screen.queryByText(hint)).not.toBeOnTheScreen();
+    expect(screen.getByHintText(hint)).toHaveAccessibleName('Recipe text');
   });
 
   it('has nothing to preview while the recipe is empty', async () => {

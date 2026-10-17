@@ -1,3 +1,5 @@
+import type { Ref } from 'react';
+import type { TextInput } from 'react-native';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
@@ -15,6 +17,8 @@ import { parseAmount, unitOptionList } from '@/lib/units';
 export type QuantityDraft = Readonly<{ amountText: string; unit?: Unit }>;
 
 type IngredientQuantityRowProps = Readonly<{
+  // To move the focus to the amount (when it's the first invalid field on Save).
+  amountRef?: Ref<TextInput>;
   draft: QuantityDraft;
   error?: string;
   ingredient: Ingredient;
@@ -31,6 +35,7 @@ type UnitPickerProps = Readonly<{
 
 // A selected ingredient of the recipe form: remove it, or give its quantity and unit.
 export function IngredientQuantityRow({
+  amountRef,
   draft,
   error,
   ingredient,
@@ -51,19 +56,20 @@ export function IngredientQuantityRow({
           accessibilityHint={t.ingredientPicker.removeHint}
           accessibilityLabel={t.ingredientPicker.removeLabel(ingredient.name)}
           icon="close"
-          isSelected
+          isFilled
           label={ingredient.name}
           onPress={onRemove}
         />
         <View style={styles.quantity}>
           <View style={styles.amount}>
             <TextField
-              isInvalid={error !== undefined}
+              externalError={error}
               isLabelHidden
               keyboardType="decimal-pad"
               label={t.quantities.amountLabel(ingredient.name)}
               onChangeText={(amountText) => onChange({ ...draft, amountText })}
               placeholder={t.quantities.amountPlaceholder}
+              ref={amountRef}
               value={draft.amountText}
             />
           </View>
@@ -77,7 +83,8 @@ export function IngredientQuantityRow({
           />
         </View>
       </View>
-      {/* Under the whole row: in the field, it would stretch it and push the unit away. */}
+      {/* Under the whole row: in the field, it would stretch it and push the unit away. The amount
+          field reads it too. */}
       {error !== undefined && (
         <Text accessibilityLiveRegion="polite" accessibilityRole="alert" style={styles.error}>
           {error}
@@ -117,12 +124,17 @@ function UnitPicker({ onChoose, onClose, title, unit }: UnitPickerProps) {
         <Text accessibilityRole="header" style={styles.title}>
           {title}
         </Text>
-        <ScrollView contentContainerStyle={styles.optionList}>
+        <ScrollView
+          accessibilityHint={t.common.chooseOneOption}
+          accessibilityLabel={title}
+          accessibilityRole="radiogroup"
+          contentContainerStyle={styles.optionList}
+        >
           {optionList.map((option) => (
             <Chip
               accessibilityHint={t.quantities.unitOptionHint}
               icon={option === unit ? 'check-circle' : 'circle-outline'}
-              isSelected={option === unit}
+              isChecked={option === unit}
               key={option ?? 'pieces'}
               label={option === undefined ? t.quantities.pieces : t.quantities.unit(option, 2)}
               onPress={() => onChoose(option)}
@@ -150,10 +162,11 @@ const styles = StyleSheet.create((theme) => ({
     ...theme.typography.caption,
     color: theme.colors.danger,
   },
+  // No space between lines: the chips' touch areas leave it.
   optionList: {
+    columnGap: theme.gap(2),
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.gap(2),
   },
   quantity: {
     alignItems: 'flex-start',

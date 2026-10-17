@@ -61,13 +61,17 @@ export function SettingsScreen() {
         value={units}
       />
       <View style={styles.switchRow}>
-        <Text style={styles.label}>{t.settings.showButtonLabels}</Text>
+        {/* The switch reads its label itself: screen readers skip the visible copy. */}
+        <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.label}>
+          {t.settings.showButtonLabels}
+        </Text>
         <Switch
           accessibilityHint={t.settings.showButtonLabelsHint}
           accessibilityLabel={t.settings.showButtonLabels}
           onValueChange={(value) => updatePreferences({ isShowingButtonLabels: value })}
-          thumbColor={theme.colors.surface}
-          trackColor={{ false: theme.colors.border, true: theme.colors.actionPrimary }}
+          // Off: thumb and track both stand out from the background (≥ 3:1), the thumb most.
+          thumbColor={isShowingButtonLabels ? theme.colors.onAction : theme.colors.textMuted}
+          trackColor={{ false: theme.colors.borderStrong, true: theme.colors.actionPrimary }}
           value={isShowingButtonLabels}
         />
       </View>

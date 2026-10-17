@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
 import { screenScrollProps } from '@/components/screen-scroll-props';
 import { useDatabase } from '@/db/database-context';
+import { ReadingPhoto } from '@/features/recipes/components/reading-photo';
 import {
   NO_FILTERS,
   RecipeFilters,
@@ -88,6 +89,7 @@ export function MealChoiceScreen() {
               onPress={newRecipe.start}
             />
           )}
+          <ReadingPhoto isReading={newRecipe.isReading} />
         </EmptyState>
       </View>
     );

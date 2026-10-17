@@ -24,7 +24,9 @@ export default function DrawerLayout() {
       drawerContent={isTv ? tvMenu : undefined}
       screenOptions={{
         ...headerTitleOptions,
-        drawerActiveTintColor: theme.colors.actionPrimary,
+        // The current screen: a light blue tint, like other options that are on (text ≥ 4.5:1).
+        drawerActiveBackgroundColor: theme.colors.actionSoft,
+        drawerActiveTintColor: theme.colors.onActionSoft,
         drawerInactiveTintColor: theme.colors.text,
         drawerStyle: {
           backgroundColor: theme.colors.background,

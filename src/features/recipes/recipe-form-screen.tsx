@@ -1,6 +1,8 @@
+import type { RefObject } from 'react';
+import type { Text, TextInput } from 'react-native';
 import { Redirect, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { AccessibilityInfo, Alert, ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { Course, Season } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
@@ -84,6 +86,13 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
   const [isChoiceMissing, setIsChoiceMissing] = useState(false);
   // Set once saved: a second tap on Save, before the screen closes, saves nothing more.
   const isSavedRef = useRef(false);
+  // The fields Save can find wrong, to bring the first one into view.
+  const scrollViewRef = useRef<ScrollView>(null);
+  // ScrollView's `innerViewRef` is typed as never empty, which a ref is before mounting.
+  const contentRef = useRef<View>(null) as RefObject<View>;
+  const titleRef = useRef<TextInput>(null);
+  const amountRefMap = useRef(new Map<number, TextInput>());
+  const choiceRefMap = useRef(new Map<number, Text>());
   const chooseSimilar = (ingredient: Ingredient, similar: Ingredient) => {
     newIngredients.chooseSimilar(ingredient.id);
     setSelectedIngredientList((previous) => swapIngredient(previous, ingredient.id, similar));
@@ -101,6 +110,20 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
     setIsChoiceMissing(undecidedIdList.length > 0);
     if (!cleanName(title)) {
       setTitleError(t.recipes.titleRequired);
+    }
+    const firstInvalid = firstInvalidField({
+      amountRefMap: amountRefMap.current,
+      choiceRefMap: choiceRefMap.current,
+      invalidIdList,
+      selectedList: selectedIngredientList,
+      titleInput: cleanName(title) ? undefined : titleRef.current,
+      undecidedIdList,
+    });
+    if (firstInvalid) {
+      // Once its error shows: scrolled to, and given the focus (a field opens the keyboard).
+      requestAnimationFrame(() =>
+        showField(firstInvalid, scrollViewRef.current, contentRef.current),
+      );
     }
     if (
       isSavedRef.current ||
@@ -160,7 +183,9 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
   return (
     <ScrollView
       contentContainerStyle={styles.content}
+      innerViewRef={contentRef}
       keyboardShouldPersistTaps="handled"
+      ref={scrollViewRef}
       style={styles.screen}
     >
       <Stack.Screen
@@ -186,6 +211,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
           setTitleError(undefined);
         }}
         placeholder={t.recipes.titlePlaceholder}
+        ref={titleRef}
         value={title}
       />
       <SegmentedControl
@@ -210,6 +236,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
         }}
         renderSelected={(ingredient, remove) => (
           <SelectedIngredient
+            choiceRef={(text) => keepRef(choiceRefMap.current, ingredient.id, text)}
             ingredient={ingredient}
             isChoiceMissing={isChoiceMissing}
             onChooseSimilar={(similar) => chooseSimilar(ingredient, similar)}
@@ -217,6 +244,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
             similar={newIngredients.similarOf(ingredient.id)}
           >
             <IngredientQuantityRow
+              amountRef={(input) => keepRef(amountRefMap.current, ingredient.id, input)}
               draft={draftMap.get(ingredient.id) ?? EMPTY_DRAFT}
               error={invalidIdSet.has(ingredient.id) ? t.quantities.invalidAmount : undefined}
               ingredient={ingredient}
@@ -271,10 +299,62 @@ function RecipeFormRoute() {
 
 const EMPTY_DRAFT: QuantityDraft = { amountText: '' };
 
+// Space kept above a field brought into view, so its label shows too.
+const SCROLL_MARGIN = 48;
+
+// A field Save found wrong: a text field, or a question to answer.
+type InvalidField = Readonly<{ input: TextInput } | { question: Text }>;
+
+type InvalidFieldSearch = Readonly<{
+  amountRefMap: ReadonlyMap<number, TextInput>;
+  choiceRefMap: ReadonlyMap<number, Text>;
+  invalidIdList: readonly number[];
+  selectedList: readonly Ingredient[];
+  // The title's field when it's empty.
+  titleInput: null | TextInput | undefined;
+  undecidedIdList: readonly number[];
+}>;
+
 // A row of the form, read when saving.
 type RowReading = Readonly<{ isInvalid: boolean; quantity?: Quantity }>;
 
 type SavedQuantity = Readonly<{ draft: QuantityDraft; stored: Quantity }>;
+
+// The first wrong field from the top: the title, then the ingredients in order (their amount, or
+// the question whether a new one is an existing one).
+function firstInvalidField({
+  amountRefMap,
+  choiceRefMap,
+  invalidIdList,
+  selectedList,
+  titleInput,
+  undecidedIdList,
+}: InvalidFieldSearch): InvalidField | undefined {
+  if (titleInput) {
+    return { input: titleInput };
+  }
+  const wrong = selectedList.find(
+    ({ id }) => invalidIdList.includes(id) || undecidedIdList.includes(id),
+  );
+  if (!wrong) {
+    return undefined;
+  }
+  const input = invalidIdList.includes(wrong.id) ? amountRefMap.get(wrong.id) : undefined;
+  if (input) {
+    return { input };
+  }
+  const question = choiceRefMap.get(wrong.id);
+  return question ? { question } : undefined;
+}
+
+// Keeps a row's element by ingredient id while it's on screen.
+function keepRef<T>(refMap: Map<number, T>, id: number, element: null | T) {
+  if (element) {
+    refMap.set(id, element);
+  } else {
+    refMap.delete(id);
+  }
+}
 
 // The typed quantity follows the ingredient it was typed for, unless the other one has its own.
 function moveDraft(
@@ -342,6 +422,22 @@ function savedQuantities(
     }
   }
   return savedMap;
+}
+
+// Scrolls a wrong field into view and gives it the focus: the keyboard's for a text field, the
+// screen reader's for a question.
+function showField(field: InvalidField, scrollView: null | ScrollView, content: null | View) {
+  const element = 'input' in field ? field.input : field.question;
+  if (scrollView && content) {
+    element.measureLayout(content, (_x, y) => {
+      scrollView.scrollTo({ y: Math.max(0, y - SCROLL_MARGIN) });
+    });
+  }
+  if ('input' in field) {
+    field.input.focus();
+  } else {
+    AccessibilityInfo.sendAccessibilityEvent(field.question, 'focus');
+  }
 }
 
 // The title or the instructions the form starts with: the saved recipe's, or the photo's.

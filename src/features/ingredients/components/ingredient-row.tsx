@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { AccessibilityInfo, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { TextField } from '@/components/text-field';
@@ -18,12 +18,19 @@ export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
   const t = useMessages();
   const [draftName, setDraftName] = useState<string>();
   const [error, setError] = useState<string>();
+  // Set when a rename ends: Rename, back in place of the field, takes the screen reader's focus.
+  const isFocusReturningRef = useRef(false);
+  const endRename = () => {
+    isFocusReturningRef.current = true;
+    setDraftName(undefined);
+    setError(undefined);
+  };
 
   if (draftName !== undefined) {
     const save = () => {
       const result = renameIngredient(database, ingredient.id, draftName);
       if (result === 'renamed') {
-        setDraftName(undefined);
+        endRename();
       } else {
         setError(result === 'blank' ? t.ingredients.nameBlank : t.ingredients.nameTaken);
       }
@@ -47,10 +54,7 @@ export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
             icon="close"
             isIconOnly
             label={t.common.cancel}
-            onPress={() => {
-              setDraftName(undefined);
-              setError(undefined);
-            }}
+            onPress={endRename}
             variant="secondary"
           />
           <Button icon="check" isIconOnly label={t.common.save} onPress={save} />
@@ -74,6 +78,14 @@ export function IngredientRow({ ingredient, onDelete }: IngredientRowProps) {
           isIconOnly
           label={t.ingredients.rename}
           onPress={() => setDraftName(ingredient.name)}
+          ref={(button) => {
+            if (!(button && isFocusReturningRef.current)) {
+              return;
+            }
+
+            isFocusReturningRef.current = false;
+            AccessibilityInfo.sendAccessibilityEvent(button, 'focus');
+          }}
           variant="secondary"
         />
         {/* An ingredient used by recipes can't be deleted (the database refuses it too). */}

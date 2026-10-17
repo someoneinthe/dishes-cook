@@ -17,10 +17,10 @@ export function SuggestionCard({ onAnother, recipe }: SuggestionCardProps) {
   const t = useMessages();
 
   return (
-    // Announced when a new suggestion appears.
-    <View accessibilityLiveRegion="polite" style={styles.card}>
+    <View style={styles.card}>
       <Text style={styles.intro}>{t.mealChoice.suggestionIntro}</Text>
-      <Text accessibilityRole="header" style={styles.title}>
+      {/* Its title is announced when a new suggestion appears (not the whole card, buttons included). */}
+      <Text accessibilityLiveRegion="polite" accessibilityRole="header" style={styles.title}>
         {recipe.title}
       </Text>
       <View style={styles.details}>

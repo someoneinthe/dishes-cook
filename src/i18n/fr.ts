@@ -87,6 +87,14 @@ export const fr: Messages = {
     placeholderWithCreate: 'Chercher ou ajouter',
     removeHint: 'Le retire de la sélection',
     removeLabel: (name) => `Retirer ${name}`,
+    resultSummary: (count, canCreate) => {
+      if (count > 0) {
+        return plural(count, `${count} ingrédient trouvé.`, `${count} ingrédients trouvés.`);
+      }
+      return canCreate
+        ? `Aucun ingrédient correspondant${NARROW_SPACE}: vous pouvez le créer.`
+        : 'Aucun ingrédient correspondant.';
+    },
     searchLabel: (label) => `Rechercher${NARROW_SPACE}: ${label.toLowerCase()}`,
   },
   ingredients: {
@@ -200,7 +208,8 @@ export const fr: Messages = {
     preview: 'Aperçu',
     recipe: 'Recette',
     recipeText: 'Texte de la recette',
-    rowLabel: (title, season, course) => [title, season, course].filter(Boolean).join(', '),
+    rowLabel: (title, season, course, ingredients) =>
+      [title, season, course, ingredients].filter(Boolean).join(', '),
     saveAsNew: 'Enregistrer comme nouvelle',
     saveHint: 'Enregistre la recette et l’affiche',
     saveRecipe: 'Enregistrer la recette',
@@ -227,6 +236,7 @@ export const fr: Messages = {
     nothingFoundTitle: 'Aucune recette trouvée',
     readFailed:
       'Impossible de lire la photo. Si cela se reproduit, fermez l’application et rouvrez-la.',
+    reading: 'Lecture de la photo…',
     similarMessage: (existing) =>
       `Vous avez déjà ${quote(existing)}. L’utiliser à la place${NARROW_SPACE}?`,
     startMessage: `Écrivez-la vous-même, ou remplissez-la depuis la photo d’une recette${NARROW_SPACE}: le texte est lu sur votre téléphone et la photo n’est pas gardée.`,

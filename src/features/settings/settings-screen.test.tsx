@@ -134,13 +134,13 @@ describe('settingsScreen', () => {
 
     await fireEvent.press(screen.getByRole('radio', { name: 'Français' }));
 
-    expect(screen.getByText('Langue')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Langue')).toBeOnTheScreen();
     expect(screen.getByRole('radio', { name: 'Français' })).toBeChecked();
     expect(getPreferences().language).toBe('fr');
 
     await fireEvent.press(screen.getByRole('radio', { name: 'English' }));
 
-    expect(screen.getByText('Language')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Language')).toBeOnTheScreen();
   });
 
   it('follows the phone’s language by default', async () => {
@@ -153,7 +153,7 @@ describe('settingsScreen', () => {
       </AppLanguage>,
     );
 
-    expect(screen.getByText('Apparence')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Apparence')).toBeOnTheScreen();
     expect(
       within(screen.getByLabelText('Langue')).getByRole('radio', { name: 'Système' }),
     ).toBeChecked();

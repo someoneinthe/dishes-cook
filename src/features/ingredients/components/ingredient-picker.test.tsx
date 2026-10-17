@@ -1,5 +1,6 @@
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
 import type { DatabaseConnection } from '@/db/types';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import type { Ingredient } from '../db/ingredient-queries';
@@ -52,6 +53,33 @@ describe('ingredientPicker on a TV', () => {
       'hasTVPreferredFocus',
       true,
     );
+  });
+
+  it('tells screen readers what the search found once typing pauses', async () => {
+    await renderWithDatabase(<Picker />, connection);
+    const search = screen.getByLabelText('Search ingredients');
+
+    await fireEvent.changeText(search, 'le');
+    await act(() => jest.runAllTimers());
+
+    expect(AccessibilityInfo.announceForAccessibility).toHaveBeenLastCalledWith(
+      '1 ingredient found.',
+    );
+
+    await fireEvent.changeText(search, 'lex');
+    await act(() => jest.runAllTimers());
+
+    expect(AccessibilityInfo.announceForAccessibility).toHaveBeenLastCalledWith(
+      'No matching ingredient.',
+    );
+  });
+
+  it('reads a chosen ingredient as a button that removes it, not as selected', async () => {
+    await renderWithDatabase(<Picker />, connection);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Add Leek' }));
+
+    expect(screen.getByRole('button', { name: 'Remove Leek' })).not.toBeSelected();
   });
 
   it('gives the focus to the first chip shown when the search hides the removed ingredient', async () => {

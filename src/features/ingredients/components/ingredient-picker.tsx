@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Chip } from '@/components/chip';
 import { TextField } from '@/components/text-field';
@@ -12,6 +12,9 @@ import { useIngredientSuggestions } from '../hooks/use-ingredients';
 
 // Enough to pick from at a glance without rendering hundreds of chips.
 export const MAX_SUGGESTIONS = 12;
+
+// How long typing pauses before screen readers hear what the search found.
+const ANNOUNCE_DELAY_MS = 1000;
 
 type IngredientPickerProps = Readonly<{
   emptyMessage: string;
@@ -64,6 +67,10 @@ export function IngredientPicker({
     typedName !== '' &&
     suggestionList.every((ingredient) => !isSameName(ingredient)) &&
     selectedList.every((ingredient) => !isSameName(ingredient));
+  useSearchAnnouncement(
+    typedName,
+    typedName ? t.ingredientPicker.resultSummary(suggestionList.length, canCreate) : undefined,
+  );
 
   const select = (ingredient: Ingredient) => {
     if (!selectedIds.has(ingredient.id)) {
@@ -165,7 +172,7 @@ function SelectedIngredients({
           accessibilityHint={t.ingredientPicker.removeHint}
           accessibilityLabel={t.ingredientPicker.removeLabel(ingredient.name)}
           icon="close"
-          isSelected
+          isFilled
           isTvPreferredFocus={isFocusTarget(ingredient)}
           key={ingredient.id}
           label={ingredient.name}
@@ -206,11 +213,27 @@ function useChipFocus(shownList: readonly Ingredient[]) {
   };
 }
 
+// Screen readers hear what a search found once typing pauses: the suggestions change as you type,
+// out of the field the screen reader is on.
+function useSearchAnnouncement(search: string, summary: string | undefined) {
+  useEffect(() => {
+    if (summary === undefined) {
+      return;
+    }
+    const timer = setTimeout(
+      () => AccessibilityInfo.announceForAccessibility(summary),
+      ANNOUNCE_DELAY_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [search, summary]);
+}
+
 const styles = StyleSheet.create((theme) => ({
+  // No space between lines: the chips' touch areas leave it.
   chipList: {
+    columnGap: theme.gap(2),
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.gap(2),
   },
   container: {
     gap: theme.gap(2),

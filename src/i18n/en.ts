@@ -113,6 +113,13 @@ export const en = {
     placeholderWithCreate: 'Search or add an ingredient',
     removeHint: 'Removes it from the selection',
     removeLabel: (name: string) => `Remove ${name}`,
+    // Read by screen readers once typing pauses: what the search found.
+    resultSummary: (count: number, canCreate: boolean) => {
+      if (count > 0) {
+        return plural(count, '1 ingredient found.', `${count} ingredients found.`);
+      }
+      return canCreate ? 'No matching ingredient: it can be created.' : 'No matching ingredient.';
+    },
     // Label of the search field, from the picker's label: "Search ingredients".
     searchLabel: (label: string) => `Search ${label.toLowerCase()}`,
   },
@@ -230,8 +237,9 @@ export const en = {
     recipe: 'Recipe',
     recipeText: 'Recipe text',
     // What screen readers say for a row of the recipe list: "Pumpkin soup, Winter, Starter".
-    rowLabel: (title: string, season: string, course?: string) =>
-      [title, season, course].filter(Boolean).join(', '),
+    // A recipe of the list, read as one: "Leek soup, Winter, Main course, 3 ingredients".
+    rowLabel: (title: string, season: string, course?: string, ingredients?: string) =>
+      [title, season, course, ingredients].filter(Boolean).join(', '),
     saveAsNew: 'Save as new',
     saveHint: 'Saves the recipe and shows it',
     saveRecipe: 'Save recipe',
@@ -256,6 +264,8 @@ export const en = {
     nothingFoundMessage: 'No text could be read. Try a sharp, well-lit photo of the page.',
     nothingFoundTitle: 'No recipe found',
     readFailed: 'The photo couldn’t be read. If it happens again, close the app and open it again.',
+    // Shown while the text of the photo is recognized.
+    reading: 'Reading the photo…',
     similarMessage: (existing: string) => `You already have “${existing}”. Use it instead?`,
     startMessage:
       'Write it yourself, or fill it in from a photo of a recipe page: the text is read on your phone and the photo isn’t kept.',

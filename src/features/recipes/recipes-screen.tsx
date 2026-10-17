@@ -16,6 +16,7 @@ import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import type { RecipeFilterValues } from './components/recipe-filters';
 import type { RecipeListItem } from './db/recipe-queries';
+import { ReadingPhoto } from './components/reading-photo';
 import {
   countFilters,
   hasFilters,
@@ -117,7 +118,12 @@ export function RecipesScreen() {
 
 // What a screen reader announces for a row: its labels, read as one.
 function describeRecipeRow(item: RecipeListItem, t: Messages): string {
-  return t.recipes.rowLabel(item.title, describeSeason(item.season, t), t.courses[item.course]);
+  return t.recipes.rowLabel(
+    item.title,
+    describeSeason(item.season, t),
+    t.courses[item.course],
+    t.recipes.ingredientCount(item.ingredientCount),
+  );
 }
 
 // Read-only on a TV: recipes are written on the phone.
@@ -134,15 +140,18 @@ function NewRecipeButton() {
   const { isReading, start } = useNewRecipe();
 
   return (
-    <Button
-      accessibilityHint={t.recipes.newHint}
-      accessibilityLabel={t.recipes.newRecipe}
-      icon="plus"
-      isDisabled={isReading}
-      isIconOnly
-      label={t.recipes.new}
-      onPress={start}
-    />
+    <>
+      <Button
+        accessibilityHint={t.recipes.newHint}
+        accessibilityLabel={t.recipes.newRecipe}
+        icon="plus"
+        isDisabled={isReading}
+        isIconOnly
+        label={t.recipes.new}
+        onPress={start}
+      />
+      <ReadingPhoto isReading={isReading} />
+    </>
   );
 }
 

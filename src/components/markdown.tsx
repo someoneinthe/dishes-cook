@@ -222,8 +222,23 @@ function List({ depth, list }: Readonly<{ depth: number; list: Tokens.List }>) {
   return (
     <View accessibilityRole="list" style={styles.list}>
       {withKeys(list.items, (item) => item.raw).map(([key, item], index) => (
-        <View key={key} style={styles.listItem}>
-          <Text style={styles.text}>{listMarker(list, item, start + index)}</Text>
+        <View
+          // A task is read as a checkbox, ticked or not, instead of its box drawn in text.
+          accessibilityRole={item.task ? 'checkbox' : undefined}
+          accessibilityState={item.task ? { checked: item.checked === true } : undefined}
+          accessible={item.task}
+          key={key}
+          style={styles.listItem}
+        >
+          {/* Screen readers read a number, but not a bullet nor a box (the list and the
+              checkbox already say it). */}
+          <Text
+            accessibilityElementsHidden={!list.ordered || item.task}
+            importantForAccessibility={list.ordered && !item.task ? 'auto' : 'no'}
+            style={styles.text}
+          >
+            {listMarker(list, item, start + index)}
+          </Text>
           <View style={styles.listItemContent}>{renderBlockList(item.tokens, depth + 1)}</View>
         </View>
       ))}
