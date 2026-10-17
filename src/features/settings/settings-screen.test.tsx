@@ -105,12 +105,10 @@ describe('settingsScreen', () => {
 
     expect(screen.queryByText('Edit')).not.toBeOnTheScreen();
 
-    await fireEvent(
-      screen.getByRole('switch', { name: 'Show button labels' }),
-      'valueChange',
-      true,
-    );
+    // The whole row is the switch (a tap on its label too).
+    await fireEvent.press(screen.getByRole('switch', { name: 'Show button labels' }));
 
+    expect(screen.getByRole('switch', { name: 'Show button labels' })).toBeChecked();
     expect(screen.getByText('Edit')).toBeOnTheScreen();
     expect(getPreferences().isShowingButtonLabels).toBe(true);
   });

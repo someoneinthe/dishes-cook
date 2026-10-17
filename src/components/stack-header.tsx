@@ -1,7 +1,10 @@
 import type { NativeStackHeaderProps } from 'expo-router';
 import type { HeaderBackButtonProps } from 'expo-router/react-navigation';
 import { getHeaderTitle, Header, HeaderBackButton } from 'expo-router/react-navigation';
+import { View } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
 import { headerTitleOptions } from './header-title';
+import { useFocusRing } from './use-focus-ring';
 
 // `header` option of the stack: the same header as the menu's screens, instead of Android's native
 // toolbar, which draws the buttons over a long title instead of cutting it. `backLabel` is
@@ -33,15 +36,35 @@ export function stackHeader(backLabel: string) {
 // header, so it doesn't define a component while rendering (Sonar S6478).
 function backButton(goBack: () => void, accessibilityLabel: string) {
   return function BackButton(props: HeaderBackButtonProps) {
+    // The remote's focus ring, around the button: it takes no focus events itself, its own focus
+    // reaches this view.
+    const { focusProps, focusStyle } = useFocusRing();
+
     return (
-      // React Navigation's header buttons take no accessibilityHint.
-      // eslint-disable-next-line react-native-a11y/has-accessibility-hint
-      <HeaderBackButton
-        {...props}
-        accessibilityLabel={accessibilityLabel}
-        label={undefined}
-        onPress={goBack}
-      />
+      <View {...focusProps} style={[styles.backButtonRing, focusStyle]}>
+        {/* React Navigation's header buttons take no accessibilityHint. */}
+        {/* eslint-disable-next-line react-native-a11y/has-accessibility-hint */}
+        <HeaderBackButton
+          {...props}
+          accessibilityLabel={accessibilityLabel}
+          label={undefined}
+          onPress={goBack}
+          // Its margins move to the view, so the ring hugs the button.
+          style={styles.backButton}
+        />
+      </View>
     );
   };
 }
+
+const styles = StyleSheet.create((theme) => ({
+  backButton: {
+    margin: 0,
+  },
+  // Where React Navigation puts the button, with the corners of its press feedback.
+  backButtonRing: {
+    alignSelf: 'center',
+    borderRadius: theme.radius.md,
+    marginHorizontal: theme.gap(3),
+  },
+}));

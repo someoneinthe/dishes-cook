@@ -68,3 +68,7 @@ name: Recipes
 - extendedWaitUntil:
     visible: No recipes yet
     timeout: 10000
+
+# Back from a screen of the menu returns to Meal choice, and stays in the app.
+- back
+- assertVisible: Meal choice
