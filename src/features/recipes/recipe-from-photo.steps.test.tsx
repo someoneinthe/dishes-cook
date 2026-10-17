@@ -2,6 +2,7 @@ import type { Text } from '@infinitered/react-native-mlkit-text-recognition';
 import type { ImagePickerResult } from 'expo-image-picker';
 import { recognizeText } from '@infinitered/react-native-mlkit-text-recognition';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { Directory, Paths } from 'expo-file-system';
 import { launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -65,6 +66,7 @@ defineFeature(feature, (test) => {
     updatePreferences({ units: 'metric' });
     alert = spyOnAlert();
     jest.mocked(launchImageLibraryAsync).mockResolvedValue(CHOSEN_PHOTO);
+    jest.mocked(Directory).mockClear();
   });
 
   const givenIngredients = (names: string) => {
@@ -116,6 +118,13 @@ defineFeature(feature, (test) => {
     lineList: lines.split(', ').map((line) => `• ${line}`),
     title,
   });
+  // How the photo picker's folder in the app's cache, where it leaves its copies of the photo, was
+  // deleted (its `delete` mock), once the photo was read.
+  const pickedPhotoFolderDeletion = async () => {
+    await waitFor(() => expect(Directory).toHaveBeenLastCalledWith(Paths.cache, 'ImagePicker'));
+    const [folder] = jest.mocked(Directory).mock.results;
+    return (folder?.value as undefined | { delete: jest.Mock })?.delete;
+  };
   const ingredientNames = () => firstIngredientPage(connection.db).map(({ name }) => name);
 
   test('Adding a recipe asks how to start', ({ then, when }) => {
@@ -254,6 +263,33 @@ defineFeature(feature, (test) => {
           expect.anything(),
         ),
       );
+    });
+  });
+
+  test("The photo isn't kept", ({ then, when }) => {
+    when(PHOTO_OF, fillInRecipe);
+    then('the copies of the photo are deleted', async () => {
+      await expect(pickedPhotoFolderDeletion()).resolves.toHaveBeenCalledTimes(1);
+    });
+  });
+
+  test("The photo isn't kept when it can't be read", ({ and, then, when }) => {
+    when("the photo I choose for a new recipe can't be read", async () => {
+      jest.mocked(recognizeText).mockRejectedValueOnce(new Error('No text recognizer'));
+      await startNewRecipe();
+      await alert.press('Choose a photo');
+    });
+    then("I am told that the photo couldn't be read", async () => {
+      await waitFor(() =>
+        expect(alert.spy).toHaveBeenLastCalledWith(
+          expect.stringContaining('The photo couldn’t be read'),
+          undefined,
+          expect.anything(),
+        ),
+      );
+    });
+    and('the copies of the photo are deleted', async () => {
+      await expect(pickedPhotoFolderDeletion()).resolves.toHaveBeenCalledTimes(1);
     });
   });
 });

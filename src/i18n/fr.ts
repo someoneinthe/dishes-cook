@@ -30,7 +30,7 @@ export const fr: Messages = {
     intro:
       'Dishes Cook garde vos recettes sur votre appareil. Voici où vont vos données, et où elles ne vont pas.',
     othersList: [
-      'La lecture d’une recette depuis une photo se fait sur votre téléphone, avec la reconnaissance de texte ML Kit de Google intégrée à l’application. La photo n’est pas enregistrée avec la recette et ne quitte jamais votre téléphone.',
+      `La lecture d’une recette depuis une photo se fait sur votre téléphone, avec la reconnaissance de texte ML Kit de Google intégrée à l’application. L’application supprime sa copie de la photo dès que le texte est lu${NARROW_SPACE}: la photo n’est pas enregistrée avec la recette et ne quitte jamais votre téléphone.`,
       `ML Kit signalerait son utilisation à Google${NARROW_SPACE}: l’application le bloque.`,
       'Pas de compte chez nous, pas de publicité, pas de statistiques d’utilisation, pas de pistage. L’application ne se connecte qu’à votre serveur de synchronisation, si vous en configurez un.',
     ],
