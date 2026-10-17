@@ -1,7 +1,7 @@
 import type { TextInputProps } from 'react-native';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { TextInput } from 'react-native';
+import { AccessibilityInfo, TextInput } from 'react-native';
 import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
@@ -141,6 +141,48 @@ describe('recipeFormScreen', () => {
     expect(new Set(focusedList.map(({ props }) => props.accessibilityLabel))).toStrictEqual(
       new Set(['Title']),
     );
+  });
+
+  it('gives the focus to the first wrong amount on Save', async () => {
+    findOrCreateIngredient(connection.db, 'carrot');
+    const focus = jest.spyOn(TextInput.prototype, 'focus');
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+    await fireEvent.changeText(screen.getByLabelText('Title'), 'Soup');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add Carrot' }));
+    await fireEvent.changeText(screen.getByLabelText('Quantity of Carrot'), 'a lot');
+    focus.mockClear();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+    await waitFor(() => expect(focus).toHaveBeenCalledWith());
+
+    const focusedList = focus.mock.contexts as Readonly<{ props: TextInputProps }>[];
+
+    expect(new Set(focusedList.map(({ props }) => props.accessibilityLabel))).toStrictEqual(
+      new Set(['Quantity of Carrot']),
+    );
+  });
+
+  it('gives the screen reader the unanswered question about a similar ingredient on Save', async () => {
+    findOrCreateIngredient(connection.db, 'carrot');
+    const scanned = { ingredientList: [{ name: 'carrots' }], instructions: '', title: 'Soup' };
+    jest.mocked(useLocalSearchParams).mockReturnValue({ scanned: JSON.stringify(scanned) });
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+
+    await waitFor(() =>
+      expect(AccessibilityInfo.sendAccessibilityEvent).toHaveBeenCalledWith(
+        expect.anything(),
+        'focus',
+      ),
+    );
+
+    // The question, turned into an error: the screen reader reads it there.
+    // Jest's Text is a component instance with the props it was given.
+    const question = jest.mocked(AccessibilityInfo.sendAccessibilityEvent).mock.calls[0]?.[0] as
+      Readonly<{ props: Readonly<{ children: string }> }> | undefined;
+
+    expect(question?.props.children).toMatch(/^You already have “carrot”: choose one/i);
   });
 
   it('explains that the recipe can be written in Markdown', async () => {
