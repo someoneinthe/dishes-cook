@@ -125,24 +125,33 @@ export async function synchronize(
   let recipesPulledUntil = await pullRecipes(cursors.pulledUntil.recipes);
   // A recipe added here that the server had before the last pull of meals: one deleted here and
   // brought back by a newer edit on another phone, whose meals went with it (ON DELETE CASCADE),
-  // and that pull is past them. Every meal is pulled again: only the missing ones are written.
-  const cookedMealsSince =
-    oldestAddedCreated !== '' && oldestAddedCreated < cursors.pulledUntil.cooked_meals
-      ? ''
-      : cursors.pulledUntil.cooked_meals;
+  // and that pull is past them. Every meal is pulled again then: only the missing ones are written.
+  const hasMealsBehindCursor = () =>
+    oldestAddedCreated !== '' &&
+    oldestAddedCreated.localeCompare(cursors.pulledUntil.cooked_meals) < 0;
   // Meals of recipes not here yet (pushed by another phone after the pull above): applied once
   // the recipes are pulled again. Still missing then, the recipe was deleted: the meal goes too.
   const unmatchedList: ServerCookedMeal[] = [];
-  const cookedMealsPulledUntil = await pull(api, 'cooked_meals', cookedMealsSince, (rowList) => {
-    holdChanges(() => {
-      unmatchedList.push(...applyCookedMeals(database, rowList));
+  const pullCookedMeals = (since: string) =>
+    pull(api, 'cooked_meals', since, (rowList) => {
+      holdChanges(() => {
+        unmatchedList.push(...applyCookedMeals(database, rowList));
+      });
     });
-  });
+  const isFromStart = hasMealsBehindCursor();
+  let cookedMealsPulledUntil = await pullCookedMeals(
+    isFromStart ? '' : cursors.pulledUntil.cooked_meals,
+  );
   if (unmatchedList.length > 0) {
     recipesPulledUntil = await pullRecipes(recipesPulledUntil);
+    const retryList = unmatchedList.splice(0);
     holdChanges(() => {
-      applyCookedMeals(database, unmatchedList);
+      applyCookedMeals(database, retryList);
     });
+    // The recipes pulled again brought one back (edited, and cooked, on another phone meanwhile).
+    if (!isFromStart && hasMealsBehindCursor()) {
+      cookedMealsPulledUntil = latest(cookedMealsPulledUntil, await pullCookedMeals(''));
+    }
   }
   await pushDeletions(database, api, holdChanges);
   await pushIngredients(database, api, cursors.pushedFrom);

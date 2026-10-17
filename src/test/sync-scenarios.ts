@@ -42,6 +42,20 @@ export function addRecipe(phone: Phone, title: string, ingredientNameList: strin
   });
 }
 
+// Every time the recipe was cooked on the phone, oldest first ([]: never, or no such recipe).
+export function cookedDatesOf(phone: Phone, title: string) {
+  const recipe = recipeOf(phone, title);
+  return recipe
+    ? phone.db
+        .select({ cookedAt: cookedMeals.cookedAt })
+        .from(cookedMeals)
+        .where(eq(cookedMeals.recipeId, recipe.id))
+        .orderBy(asc(cookedMeals.cookedAt))
+        .all()
+        .map(({ cookedAt }) => cookedAt)
+    : [];
+}
+
 // Two phones syncing with the same server: what the sync must do whatever the server is.
 export function describeSyncScenarios(createServer: () => Promise<SyncTestServer>) {
   let server: SyncTestServer;

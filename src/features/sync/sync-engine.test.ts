@@ -13,6 +13,7 @@ import { toNameKey } from '@/lib/text';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
 import {
   addRecipe,
+  cookedDatesOf,
   describeSyncScenarios,
   lastCookedAtOf,
   recipeOf,
@@ -258,6 +259,46 @@ describe('synchronize', () => {
 
       expect(write).toHaveBeenCalledTimes(1);
       expect(recipeOf(phoneA, 'Pesto')?.ingredientList).toMatchObject([{ name: 'Basil' }]);
+    });
+
+    it('gets back the older meals of a recipe brought back while meals were pulled', async () => {
+      const soupId = addRecipe(phoneA, 'Soup');
+      markCooked(phoneA.db, soupId, 1000);
+      const { syncId: soupSyncId } = phoneA.db.select().from(recipes).get()!;
+      await sync(phoneA);
+      await sync(phoneB);
+      // A later meal, pulled by A since: A's pull of meals is past Soup's.
+      markCooked(phoneB.db, addRecipe(phoneB, 'Pie'), 2000);
+      await sync(phoneB);
+      await sync(phoneA);
+      deleteRecipe(phoneA.db, soupId);
+      // Once A has pulled the recipes: another phone edits Soup (after A's deletion) and cooks it.
+      const write = jest.fn(() => {
+        const soup = server.collection('recipes').get(soupSyncId)!;
+        server.collection('recipes').set(soupSyncId, {
+          ...soup,
+          instructions: 'Simmer.',
+          modified: Date.now() + 60_000,
+          updated: LATER,
+        });
+        server.collection('cooked_meals').set('defdefdefdefdef', {
+          cooked_at: 3000,
+          deleted: 0,
+          id: 'defdefdefdefdef',
+          modified: 1,
+          recipe: soupSyncId,
+          updated: LATER_STILL,
+        });
+      });
+      beforeList('cooked_meals', 1, write);
+
+      await sync(phoneA);
+
+      const soup = recipeOf(phoneA, 'Soup');
+
+      expect(write).toHaveBeenCalledTimes(1);
+      expect(soup?.instructions).toBe('Simmer.');
+      expect(cookedDatesOf(phoneA, 'Soup')).toStrictEqual([1000, 3000]);
     });
 
     it('gets a meal and the recipe it was cooked from, written while meals were pulled', async () => {
