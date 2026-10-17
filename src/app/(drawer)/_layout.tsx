@@ -7,7 +7,7 @@ import { noMenuButton, tvMenu, useTvMenuWidth } from '@/components/tv-menu';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 
-// Opening the app lands on the meal choice, whatever the menu order.
+// Opening the app lands on the meal choice.
 // eslint-disable-next-line @typescript-eslint/naming-convention -- name required by Expo Router.
 export const unstable_settings = { initialRouteName: 'index' };
 
@@ -42,6 +42,16 @@ export default function DrawerLayout() {
         sceneStyle: { backgroundColor: theme.colors.background },
       }}
     >
+      {/* First: Back returns to the first screen listed (`backBehavior`), whatever
+          `unstable_settings` says, which only sets the screen the app opens on. */}
+      <Drawer.Screen
+        name="index"
+        options={menuEntryOptions(
+          t.menu.mealChoice,
+          MENU_ICONS.mealChoice,
+          theme.colors.menuMealChoice,
+        )}
+      />
       <Drawer.Screen
         name="recipes"
         options={menuEntryOptions(t.menu.recipes, MENU_ICONS.recipes, theme.colors.menuRecipes)}
@@ -57,14 +67,6 @@ export default function DrawerLayout() {
           // Read-only on a TV: the ingredient list is only there to manage ingredients.
           drawerItemStyle: isTv ? { display: 'none' } : undefined,
         }}
-      />
-      <Drawer.Screen
-        name="index"
-        options={menuEntryOptions(
-          t.menu.mealChoice,
-          MENU_ICONS.mealChoice,
-          theme.colors.menuMealChoice,
-        )}
       />
       <Drawer.Screen
         name="settings"

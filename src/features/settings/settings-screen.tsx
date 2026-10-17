@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
-import { ScrollView, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { SegmentedOption } from '@/components/segmented-control';
 import type { Messages } from '@/i18n/en';
@@ -8,6 +8,7 @@ import type { LanguagePreference } from '@/i18n/languages';
 import type { UnitSystem } from '@/lib/units';
 import { screenScrollProps } from '@/components/screen-scroll-props';
 import { SegmentedControl } from '@/components/segmented-control';
+import { useFocusRing } from '@/components/use-focus-ring';
 import { ServerSyncSection } from '@/features/sync/components/server-sync-section';
 import { useMessages } from '@/i18n/i18n-provider';
 import { LANGUAGE_LIST, LANGUAGE_NAMES } from '@/i18n/languages';
@@ -21,6 +22,7 @@ export function SettingsScreen() {
   // Switch colors are props, not styles.
   const { theme } = useUnistyles();
   const scrollViewRef = useRef<ScrollView>(null);
+  const { focusProps, focusStyle } = useFocusRing();
   // Opened from the header's sync status: scrolled to Data storage, which tells more.
   const { section } = useLocalSearchParams<{ section?: 'sync' }>();
   const [syncSectionY, setSyncSectionY] = useState<number>();
@@ -60,21 +62,30 @@ export function SettingsScreen() {
         optionList={unitSystemOptionList(t)}
         value={units}
       />
-      <View style={styles.switchRow}>
-        {/* The switch reads its label itself: screen readers skip the visible copy. */}
-        <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.label}>
-          {t.settings.showButtonLabels}
-        </Text>
+      {/* The whole row is the control: a tap on the label toggles it too, and the remote's focus
+          ring goes around it (a Switch takes no focus events, so no ring could follow it). */}
+      <Pressable
+        accessibilityHint={t.settings.showButtonLabelsHint}
+        accessibilityLabel={t.settings.showButtonLabels}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: isShowingButtonLabels }}
+        onPress={() => updatePreferences({ isShowingButtonLabels: !isShowingButtonLabels })}
+        {...focusProps}
+        style={[styles.switchRow, focusStyle]}
+      >
+        <Text style={styles.label}>{t.settings.showButtonLabels}</Text>
+        {/* Only shows the state: the row is what screen readers and the remote reach. */}
         <Switch
-          accessibilityHint={t.settings.showButtonLabelsHint}
-          accessibilityLabel={t.settings.showButtonLabels}
+          accessibilityElementsHidden
+          focusable={false}
+          importantForAccessibility="no-hide-descendants"
           onValueChange={(value) => updatePreferences({ isShowingButtonLabels: value })}
           // Off: thumb and track both stand out from the background (≥ 3:1), the thumb most.
           thumbColor={isShowingButtonLabels ? theme.colors.onAction : theme.colors.textMuted}
           trackColor={{ false: theme.colors.borderStrong, true: theme.colors.actionPrimary }}
           value={isShowingButtonLabels}
         />
-      </View>
+      </Pressable>
       <View onLayout={(event) => setSyncSectionY(event.nativeEvent.layout.y)} testID="data-storage">
         <ServerSyncSection isSyncNowFocused={isTv && section === 'sync'} />
       </View>
@@ -129,7 +140,9 @@ const styles = StyleSheet.create((theme) => ({
   },
   switchRow: {
     alignItems: 'center',
+    borderRadius: theme.radius.md,
     flexDirection: 'row',
     gap: theme.gap(4),
+    minHeight: theme.size.touchTarget,
   },
 }));
