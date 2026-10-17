@@ -13,8 +13,95 @@ type MarkdownProps = Readonly<{ text: string }>;
 // - images are never loaded (no network request), their description is shown instead;
 // - links don't open (for now): only their text is shown.
 // Line breaks are kept as typed, like the plain text recipes were shown before.
+// Text from anywhere (pasted, or synced from another phone) can't freeze or crash the screen: only
+// its start is formatted (the time to parse grows faster than the text), and so many blocks or
+// list items that drawing them would take long, or formatting nested too deep (quotes in
+// quotes…), are shown as typed.
 export function Markdown({ text }: MarkdownProps) {
-  return <View style={styles.container}>{renderBlockList(lexer(text))}</View>;
+  const cut = formattedLength(text);
+  // The line break the cut is on is dropped; the rest keeps its indentation.
+  const rest = text.slice(cut).replace(/^\r?\n/, '');
+  const tokenList = parse(text.slice(0, cut)) ?? [];
+  const drawnCount = drawnTokenCount(tokenList);
+  const undrawn = tokenList
+    .slice(drawnCount)
+    .map((token) => token.raw)
+    .join('');
+  // Not formatted at all when the text can't be parsed.
+  const asTyped = tokenList.length === 0 ? text : [undrawn, rest].filter(Boolean).join('\n');
+  return (
+    <View style={styles.container}>
+      {renderBlockList(tokenList.slice(0, drawnCount), 0)}
+      {asTyped.trim() ? <PlainText text={asTyped} /> : null}
+    </View>
+  );
+}
+
+// Characters formatted at most: a long recipe is a few thousand. What follows is shown as typed.
+const MAX_FORMATTED_LENGTH = 10_000;
+// Blocks, list items and table cells drawn at most (each is native views; inline formatting is
+// drawn inside its block's text): a dense list within MAX_FORMATTED_LENGTH would make
+// thousands. What follows is shown as typed.
+const MAX_DRAWN_PIECES = 1000;
+
+// How many of the top-level tokens are drawn: while their pieces fit in MAX_DRAWN_PIECES.
+function drawnTokenCount(tokenList: readonly Token[]): number {
+  let pieceCount = 0;
+  for (const [index, token] of tokenList.entries()) {
+    pieceCount += pieceCountOf(token);
+    if (pieceCount > MAX_DRAWN_PIECES) {
+      return index;
+    }
+  }
+  return tokenList.length;
+}
+
+// A token and the blocks drawn inside it: list items and their blocks, quoted blocks, table cells.
+function pieceCountOf(token: Token): number {
+  const markedToken = token as MarkedToken;
+  switch (markedToken.type) {
+    case 'blockquote':
+    case 'list_item': {
+      return markedToken.tokens.reduce((count, child) => count + pieceCountOf(child), 1);
+    }
+    case 'list': {
+      return markedToken.items.reduce((count, item) => count + pieceCountOf(item), 1);
+    }
+    case 'table': {
+      return 1 + markedToken.header.length * (markedToken.rows.length + 1);
+    }
+    default: {
+      return 1;
+    }
+  }
+}
+// Levels of nested formatting drawn: deeper, the text is shown as typed.
+const MAX_DEPTH = 8;
+
+// Up to the last line break before the limit, so a paragraph isn't cut in the middle.
+function formattedLength(text: string): number {
+  if (text.length <= MAX_FORMATTED_LENGTH) {
+    return text.length;
+  }
+  const lineBreak = text.lastIndexOf('\n', MAX_FORMATTED_LENGTH);
+  return lineBreak > 0 ? lineBreak : MAX_FORMATTED_LENGTH;
+}
+
+// undefined when the text can't be parsed (nested so deep that the parser runs out of stack).
+function parse(text: string): Token[] | undefined {
+  try {
+    return lexer(text);
+  } catch {
+    return undefined;
+  }
+}
+
+function PlainText({ text }: Readonly<{ text: string }>) {
+  return (
+    <Text selectable={isSelectable} style={styles.text}>
+      {text.trimEnd()}
+    </Text>
+  );
 }
 
 // Text can be selected to copy it, except on a TV: there, selectable text takes the remote's focus
@@ -24,15 +111,18 @@ const isSelectable = !isTv;
 // Checkboxes are drawn by their list item, link definitions by their links.
 const HIDDEN_BLOCK_TYPE_SET = new Set(['checkbox', 'def', 'space']);
 
-function Block({ token }: Readonly<{ token: Token }>) {
+function Block({ depth, token }: Readonly<{ depth: number; token: Token }>) {
   if (HIDDEN_BLOCK_TYPE_SET.has(token.type)) {
     return null;
+  }
+  if (depth > MAX_DEPTH) {
+    return <PlainText text={token.raw} />;
   }
   // `Token` also allows extension tokens of any type: shown as typed (`default`).
   const markedToken = token as MarkedToken;
   switch (markedToken.type) {
     case 'blockquote': {
-      return <View style={styles.quote}>{renderBlockList(markedToken.tokens)}</View>;
+      return <View style={styles.quote}>{renderBlockList(markedToken.tokens, depth + 1)}</View>;
     }
     case 'code': {
       return (
@@ -44,7 +134,7 @@ function Block({ token }: Readonly<{ token: Token }>) {
     case 'heading': {
       return (
         <Text accessibilityRole="header" selectable={isSelectable} style={styles.heading}>
-          {renderInlineList(markedToken.tokens)}
+          {renderInlineList(markedToken.tokens, depth)}
         </Text>
       );
     }
@@ -52,18 +142,18 @@ function Block({ token }: Readonly<{ token: Token }>) {
       return <View style={styles.rule} />;
     }
     case 'list': {
-      return <List list={markedToken} />;
+      return <List depth={depth} list={markedToken} />;
     }
     case 'paragraph':
     case 'text': {
       return (
         <Text selectable={isSelectable} style={styles.text}>
-          {markedToken.tokens ? renderInlineList(markedToken.tokens) : markedToken.text}
+          {markedToken.tokens ? renderInlineList(markedToken.tokens, depth) : markedToken.text}
         </Text>
       );
     }
     case 'table': {
-      return <Table table={markedToken} />;
+      return <Table depth={depth} table={markedToken} />;
     }
     default: {
       // Raw HTML and anything else: the text as typed.
@@ -82,8 +172,12 @@ function ImageDescription({ description }: Readonly<{ description: string }>) {
 }
 
 // Every case returns an element (fragments for plain text) so it nests in its parent `Text`.
-function Inline({ token }: Readonly<{ token: Token }>) {
+function Inline({ depth, token }: Readonly<{ depth: number; token: Token }>) {
+  if (depth > MAX_DEPTH) {
+    return <>{token.raw}</>;
+  }
   const markedToken = token as MarkedToken;
+  const inner = depth + 1;
   switch (markedToken.type) {
     case 'br': {
       return <>{'\n'}</>;
@@ -92,10 +186,10 @@ function Inline({ token }: Readonly<{ token: Token }>) {
       return <Text style={styles.code}>{markedToken.text}</Text>;
     }
     case 'del': {
-      return <Text style={styles.deleted}>{renderInlineList(markedToken.tokens)}</Text>;
+      return <Text style={styles.deleted}>{renderInlineList(markedToken.tokens, inner)}</Text>;
     }
     case 'em': {
-      return <Text style={styles.emphasis}>{renderInlineList(markedToken.tokens)}</Text>;
+      return <Text style={styles.emphasis}>{renderInlineList(markedToken.tokens, inner)}</Text>;
     }
     case 'escape': {
       return <>{markedToken.text}</>;
@@ -106,13 +200,15 @@ function Inline({ token }: Readonly<{ token: Token }>) {
     }
     case 'link': {
       // Links don't open for now: their text only.
-      return <>{renderInlineList(markedToken.tokens)}</>;
+      return <>{renderInlineList(markedToken.tokens, inner)}</>;
     }
     case 'strong': {
-      return <Text style={styles.strong}>{renderInlineList(markedToken.tokens)}</Text>;
+      return <Text style={styles.strong}>{renderInlineList(markedToken.tokens, inner)}</Text>;
     }
     case 'text': {
-      return <>{markedToken.tokens ? renderInlineList(markedToken.tokens) : markedToken.text}</>;
+      return (
+        <>{markedToken.tokens ? renderInlineList(markedToken.tokens, inner) : markedToken.text}</>
+      );
     }
     default: {
       // Inline HTML (`<b>`) and anything else: the text as typed.
@@ -121,14 +217,14 @@ function Inline({ token }: Readonly<{ token: Token }>) {
   }
 }
 
-function List({ list }: Readonly<{ list: Tokens.List }>) {
+function List({ depth, list }: Readonly<{ depth: number; list: Tokens.List }>) {
   const start = typeof list.start === 'number' ? list.start : 1;
   return (
     <View accessibilityRole="list" style={styles.list}>
       {withKeys(list.items, (item) => item.raw).map(([key, item], index) => (
         <View key={key} style={styles.listItem}>
           <Text style={styles.text}>{listMarker(list, item, start + index)}</Text>
-          <View style={styles.listItemContent}>{renderBlockList(item.tokens)}</View>
+          <View style={styles.listItemContent}>{renderBlockList(item.tokens, depth + 1)}</View>
         </View>
       ))}
     </View>
@@ -142,19 +238,19 @@ function listMarker(list: Tokens.List, item: Tokens.ListItem, number: number): s
   return list.ordered ? `${number}.` : '•';
 }
 
-function renderBlockList(tokenList: readonly Token[]): ReactNode[] {
+function renderBlockList(tokenList: readonly Token[], depth: number): ReactNode[] {
   return withKeys(tokenList, (token) => token.raw).map(([key, token]) => (
-    <Block key={key} token={token} />
+    <Block depth={depth} key={key} token={token} />
   ));
 }
 
-function renderInlineList(tokenList: readonly Token[]): ReactNode[] {
+function renderInlineList(tokenList: readonly Token[], depth: number): ReactNode[] {
   return withKeys(tokenList, (token) => token.raw).map(([key, token]) => (
-    <Inline key={key} token={token} />
+    <Inline depth={depth} key={key} token={token} />
   ));
 }
 
-function Table({ table }: Readonly<{ table: Tokens.Table }>) {
+function Table({ depth, table }: Readonly<{ depth: number; table: Tokens.Table }>) {
   return (
     // Wide tables scroll sideways: cells keep a readable width at any font size.
     <ScrollView horizontal>
@@ -169,7 +265,7 @@ function Table({ table }: Readonly<{ table: Tokens.Table }>) {
                 selectable={isSelectable}
                 style={[styles.text, styles.tableCell, cell.header && styles.strong]}
               >
-                {renderInlineList(cell.tokens)}
+                {renderInlineList(cell.tokens, depth)}
               </Text>
             ))}
           </View>

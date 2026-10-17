@@ -17,10 +17,12 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
         foregroundImage: './assets/images/android-icon-foreground.png',
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
-      // expo-image-picker's manifest asks for them, but Android's photo picker needs none.
       blockedPermissions: [
+        // expo-image-picker's manifest asks for them, but Android's photo picker needs none.
         'android.permission.READ_EXTERNAL_STORAGE',
         'android.permission.WRITE_EXTERNAL_STORAGE',
+        // Expo's template asks for it (drawing over other apps), only needed by debug overlays.
+        'android.permission.SYSTEM_ALERT_WINDOW',
       ],
       package: 'io.github.someoneinthe.dishescook',
       predictiveBackGestureEnabled: false,

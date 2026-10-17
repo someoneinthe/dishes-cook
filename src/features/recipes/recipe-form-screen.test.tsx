@@ -4,9 +4,10 @@ import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { toStored } from '@/lib/units';
+import { spyOnAlert } from '@/test/alert';
 import { firstRecipePage } from '@/test/queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
-import { getRecipe, saveRecipe } from './db/recipe-queries';
+import { deleteRecipe, getRecipe, saveRecipe } from './db/recipe-queries';
 import { RecipeFormScreen } from './recipe-form-screen';
 
 jest.mock('expo-router', () => ({
@@ -26,6 +27,8 @@ describe('recipeFormScreen', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    // A new recipe, unless a test opens one.
+    jest.mocked(useLocalSearchParams).mockReturnValue({});
   });
 
   it('creates a recipe with an existing and a new ingredient', async () => {
@@ -58,6 +61,58 @@ describe('recipeFormScreen', () => {
       params: { id: String(savedId) },
       pathname: '/recipe/[id]',
     });
+  });
+
+  it('saves a new recipe once, however fast Save is tapped again', async () => {
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+    await fireEvent.changeText(screen.getByLabelText('Title'), 'Soup');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+
+    expect(firstRecipePage(connection.db)).toHaveLength(1);
+    expect(router.replace).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers to save as a new recipe one deleted meanwhile on another device', async () => {
+    const alert = spyOnAlert();
+    const id = saveRecipe(connection.db, {
+      ingredientIdList: [],
+      instructions: '',
+      season: 'both',
+      title: 'Soup',
+    });
+    jest.mocked(useLocalSearchParams).mockReturnValue({ id: String(id) });
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+    await fireEvent.changeText(screen.getByLabelText('Recipe text'), 'Simmer.');
+    // Pulled by a sync while the form is open.
+    deleteRecipe(connection.db, id);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+
+    expect(alert.spy).toHaveBeenCalledWith(
+      'This recipe was deleted',
+      expect.stringContaining('Save your version as a new recipe?'),
+      expect.anything(),
+    );
+
+    await alert.press('Save as new');
+    // A second alert, if Save was tapped twice before the first showed.
+    await alert.press('Save as new');
+
+    expect(firstRecipePage(connection.db)).toHaveLength(1);
+
+    const [{ id: savedId } = { id: -1 }] = firstRecipePage(connection.db);
+
+    expect(getRecipe(connection.db, savedId)).toMatchObject({
+      instructions: 'Simmer.',
+      title: 'Soup',
+    });
+    // The deleted recipe's screen, under the form, shows the new one instead.
+    expect(router.back).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(router.replace).mock.calls).toStrictEqual([
+      [{ params: { id: String(savedId) }, pathname: '/recipe/[id]' }],
+    ]);
   });
 
   it('requires a title', async () => {

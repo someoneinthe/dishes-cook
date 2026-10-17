@@ -83,6 +83,7 @@ export const en = {
     save: 'Save',
     // Hint of a segmented choice: "Sets season to Winter" (options keep their case: "English").
     setsChoice: (label: string, option: string) => `Sets ${label.toLowerCase()} to ${option}`,
+    tryAgain: 'Try again',
   },
   courses: {
     dessert: 'Dessert',
@@ -188,7 +189,13 @@ export const en = {
     unitOptionHint: 'Uses this unit for the quantity',
   },
   recipes: {
+    // A recipe screen that failed to show (src/features/recipes/recipe-error-boundary.tsx).
+    cantShowMessage: 'Something in it can’t be displayed. Your other recipes aren’t affected.',
+    cantShowTitle: 'This recipe can’t be shown',
     course: 'Course',
+    deletedWhileEditingMessage:
+      'It was deleted on another device while you were editing it. Save your version as a new recipe?',
+    deletedWhileEditingTitle: 'This recipe was deleted',
     deleteMessage: 'Its ingredients stay in your list.',
     editRecipe: 'Edit recipe',
     emptyMessage: 'Save the dishes you like to cook, then let the meal choice pick one for you.',
@@ -225,6 +232,7 @@ export const en = {
     // What screen readers say for a row of the recipe list: "Pumpkin soup, Winter, Starter".
     rowLabel: (title: string, season: string, course?: string) =>
       [title, season, course].filter(Boolean).join(', '),
+    saveAsNew: 'Save as new',
     saveHint: 'Saves the recipe and shows it',
     saveRecipe: 'Save recipe',
     search: 'Search recipes',
@@ -292,6 +300,7 @@ export const en = {
       'The server refused the sign-in. Choose “This device only”, then connect again.',
     errorUnreachable:
       'The server doesn’t answer. The device must be on the home network: it syncs again by itself.',
+    insecureAddress: 'Use an https:// address: the password and recipes travel encrypted.',
     invalidAddress: 'Enter the server’s address, like recipes.example.org.',
     lastSynced: (time: number) =>
       `Last sync: ${new Date(time).toLocaleString('en', { day: 'numeric', hour: '2-digit', minute: '2-digit', month: 'short' })}.`,

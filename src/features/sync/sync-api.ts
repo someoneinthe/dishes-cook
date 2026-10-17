@@ -166,6 +166,16 @@ export function createSyncApi(
   };
 }
 
+// A plain http:// address of another machine: the password and the token would travel in clear
+// (release builds refuse it anyway, as an unreachable server). Allowed for `localhost` only: a
+// server reached through `adb reverse` (development, end-to-end tests).
+export function isInsecureServerUrl(serverUrl: string): boolean {
+  return (
+    /^http:\/\//i.test(serverUrl) &&
+    serverHost(serverUrl).replace(/:\d+$/, '').toLowerCase() !== 'localhost'
+  );
+}
+
 // The address as typed: "recipes.example.org/" -> "https://recipes.example.org".
 // undefined when it isn't a web address. Parsed by hand: React Native's URL doesn't implement
 // `host` and friends.

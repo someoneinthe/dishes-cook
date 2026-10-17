@@ -57,6 +57,7 @@ export const fr: Messages = {
     ok: 'OK',
     save: 'Enregistrer',
     setsChoice: (label, option) => `Choisit ${option} comme ${label.toLowerCase()}`,
+    tryAgain: 'Réessayer',
   },
   courses: {
     dessert: 'Dessert',
@@ -161,7 +162,12 @@ export const fr: Messages = {
     unitOptionHint: 'Utilise cette unité pour la quantité',
   },
   recipes: {
+    cantShowMessage:
+      'Une partie ne peut pas s’afficher. Vos autres recettes ne sont pas concernées.',
+    cantShowTitle: 'Cette recette ne peut pas s’afficher',
     course: 'Type de plat',
+    deletedWhileEditingMessage: `Elle a été supprimée sur un autre appareil pendant que vous la modifiiez. Enregistrer votre version comme nouvelle recette${NARROW_SPACE}?`,
+    deletedWhileEditingTitle: 'Cette recette a été supprimée',
     deleteMessage: 'Ses ingrédients restent dans votre liste.',
     editRecipe: 'Modifier la recette',
     emptyMessage:
@@ -195,6 +201,7 @@ export const fr: Messages = {
     recipe: 'Recette',
     recipeText: 'Texte de la recette',
     rowLabel: (title, season, course) => [title, season, course].filter(Boolean).join(', '),
+    saveAsNew: 'Enregistrer comme nouvelle',
     saveHint: 'Enregistre la recette et l’affiche',
     saveRecipe: 'Enregistrer la recette',
     search: 'Rechercher des recettes',
@@ -259,6 +266,7 @@ export const fr: Messages = {
     errorServerOutdated: `Votre serveur est plus ancien que cette application${NARROW_SPACE}: mettez-le à jour pour synchroniser à nouveau. Vos modifications restent sur ce téléphone en attendant.`,
     errorUnauthorized: `Le serveur a refusé la connexion. Choisissez ${quote('Cet appareil uniquement')}, puis reconnectez-vous.`,
     errorUnreachable: `Le serveur ne répond pas. L’appareil doit être sur le réseau de la maison${NARROW_SPACE}: il se resynchronise tout seul.`,
+    insecureAddress: `Utilisez une adresse en https://${NARROW_SPACE}: le mot de passe et les recettes voyagent chiffrés.`,
     invalidAddress: 'Saisissez l’adresse du serveur, comme recettes.exemple.fr.',
     lastSynced: (time: number) =>
       `Dernière synchronisation${NARROW_SPACE}: ${new Date(time).toLocaleString('fr', { day: 'numeric', hour: '2-digit', minute: '2-digit', month: 'short' })}.`,

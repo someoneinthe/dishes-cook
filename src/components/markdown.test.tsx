@@ -95,4 +95,39 @@ describe('markdown', () => {
     expect(screen.getAllByText('1')).toHaveLength(4);
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
+
+  it('shows text nested too deep to format as typed, without failing', async () => {
+    // Deep enough to overflow the parser's stack, then just past the levels drawn.
+    await render(<Markdown text={`${'>'.repeat(3000)} Too deep`} />);
+
+    expect(screen.getByText(/Too deep$/)).toBeOnTheScreen();
+
+    await render(<Markdown text={`${'> '.repeat(12)}Still readable`} />);
+
+    expect(screen.getByText(/Still readable$/)).toBeOnTheScreen();
+  });
+
+  it('formats the start of a very long text and shows the rest as typed', async () => {
+    const start = 'Stir **well**.\n'.repeat(800);
+    await render(<Markdown text={`${start}**Last** line`} />);
+
+    expect(screen.getAllByText('well')).not.toHaveLength(0);
+    expect(screen.getByText(/\*\*Last\*\* line$/)).toBeOnTheScreen();
+  });
+
+  it('shows as typed a list too dense to draw quickly', async () => {
+    await render(<Markdown text={'- item\n'.repeat(2000)} />);
+
+    expect(screen.queryByText('•')).not.toBeOnTheScreen();
+    expect(screen.getByText(/^- item - item/)).toBeOnTheScreen();
+  });
+
+  it('keeps the indentation of the text shown as typed after the formatted start', async () => {
+    await render(<Markdown text={`${'x'.repeat(9990)}\n    indented line\nend`} />);
+
+    // Compared as typed: by default, matching collapses spaces and line breaks.
+    expect(
+      screen.getByText('    indented line\nend', { normalizer: (text) => text }),
+    ).toBeOnTheScreen();
+  });
 });
