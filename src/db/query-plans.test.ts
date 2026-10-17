@@ -19,21 +19,20 @@ import type { AppDatabase } from './types';
 
 const CURSOR = { id: 1, sortKey: 'm' };
 
+// A query as it ran, with its parameters: plans are read with them bound, as the app runs them.
+// With constants written in, SQLite plans some queries better than the app gets.
+type LoggedQuery = Readonly<{ parameterList: unknown[]; query: string }>;
+
 describe('query plans', () => {
   let database: AppDatabase;
-  let queryList: string[];
-  // The parameters each query last ran with: plans are read with them bound, as the app runs
-  // them. With constants written in, SQLite plans some queries better than the app gets.
-  let parametersByQuery: Map<string, unknown[]>;
+  let queryList: LoggedQuery[];
   let carrotId: number;
 
   beforeEach(() => {
     queryList = [];
-    parametersByQuery = new Map();
     ({ db: database } = createTestConnection({
       logQuery: (query, parameterList) => {
-        queryList.push(query);
-        parametersByQuery.set(query, parameterList);
+        queryList.push({ parameterList, query });
       },
     }));
     carrotId = findOrCreateIngredient(database, 'carrot').id;
@@ -47,8 +46,8 @@ describe('query plans', () => {
     queryList = [];
   });
 
-  const planOf = (query = '') => {
-    const parameterList = parametersByQuery.get(query) ?? [];
+  const planOf = (logged: LoggedQuery | undefined) => {
+    const { parameterList = [], query = '' } = logged ?? {};
     const statement = sql.join(
       query
         .split('?')
@@ -64,7 +63,7 @@ describe('query plans', () => {
   };
 
   // The EXPLAIN queries are logged too: skip them.
-  const lastQuery = () => queryList.findLast((query) => !query.startsWith('EXPLAIN'));
+  const lastQuery = () => queryList.findLast(({ query }) => !query.startsWith('EXPLAIN'));
   const lastPlan = () => planOf(lastQuery());
   const INGREDIENT_INDEX =
     /^SEARCH recipe_ingredients USING COVERING INDEX recipe_ingredients_ingredient_recipe_idx/;
@@ -95,7 +94,7 @@ describe('query plans', () => {
     findSimilarIngredient(database, 'bouteille de vin rouge assez bon');
 
     // The 16 replace() of one key in words, not 16 per word form (32 forms here).
-    expect(lastQuery()?.match(/replace\(/g)).toHaveLength(16);
+    expect(lastQuery()?.query.match(/replace\(/g)).toHaveLength(16);
   });
 
   it('picks a random recipe without filters in the (sort_key, id) index', () => {
@@ -109,7 +108,7 @@ describe('query plans', () => {
   it('suggests used ingredients by checking one link each', () => {
     suggestIngredients(database, { excludeIdList: [], isUsedOnly: true, limit: 12, search: '' });
 
-    expect(lastQuery()).toContain('exists (select 1 from "recipe_ingredients"');
+    expect(lastQuery()?.query).toContain('exists (select 1 from "recipe_ingredients"');
     expect(lastPlan()).toContainEqual(
       expect.stringMatching(/^SEARCH recipe_ingredients EXISTS USING COVERING INDEX/),
     );
@@ -188,7 +187,7 @@ describe('query plans', () => {
     suggestIngredients(database, { excludeIdList: [1], isUsedOnly: true, limit: 12, search: 'ca' });
 
     expect(lastPlan()).toContainEqual(expect.stringMatching(INGREDIENT_INDEX));
-    expect(lastQuery()).toMatch(/limit \?$/);
+    expect(lastQuery()?.query).toMatch(/limit \?$/);
   });
 
   it.each(['ingredients', 'recipes'])(
@@ -203,7 +202,7 @@ describe('query plans', () => {
         upsert: () => Promise.resolve('saved'),
       };
       await synchronize(database, api, { ...INITIAL_CURSORS, pushedFrom: Date.now() - 1000 });
-      const pushQuery = queryList.find((query) =>
+      const pushQuery = queryList.find(({ query }) =>
         query.includes(`from "${table}" where "${table}"."updated_at" >=`),
       );
       const planList = planOf(pushQuery);
@@ -232,7 +231,7 @@ describe('query plans', () => {
       upsert: () => Promise.resolve('saved'),
     };
     await synchronize(database, api, INITIAL_CURSORS);
-    const nextPageQuery = queryList.find((query) =>
+    const nextPageQuery = queryList.find(({ query }) =>
       query.includes('from "recipes" where ("recipes"."updated_at", "recipes"."id") >'),
     );
 

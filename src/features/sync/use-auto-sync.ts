@@ -29,13 +29,16 @@ function startAutoSync(connection: DatabaseConnection): () => void {
   // (pulled rows) don't call for one.
   let isWrittenDuringSync = false;
 
-  // Synced a moment ago, without error, and nothing waits to be sent.
+  // Synced a moment ago, without error, and nothing waits to be sent. A sync dated in the future
+  // (the clock was set back since) doesn't count: it would skip every foreground sync until then.
   const isUpToDate = () => {
     const { error, lastSyncedAt } = getSyncState();
+    const age = lastSyncedAt === undefined ? undefined : Date.now() - lastSyncedAt;
     return (
       error === undefined &&
-      lastSyncedAt !== undefined &&
-      Date.now() - lastSyncedAt < FOREGROUND_SYNC_INTERVAL_MS &&
+      age !== undefined &&
+      age >= 0 &&
+      age < FOREGROUND_SYNC_INTERVAL_MS &&
       getPendingChangeCount(db) === 0
     );
   };

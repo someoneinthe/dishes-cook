@@ -131,6 +131,13 @@ describe('useAutoSync', () => {
       expect(syncSpy).toHaveBeenCalledTimes(1);
     });
 
+    it('syncs when the clock was set back since the last sync', async () => {
+      jest.setSystemTime(Date.now() - FOREGROUND_SYNC_INTERVAL_MS * 10);
+      await comeBack();
+
+      expect(syncSpy).toHaveBeenCalledTimes(1);
+    });
+
     it('does not sync again right after a sync, with nothing to send', async () => {
       await comeBack();
 
