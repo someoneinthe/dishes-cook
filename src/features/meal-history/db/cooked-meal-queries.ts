@@ -19,6 +19,17 @@ export function getLastCookedMeal(database: AppDatabase, recipeId: number): Cook
     .get();
 }
 
+// Records that these recipes were all cooked now (the meals of a shopping list), in one go.
+export function markAllCooked(database: AppDatabase, recipeIdList: readonly number[]): void {
+  if (recipeIdList.length === 0) {
+    return;
+  }
+  database
+    .insert(cookedMeals)
+    .values(recipeIdList.map((recipeId) => ({ recipeId })))
+    .run();
+}
+
 // Records that the recipe was cooked now (`cookedAt` for tests). The recipe itself isn't changed.
 export function markCooked(database: AppDatabase, recipeId: number, cookedAt?: number): number {
   return database

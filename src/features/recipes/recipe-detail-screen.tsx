@@ -9,6 +9,7 @@ import { screenScrollProps } from '@/components/screen-scroll-props';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useDatabase } from '@/db/database-context';
 import { LastCooked } from '@/features/meal-history/components/last-cooked';
+import { addPick, removePick, usePicks } from '@/features/shopping-list/meal-picks';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import { RecipeDetails } from './components/recipe-details';
@@ -20,6 +21,7 @@ export function RecipeDetailScreen() {
   const t = useMessages();
   const confirmDelete = useConfirmDelete();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const pickList = usePicks();
   const liveRecipe = useRecipe(Number(id));
   // Once deleted, the screen keeps showing the recipe while it animates away (instead of
   // flashing "Recipe not found").
@@ -51,8 +53,18 @@ export function RecipeDetailScreen() {
     });
   };
 
+  const isPicked = pickList.includes(recipe.id);
   const headerButtons = (
     <>
+      {/* In the shopping list or not: tinted while it is. */}
+      <Button
+        accessibilityHint={isPicked ? t.shoppingList.removeHint : t.shoppingList.addToListHint}
+        icon={isPicked ? 'cart-remove' : 'cart-plus'}
+        isIconOnly
+        label={isPicked ? t.shoppingList.removeFromList : t.shoppingList.addToList}
+        onPress={() => (isPicked ? removePick(recipe.id) : addPick(recipe.id))}
+        variant={isPicked ? 'active' : 'secondary'}
+      />
       <Button
         icon="pencil"
         isIconOnly

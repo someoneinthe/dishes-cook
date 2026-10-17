@@ -314,6 +314,24 @@ describe('recipe queries', () => {
       expect(pickRandomRecipeId(database, { ingredientIdList: [leekId, 999] })).toBeUndefined();
     });
 
+    it('never picks the recipes left out (those in the shopping list)', () => {
+      const winterFilters = { ingredientIdList: [], season: 'winter' } as const;
+
+      expect(
+        [0, 0.5, 0.99].map((value) =>
+          pickRandomRecipeId(database, winterFilters, {
+            omittedIdList: [winterSoupId],
+            random: () => value,
+          }),
+        ),
+      ).toStrictEqual([allYearStewId, allYearStewId, allYearStewId]);
+      expect(
+        pickRandomRecipeId(database, winterFilters, {
+          omittedIdList: [winterSoupId, allYearStewId],
+        }),
+      ).toBeUndefined();
+    });
+
     describe('skipping the recipes cooked recently', () => {
       const DAY = 24 * 60 * 60 * 1000;
       const now = Date.UTC(2026, 9, 17, 12);

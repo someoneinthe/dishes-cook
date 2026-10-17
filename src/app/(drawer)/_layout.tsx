@@ -53,6 +53,18 @@ export default function DrawerLayout() {
         )}
       />
       <Drawer.Screen
+        name="shopping-list"
+        options={{
+          ...menuEntryOptions(
+            t.menu.shoppingList,
+            MENU_ICONS.shoppingList,
+            theme.colors.menuShoppingList,
+          ),
+          // Not on a TV: it's read-only and can't share the list.
+          drawerItemStyle: isTv ? { display: 'none' } : undefined,
+        }}
+      />
+      <Drawer.Screen
         name="recipes"
         options={menuEntryOptions(t.menu.recipes, MENU_ICONS.recipes, theme.colors.menuRecipes)}
       />

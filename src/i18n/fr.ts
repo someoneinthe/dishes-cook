@@ -32,6 +32,7 @@ export const fr: Messages = {
     othersList: [
       `La lecture d’une recette depuis une photo se fait sur votre téléphone, avec la reconnaissance de texte ML Kit de Google intégrée à l’application. L’application supprime sa copie de la photo dès que le texte est lu${NARROW_SPACE}: la photo n’est pas enregistrée avec la recette et ne quitte jamais votre téléphone.`,
       `ML Kit signalerait son utilisation à Google${NARROW_SPACE}: l’application le bloque.`,
+      `Partager une liste de courses envoie son texte uniquement à l’application que vous choisissez (notes, messages…). La liste n’est pas enregistrée${NARROW_SPACE}: elle est oubliée quand l’application se ferme.`,
       'Pas de compte chez nous, pas de publicité, pas de statistiques d’utilisation, pas de pistage. L’application ne se connecte qu’à votre serveur de synchronisation, si vous en configurez un.',
     ],
     othersTitle: 'Rien pour personne d’autre',
@@ -129,6 +130,7 @@ export const fr: Messages = {
     image: (description) => (description ? `Image${NARROW_SPACE}: ${description}` : 'Image'),
   },
   mealChoice: {
+    allPicked: 'Toutes les recettes qui correspondent sont dans votre liste de courses.',
     another: 'Une autre',
     createRecipe: 'Créer une recette',
     emptyMessage: 'Ajoutez quelques recettes, puis revenez laisser le hasard choisir le repas.',
@@ -173,6 +175,7 @@ export const fr: Messages = {
     openScreenHint: 'Ouvre cet écran',
     recipes: 'Recettes',
     settings: 'Paramètres',
+    shoppingList: 'Liste de courses',
   },
   quantities: {
     amountLabel: (name) => `Quantité de ${name}`,
@@ -283,6 +286,38 @@ export const fr: Messages = {
     units: 'Unités',
     unitsMetric: 'Européennes (g, l)',
     unitsUs: 'Américaines (oz, tasses)',
+  },
+  shoppingList: {
+    add: 'Ajouter à la liste',
+    addHint: 'Ajoute ses ingrédients à la liste de courses, et suggère une autre recette',
+    addLabel: (title) => `Ajouter ${title} à la liste de courses`,
+    addToList: 'Ajouter à la liste de courses',
+    addToListHint: 'Ajoute ses ingrédients à la liste de courses',
+    emptyMessage: `Ajoutez des repas depuis le choix du repas ou une recette${NARROW_SPACE}: leurs ingrédients sont listés ici, prêts à partager.`,
+    emptyTitle: 'Aucun repas choisi',
+    ingredients: 'Ingrédients',
+    markCooked: 'Noter comme cuisinés',
+    markCookedHint: 'Le choix du repas les évite ensuite pendant un temps',
+    markCookedMessage: (count) =>
+      plural(
+        count,
+        `Noter ce repas comme cuisiné aujourd’hui${NARROW_SPACE}? Le choix du repas l’évite ensuite pendant un temps.`,
+        `Noter ces ${count}\u{A0}repas comme cuisinés aujourd’hui${NARROW_SPACE}? Le choix du repas les évite ensuite pendant un temps.`,
+      ),
+    meals: (count) => `Repas (${count})`,
+    mealsLine: (titleList) => `Repas${NARROW_SPACE}: ${titleList.join(', ')}`,
+    noIngredients: 'Ces repas ne listent aucun ingrédient.',
+    notNow: 'Plus tard',
+    openHint: 'Ouvre la liste de courses',
+    openLabel: (count) =>
+      count === 0 ? 'Liste de courses' : `Liste de courses, ${count}\u{A0}repas`,
+    quantitySeparator: ' + ',
+    removeFromList: 'Retirer de la liste de courses',
+    removeHint: 'L’enlève de la liste de courses',
+    removeLabel: (title) => `Retirer ${title} de la liste`,
+    share: 'Partager',
+    shareHint: `Envoie la liste à une autre application${NARROW_SPACE}: notes, messages, e-mail…`,
+    title: 'Liste de courses',
   },
   sync: {
     appUpdateAvailable: `Votre serveur a une version plus récente${NARROW_SPACE}: mettez l’application à jour pour profiter de ses nouveautés.`,

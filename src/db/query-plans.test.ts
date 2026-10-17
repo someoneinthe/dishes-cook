@@ -14,6 +14,7 @@ import {
   pickRandomRecipeId,
   saveRecipe,
 } from '@/features/recipes/db/recipe-queries';
+import { listShoppingLines } from '@/features/shopping-list/db/shopping-queries';
 import { INITIAL_CURSORS, synchronize } from '@/features/sync/sync-engine';
 import { createTestConnection } from '@/test/test-database';
 import type { AppDatabase } from './types';
@@ -138,6 +139,21 @@ describe('query plans', () => {
         /^SEARCH cooked_meals USING COVERING INDEX cooked_meals_recipe_cooked_at_idx \(recipe_id=\?\)/,
       ),
     ]);
+  });
+
+  it('reads the shopping list from the links of the picked meals, by primary key', () => {
+    listShoppingLines(database, [1, 2]);
+    const planList = lastPlan();
+
+    expect(planList).toContainEqual(
+      expect.stringMatching(
+        /^SEARCH recipe_ingredients USING INDEX sqlite_autoindex\S+ \(recipe_id=\?\)/,
+      ),
+    );
+    expect(planList).toContainEqual(
+      expect.stringMatching(/^SEARCH ingredients USING INTEGER PRIMARY KEY/),
+    );
+    expect(planList).not.toContainEqual(expect.stringMatching(/^SCAN/));
   });
 
   it('suggests used ingredients by checking one link each', () => {

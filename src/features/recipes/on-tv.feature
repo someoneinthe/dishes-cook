@@ -1,7 +1,8 @@
 Feature: On a TV
   On an Android TV, driven with the remote, the app is read-only: it
   proposes and shows recipes, which are written in the app on a phone. The
-  ingredient list, only used to manage ingredients, isn't in the TV's menu.
+  ingredient list, only used to manage ingredients, and the shopping list,
+  only used to share one, aren't in the TV's menu.
 
   Scenario: A recipe is shown without edit or delete
     Given the recipe "Pumpkin soup" exists
@@ -25,4 +26,6 @@ Feature: On a TV
     When I open the new recipe form on the TV
     Then I am taken to the meal choice
     When I open the ingredient list on the TV
+    Then I am taken to the meal choice
+    When I open the shopping list on the TV
     Then I am taken to the meal choice

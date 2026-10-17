@@ -8,13 +8,15 @@ import { CourseLabel, SeasonLabel } from '@/features/recipes/components/recipe-l
 import { useMessages } from '@/i18n/i18n-provider';
 
 type SuggestionCardProps = Readonly<{
+  // Adds it to the shopping list (then another one is proposed); undefined: no button (TV).
+  onAddToList?: (recipeId: number) => void;
   // Picks another recipe with the same filters.
   onAnother: () => void;
   recipe: Recipe;
 }>;
 
 // The suggested recipe, in short: Open shows it in full, Another one picks again.
-export function SuggestionCard({ onAnother, recipe }: SuggestionCardProps) {
+export function SuggestionCard({ onAddToList, onAnother, recipe }: SuggestionCardProps) {
   const t = useMessages();
 
   return (
@@ -31,6 +33,16 @@ export function SuggestionCard({ onAnother, recipe }: SuggestionCardProps) {
       </View>
       <LastCooked recipeId={recipe.id} />
       <View style={styles.actions}>
+        {onAddToList && (
+          <Button
+            accessibilityHint={t.shoppingList.addHint}
+            accessibilityLabel={t.shoppingList.addLabel(recipe.title)}
+            icon="cart-plus"
+            label={t.shoppingList.add}
+            onPress={() => onAddToList(recipe.id)}
+            variant="secondary"
+          />
+        )}
         <Button
           accessibilityHint={t.mealChoice.suggestHint}
           icon="dice-multiple"

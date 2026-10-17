@@ -68,6 +68,8 @@ const INGREDIENT_COUNT = sql<number>`(select count(*) from "recipe_ingredients" 
 export type PickOptions = Readonly<{
   // The current suggestion: another one is picked when possible (asking again must change it).
   excludedId?: number;
+  // Never picked (the meals already in the shopping list): at most MAX_PICKS ids.
+  omittedIdList?: readonly number[];
   // Returns a number in [0, 1).
   random?: () => number;
   // Recipes cooked at or after this time (ms) are skipped (the meal history); undefined = none.
@@ -185,8 +187,12 @@ export function pickRandomRecipeId(
   filters: RecipeFilters,
   options: PickOptions = {},
 ): number | undefined {
-  const { excludedId, random = Math.random, skipCookedSince } = options;
-  const matchingWhere = filtersWhere(database, filters);
+  const { excludedId, omittedIdList = [], random = Math.random, skipCookedSince } = options;
+  const filtersMatch = filtersWhere(database, filters);
+  const matchingWhere =
+    omittedIdList.length === 0
+      ? filtersMatch
+      : and(filtersMatch, notInArray(recipes.id, [...omittedIdList]));
   return skipCookedSince === undefined
     ? pickAtRandom(database, matchingWhere, excludedId, random)
     : (pickAtRandom(

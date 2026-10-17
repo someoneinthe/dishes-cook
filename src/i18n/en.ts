@@ -57,6 +57,7 @@ export const en = {
     othersList: [
       'Reading a recipe from a photo happens on your phone, with Google’s ML Kit text recognition built into the app. The app deletes its copy of the photo as soon as the text is read: the photo isn’t saved with the recipe and never leaves your phone.',
       'ML Kit would report how it’s used to Google: the app blocks this.',
+      'Sharing a shopping list sends its text only to the app you pick (notes, messages…). The list isn’t saved: it’s forgotten when the app closes.',
       'No account with us, no ads, no analytics, no tracking. The app connects to nothing but your sync server, if you set one up.',
     ],
     othersTitle: 'Nothing for anyone else',
@@ -155,6 +156,8 @@ export const en = {
     image: (description: string) => (description ? `Image: ${description}` : 'Image'),
   },
   mealChoice: {
+    // Every matching recipe is in the shopping list: none left to suggest.
+    allPicked: 'Every matching recipe is in your shopping list.',
     another: 'Another one',
     createRecipe: 'Create a recipe',
     emptyMessage: 'Add a few recipes, then come back to let chance decide what to eat.',
@@ -200,6 +203,7 @@ export const en = {
     openScreenHint: 'Opens this screen',
     recipes: 'Recipes',
     settings: 'Settings',
+    shoppingList: 'Shopping list',
   },
   quantities: {
     amountLabel: (name: string) => `Quantity of ${name}`,
@@ -315,6 +319,44 @@ export const en = {
     units: 'Units',
     unitsMetric: 'European (g, l)',
     unitsUs: 'US (oz, cups)',
+  },
+  shoppingList: {
+    add: 'Add to list',
+    addHint: 'Adds its ingredients to the shopping list, and suggests another recipe',
+    addLabel: (title: string) => `Add ${title} to the shopping list`,
+    // On a recipe: in the list or not (header button).
+    addToList: 'Add to the shopping list',
+    addToListHint: 'Adds its ingredients to the shopping list',
+    emptyMessage:
+      'Add meals from the meal choice or from a recipe: their ingredients are listed here, ready to share.',
+    emptyTitle: 'No meals picked yet',
+    ingredients: 'Ingredients',
+    markCooked: 'Mark as cooked',
+    markCookedHint: 'The meal choice then skips them for a while',
+    markCookedMessage: (count: number) =>
+      plural(
+        count,
+        'Mark this meal as cooked today? The meal choice then skips it for a while.',
+        `Mark these ${count} meals as cooked today? The meal choice then skips them for a while.`,
+      ),
+    meals: (count: number) => `Meals (${count})`,
+    // The line of the shared text that names the meals: "Meals: Leek soup, Omelette".
+    mealsLine: (titleList: readonly string[]) => `Meals: ${titleList.join(', ')}`,
+    noIngredients: 'These meals list no ingredients.',
+    notNow: 'Not now',
+    openHint: 'Opens the shopping list',
+    openLabel: (count: number) =>
+      count === 0
+        ? 'Shopping list'
+        : plural(count, 'Shopping list, 1 meal', `Shopping list, ${count} meals`),
+    // Between the quantities of one ingredient in two units: "Leek: 3 + 300 g".
+    quantitySeparator: ' + ',
+    removeFromList: 'Remove from the shopping list',
+    removeHint: 'Takes it out of the shopping list',
+    removeLabel: (title: string) => `Remove ${title} from the list`,
+    share: 'Share',
+    shareHint: 'Sends the list to another app: notes, messages, email…',
+    title: 'Shopping list',
   },
   sync: {
     appUpdateAvailable:
