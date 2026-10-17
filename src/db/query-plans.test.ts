@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { SyncApi } from '@/features/sync/sync-api';
 import {
   findOrCreateIngredient,
+  findSimilarIngredient,
   listIngredientPage,
   suggestIngredients,
 } from '@/features/ingredients/db/ingredient-queries';
@@ -21,13 +22,18 @@ const CURSOR = { id: 1, sortKey: 'm' };
 describe('query plans', () => {
   let database: AppDatabase;
   let queryList: string[];
+  // The parameters each query last ran with: plans are read with them bound, as the app runs
+  // them. With constants written in, SQLite plans some queries better than the app gets.
+  let parametersByQuery: Map<string, unknown[]>;
   let carrotId: number;
 
   beforeEach(() => {
     queryList = [];
+    parametersByQuery = new Map();
     ({ db: database } = createTestConnection({
-      logQuery: (query) => {
+      logQuery: (query, parameterList) => {
         queryList.push(query);
+        parametersByQuery.set(query, parameterList);
       },
     }));
     carrotId = findOrCreateIngredient(database, 'carrot').id;
@@ -41,10 +47,21 @@ describe('query plans', () => {
     queryList = [];
   });
 
-  const planOf = (query = '') =>
-    database
-      .all<{ detail: string }>(sql.raw(`EXPLAIN QUERY PLAN ${query.replaceAll('?', '1')}`))
+  const planOf = (query = '') => {
+    const parameterList = parametersByQuery.get(query) ?? [];
+    const statement = sql.join(
+      query
+        .split('?')
+        .map((part, index) =>
+          index < parameterList.length
+            ? sql`${sql.raw(part)}${parameterList[index]}`
+            : sql.raw(part),
+        ),
+    );
+    return database
+      .all<{ detail: string }>(sql`EXPLAIN QUERY PLAN ${statement}`)
       .map((row) => row.detail);
+  };
 
   // The EXPLAIN queries are logged too: skip them.
   const lastQuery = () => queryList.findLast((query) => !query.startsWith('EXPLAIN'));
@@ -52,18 +69,50 @@ describe('query plans', () => {
   const INGREDIENT_INDEX =
     /^SEARCH recipe_ingredients USING COVERING INDEX recipe_ingredients_ingredient_recipe_idx/;
 
-  it.each([
-    ['the first page', null],
-    ['a page after a cursor', { after: CURSOR }],
-    ['a page before a cursor', { before: CURSOR }],
-  ])('reads %s of ingredients in index order, without sorting', (_, pageRequest) => {
-    listIngredientPage(database, { pageParam: pageRequest, search: 'ca' });
+  it('reads the first page of ingredients in index order, without sorting', () => {
+    listIngredientPage(database, { pageParam: null, search: 'ca' });
     const planList = lastPlan();
 
+    expect(planList[0]).toMatch(/^SCAN ingredients USING INDEX ingredients_sort_key_id_idx/);
+    expect(planList.join('\n')).not.toContain('TEMP B-TREE');
+  });
+
+  it.each([
+    ['after', { after: CURSOR }],
+    ['before', { before: CURSOR }],
+  ])('reads a page of ingredients %s a cursor from the cursor on, in the index', (_, request) => {
+    listIngredientPage(database, { pageParam: request, search: '' });
+    const planList = lastPlan();
+
+    // A seek from the cursor, not a walk of the index from its start.
     expect(planList[0]).toMatch(
-      /^(SCAN|SEARCH) ingredients USING INDEX ingredients_sort_key_id_idx/,
+      /^SEARCH ingredients USING (COVERING )?INDEX ingredients_sort_key_id_idx \(/,
     );
     expect(planList.join('\n')).not.toContain('TEMP B-TREE');
+  });
+
+  it('looks for a similar ingredient by turning each saved name into words once', () => {
+    findSimilarIngredient(database, 'bouteille de vin rouge assez bon');
+
+    // The 16 replace() of one key in words, not 16 per word form (32 forms here).
+    expect(lastQuery()?.match(/replace\(/g)).toHaveLength(16);
+  });
+
+  it('picks a random recipe without filters in the (sort_key, id) index', () => {
+    pickRandomRecipeId(database, { ingredientIdList: [] }, undefined, () => 0);
+
+    expect(lastPlan()).toStrictEqual([
+      expect.stringMatching(/^SCAN recipes USING COVERING INDEX recipes_sort_key_id_idx/),
+    ]);
+  });
+
+  it('suggests used ingredients by checking one link each', () => {
+    suggestIngredients(database, { excludeIdList: [], isUsedOnly: true, limit: 12, search: '' });
+
+    expect(lastQuery()).toContain('exists (select 1 from "recipe_ingredients"');
+    expect(lastPlan()).toContainEqual(
+      expect.stringMatching(/^SEARCH recipe_ingredients EXISTS USING COVERING INDEX/),
+    );
   });
 
   it('counts ingredient usages with the ingredient index', () => {
@@ -165,4 +214,30 @@ describe('query plans', () => {
       expect(planList.join('\n')).not.toContain('TEMP B-TREE');
     },
   );
+
+  it('reads the next page of recipes to push from the last one sent, in the index', async () => {
+    for (let index = 0; index < 60; index++) {
+      saveRecipe(database, {
+        ingredientIdList: [],
+        instructions: '',
+        season: 'both',
+        title: `Recipe ${index}`,
+      });
+    }
+    const api: SyncApi = {
+      getServerInfo: () => Promise.resolve(undefined),
+      listChanges: () => Promise.resolve([]),
+      refreshToken: () => Promise.resolve('token'),
+      sendDeletion: () => Promise.resolve('saved'),
+      upsert: () => Promise.resolve('saved'),
+    };
+    await synchronize(database, api, INITIAL_CURSORS);
+    const nextPageQuery = queryList.find((query) =>
+      query.includes('from "recipes" where ("recipes"."updated_at", "recipes"."id") >'),
+    );
+
+    expect(planOf(nextPageQuery)).toStrictEqual([
+      expect.stringMatching(/^SEARCH recipes USING INDEX recipes_updated_at_id_idx \(/),
+    ]);
+  });
 });

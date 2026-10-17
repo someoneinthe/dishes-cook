@@ -1,7 +1,7 @@
 import { deleteItemAsync, getItem, setItem } from 'expo-secure-store';
 import Storage from 'expo-sqlite/kv-store';
 import { useSyncExternalStore } from 'react';
-import type { AppDatabase } from '@/db/types';
+import type { AppDatabase, DatabaseConnection } from '@/db/types';
 import type { SyncErrorKind } from './sync-api';
 import type { SyncCursors } from './sync-engine';
 import { checkServerVersion } from './server-version';
@@ -55,7 +55,7 @@ const running: { promise?: Promise<void>; session?: number } = {};
 // Throws a SyncError when signing in fails (nothing is saved then). Saves nothing either when
 // another connect or a disconnect came while signing in: the latest one wins.
 export async function connect(
-  database: AppDatabase,
+  connection: DatabaseConnection,
   options: Readonly<{ email: string; password: string; serverUrl: string }>,
 ): Promise<void> {
   state.session += 1;
@@ -72,7 +72,7 @@ export async function connect(
   });
   state.error = undefined;
   publish();
-  await syncNow(database);
+  await syncNow(connection);
 }
 
 // Back to the phone's data only. The recipes stay on the phone, and on the server.
@@ -98,14 +98,14 @@ export function getSyncState(): SyncState {
 
 // Pulls the server's changes and pushes the phone's. Does nothing when not connected; never
 // throws (the error is kept in the state). A call during a sync waits for that one.
-export async function syncNow(database: AppDatabase): Promise<void> {
+export async function syncNow(connection: DatabaseConnection): Promise<void> {
   if (running.promise && running.session !== state.session) {
     // Started before a connect or disconnect: it stops at its next request.
     await running.promise;
   }
   if (!running.promise) {
     running.session = state.session;
-    running.promise = runSyncOnce(database);
+    running.promise = runSyncOnce(connection);
   }
   await running.promise;
 }
@@ -158,7 +158,7 @@ function readPulledUntil(value: unknown): SyncCursors['pulledUntil'] {
   };
 }
 
-async function runSync(database: AppDatabase): Promise<void> {
+async function runSync(connection: DatabaseConnection): Promise<void> {
   const stored = read();
   if (!stored) {
     return;
@@ -201,7 +201,9 @@ async function runSync(database: AppDatabase): Promise<void> {
       throw new SyncError(versionCheck, `Versions don't match: ${versionCheck}`);
     }
     state.isAppUpdateAvailable = versionCheck === 'newer-server';
-    const cursors = await synchronize(database, api, stored.cursors);
+    const cursors = await synchronize(connection.db, api, stored.cursors, {
+      holdChanges: connection.holdSyncChanges,
+    });
     // Disconnected (or connected again) while syncing: nothing to save.
     if (!isCurrent()) {
       return;
@@ -217,14 +219,16 @@ async function runSync(database: AppDatabase): Promise<void> {
       console.error('Sync failed', error);
     }
   } finally {
+    // What it pulled, even if it failed later: screens refresh once.
+    connection.releaseSyncChanges();
     state.isSyncing = false;
     publish();
   }
 }
 
-async function runSyncOnce(database: AppDatabase): Promise<void> {
+async function runSyncOnce(connection: DatabaseConnection): Promise<void> {
   try {
-    await runSync(database);
+    await runSync(connection);
   } finally {
     running.promise = undefined;
   }

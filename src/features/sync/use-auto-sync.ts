@@ -2,11 +2,14 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import type { DatabaseConnection } from '@/db/types';
 import { useDatabaseConnection } from '@/db/database-context';
-import { getSyncState, syncNow, useSyncState } from './sync-store';
+import { getPendingChangeCount, getSyncState, syncNow, useSyncState } from './sync-store';
 
 // Changes made on the phone are pushed a few seconds after the last one, so a burst of edits makes
 // one sync.
 export const WRITE_SYNC_DELAY_MS = 5000;
+
+// Back in the foreground within this time of a sync that worked, with nothing waiting: no sync.
+export const FOREGROUND_SYNC_INTERVAL_MS = 60_000;
 
 // Syncs with the server while connected: when the app starts or comes back to the foreground, and
 // after changes. Away from the home network a sync just fails quietly (the settings show it) and
@@ -22,16 +25,28 @@ export function useAutoSync(): void {
 function startAutoSync(connection: DatabaseConnection): () => void {
   const { db } = connection;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  // Writes notified during a sync are the sync's own (pulled rows) or the user's: a sync follows
-  // anyway, which pushes the user's and finds nothing new otherwise.
+  // The user's writes during a sync: another one follows, which pushes them. The sync's own writes
+  // (pulled rows) don't call for one.
   let isWrittenDuringSync = false;
 
+  // Synced a moment ago, without error, and nothing waits to be sent.
+  const isUpToDate = () => {
+    const { error, lastSyncedAt } = getSyncState();
+    return (
+      error === undefined &&
+      lastSyncedAt !== undefined &&
+      Date.now() - lastSyncedAt < FOREGROUND_SYNC_INTERVAL_MS &&
+      getPendingChangeCount(db) === 0
+    );
+  };
   const run = async () => {
-    await syncNow(db);
-    if (!isWrittenDuringSync) {
+    await syncNow(connection);
+    // Also when the sync itself left changes to send (an ingredient deleted elsewhere that a
+    // recipe here still uses is sent again), but not after a failure: the next trigger retries.
+    const isLeftToSend = getSyncState().error === undefined && getPendingChangeCount(db) > 0;
+    if (!isWrittenDuringSync && !isLeftToSend) {
       return;
     }
-
     isWrittenDuringSync = false;
     schedule();
   };
@@ -42,11 +57,14 @@ function startAutoSync(connection: DatabaseConnection): () => void {
 
   void run();
   const appStateSubscription = AppState.addEventListener('change', (appState) => {
-    if (appState === 'active') {
+    if (appState === 'active' && !isUpToDate()) {
       void run();
     }
   });
-  const unsubscribe = connection.subscribe(() => {
+  const unsubscribe = connection.subscribe((source) => {
+    if (source === 'sync') {
+      return;
+    }
     if (getSyncState().isSyncing) {
       isWrittenDuringSync = true;
     } else {

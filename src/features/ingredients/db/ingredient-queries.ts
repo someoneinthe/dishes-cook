@@ -1,5 +1,5 @@
 import type { SQL } from 'drizzle-orm';
-import { and, asc, desc, eq, inArray, ne, notInArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import type { Page, PageRequest } from '@/db/pagination';
 import type { AppDatabase } from '@/db/types';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
@@ -33,6 +33,8 @@ const SEPARATOR_LIST = ['-', ',', '.', ';', ':', '/', '(', ')', '!', '?', '"', '
 // Number of recipes using the ingredient, read from the (ingredient_id, recipe_id) index. Written
 // out qualified: Drizzle renders `${ingredients.id}` as a bare "id" inside a select.
 const RECIPE_COUNT = sql<number>`(select count(*) from "recipe_ingredients" where "recipe_ingredients"."ingredient_id" = "ingredients"."id")`;
+// A link of the ingredient to a recipe: whether it's used, on the ingredient's index.
+const USED_LINK = sql`(select 1 from "recipe_ingredients" where "recipe_ingredients"."ingredient_id" = "ingredients"."id")`;
 
 // Deletes an unused ingredient. The foreign key is ON DELETE RESTRICT, so usage is checked first
 // instead of catching a driver-specific error. The deletion is kept for the sync server.
@@ -125,15 +127,15 @@ export function findSimilarIngredient(database: AppDatabase, name: string): Ingr
   if (sameForm) {
     return shown(sameForm);
   }
-  // ' vin rouge ' inside ' bouteille de vin rouge assez bon ': whole words only.
-  const paddedList = formList.map(
-    (form) => ` ${form.replaceAll(CURLY_APOSTROPHE, "'").replaceAll(NOT_A_WORD, ' ').trim()} `,
-  );
+  // ' vin rouge ' inside ' bouteille de vin rouge assez bon ': whole words only. Every form on its
+  // own line (a saved key has no line break, so a match stays within one form): one instr() per
+  // ingredient, its key turned into words once, rather than once per form.
+  const formLines = formList
+    .map((form) => ` ${form.replaceAll(CURLY_APOSTROPHE, "'").replaceAll(NOT_A_WORD, ' ').trim()} `)
+    .join('\n');
   // The stored key with its apostrophes written ' too.
   const storedKey = toWordsInSql(ingredients.sortKey);
-  const inNameWhere = or(
-    ...paddedList.map((padded) => sql`instr(${padded}, ' ' || ${storedKey} || ' ') > 0`),
-  );
+  const inNameWhere = sql`instr(${formLines}, ' ' || ${storedKey} || ' ') > 0`;
   const inName = database
     .select({ id: ingredients.id, name: ingredients.name })
     .from(ingredients)
@@ -217,7 +219,8 @@ export function suggestIngredients(
       and(
         searchWhere(search),
         excludeIdList.length > 0 ? notInArray(ingredients.id, [...excludeIdList]) : undefined,
-        isUsedOnly ? sql`${RECIPE_COUNT} > 0` : undefined,
+        // Used: one link is enough (not counting them all, as the order below does).
+        isUsedOnly ? exists(USED_LINK) : undefined,
       ),
     )
     .orderBy(

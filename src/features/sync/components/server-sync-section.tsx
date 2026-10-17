@@ -6,7 +6,7 @@ import type { Messages } from '@/i18n/en';
 import { Button } from '@/components/button';
 import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
-import { useDatabase } from '@/db/database-context';
+import { useDatabaseConnection } from '@/db/database-context';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import type { SyncErrorKind } from '../sync-api';
@@ -24,7 +24,7 @@ type Storage = 'local' | 'server';
 // Settings › Data storage: on this device only, or synced with a server (address + account).
 export function ServerSyncSection({ isSyncNowFocused = false }: ServerSyncSectionProps) {
   const t = useMessages();
-  const database = useDatabase();
+  const connection = useDatabaseConnection();
   const syncState = useSyncState();
   const isConnected = syncState.connection !== undefined;
   // "Synced with a server" chosen, before connecting.
@@ -55,7 +55,7 @@ export function ServerSyncSection({ isSyncNowFocused = false }: ServerSyncSectio
       {isConnected && (
         <SyncStatus
           isSyncNowFocused={isSyncNowFocused}
-          onSyncNow={() => void syncNow(database)}
+          onSyncNow={() => void syncNow(connection)}
           state={syncState}
         />
       )}
@@ -69,7 +69,7 @@ export function ServerSyncSection({ isSyncNowFocused = false }: ServerSyncSectio
 
 function ConnectForm() {
   const t = useMessages();
-  const database = useDatabase();
+  const connection = useDatabaseConnection();
   const [serverAddress, setServerAddress] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -89,7 +89,7 @@ function ConnectForm() {
     setError(undefined);
     setIsConnecting(true);
     try {
-      await connect(database, { email, password, serverUrl });
+      await connect(connection, { email, password, serverUrl });
     } catch (connectError) {
       const kind = connectError instanceof SyncError ? connectError.kind : 'failed';
       // Signing in: "unauthorized" is a wrong email or password.

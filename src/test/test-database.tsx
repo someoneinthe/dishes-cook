@@ -12,26 +12,26 @@ import { createQueryClient, DataProvider } from '@/db/data-provider';
 // A fresh in-memory SQLite database with the app's real migrations, for query and screen tests.
 // better-sqlite3 runs the same SQLite engine (and SQL) as expo-sqlite on the device, and live
 // queries are notified by the same change notifier as in the app.
-// `logQuery` receives the SQL of every query (used to check query plans).
+// `logQuery` receives the SQL of every query and its parameters (used to check query plans).
 export function createTestConnection(
-  options: Readonly<{ logQuery?: (query: string) => void }> = {},
+  options: Readonly<{ logQuery?: (query: string, parameterList: unknown[]) => void }> = {},
 ): DatabaseConnection {
   const sqlite = new Database(':memory:');
   sqlite.pragma('foreign_keys = ON');
 
-  const notifier = createChangeNotifier();
+  const { logger, ...notifier } = createChangeNotifier();
   const { logQuery } = options;
   const database = drizzle(sqlite, {
     logger: {
-      logQuery: (query) => {
-        notifier.logger.logQuery(query);
-        logQuery?.(query);
+      logQuery: (query, parameterList) => {
+        logger.logQuery(query);
+        logQuery?.(query, parameterList);
       },
     },
   });
   migrate(database, { migrationsFolder: path.join(__dirname, '../db/migrations') });
 
-  return { db: database, subscribe: notifier.subscribe };
+  return { db: database, ...notifier };
 }
 
 // TanStack Query notifies components on a timer by default: as microtasks, its updates settle inside

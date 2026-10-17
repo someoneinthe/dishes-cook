@@ -1,6 +1,7 @@
 import { getItem, setItem } from 'expo-secure-store';
 import Storage from 'expo-sqlite/kv-store';
-import type { AppDatabase } from '@/db/types';
+import type { AppDatabase, DatabaseConnection } from '@/db/types';
+import { recipes } from '@/db/schema';
 import { saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
 import { titlesOf } from '@/test/sync-scenarios';
@@ -15,12 +16,14 @@ const OTHER_SERVER_HOST = 'other.example.org';
 const OTHER_SERVER_URL = `https://${OTHER_SERVER_HOST}`;
 
 describe('sync store', () => {
+  let connection: DatabaseConnection;
   let database: AppDatabase;
   let server: ReturnType<typeof createFakeSyncServer>;
   let otherServer: ReturnType<typeof createFakeSyncServer>;
 
   beforeEach(() => {
-    database = createTestConnection().db;
+    connection = createTestConnection();
+    database = connection.db;
     server = createFakeSyncServer(ACCOUNT);
     otherServer = createFakeSyncServer(ACCOUNT);
     // Each address is its own server.
@@ -40,8 +43,8 @@ describe('sync store', () => {
 
   it('pulls everything again once after an update from a single pull time', async () => {
     addSoup();
-    await connect(database, { ...ACCOUNT, serverUrl: SERVER_URL });
-    const otherPhone = createTestConnection().db;
+    await connect(connection, { ...ACCOUNT, serverUrl: SERVER_URL });
+    const otherPhone = createTestConnection();
     // Stored by an older version: one time for both tables, here later than every row.
     Storage.setItemSync(
       'sync',
@@ -55,13 +58,34 @@ describe('sync store', () => {
 
     await syncNow(otherPhone);
 
-    expect(titlesOf({ cursors: INITIAL_CURSORS, db: otherPhone })).toStrictEqual(['Soup']);
+    expect(titlesOf({ cursors: INITIAL_CURSORS, db: otherPhone.db })).toStrictEqual(['Soup']);
+  });
+
+  it('refreshes the screens once per sync, however many pages it pulls', async () => {
+    const otherPhone = createTestConnection();
+    for (let index = 0; index < 120; index++) {
+      saveRecipe(otherPhone.db, {
+        ingredientIdList: [],
+        instructions: '',
+        season: 'both',
+        title: `Recipe ${index}`,
+      });
+    }
+    await connect(otherPhone, { ...ACCOUNT, serverUrl: SERVER_URL });
+    await disconnect();
+    const listener = jest.fn();
+    connection.subscribe(listener);
+
+    await connect(connection, { ...ACCOUNT, serverUrl: SERVER_URL });
+
+    expect(database.select().from(recipes).all()).toHaveLength(120);
+    expect(listener.mock.calls).toStrictEqual([['sync']]);
   });
 
   it('asks to sign in again when the token is missing (a phone restored from a backup)', async () => {
     Storage.setItemSync('sync', JSON.stringify({ email: ACCOUNT.email, serverUrl: SERVER_URL }));
 
-    await syncNow(database);
+    await syncNow(connection);
 
     expect(getSyncState()).toMatchObject({
       connection: { serverUrl: SERVER_URL },
@@ -70,10 +94,10 @@ describe('sync store', () => {
   });
 
   it('keeps nothing of a sync running when the phone stops syncing', async () => {
-    await connect(database, { ...ACCOUNT, serverUrl: SERVER_URL });
+    await connect(connection, { ...ACCOUNT, serverUrl: SERVER_URL });
     addSoup();
 
-    const sync = syncNow(database);
+    const sync = syncNow(connection);
     await disconnect();
     await sync;
 
@@ -82,26 +106,26 @@ describe('sync store', () => {
   });
 
   it('saves nothing of a connect overtaken while signing in', async () => {
-    const connecting = connect(database, { ...ACCOUNT, serverUrl: SERVER_URL });
+    const connecting = connect(connection, { ...ACCOUNT, serverUrl: SERVER_URL });
     await disconnect();
     await connecting;
 
     expect(getItem('sync-token')).toBeNull();
     expect(getSyncState().connection).toBeUndefined();
 
-    const connectingAgain = connect(database, { ...ACCOUNT, serverUrl: SERVER_URL });
-    await connect(database, { ...ACCOUNT, serverUrl: OTHER_SERVER_URL });
+    const connectingAgain = connect(connection, { ...ACCOUNT, serverUrl: SERVER_URL });
+    await connect(connection, { ...ACCOUNT, serverUrl: OTHER_SERVER_URL });
     await connectingAgain;
 
     expect(getSyncState().connection).toMatchObject({ serverUrl: OTHER_SERVER_URL });
   });
 
   it('syncs with the new server when connected to it during a sync', async () => {
-    await connect(database, { ...ACCOUNT, serverUrl: SERVER_URL });
+    await connect(connection, { ...ACCOUNT, serverUrl: SERVER_URL });
     addSoup();
 
-    const sync = syncNow(database);
-    await connect(database, { ...ACCOUNT, serverUrl: OTHER_SERVER_URL });
+    const sync = syncNow(connection);
+    await connect(connection, { ...ACCOUNT, serverUrl: OTHER_SERVER_URL });
     await sync;
 
     expect(getSyncState()).toMatchObject({

@@ -158,7 +158,8 @@ export function listRecipePage(
 
 // A random recipe among those matching the filters, other than `excludedId` when possible (asking
 // again must change the suggestion). `random` returns a number in [0, 1).
-// Reads one id at a random offset instead of loading every matching id.
+// Reads one id at a random offset instead of loading every matching id, in (sort_key, id) order:
+// without filters, the walk to the offset stays in that index instead of reading whole rows.
 export function pickRandomRecipeId(
   database: AppDatabase,
   filters: RecipeFilters,
@@ -179,7 +180,7 @@ export function pickRandomRecipeId(
         .select({ id: recipes.id })
         .from(recipes)
         .where(where)
-        .orderBy(asc(recipes.id))
+        .orderBy(asc(recipes.sortKey), asc(recipes.id))
         .limit(1)
         .offset(Math.floor(random() * candidateCount))
         .get()?.id;

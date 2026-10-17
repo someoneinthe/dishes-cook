@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gt, inArray, lte, ne, notExists, or, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, lte, ne, notExists, sql } from 'drizzle-orm';
 import type { Course, Season, SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { Quantity } from '@/lib/units';
@@ -74,17 +74,20 @@ export function countPendingChanges(
   return deletionCount + countChanged(ingredients) + countChanged(recipes);
 }
 
+// `holdChanges` runs each batch of writes (see DatabaseConnection.holdSyncChanges): screens refresh
+// once the sync is over rather than after each page.
 export async function synchronize(
   database: AppDatabase,
   api: SyncApi,
   cursors: SyncCursors,
-  now: () => number = Date.now,
+  options: Readonly<{ holdChanges?: (write: () => void) => void; now?: () => number }> = {},
 ): Promise<SyncCursors> {
+  const { holdChanges = (write: () => void) => write(), now = Date.now } = options;
   // Changes made from now on, even during this sync, are pushed next time.
   const startedAt = now();
   const pullIngredients = (since: string) =>
     pull(api, 'ingredients', since, (rowList) => {
-      applyIngredients(database, rowList);
+      holdChanges(() => applyIngredients(database, rowList));
     });
   // Ingredients first: pulled recipes link to them.
   let ingredientsPulledUntil = await pullIngredients(cursors.pulledUntil.ingredients);
@@ -92,13 +95,17 @@ export async function synchronize(
   // ingredients first). Linked once those are pulled too.
   const unlinkedList: ServerRecipe[] = [];
   const recipesPulledUntil = await pull(api, 'recipes', cursors.pulledUntil.recipes, (rowList) => {
-    unlinkedList.push(...applyRecipes(database, rowList));
+    holdChanges(() => {
+      unlinkedList.push(...applyRecipes(database, rowList));
+    });
   });
   if (unlinkedList.length > 0) {
     ingredientsPulledUntil = await pullIngredients(ingredientsPulledUntil);
-    applyRecipes(database, unlinkedList);
+    holdChanges(() => {
+      applyRecipes(database, unlinkedList);
+    });
   }
-  await pushDeletions(database, api);
+  await pushDeletions(database, api, holdChanges);
   await pushIngredients(database, api, cursors.pushedFrom);
   await pushRecipes(database, api, cursors.pushedFrom);
   return {
@@ -217,18 +224,16 @@ function applyRecipes(
 }
 
 // Rows changed at or after `pushedFrom`, after the keyset cursor (the last row of the previous
-// page), in (updated_at, id) order: the order of the *_updated_at_id_idx indexes.
+// page), in (updated_at, id) order: the order of the *_updated_at_id_idx indexes. After a cursor
+// (itself changed at or after `pushedFrom`), a row value: the index is read from the cursor on.
 function changedSince(
   table: typeof ingredients | typeof recipes,
   pushedFrom: number,
   cursor: PushCursor | undefined,
 ) {
-  const since = sql`${table.updatedAt} >= ${pushedFrom}`;
-  if (!cursor) {
-    return since;
-  }
-  const sameTimeLaterId = and(eq(table.updatedAt, cursor.updatedAt), gt(table.id, cursor.id));
-  return and(since, or(gt(table.updatedAt, cursor.updatedAt), sameTimeLaterId));
+  return cursor
+    ? sql`(${table.updatedAt}, ${table.id}) > (${cursor.updatedAt}, ${cursor.id})`
+    : sql`${table.updatedAt} >= ${pushedFrom}`;
 }
 
 // Deleted on another phone. Still used by a recipe here (added since): kept, and pushed again.
@@ -445,7 +450,11 @@ function pulledQuantity(quantities: unknown, syncId: string): Quantity | undefin
   return stored && toQuantity(stored.amount, stored.unit);
 }
 
-async function pushDeletions(database: AppDatabase, api: SyncApi): Promise<void> {
+async function pushDeletions(
+  database: AppDatabase,
+  api: SyncApi,
+  holdChanges: (write: () => void) => void,
+): Promise<void> {
   for (;;) {
     const deletionList = database
       .select()
@@ -453,14 +462,24 @@ async function pushDeletions(database: AppDatabase, api: SyncApi): Promise<void>
       .orderBy(asc(syncDeletions.deletedAt))
       .limit(PAGE_SIZE)
       .all();
-    // A page's rows are independent: sent together. Each deletion is forgotten once sent; when
-    // it's missing on the server (never pushed) or changed there later, there's nothing more to tell.
-    await settleAll(
-      deletionList.map(async (deletion) => {
-        await api.sendDeletion(deletion.tableName, deletion.syncId, deletion.deletedAt);
-        forgetDeletion(database, deletion.tableName, deletion.syncId);
-      }),
+    // A page's rows are independent: sent together. The ones sent are forgotten, together; when
+    // one is missing on the server (never pushed) or changed there later, there's nothing more to
+    // tell.
+    const resultList = await Promise.allSettled(
+      deletionList.map((deletion) =>
+        api.sendDeletion(deletion.tableName, deletion.syncId, deletion.deletedAt),
+      ),
     );
+    holdChanges(() => {
+      database.transaction((tx) => {
+        for (const [index, deletion] of deletionList.entries()) {
+          if (resultList[index]?.status === 'fulfilled') {
+            forgetDeletion(tx, deletion.tableName, deletion.syncId);
+          }
+        }
+      });
+    });
+    throwFirstFailure(resultList);
     if (deletionList.length < PAGE_SIZE) {
       return;
     }
@@ -579,7 +598,10 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
 // Waits for every request of a page, then fails with the first error if any: no request is left
 // running once the sync has ended (the next one could overlap it).
 async function settleAll(promiseList: readonly Promise<unknown>[]): Promise<void> {
-  const resultList = await Promise.allSettled(promiseList);
+  throwFirstFailure(await Promise.allSettled(promiseList));
+}
+
+function throwFirstFailure(resultList: readonly PromiseSettledResult<unknown>[]): void {
   for (const result of resultList) {
     if (result.status === 'rejected') {
       throw result.reason;

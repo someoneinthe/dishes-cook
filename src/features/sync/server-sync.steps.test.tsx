@@ -64,7 +64,7 @@ defineFeature(feature, (test) => {
     });
   };
   const thePhoneIsSyncedWithTheServer = async () => {
-    await connect(connection.db, { ...ACCOUNT, serverUrl: SERVER_URL });
+    await connect(connection, { ...ACCOUNT, serverUrl: SERVER_URL });
     await theSettingsAreOpen();
   };
   const connectWith = async (password: string) => {

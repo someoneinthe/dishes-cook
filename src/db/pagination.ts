@@ -1,6 +1,6 @@
 import type { SQL } from 'drizzle-orm';
 import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
-import { and, eq, gt, lt, or } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 // Lists never load more than this many rows per query (see CONTRIBUTING › Lists).
 export const PAGE_SIZE = 50;
@@ -27,18 +27,17 @@ export function isBackward(pageParameter: PageRequest): boolean {
 }
 
 // Keyset ("seek") pagination: `WHERE (sort_key, id) > cursor ORDER BY sort_key, id LIMIT n` reads
-// the (sort_key, id) index from the cursor on, so every page costs the same, unlike OFFSET.
+// the (sort_key, id) index from the cursor on, so every page costs the same, unlike OFFSET. Written
+// as a row value: SQLite can't seek with `sort_key > ? OR (sort_key = ? AND id > ?)`, which
+// walks the index from its start on every page.
 export function keysetWhere(columns: KeysetColumns, pageParameter: PageRequest): SQL | undefined {
   if (!pageParameter) {
     return undefined;
   }
   const isAfter = 'after' in pageParameter;
   const cursor = isAfter ? pageParameter.after : pageParameter.before;
-  const compare = isAfter ? gt : lt;
-  return or(
-    compare(columns.sortKey, cursor.sortKey),
-    and(eq(columns.sortKey, cursor.sortKey), compare(columns.id, cursor.id)),
-  );
+  const operator = sql.raw(isAfter ? '>' : '<');
+  return sql`(${columns.sortKey}, ${columns.id}) ${operator} (${cursor.sortKey}, ${cursor.id})`;
 }
 
 // Builds the page from rows fetched with LIMIT PAGE_SIZE + 1 (the extra row tells whether there's
