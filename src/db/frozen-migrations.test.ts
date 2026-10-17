@@ -16,6 +16,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
     '4cb4b741ca945ba1bd6d7e2c1c2ccdd0bb5c22f46486736c9c4a9dd959782e21',
   ],
   [
+    'server/migrations/1792250000-sign-in-rate-limit.js',
+    'e6c04cee146542ec7d1f5992e2e954f07a6b0d7f7c042c77c0af55be8ca68294',
+  ],
+  [
     'src/db/migrations/0000_init.sql',
     '76cc3f90b737b4d4fc587e49f95b56a56dbffc1d15747624574ea1ef73c7a018',
   ],

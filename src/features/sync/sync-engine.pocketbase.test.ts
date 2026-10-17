@@ -3,7 +3,11 @@
 */
 import type { SyncTestServer } from '@/test/sync-scenarios';
 import { nodeFetch } from '@/test/node-fetch';
-import { createPocketBaseServer, POCKETBASE_URL } from '@/test/pocketbase-test-server';
+import {
+  createPocketBaseServer,
+  POCKETBASE_URL,
+  readPocketBaseSettings,
+} from '@/test/pocketbase-test-server';
 import { describeSyncScenarios } from '@/test/sync-scenarios';
 import { checkServerVersion } from './server-version';
 import { createSyncApi, signIn } from './sync-api';
@@ -36,6 +40,17 @@ describe('synchronize with PocketBase', () => {
         method: 'POST',
         token: asToken,
       });
+
+    it('limits password sign-ins only, not token renewals nor syncs (server/migrations)', async () => {
+      // This machine is left out of the limit for the tests (scripts/pocketbase-server.sh).
+      await expect(readPocketBaseSettings(server.serverUrl)).resolves.toMatchObject({
+        rateLimits: {
+          enabled: true,
+          rules: [{ audience: '', duration: 60, label: '*:auth', maxRequests: 5 }],
+        },
+        trustedProxy: { headers: [] },
+      });
+    });
 
     it('tells this app its versions match (server/hooks)', async () => {
       const api = createSyncApi({ fetch: nodeFetch, serverUrl: server.serverUrl, token: '' });

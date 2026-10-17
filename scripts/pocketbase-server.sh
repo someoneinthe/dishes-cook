@@ -56,6 +56,21 @@ pocketbase_log() {
   cat "$pocketbase_work/pocketbase.log" >&2
 }
 
+# Tests sign in many times a minute from this machine (the app's account and the superuser): the
+# sign-in limit (server/migrations) leaves it out. A real server keeps it.
+exclude_this_machine_from_rate_limits() {
+  local token
+  token="$(curl --fail --silent --show-error \
+    --header 'Content-Type: application/json' \
+    --data "{\"identity\":\"$POCKETBASE_SUPERUSER_EMAIL\",\"password\":\"$POCKETBASE_SUPERUSER_PASSWORD\"}" \
+    "$POCKETBASE_URL/api/collections/_superusers/auth-with-password" |
+    node -e 'let s = ""; process.stdin.on("data", (c) => (s += c)).on("end", () => console.log(JSON.parse(s).token))')"
+  curl --fail --silent --show-error --output /dev/null --request PATCH \
+    --header "Authorization: $token" --header 'Content-Type: application/json' \
+    --data '{"rateLimits":{"excludedIPs":["127.0.0.1","::1"]}}' \
+    "$POCKETBASE_URL/api/settings"
+}
+
 start_pocketbase() {
   local binary
   binary="$(pocketbase_binary)"
@@ -74,6 +89,7 @@ start_pocketbase() {
 
   for _ in $(seq 1 50); do
     if curl --fail --silent "$POCKETBASE_URL/api/health" > /dev/null; then
+      exclude_this_machine_from_rate_limits
       echo "PocketBase $pocketbase_version on $POCKETBASE_URL"
       return 0
     fi
