@@ -63,6 +63,22 @@ export async function readPocketBaseSettings(serverUrl: string): Promise<unknown
   return (await response.json()) as unknown;
 }
 
+// Which addresses skip the server's rate limits: this machine's, for the tests
+// (scripts/pocketbase-server.sh), or none to check the limits themselves.
+export async function setRateLimitExclusions(serverUrl: string, ipList: string[]): Promise<void> {
+  const response = await nodeFetch(`${serverUrl}/api/settings`, {
+    body: JSON.stringify({ rateLimits: { excludedIPs: ipList } }),
+    headers: {
+      Authorization: await signInSuperuser(serverUrl),
+      'Content-Type': 'application/json',
+    },
+    method: 'PATCH',
+  });
+  if (!response.ok) {
+    throw new Error(`PocketBase rate-limit exclusions: ${response.status}`);
+  }
+}
+
 // A variable set by scripts/test-pocketbase.sh. Read as unknown: CI's types give env values `any`.
 function environment(name: string): string | undefined {
   const value: unknown = env[name];

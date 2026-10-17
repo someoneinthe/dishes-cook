@@ -7,6 +7,7 @@ import {
   createPocketBaseServer,
   POCKETBASE_URL,
   readPocketBaseSettings,
+  setRateLimitExclusions,
 } from '@/test/pocketbase-test-server';
 import { describeSyncScenarios } from '@/test/sync-scenarios';
 import { checkServerVersion } from './server-version';
@@ -41,14 +42,38 @@ describe('synchronize with PocketBase', () => {
         token: asToken,
       });
 
-    it('limits password sign-ins only, not token renewals nor syncs (server/migrations)', async () => {
-      // This machine is left out of the limit for the tests (scripts/pocketbase-server.sh).
-      await expect(readPocketBaseSettings(server.serverUrl)).resolves.toMatchObject({
-        rateLimits: {
-          enabled: true,
-          rules: [{ audience: '', duration: 60, label: '*:auth', maxRequests: 5 }],
-        },
-        trustedProxy: { headers: [] },
+    describe('with the rate limits applied to this machine', () => {
+      // This machine is left out of the limits for the other tests (scripts/pocketbase-server.sh).
+      beforeEach(async () => {
+        await setRateLimitExclusions(server.serverUrl, []);
+      });
+
+      afterEach(async () => {
+        await setRateLimitExclusions(server.serverUrl, ['127.0.0.1', '::1']);
+      });
+
+      it('limits password sign-ins to 5 a minute, not token renewals nor syncs (server/migrations)', async () => {
+        const signInStatusList: number[] = [];
+        for (let attempt = 0; attempt < 6; attempt++) {
+          const response = await call('collections/users/auth-with-password', {
+            body: JSON.stringify({ identity: server.account.email, password: 'wrong' }),
+            method: 'POST',
+          });
+          signInStatusList.push(response.status);
+        }
+        const refreshed = await call('collections/users/auth-refresh', { method: 'POST', token });
+        const listed = await call('collections/recipes/records', { token });
+
+        expect(signInStatusList).toStrictEqual([400, 400, 400, 400, 400, 429]);
+        expect(refreshed.status).toBe(200);
+        expect(listed.status).toBe(200);
+        await expect(readPocketBaseSettings(server.serverUrl)).resolves.toMatchObject({
+          rateLimits: {
+            enabled: true,
+            rules: [{ audience: '', duration: 60, label: '*:auth', maxRequests: 5 }],
+          },
+          trustedProxy: { headers: [] },
+        });
       });
     });
 
