@@ -81,6 +81,13 @@ function ConnectForm() {
   const [error, setError] = useState<ConnectError>();
   const [isConnecting, setIsConnecting] = useState(false);
   const errorOf = (field: ConnectField) => (error?.field === field ? error.message : undefined);
+  // Editing a field clears its error, and the form's own; another field's error stays.
+  const edit = (field: ConnectField, setValue: (value: string) => void) => (value: string) => {
+    setValue(value);
+    if (error?.field === field || error?.field === 'form') {
+      setError(undefined);
+    }
+  };
 
   const onConnect = async () => {
     const serverUrl = normalizeServerUrl(serverAddress);
@@ -119,7 +126,7 @@ function ConnectForm() {
         hint={t.sync.serverAddressHint}
         keyboardType="url"
         label={t.sync.serverAddress}
-        onChangeText={setServerAddress}
+        onChangeText={edit('address', setServerAddress)}
         value={serverAddress}
       />
       <TextField
@@ -130,7 +137,7 @@ function ConnectForm() {
         error={errorOf('email')}
         keyboardType="email-address"
         label={t.sync.email}
-        onChangeText={setEmail}
+        onChangeText={edit('email', setEmail)}
         textContentType="username"
         value={email}
       />
@@ -141,7 +148,7 @@ function ConnectForm() {
         editable={!isConnecting}
         error={errorOf('password')}
         label={t.sync.password}
-        onChangeText={setPassword}
+        onChangeText={edit('password', setPassword)}
         onSubmitEditing={() => void onConnect()}
         returnKeyType="go"
         secureTextEntry
