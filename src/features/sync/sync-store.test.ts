@@ -81,6 +81,21 @@ describe('sync store', () => {
     expect(getSyncState()).toMatchObject({ connection: undefined, error: undefined });
   });
 
+  it('saves nothing of a connect overtaken while signing in', async () => {
+    const connecting = connect(database, { ...ACCOUNT, serverUrl: SERVER_URL });
+    await disconnect();
+    await connecting;
+
+    expect(getItem('sync-token')).toBeNull();
+    expect(getSyncState().connection).toBeUndefined();
+
+    const connectingAgain = connect(database, { ...ACCOUNT, serverUrl: SERVER_URL });
+    await connect(database, { ...ACCOUNT, serverUrl: OTHER_SERVER_URL });
+    await connectingAgain;
+
+    expect(getSyncState().connection).toMatchObject({ serverUrl: OTHER_SERVER_URL });
+  });
+
   it('syncs with the new server when connected to it during a sync', async () => {
     await connect(database, { ...ACCOUNT, serverUrl: SERVER_URL });
     addSoup();

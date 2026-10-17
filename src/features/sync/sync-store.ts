@@ -52,13 +52,18 @@ const listenerSet = new Set<() => void>();
 const running: { promise?: Promise<void>; session?: number } = {};
 
 // Signs in, saves the server, then syncs: the phone's recipes and the server's are merged.
-// Throws a SyncError when signing in fails (nothing is saved then).
+// Throws a SyncError when signing in fails (nothing is saved then). Saves nothing either when
+// another connect or a disconnect came while signing in: the latest one wins.
 export async function connect(
   database: AppDatabase,
   options: Readonly<{ email: string; password: string; serverUrl: string }>,
 ): Promise<void> {
   state.session += 1;
+  const session = state.session;
   const token = await signIn(options);
+  if (state.session !== session) {
+    return;
+  }
   setItem(TOKEN_KEY, token);
   write({
     cursors: INITIAL_CURSORS,
