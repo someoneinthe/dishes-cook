@@ -11,7 +11,7 @@ import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import type { SyncErrorKind } from '../sync-api';
 import type { SyncState } from '../sync-store';
-import { normalizeServerUrl, serverHost, SyncError } from '../sync-api';
+import { isInsecureServerUrl, normalizeServerUrl, serverHost, SyncError } from '../sync-api';
 import { connect, disconnect, syncNow, useSyncState } from '../sync-store';
 
 type ServerSyncSectionProps = Readonly<{
@@ -80,6 +80,10 @@ function ConnectForm() {
     const serverUrl = normalizeServerUrl(serverAddress);
     if (!serverUrl) {
       setError(t.sync.invalidAddress);
+      return;
+    }
+    if (isInsecureServerUrl(serverUrl)) {
+      setError(t.sync.insecureAddress);
       return;
     }
     if (!password || !email.trim()) {

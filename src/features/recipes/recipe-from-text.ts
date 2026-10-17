@@ -56,6 +56,10 @@ const MAX_HEADING_LENGTH = 40;
 const MAX_INGREDIENT_WORDS = 8;
 // More lines are likely not ingredients (a misread page): the user adds the rest.
 const MAX_INGREDIENTS = 40;
+// Longest texts a recipe passed as text keeps, as the sync server accepts them (server/migrations).
+const MAX_PASSED_NAME_LENGTH = 200;
+const MAX_PASSED_TITLE_LENGTH = 500;
+const MAX_PASSED_INSTRUCTIONS_LENGTH = 100_000;
 // The title is looked for among the first lines when there is no ingredients heading.
 const TITLE_LOOKUP_LINES = 5;
 // A title is at least this much larger than the ingredients' heading, or, without a heading, than
@@ -186,7 +190,8 @@ const STEP_NUMBER_PATTERN = /^(?:étape|etape|step)\s?(\d+)$/i;
 const UNICODE_FRACTIONS: Readonly<Record<string, string>> = { '½': '1/2', '¼': '1/4', '¾': '3/4' };
 
 // A recipe passed as text (the new-recipe form's `scanned` parameter, from useNewRecipe), checked
-// field by field; undefined when it isn't one.
+// field by field; undefined when it isn't one. Any app can open the form with one (a
+// dishescook:// link): no more ingredients than a photo gives, nor longer texts than a sync keeps.
 export function parseScannedRecipe(json: string | undefined): ScannedRecipe | undefined {
   try {
     const value: unknown = json === undefined ? undefined : JSON.parse(json);
@@ -194,9 +199,14 @@ export function parseScannedRecipe(json: string | undefined): ScannedRecipe | un
       return undefined;
     }
     return {
-      ingredientList: value.ingredientList.flatMap((item: unknown) => toScannedIngredient(item)),
-      instructions: typeof value.instructions === 'string' ? value.instructions : '',
-      title: typeof value.title === 'string' ? value.title : '',
+      ingredientList: value.ingredientList
+        .slice(0, MAX_INGREDIENTS)
+        .flatMap((item: unknown) => toScannedIngredient(item)),
+      instructions:
+        typeof value.instructions === 'string'
+          ? value.instructions.slice(0, MAX_PASSED_INSTRUCTIONS_LENGTH)
+          : '',
+      title: typeof value.title === 'string' ? value.title.slice(0, MAX_PASSED_TITLE_LENGTH) : '',
     };
   } catch {
     return undefined;
@@ -526,7 +536,12 @@ function toParagraphs(lineList: readonly Line[]): string {
 
 // An ingredient of a parsed recipe: kept when it has a name, its quantity when usable.
 function toScannedIngredient(value: unknown): ScannedIngredient[] {
-  if (!isRecord(value) || typeof value.name !== 'string' || !cleanName(value.name)) {
+  if (
+    !isRecord(value) ||
+    typeof value.name !== 'string' ||
+    !cleanName(value.name) ||
+    value.name.length > MAX_PASSED_NAME_LENGTH
+  ) {
     return [];
   }
   const quantity = isRecord(value.quantity)

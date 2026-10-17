@@ -127,6 +127,13 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
   return { ...recipe, ingredientList, title: toDisplayName(recipe.title) };
 }
 
+// Whether the recipe is still saved (it may have been deleted by a sync while being edited).
+export function isRecipeSaved(database: AppDatabase, id: number): boolean {
+  return (
+    database.select({ id: recipes.id }).from(recipes).where(eq(recipes.id, id)).get() !== undefined
+  );
+}
+
 // One page (PAGE_SIZE) of the alphabetical recipe list, narrowed by the filters (title search,
 // season, course, ingredients). `instructions` (possibly long) is left out.
 // Plan: walk the (sort_key, id) index from the cursor, count links on the primary key.

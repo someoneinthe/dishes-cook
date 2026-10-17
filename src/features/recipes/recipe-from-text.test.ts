@@ -125,6 +125,24 @@ describe('recipe-from-text', () => {
       });
     });
 
+    it('keeps no more than a photo gives, nor longer texts than a sync keeps', () => {
+      const recipe = parseScannedRecipe(
+        JSON.stringify({
+          ingredientList: [
+            { name: 'x'.repeat(201) },
+            ...Array.from({ length: 1000 }, (_, index) => ({ name: `ingredient ${index}` })),
+          ],
+          instructions: 'Stir. '.repeat(30_000),
+          title: 'Soup '.repeat(200),
+        }),
+      );
+
+      // The first item, a name too long, is left out of the first 40.
+      expect(recipe?.ingredientList).toHaveLength(39);
+      expect(recipe?.instructions).toHaveLength(100_000);
+      expect(recipe?.title).toHaveLength(500);
+    });
+
     it('reads nothing from text that is not a recipe', () => {
       expect(parseScannedRecipe(undefined)).toBeUndefined();
       expect(parseScannedRecipe('{')).toBeUndefined();

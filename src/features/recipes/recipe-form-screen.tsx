@@ -1,6 +1,6 @@
 import { Redirect, router, Stack, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Alert, ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { Course, Season } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
@@ -26,7 +26,7 @@ import { IngredientQuantityRow } from './components/ingredient-quantity-row';
 import { InstructionsField } from './components/instructions-field';
 import { SelectedIngredient } from './components/selected-ingredient';
 import { courseOptionList } from './course';
-import { getRecipe, saveRecipe } from './db/recipe-queries';
+import { getRecipe, isRecipeSaved, saveRecipe } from './db/recipe-queries';
 import { useNewIngredients } from './hooks/use-new-ingredients';
 import { parseScannedRecipe } from './recipe-from-text';
 import { seasonOptionList } from './season';
@@ -82,6 +82,8 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
   const [invalidIdSet, setInvalidIdSet] = useState<ReadonlySet<number>>(new Set());
   // Save was pressed while a new ingredient looked like an existing one: the rows ask to choose.
   const [isChoiceMissing, setIsChoiceMissing] = useState(false);
+  // Set once saved: a second tap on Save, before the screen closes, saves nothing more.
+  const isSavedRef = useRef(false);
   const chooseSimilar = (ingredient: Ingredient, similar: Ingredient) => {
     newIngredients.chooseSimilar(ingredient.id);
     setSelectedIngredientList((previous) => swapIngredient(previous, ingredient.id, similar));
@@ -100,7 +102,12 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
     if (!cleanName(title)) {
       setTitleError(t.recipes.titleRequired);
     }
-    if (!cleanName(title) || invalidIdList.length > 0 || undecidedIdList.length > 0) {
+    if (
+      isSavedRef.current ||
+      !cleanName(title) ||
+      invalidIdList.length > 0 ||
+      undecidedIdList.length > 0
+    ) {
       return;
     }
     const input = {
@@ -112,13 +119,33 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
       season,
       title,
     };
-    if (initialRecipe) {
-      saveRecipe(database, input, initialRecipe.id);
-      router.back();
-    } else {
+    const saveAsNew = () => {
+      isSavedRef.current = true;
       const newId = saveRecipe(database, input);
       router.replace({ params: { id: String(newId) }, pathname: '/recipe/[id]' });
+    };
+    if (!initialRecipe) {
+      saveAsNew();
+      return;
     }
+    // Deleted meanwhile, on another device (pulled by a sync): the edits aren't lost.
+    if (!isRecipeSaved(database, initialRecipe.id)) {
+      Alert.alert(t.recipes.deletedWhileEditingTitle, t.recipes.deletedWhileEditingMessage, [
+        { style: 'cancel', text: t.common.cancel },
+        {
+          onPress: () => {
+            // Back to the deleted recipe's screen, which then shows the new one instead.
+            router.back();
+            saveAsNew();
+          },
+          text: t.recipes.saveAsNew,
+        },
+      ]);
+      return;
+    }
+    isSavedRef.current = true;
+    saveRecipe(database, input, initialRecipe.id);
+    router.back();
   };
 
   return (

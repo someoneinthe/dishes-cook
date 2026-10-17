@@ -1,6 +1,13 @@
 import { createFakeSyncServer } from '@/test/fake-sync-server';
 import type { ServerIngredient } from './sync-api';
-import { createSyncApi, normalizeServerUrl, serverHost, signIn, SyncError } from './sync-api';
+import {
+  createSyncApi,
+  isInsecureServerUrl,
+  normalizeServerUrl,
+  serverHost,
+  signIn,
+  SyncError,
+} from './sync-api';
 
 const ACCOUNT = { email: 'home@example.org', password: 'test-password' };
 const SERVER_URL = 'https://sync.example.org';
@@ -23,6 +30,19 @@ describe('syncApi', () => {
         expect(normalizeServerUrl(typed)).toBeUndefined();
       },
     );
+  });
+
+  describe('isInsecureServerUrl', () => {
+    it.each([
+      // Plain HTTP to another machine is what this check is about.
+      // eslint-disable-next-line unicorn/prefer-https
+      ['http://sync.example.org', true],
+      ['HTTP://sync.example.org:8090', true],
+      ['https://sync.example.org', false],
+      ['http://localhost:8091', false],
+    ])('tells whether %p sends the password in clear: %p', (serverUrl, isInsecure) => {
+      expect(isInsecureServerUrl(serverUrl)).toBe(isInsecure);
+    });
   });
 
   describe('serverHost', () => {
