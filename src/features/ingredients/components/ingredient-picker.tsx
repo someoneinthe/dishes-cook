@@ -217,13 +217,10 @@ function useChipFocus(shownList: readonly Ingredient[]) {
 // out of the field the screen reader is on.
 function useSearchAnnouncement(search: string, summary: string | undefined) {
   useEffect(() => {
-    if (summary === undefined) {
-      return;
-    }
-    const timer = setTimeout(
-      () => AccessibilityInfo.announceForAccessibility(summary),
-      ANNOUNCE_DELAY_MS,
-    );
+    const timer =
+      summary === undefined
+        ? undefined
+        : setTimeout(() => AccessibilityInfo.announceForAccessibility(summary), ANNOUNCE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [search, summary]);
 }

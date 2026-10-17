@@ -225,7 +225,10 @@ function List({ depth, list }: Readonly<{ depth: number; list: Tokens.List }>) {
         <View
           // A task is read as a checkbox, ticked or not, instead of its box drawn in text.
           accessibilityRole={item.task ? 'checkbox' : undefined}
-          accessibilityState={item.task ? { checked: item.checked === true } : undefined}
+          // Read-only: the recipe shows the box as written, it can't be ticked here.
+          accessibilityState={
+            item.task ? { checked: item.checked === true, disabled: true } : undefined
+          }
           accessible={item.task}
           key={key}
           style={styles.listItem}

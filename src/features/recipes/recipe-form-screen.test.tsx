@@ -1,3 +1,4 @@
+import type { TextInputProps } from 'react-native';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { TextInput } from 'react-native';
@@ -133,7 +134,13 @@ describe('recipeFormScreen', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
     await waitFor(() => expect(focus).toHaveBeenCalledWith());
 
-    expect(focus).toHaveBeenCalledTimes(1);
+    // The title's field, by its label: no other field was focused. Each call's `this` is the mocked
+    // field component (an earlier test's Save may focus its own title here too).
+    const focusedList = focus.mock.contexts as Readonly<{ props: TextInputProps }>[];
+
+    expect(new Set(focusedList.map(({ props }) => props.accessibilityLabel))).toStrictEqual(
+      new Set(['Title']),
+    );
   });
 
   it('explains that the recipe can be written in Markdown', async () => {

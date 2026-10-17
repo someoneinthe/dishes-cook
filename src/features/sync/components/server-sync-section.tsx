@@ -15,7 +15,9 @@ import { isInsecureServerUrl, normalizeServerUrl, serverHost, SyncError } from '
 import { connect, disconnect, syncNow, useSyncState } from '../sync-store';
 
 // A refused connection: its message, and the field to fix ('form' when none is to blame).
-type ConnectError = Readonly<{ field: 'address' | 'email' | 'form' | 'password'; message: string }>;
+type ConnectError = Readonly<{ field: ConnectField; message: string }>;
+
+type ConnectField = 'address' | 'email' | 'form' | 'password';
 
 type ServerSyncSectionProps = Readonly<{
   // Opened from the header's sync status on a TV: the remote's focus goes to Sync now.
@@ -78,8 +80,7 @@ function ConnectForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<ConnectError>();
   const [isConnecting, setIsConnecting] = useState(false);
-  const errorOf = (field: ConnectError['field']) =>
-    error?.field === field ? error.message : undefined;
+  const errorOf = (field: ConnectField) => (error?.field === field ? error.message : undefined);
 
   const onConnect = async () => {
     const serverUrl = normalizeServerUrl(serverAddress);
