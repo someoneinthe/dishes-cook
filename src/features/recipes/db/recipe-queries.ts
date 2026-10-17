@@ -8,6 +8,10 @@ import type { Quantity } from '@/lib/units';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
 import { ingredients, NOW_MS, recipeIngredients, recipes, syncDeletions } from '@/db/schema';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
+import {
+  LAST_COOKED_AT,
+  notCookedSinceWhere,
+} from '@/features/meal-history/db/cooked-meal-queries';
 import { cleanName, toDisplayName, toLikeContains, toSortKey } from '@/lib/text';
 import { toQuantity, toStored } from '@/lib/units';
 
@@ -61,6 +65,16 @@ export type RecipeListItem = Readonly<{
 // Written out qualified: Drizzle renders `${recipes.id}` as a bare "id" inside a select.
 const INGREDIENT_COUNT = sql<number>`(select count(*) from "recipe_ingredients" where "recipe_ingredients"."recipe_id" = "recipes"."id")`;
 
+export type PickOptions = Readonly<{
+  // The current suggestion: another one is picked when possible (asking again must change it).
+  excludedId?: number;
+  // Returns a number in [0, 1).
+  random?: () => number;
+  // Recipes cooked at or after this time (ms) are skipped (the meal history); undefined = none.
+  // When every match was cooked since then, the one cooked longest ago is picked.
+  skipCookedSince?: number;
+}>;
+
 // Number of recipes matching the filters (the recipe list shows it).
 export function countRecipes(database: AppDatabase, filters: RecipeFilters): number {
   return (
@@ -68,7 +82,6 @@ export function countRecipes(database: AppDatabase, filters: RecipeFilters): num
       ?.count ?? 0
   );
 }
-
 // Its ingredient links are deleted by the foreign key's ON DELETE CASCADE. The deletion is kept for
 // the sync server.
 export function deleteRecipe(database: AppDatabase, id: number): void {
@@ -89,6 +102,7 @@ export function deleteRecipe(database: AppDatabase, id: number): void {
     }
   });
 }
+
 export function getRecipe(database: AppDatabase, id: number): Recipe | undefined {
   const recipe = database
     .select({
@@ -163,34 +177,24 @@ export function listRecipePage(
   );
 }
 
-// A random recipe among those matching the filters, other than `excludedId` when possible (asking
-// again must change the suggestion). `random` returns a number in [0, 1).
+// A random recipe among those matching the filters (see PickOptions).
 // Reads one id at a random offset instead of loading every matching id, in (sort_key, id) order:
 // without filters, the walk to the offset stays in that index instead of reading whole rows.
 export function pickRandomRecipeId(
   database: AppDatabase,
   filters: RecipeFilters,
-  excludedId?: number,
-  random: () => number = Math.random,
+  options: PickOptions = {},
 ): number | undefined {
+  const { excludedId, random = Math.random, skipCookedSince } = options;
   const matchingWhere = filtersWhere(database, filters);
-  const otherWhere =
-    excludedId === undefined ? matchingWhere : and(matchingWhere, ne(recipes.id, excludedId));
-  const otherCount =
-    database.select({ count: count() }).from(recipes).where(otherWhere).get()?.count ?? 0;
-  // Only the excluded recipe matches: suggest it again.
-  const where = otherCount > 0 ? otherWhere : matchingWhere;
-  const candidateCount = otherCount > 0 ? otherCount : countRecipes(database, filters);
-  return candidateCount === 0
-    ? undefined
-    : database
-        .select({ id: recipes.id })
-        .from(recipes)
-        .where(where)
-        .orderBy(asc(recipes.sortKey), asc(recipes.id))
-        .limit(1)
-        .offset(Math.floor(random() * candidateCount))
-        .get()?.id;
+  return skipCookedSince === undefined
+    ? pickAtRandom(database, matchingWhere, excludedId, random)
+    : (pickAtRandom(
+        database,
+        and(matchingWhere, notCookedSinceWhere(skipCookedSince)),
+        excludedId,
+        random,
+      ) ?? pickLeastRecentlyCooked(database, matchingWhere, excludedId));
 }
 
 // Creates (no id) or updates a recipe and its ingredients (with their quantities) in one
@@ -295,6 +299,54 @@ function filtersWhere(database: AppDatabase, filters: RecipeFilters): SQL | unde
     conditionList.push(inArray(recipes.id, recipesWithAllIngredients));
   }
   return and(...conditionList);
+}
+
+// A random recipe matching `where`, other than `excludedId` when another one matches.
+function pickAtRandom(
+  database: AppDatabase,
+  where: SQL | undefined,
+  excludedId: number | undefined,
+  random: () => number,
+): number | undefined {
+  const otherWhere = excludedId === undefined ? where : and(where, ne(recipes.id, excludedId));
+  const countWhere = (condition: SQL | undefined) =>
+    database.select({ count: count() }).from(recipes).where(condition).get()?.count ?? 0;
+  const otherCount = countWhere(otherWhere);
+  // Only the excluded recipe matches: suggest it again.
+  const candidateWhere = otherCount > 0 ? otherWhere : where;
+  const candidateCount = otherCount > 0 ? otherCount : countWhere(where);
+  return candidateCount === 0
+    ? undefined
+    : database
+        .select({ id: recipes.id })
+        .from(recipes)
+        .where(candidateWhere)
+        .orderBy(asc(recipes.sortKey), asc(recipes.id))
+        .limit(1)
+        .offset(Math.floor(random() * candidateCount))
+        .get()?.id;
+}
+
+// The matching recipe cooked longest ago, other than `excludedId` when another one matches. Only
+// used when every match was cooked recently: they're few (the meals of a few weeks), each sorted
+// by a lookup of its last meal in the (recipe_id, cooked_at) index.
+function pickLeastRecentlyCooked(
+  database: AppDatabase,
+  where: SQL | undefined,
+  excludedId: number | undefined,
+): number | undefined {
+  const pick = (condition: SQL | undefined) =>
+    database
+      .select({ id: recipes.id })
+      .from(recipes)
+      .where(condition)
+      .orderBy(asc(LAST_COOKED_AT), asc(recipes.sortKey), asc(recipes.id))
+      .limit(1)
+      .get()?.id;
+  return (
+    (excludedId === undefined ? undefined : pick(and(where, ne(recipes.id, excludedId)))) ??
+    pick(where)
+  );
 }
 
 // Titles containing the search, ignoring case and accents (on sort_key); no condition when blank.

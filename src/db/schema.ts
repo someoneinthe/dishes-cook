@@ -49,7 +49,7 @@ export const NOW_MS = sql`(cast(unixepoch('subsec') * 1000 as integer))`;
 // instead (`toIngredientSyncId`), so the same ingredient added on two phones is one row.
 const RANDOM_SYNC_ID = sql`(substr(lower(hex(randomblob(8))), 1, 15))`;
 
-export const SYNCED_TABLE_LIST = ['ingredients', 'recipes'] as const;
+export const SYNCED_TABLE_LIST = ['ingredients', 'recipes', 'cooked_meals'] as const;
 export type SyncedTable = (typeof SYNCED_TABLE_LIST)[number];
 const SYNCED_TABLE_SQL_LIST = SYNCED_TABLE_LIST.map((table) => `'${table}'`).join(', ');
 
@@ -137,6 +137,31 @@ export const recipeIngredients = sqliteTable(
     // (ingredient_id, recipe_id): "recipes using these ingredients" (meal choice filter, usage
     // counts, restrict check on delete). Both indexes cover their queries: no table lookup.
     index('recipe_ingredients_ingredient_recipe_idx').on(table.ingredientId, table.recipeId),
+  ],
+);
+
+// Meal history: one row each time a recipe is cooked. The meal choice skips the recipes cooked
+// recently (Settings › Recent meals). Rows are only added and removed, never edited: marking a
+// recipe as cooked doesn't change the recipe, so it can't overwrite an edit made on another phone.
+export const cookedMeals = sqliteTable(
+  'cooked_meals',
+  {
+    // When it was cooked (ms since the epoch).
+    cookedAt: integer('cooked_at').notNull().default(NOW_MS),
+    createdAt: integer('created_at').notNull().default(NOW_MS),
+    id: integer('id').primaryKey(),
+    recipeId: integer('recipe_id')
+      .notNull()
+      .references(() => recipes.id, { onDelete: 'cascade' }),
+    syncId: text('sync_id').notNull().default(RANDOM_SYNC_ID),
+    updatedAt: integer('updated_at').notNull().default(NOW_MS),
+  },
+  (table) => [
+    uniqueIndex('cooked_meals_sync_id_unique').on(table.syncId),
+    // Rows changed since the last push (sync), in pages of PAGE_SIZE.
+    index('cooked_meals_updated_at_id_idx').on(table.updatedAt, table.id),
+    // A recipe's last time cooked (its latest row), and "cooked since" for the meal choice.
+    index('cooked_meals_recipe_cooked_at_idx').on(table.recipeId, table.cookedAt),
   ],
 );
 

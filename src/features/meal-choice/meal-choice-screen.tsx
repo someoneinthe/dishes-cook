@@ -17,22 +17,29 @@ import {
 import { pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
 import { useNewRecipe } from '@/features/recipes/hooks/use-new-recipe';
 import { useRecipe, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
+import { usePreferences } from '@/features/settings/preferences';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
+import { startOfLastDays } from '@/lib/dates';
 import { isTv } from '@/lib/device';
 import { SuggestionCard } from './components/suggestion-card';
 
 // A main course unless asked otherwise; any season. The ingredients are filtered in the recipe list.
 const INITIAL_FILTERS: RecipeFilterValues = { ...NO_FILTERS, course: 'main' };
 
-// Proposes a random recipe of the chosen season and course, and another one on request.
+// Proposes a random recipe of the chosen season and course, and another one on request, skipping
+// the recipes cooked in the last days (Settings › Skip recent meals) while others match.
 export function MealChoiceScreen() {
   const t = useMessages();
   const newRecipe = useNewRecipe();
   const database = useDatabase();
+  const { recentMealDays } = usePreferences();
   const [filterValues, setFilterValues] = useState(INITIAL_FILTERS);
   const pick = (values: RecipeFilterValues, excludedId?: number) =>
-    pickRandomRecipeId(database, toQueryFilters(values, ''), excludedId);
+    pickRandomRecipeId(database, toQueryFilters(values, ''), {
+      excludedId,
+      skipCookedSince: recentMealDays === 0 ? undefined : startOfLastDays(recentMealDays),
+    });
   // A recipe is proposed as soon as the screen opens (reads are synchronous).
   const [suggestedId, setSuggestedId] = useState(() => pick(INITIAL_FILTERS));
   const recipeCount = useRecipeCount({ ingredientIdList: [] });

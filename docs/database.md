@@ -9,6 +9,14 @@ Local SQLite (`expo-sqlite`) accessed through Drizzle ORM: the phone's data, opt
 
 ```mermaid
 erDiagram
+  cooked_meals {
+    integer id PK
+    integer recipe_id FK
+    integer cooked_at
+    integer created_at
+    text sync_id UK
+    integer updated_at
+  }
   ingredients {
     integer id PK
     integer created_at
@@ -37,9 +45,10 @@ erDiagram
   }
   sync_deletions {
     text sync_id PK
-    text table_name PK "ingredients / recipes"
+    text table_name PK "ingredients / recipes / cooked_meals"
     integer deleted_at
   }
+  recipes ||--o{ cooked_meals : "recipe_id, on delete cascade"
   ingredients ||--o{ recipe_ingredients : "ingredient_id, on delete restrict"
   recipes ||--o{ recipe_ingredients : "recipe_id, on delete cascade"
 ```
@@ -48,6 +57,9 @@ Integer primary keys are SQLite rowids.
 
 | Table                | Index                                      | Columns                      | Unique |
 | -------------------- | ------------------------------------------ | ---------------------------- | ------ |
+| `cooked_meals`       | `cooked_meals_sync_id_unique`              | `sync_id`                    | yes    |
+| `cooked_meals`       | `cooked_meals_updated_at_id_idx`           | `updated_at`, `id`           |        |
+| `cooked_meals`       | `cooked_meals_recipe_cooked_at_idx`        | `recipe_id`, `cooked_at`     |        |
 | `ingredients`        | `ingredients_sync_id_unique`               | `sync_id`                    | yes    |
 | `ingredients`        | `ingredients_updated_at_id_idx`            | `updated_at`, `id`           |        |
 | `ingredients`        | `ingredients_name_key_unique`              | `name_key`                   | yes    |
@@ -64,10 +76,11 @@ Integer primary keys are SQLite rowids.
 - **Ingredients are unique** by `name_key` (trimmed, single spaces, lower case, computed by `toNameKey` in `src/lib/text.ts`). Case is ignored, accents are not (`pâte` ≠ `pâté`). The key is computed in JS because SQLite's `NOCASE` only folds ASCII (`Œuf` vs `œuf`).
 - **Many-to-many** through `recipe_ingredients`: its composite primary key forbids duplicate links and serves "ingredients of a recipe"; the reverse index serves "recipes using an ingredient" and covers its queries (no table lookup). Reading a recipe's ingredients also reads each link's quantity from its row.
 - **Quantities** live on the link (`recipe_ingredients.amount` and `unit`), **normalized**: weights in grams (`g`) and volumes in millilitres (`ml`), whatever unit they were typed in (1.5 kg is stored as 1500 g, 8 oz as 226.8 g). Spoons (`tsp`, `tbsp`) and counted units (`pinch`, `clove`, `bunch`, `can`) are stored as written, no unit = pieces, no amount = no quantity ("salt"). The unit is chosen on display, in the reader's units (Settings › Units): the closest one, 1000 g → 1 kg, or 2.25 lb in US units (`src/lib/units.ts`). Editing rewrites only the rows the user changed, so a value never drifts through display rounding. Normalized amounts add up directly (the shopping list, item 14). Amounts are checked by `toQuantity` in the code that writes them: a `CHECK` added to an existing table makes drizzle-kit rebuild it.
-- **Deleting**: a recipe cascades to its links; an ingredient still used by a recipe can't be deleted (`RESTRICT`, and the UI hides the button).
+- **Meal history**: `cooked_meals` has one row each time a recipe is cooked (`cooked_at`, in ms). Rows are only added and removed, never edited, and marking a recipe as cooked doesn't touch the recipe row: it isn't pushed again, so it can't overwrite an edit made on another phone (see [sync.md › Known limits](sync.md#known-limits)). The `(recipe_id, cooked_at)` index serves a recipe's last time cooked (the end of its entries) and the meal choice's "not cooked since".
+- **Deleting**: a recipe cascades to its links and its meal history; an ingredient still used by a recipe can't be deleted (`RESTRICT`, and the UI hides the button).
 - **Constraints in the database**, not only in the UI: `CHECK` on the season and course values and on non-blank names/titles, `NOT NULL`, foreign keys (`PRAGMA foreign_keys = ON` on every connection, since SQLite disables them by default).
 - **Integer primary keys** are SQLite's rowid: the fastest lookups and joins. They stay on the phone: across devices and on the server a row is its `sync_id` (15 characters of `[0-9a-f]`, the server's id format): random for recipes, derived from the name for ingredients, so the same ingredient added on two phones is one row (see [sync.md](sync.md)).
-- **Sync bookkeeping**: `updated_at` on both tables (newer rows are pushed, the newest change wins), and `sync_deletions`, written by the delete queries in the same transaction, until the server is told.
+- **Sync bookkeeping**: `updated_at` on the synced tables (newer rows are pushed, the newest change wins), and `sync_deletions`, written by the delete queries in the same transaction, until the server is told.
 - **No index on `season` or `course`**: with 3 values each, an index can't beat scanning the table.
 - **Every recipe has a course** (`NOT NULL`, `'main'` by default): a recipe always matches a course filter of its own course, and the form offers no "none".
 
@@ -82,7 +95,7 @@ Integer primary keys are SQLite rowids.
 | List queries skip `instructions`            | It can be long; only the recipe screen reads it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | Counts in the row                           | Usage and ingredient counts come with each row from a correlated `count(*)` on the covering link indexes: no N+1 queries, and the page still reads in index order.                                                                                                                                                                                                                                                                                                                                               |
 | Recipe filters in SQL                       | The recipe list's search and filters (title, season, course, "all selected ingredients") are one `WHERE` (`filtersWhere`), shared by its pages, its `countRecipes` and the meal choice's `pickRandomRecipeId`. "All selected ingredients" = links of those ingredients grouped by recipe, `HAVING count(*) = n`, starting from the `(ingredient_id, recipe_id)` index. Pages walk the `(sort_key, id)` index; with ingredients selected, SQLite starts from the recipes using them instead and sorts only those. |
-| Meal choice: one row                        | `pickRandomRecipeId`: a count, then one id at a random `OFFSET` (excluding the previous suggestion), never the list of ids.                                                                                                                                                                                                                                                                                                                                                                                      |
+| Meal choice: one row                        | `pickRandomRecipeId`: a count, then one id at a random `OFFSET` (excluding the previous suggestion), never the list of ids. The recipes cooked recently (Settings › Skip recent meals) are left out with a `NOT EXISTS` on the `(recipe_id, cooked_at)` index; when every match was, the one cooked longest ago is picked, sorted by its last meal (one index lookup each, among the few cooked recently).                                                                                                       |
 | `sort_key` columns                          | SQLite sorts bytes and can't strip accents, so `Échalote` would come after `zucchini`. `sort_key` (no case, no accents, computed in JS by `toSortKey`) is what lists sort and search on, in SQL.                                                                                                                                                                                                                                                                                                                 |
 
 `src/db/query-plans.test.ts` runs `EXPLAIN QUERY PLAN` on these queries and fails if one stops using its index.
@@ -101,7 +114,7 @@ While the PR is open you can delete your new migration and generate it again; on
 
 **Read the generated SQL**: for changes `ALTER TABLE` can't express (a table-level `CHECK`, for instance), drizzle-kit rebuilds the table (copy, `DROP TABLE`, rename) inside `PRAGMA foreign_keys=OFF`, which has no effect in the migration transaction: dropping `recipes` would cascade-delete every `recipe_ingredients` row. Hand-write an `ALTER TABLE … ADD` instead when it can do the job. A new column on an existing table needs a default (or to be nullable) for the rows already there.
 
-A change to a synced table (`recipes`, `ingredients`, `recipe_ingredients`) usually needs a server migration too: a new file in `server/migrations/`, frozen the same way, and added to `SERVER_MIGRATION_LIST` so the app checks the server has it (see [sync.md › Versions](sync.md#versions)). Once merged, deploy it (`npm run server:deploy`, see [sync.md › Updating the server](sync.md#updating-the-server)).
+A change to a synced table (`recipes`, `ingredients`, `recipe_ingredients`, `cooked_meals`) usually needs a server migration too: a new file in `server/migrations/`, frozen the same way, and added to `SERVER_MIGRATION_LIST` so the app checks the server has it (see [sync.md › Versions](sync.md#versions)). Once merged, deploy it (`npm run server:deploy`, see [sync.md › Updating the server](sync.md#updating-the-server)).
 
 Drinks (planned) will likely reuse `recipes` with a `kind` column (`'dish' | 'drink'`) so they share ingredients, live queries and the random pick.
 

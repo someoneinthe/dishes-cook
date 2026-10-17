@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { Recipe } from '@/features/recipes/db/recipe-queries';
 import { Button } from '@/components/button';
+import { LastCooked } from '@/features/meal-history/components/last-cooked';
 import { CourseLabel, SeasonLabel } from '@/features/recipes/components/recipe-labels';
 import { useMessages } from '@/i18n/i18n-provider';
 
@@ -28,6 +29,7 @@ export function SuggestionCard({ onAnother, recipe }: SuggestionCardProps) {
         <CourseLabel course={recipe.course} />
         <Text style={styles.detail}>{t.recipes.ingredientCount(recipe.ingredientList.length)}</Text>
       </View>
+      <LastCooked recipeId={recipe.id} />
       <View style={styles.actions}>
         <Button
           accessibilityHint={t.mealChoice.suggestHint}

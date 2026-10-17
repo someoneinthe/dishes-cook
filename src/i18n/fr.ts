@@ -37,7 +37,7 @@ export const fr: Messages = {
     othersTitle: 'Rien pour personne d’autre',
     serverList: [
       'Désactivée par défaut. Dans Paramètres › Stockage des données, vous pouvez synchroniser avec un serveur PocketBase que vous installez et gérez vous-même, pour partager vos recettes entre vos appareils.',
-      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes (titre, type de plat, saison, instructions, ingrédients et quantités), vos ingrédients, et ceux que vous avez supprimés. Les paramètres restent sur chaque appareil.`,
+      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes (titre, type de plat, saison, instructions, ingrédients et quantités), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Les paramètres restent sur chaque appareil.`,
       'L’appareil garde l’adresse du serveur, votre e-mail et un jeton de connexion chiffré, jamais votre mot de passe. La connexion est chiffrée (HTTPS).',
       `Le serveur est à vous${NARROW_SPACE}: personne d’autre ne le gère, et les développeurs de l’application ne peuvent pas le voir.`,
     ],
@@ -144,6 +144,25 @@ export const fr: Messages = {
     suggestHint: 'Choisit au hasard une recette qui correspond',
     suggestionIntro: 'Et si on mangeait…',
     suggestRecipe: 'Suggérer une recette',
+  },
+  mealHistory: {
+    cooked: 'Je l’ai cuisinée',
+    cookedHint: `Note que vous l’avez cuisinée aujourd’hui${NARROW_SPACE}: le choix du repas l’évite pendant un temps`,
+    lastCooked: (daysAgo, time) => {
+      if (daysAgo <= 0) {
+        return 'Cuisinée aujourd’hui';
+      }
+      if (daysAgo === 1) {
+        return 'Cuisinée hier';
+      }
+      return daysAgo <= 30
+        ? `Cuisinée il y a ${daysAgo}\u{A0}jours`
+        : `Cuisinée le ${new Date(time).toLocaleDateString('fr', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    },
+    neverCooked: 'Pas encore cuisinée',
+    remove: 'Retirer',
+    removeLabel: 'Retirer la dernière fois où elle a été cuisinée',
+    removeMessage: 'Seule cette date est retirée, pas la recette.',
   },
   menu: {
     about: 'À propos',
@@ -256,6 +275,8 @@ export const fr: Messages = {
     dark: 'Sombre',
     language: 'Langue',
     light: 'Clair',
+    recentMeals: 'Éviter les repas récents',
+    recentMealsDays: (days) => (days === 0 ? 'Non' : `${days}\u{A0}jours`),
     showButtonLabels: 'Afficher le texte des boutons',
     showButtonLabelsHint: 'Ajoute le texte à côté des boutons à icône',
     system: 'Système',

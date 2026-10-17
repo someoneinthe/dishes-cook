@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Markdown } from '@/components/markdown';
@@ -7,10 +8,14 @@ import type { Recipe } from '../db/recipe-queries';
 import { formatQuantity } from '../quantity';
 import { CourseLabel, SeasonLabel } from './recipe-labels';
 
-type RecipeDetailsProps = Readonly<{ recipe: Recipe }>;
+type RecipeDetailsProps = Readonly<{
+  // Shown under the season and course (e.g. when it was last cooked).
+  children?: ReactNode;
+  recipe: Recipe;
+}>;
 
 // The content of a recipe, shared by the recipe screen and the meal choice suggestion.
-export function RecipeDetails({ recipe }: RecipeDetailsProps) {
+export function RecipeDetails({ children, recipe }: RecipeDetailsProps) {
   const t = useMessages();
   // Quantities in the reader's units (Settings › Units).
   const { units } = usePreferences();
@@ -23,6 +28,7 @@ export function RecipeDetails({ recipe }: RecipeDetailsProps) {
         <SeasonLabel season={recipe.season} />
         <CourseLabel course={recipe.course} />
       </View>
+      {children}
 
       <Text accessibilityRole="header" style={styles.heading}>
         {t.recipes.ingredients}

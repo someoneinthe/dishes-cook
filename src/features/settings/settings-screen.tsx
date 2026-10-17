@@ -13,12 +13,12 @@ import { ServerSyncSection } from '@/features/sync/components/server-sync-sectio
 import { useMessages } from '@/i18n/i18n-provider';
 import { LANGUAGE_LIST, LANGUAGE_NAMES } from '@/i18n/languages';
 import { isTv } from '@/lib/device';
-import type { ColorSchemePreference } from './preferences';
-import { updatePreferences, usePreferences } from './preferences';
+import type { ColorSchemePreference, RecentMealDays } from './preferences';
+import { RECENT_MEAL_DAYS_LIST, updatePreferences, usePreferences } from './preferences';
 
 export function SettingsScreen() {
   const t = useMessages();
-  const { colorScheme, isShowingButtonLabels, language, units } = usePreferences();
+  const { colorScheme, isShowingButtonLabels, language, recentMealDays, units } = usePreferences();
   // Switch colors are props, not styles.
   const { theme } = useUnistyles();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -61,6 +61,12 @@ export function SettingsScreen() {
         onChange={(value) => updatePreferences({ units: value })}
         optionList={unitSystemOptionList(t)}
         value={units}
+      />
+      <SegmentedControl
+        label={t.settings.recentMeals}
+        onChange={(value) => updatePreferences({ recentMealDays: toRecentMealDays(value) })}
+        optionList={recentMealOptionList(t)}
+        value={String(recentMealDays)}
       />
       {/* The whole row is the control: a tap on the label toggles it too, and the remote's focus
           ring goes around it (a Switch takes no focus events, so no ring could follow it). */}
@@ -110,6 +116,19 @@ function languageOptionList(t: Messages): readonly SegmentedOption<LanguagePrefe
     { icon: SYSTEM_ICON, label: t.settings.system, value: 'system' },
     ...LANGUAGE_LIST.map((language) => ({ label: LANGUAGE_NAMES[language], value: language })),
   ];
+}
+
+// The meal choice skips the recipes cooked in the last days (the meal history), or doesn't (0).
+// The control's values are strings.
+function recentMealOptionList(t: Messages): readonly SegmentedOption<string>[] {
+  return RECENT_MEAL_DAYS_LIST.map((days) => ({
+    label: t.settings.recentMealsDays(days),
+    value: String(days),
+  }));
+}
+
+function toRecentMealDays(value: string): RecentMealDays {
+  return RECENT_MEAL_DAYS_LIST.find((days) => String(days) === value) ?? 0;
 }
 
 // Ingredient quantities: amounts written in the other system are converted.

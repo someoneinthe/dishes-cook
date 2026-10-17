@@ -20,6 +20,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
     'e4acb8b4bdec74f5df6d4d55aa77f0526570752db8601571e3498089f5bddef1',
   ],
   [
+    'server/migrations/1792270000-meal-history.js',
+    'c6b8fd7dded7c9945b4cd51d995ed360062fb068c052d3d807ca610728bca415',
+  ],
+  [
     'src/db/migrations/0000_init.sql',
     '76cc3f90b737b4d4fc587e49f95b56a56dbffc1d15747624574ea1ef73c7a018',
   ],
@@ -34,6 +38,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
   [
     'src/db/migrations/0003_recipe-titles-lowercase.sql',
     'faba07af0ba7330f7f8119d8f59d8b13a1f9e4a91a1209bc9b40181139267ab8',
+  ],
+  [
+    'src/db/migrations/0004_meal-history.sql',
+    '8810d97c5df76685858860cfd665b0cecf2f14ae39f5da75738dd9f4d1521091',
   ],
 ]);
 

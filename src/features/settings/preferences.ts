@@ -13,21 +13,28 @@ import { isUnitSystem } from '@/lib/units';
 export const COLOR_SCHEME_LIST = ['system', 'light', 'dark'] as const;
 export type ColorSchemePreference = (typeof COLOR_SCHEME_LIST)[number];
 
+// How many days the meal choice skips the recipes cooked recently; 0 = it doesn't.
+export const RECENT_MEAL_DAYS_LIST = [0, 7, 14, 30] as const;
 export type Preferences = Readonly<{
   colorScheme: ColorSchemePreference;
   // Show the text of icon-only buttons too.
   isShowingButtonLabels: boolean;
   // The phone's language ('system') or one chosen for the app.
   language: LanguagePreference;
+  // The meal choice skips the recipes cooked in the last days (the meal history).
+  recentMealDays: RecentMealDays;
   // Units of ingredient quantities: European (metric, the default) or US.
   units: UnitSystem;
 }>;
+
+export type RecentMealDays = (typeof RECENT_MEAL_DAYS_LIST)[number];
 
 const STORAGE_KEY = 'preferences';
 const DEFAULT_PREFERENCES: Preferences = {
   colorScheme: 'system',
   isShowingButtonLabels: false,
   language: 'system',
+  recentMealDays: 14,
   units: 'metric',
 };
 
@@ -99,6 +106,9 @@ function parse(stored: null | string): Preferences {
       language: LANGUAGE_PREFERENCE_LIST.includes(parsed.language as LanguagePreference)
         ? (parsed.language as LanguagePreference)
         : DEFAULT_PREFERENCES.language,
+      recentMealDays: RECENT_MEAL_DAYS_LIST.includes(parsed.recentMealDays as RecentMealDays)
+        ? (parsed.recentMealDays as RecentMealDays)
+        : DEFAULT_PREFERENCES.recentMealDays,
       units: isUnitSystem(parsed.units) ? parsed.units : DEFAULT_PREFERENCES.units,
     };
   } catch {
