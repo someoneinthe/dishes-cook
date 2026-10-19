@@ -299,10 +299,10 @@ export const fr: Messages = {
     helpContinue: (count) =>
       plural(
         count,
-        '1\u{A0}repas est dans votre liste de courses. Ajoutez-en d’autres, ou ouvrez la liste avec le chariot en haut à droite pour partager ses ingrédients.',
-        `${count}\u{A0}repas sont dans votre liste de courses. Ajoutez-en d’autres, ou ouvrez la liste avec le chariot en haut à droite pour partager leurs ingrédients.`,
+        '1\u{A0}repas est dans votre liste de courses. Ajoutez-en d’autres, ou ouvrez la liste avec le bouton ci-dessous pour partager ses ingrédients.',
+        `${count}\u{A0}repas sont dans votre liste de courses. Ajoutez-en d’autres, ou ouvrez la liste avec le bouton ci-dessous pour partager leurs ingrédients.`,
       ),
-    helpStart: `Pour faire une liste de courses, ajoutez un ou plusieurs repas avec ${quote('Ajouter à la liste')}, puis ouvrez la liste avec le chariot en haut à droite pour partager leurs ingrédients.`,
+    helpStart: `Pour faire une liste de courses, ajoutez un ou plusieurs repas avec ${quote('Ajouter à la liste')}, puis ouvrez la liste avec le bouton qui apparaît en bas pour partager leurs ingrédients.`,
     ingredients: 'Ingrédients',
     markCooked: 'Noter comme cuisinés',
     markCookedHint: 'Le choix du repas les évite ensuite pendant un temps',
@@ -316,6 +316,7 @@ export const fr: Messages = {
     mealsLine: (titleList) => `Repas${NARROW_SPACE}: ${titleList.join(', ')}`,
     noIngredients: 'Ces repas ne listent aucun ingrédient.',
     notNow: 'Plus tard',
+    openButton: (count) => `Liste de courses (${count})`,
     openHint: 'Ouvre la liste de courses',
     openLabel: (count) =>
       count === 0 ? 'Liste de courses' : `Liste de courses, ${count}\u{A0}repas`,

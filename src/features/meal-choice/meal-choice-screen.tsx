@@ -18,7 +18,7 @@ import { getRecipeSyncId, pickRandomRecipeId } from '@/features/recipes/db/recip
 import { useNewRecipe } from '@/features/recipes/hooks/use-new-recipe';
 import { useRecipe, useRecipeCount, useRecipeSyncId } from '@/features/recipes/hooks/use-recipes';
 import { usePreferences } from '@/features/settings/preferences';
-import { ShoppingListButton } from '@/features/shopping-list/components/shopping-list-button';
+import { ShoppingListBar } from '@/features/shopping-list/components/shopping-list-bar';
 import { ShoppingListHelp } from '@/features/shopping-list/components/shopping-list-help';
 import { addPick, getPicks, MAX_PICKS, usePicks } from '@/features/shopping-list/meal-picks';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
@@ -90,7 +90,6 @@ export function MealChoiceScreen() {
         headerRight: headerActions(
           <>
             <SyncStatusButton />
-            <ShoppingListButton />
             {headerButton}
           </>,
         ),
@@ -123,36 +122,39 @@ export function MealChoiceScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.content} style={styles.screen} {...screenScrollProps}>
-      {header}
-      <RecipeFilters isIngredientPickerHidden onChange={changeFilters} values={filterValues} />
-      {matchCount === 0 && (
-        <Text accessibilityLiveRegion="polite" style={styles.noMatch}>
-          {t.recipes.matchCount(0)}
-        </Text>
-      )}
-      {matchCount > 0 &&
-        (suggestion ? (
-          <SuggestionCard
-            isAddDisabled={pickList.length >= MAX_PICKS}
-            onAddToList={addToList}
-            onAnother={suggestAnother}
-            recipe={suggestion}
-          />
-        ) : (
-          // Every match in the shopping list, recipes added after the screen opened, or the
-          // suggested one deleted.
-          <EmptyState
-            message={
-              suggestedId === undefined && pickList.length > 0
-                ? t.mealChoice.allPicked
-                : t.mealChoice.promptMessage(matchCount)
-            }
-            title={t.mealChoice.promptTitle}
-          />
-        ))}
-      <ShoppingListHelp />
-    </ScrollView>
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content} {...screenScrollProps}>
+        {header}
+        <RecipeFilters isIngredientPickerHidden onChange={changeFilters} values={filterValues} />
+        {matchCount === 0 && (
+          <Text accessibilityLiveRegion="polite" style={styles.noMatch}>
+            {t.recipes.matchCount(0)}
+          </Text>
+        )}
+        {matchCount > 0 &&
+          (suggestion ? (
+            <SuggestionCard
+              isAddDisabled={pickList.length >= MAX_PICKS}
+              onAddToList={addToList}
+              onAnother={suggestAnother}
+              recipe={suggestion}
+            />
+          ) : (
+            // Every match in the shopping list, recipes added after the screen opened, or the
+            // suggested one deleted.
+            <EmptyState
+              message={
+                suggestedId === undefined && pickList.length > 0
+                  ? t.mealChoice.allPicked
+                  : t.mealChoice.promptMessage(matchCount)
+              }
+              title={t.mealChoice.promptTitle}
+            />
+          ))}
+        <ShoppingListHelp />
+      </ScrollView>
+      <ShoppingListBar />
+    </View>
   );
 }
 

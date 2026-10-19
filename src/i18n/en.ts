@@ -336,11 +336,11 @@ export const en = {
     helpContinue: (count: number) =>
       plural(
         count,
-        '1 meal is in your shopping list. Add more, or open the list with the cart at the top right to share its ingredients.',
-        `${count} meals are in your shopping list. Add more, or open the list with the cart at the top right to share their ingredients.`,
+        '1 meal is in your shopping list. Add more, or open the list with the button below to share its ingredients.',
+        `${count} meals are in your shopping list. Add more, or open the list with the button below to share their ingredients.`,
       ),
     helpStart:
-      'To make a shopping list, add one or more meals with “Add to list”, then open the list with the cart at the top right to share their ingredients.',
+      'To make a shopping list, add one or more meals with “Add to list”, then open the list with the button that appears at the bottom to share their ingredients.',
     ingredients: 'Ingredients',
     markCooked: 'Mark as cooked',
     markCookedHint: 'The meal choice then skips them for a while',
@@ -355,6 +355,8 @@ export const en = {
     mealsLine: (titleList: readonly string[]) => `Meals: ${titleList.join(', ')}`,
     noIngredients: 'These meals list no ingredients.',
     notNow: 'Not now',
+    // The button at the bottom of the meal choice: "Shopping list (2)".
+    openButton: (count: number) => `Shopping list (${count})`,
     openHint: 'Opens the shopping list',
     openLabel: (count: number) =>
       count === 0

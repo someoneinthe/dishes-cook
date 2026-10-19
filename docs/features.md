@@ -581,7 +581,7 @@ Your data (recipes and ingredients today) is kept on the phone. It can also be s
 
 ## Shopping list
 
-Meals are picked on the meal choice ("Add to list", which proposes another recipe) or on a recipe. The shopping list adds up their ingredients, in the reader's units, and shares them as text with another app (notes, messages, email…). Once shared, it offers to mark the meals as cooked (the meal history), which empties the list. The list isn't saved: it's forgotten when the app closes. It holds 50 meals at most. Not on a TV.
+Meals are picked on the meal choice ("Add to list", which proposes another recipe; a "Shopping list" button then appears at the bottom) or on a recipe. The shopping list adds up their ingredients, in the reader's units, and shares them as text with another app (notes, messages, email…). Once shared, it offers to mark the meals as cooked (the meal history), which empties the list. The list isn't saved: it's forgotten when the app closes. It holds 50 meals at most. Not on a TV.
 
 **For every scenario:**
 
@@ -595,7 +595,7 @@ Meals are picked on the meal choice ("Add to list", which proposes another recip
 ### The meal choice explains how to make a shopping list
 
 - **When** I open the meal choice
-- **Then** I'm told to add meals, then to share them from the cart
+- **Then** I'm told to add meals, then to share them from the list's button
 - **When** I add the suggestion to the shopping list
 - **Then** I'm told 1 meal is in the shopping list
 
