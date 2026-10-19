@@ -307,6 +307,9 @@ export const en = {
   },
   settings: {
     appearance: 'Appearance',
+    // The two families of settings: what the app proposes, and how it looks and keeps the data.
+    appGroup: 'App & data',
+    cookingGroup: 'Cooking',
     dark: 'Dark',
     language: 'Language',
     light: 'Light',

@@ -43,8 +43,12 @@ describe('settingsScreen', () => {
     const scrollToSpy = jest.spyOn(ScrollView.prototype, 'scrollTo');
     await render(<SettingsScreen />);
 
+    // Data storage is in the App & data group: its place in the screen adds up both.
+    await fireEvent(screen.getByTestId('app-group'), 'layout', {
+      nativeEvent: { layout: { height: 900, width: 400, x: 0, y: 500 } },
+    });
     await fireEvent(screen.getByTestId('data-storage'), 'layout', {
-      nativeEvent: { layout: { height: 200, width: 400, x: 0, y: 600 } },
+      nativeEvent: { layout: { height: 200, width: 400, x: 0, y: 100 } },
     });
 
     expect(scrollToSpy).toHaveBeenCalledWith({ animated: false, y: 600 });
@@ -112,6 +116,15 @@ describe('settingsScreen', () => {
     expect(screen.getByRole('switch', { name: 'Show button labels' })).toBeChecked();
     expect(screen.getByText('Edit')).toBeOnTheScreen();
     expect(getPreferences().isShowingButtonLabels).toBe(true);
+  });
+
+  it('groups the settings: cooking, then app & data', async () => {
+    await render(<SettingsScreen />);
+
+    const [cooking, app] = screen.getAllByRole('header');
+
+    expect(cooking).toHaveTextContent('Cooking');
+    expect(app).toHaveTextContent('App & data');
   });
 
   it('uses European units by default, and US units when chosen', async () => {
