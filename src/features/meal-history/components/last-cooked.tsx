@@ -10,14 +10,15 @@ import { markCooked, removeCookedMeal } from '../db/cooked-meal-queries';
 import { useLastCookedMeal } from '../hooks/use-last-cooked-meal';
 
 type LastCookedProps = Readonly<{
-  // On the recipe screen: the last time can be removed (a mark made by mistake).
-  isRemovable?: boolean;
+  // On the recipe screen: "I cooked it" (hidden once cooked today), and the last time can be
+  // removed (a mark made by mistake). Elsewhere (the meal choice's card), only the line.
+  isEditable?: boolean;
   recipeId: number;
 }>;
 
-// When the recipe was last cooked, and "I cooked it" (hidden once cooked today). Read-only on a
-// TV: recipes are cooked, and marked, with the phone.
-export function LastCooked({ isRemovable = false, recipeId }: LastCookedProps) {
+// When the recipe was last cooked. Read-only on a TV: recipes are cooked, and marked, with the
+// phone.
+export function LastCooked({ isEditable = false, recipeId }: LastCookedProps) {
   const t = useMessages();
   const database = useDatabase();
   const confirmDelete = useConfirmDelete();
@@ -41,7 +42,7 @@ export function LastCooked({ isRemovable = false, recipeId }: LastCookedProps) {
   return (
     <View style={styles.row}>
       <Text style={styles.text}>{text}</Text>
-      {!isTv && lastCooked && isRemovable && (
+      {!isTv && isEditable && lastCooked && (
         // With its text: the header's trash can deletes the recipe itself.
         <Button
           accessibilityHint={t.common.deleteHint}
@@ -52,7 +53,7 @@ export function LastCooked({ isRemovable = false, recipeId }: LastCookedProps) {
           variant="danger"
         />
       )}
-      {!isTv && daysAgo !== 0 && (
+      {!isTv && isEditable && daysAgo !== 0 && (
         <Button
           accessibilityHint={t.mealHistory.cookedHint}
           icon="pot-steam-outline"

@@ -32,6 +32,13 @@ jest.mock('expo-localization', () => {
   return { getLocales: jest.fn(() => localeList), useLocales: jest.fn(() => localeList) };
 });
 
+// The library's own mock: insets of 0, without the SafeAreaProvider the app's root gives.
+jest.mock(
+  'react-native-safe-area-context',
+  () =>
+    jest.requireActual<{ default: unknown }>('react-native-safe-area-context/jest/mock').default,
+);
+
 // Screens set their header buttons with <Drawer.Screen options={{ headerRight }}>: render them.
 jest.mock('expo-router/drawer', () => ({
   Drawer: {

@@ -63,6 +63,7 @@ const lightColors = {
   menuMealChoice: '#1D4ED8',
   menuRecipes: '#15803D',
   menuSettings: '#57534E',
+  menuShoppingList: '#B45309',
   onAction: '#FFFFFF',
   onActionSoft: '#1D4ED8',
   // Dims the screen behind a sheet (e.g. the unit picker of the recipe form).
@@ -97,6 +98,7 @@ const darkColors: ThemeColors = {
   menuMealChoice: '#60A5FA',
   menuRecipes: '#4ADE80',
   menuSettings: '#A8A29E',
+  menuShoppingList: '#FBBF24',
   onAction: '#FFFFFF',
   onActionSoft: '#BFDBFE',
   overlay: 'rgba(0, 0, 0, 0.6)',

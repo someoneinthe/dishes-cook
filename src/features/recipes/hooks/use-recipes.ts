@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useDatabase } from '@/db/database-context';
 import { usePagedQuery } from '@/db/use-paged-query';
 import type { RecipeFilters } from '../db/recipe-queries';
-import { countRecipes, getRecipe, listRecipePage } from '../db/recipe-queries';
+import { countRecipes, getRecipe, getRecipeSyncId, listRecipePage } from '../db/recipe-queries';
 
 // `id` undefined: no recipe (nothing is read).
 export function useRecipe(id: number | undefined) {
@@ -41,4 +41,16 @@ export function useRecipePages(filters: RecipeFilters) {
         pageParam: pageParameter,
       }),
   );
+}
+
+// `id` undefined: no recipe (nothing is read). Undefined for a recipe that doesn't exist.
+export function useRecipeSyncId(id: number | undefined) {
+  const database = useDatabase();
+  const read = () => (id === undefined ? null : (getRecipeSyncId(database, id) ?? null));
+  const { data: syncId } = useQuery({
+    initialData: read,
+    queryFn: read,
+    queryKey: ['recipes', 'syncId', id],
+  });
+  return syncId ?? undefined;
 }

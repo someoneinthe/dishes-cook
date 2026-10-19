@@ -17,6 +17,9 @@ type ButtonProps = Readonly<
     isDisabled?: boolean;
     // For a button that shows or hides a section: read as expanded or collapsed.
     isExpanded?: boolean;
+    // Grows to fill its row (a wrapping row of buttons): rows line up at both edges, and the buttons
+    // of a row are as tall as the tallest.
+    isFilling?: boolean;
     // Takes the remote's focus on a TV when it turns true, its view being on screen. Ignored on a
     // phone: it would make the button focusable by touch, so a first tap would focus it instead of
     // pressing it.
@@ -57,6 +60,7 @@ export function Button({
   icon,
   isDisabled = false,
   isExpanded,
+  isFilling = false,
   isIconOnly = false,
   isTvPreferredFocus = false,
   label,
@@ -92,7 +96,12 @@ export function Button({
       onPress={onPress}
       ref={ref}
       {...focusProps}
-      style={({ pressed }) => [styles.button, (pressed || isDisabled) && styles.dimmed, focusStyle]}
+      style={({ pressed }) => [
+        styles.button,
+        isFilling && styles.filling,
+        (pressed || isDisabled) && styles.dimmed,
+        focusStyle,
+      ]}
     >
       {icon && <Icon color={contentColor} name={icon} size={iconSize} />}
       {!isLabelHidden && <Text style={styles.label}>{label}</Text>}
@@ -138,6 +147,9 @@ const styles = StyleSheet.create((theme) => ({
   },
   dimmed: {
     opacity: theme.opacity.disabled,
+  },
+  filling: {
+    flexGrow: 1,
   },
   label: {
     ...theme.typography.label,

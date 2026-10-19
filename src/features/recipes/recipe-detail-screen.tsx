@@ -9,6 +9,7 @@ import { screenScrollProps } from '@/components/screen-scroll-props';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useDatabase } from '@/db/database-context';
 import { LastCooked } from '@/features/meal-history/components/last-cooked';
+import { ShoppingListToggle } from '@/features/shopping-list/components/shopping-list-toggle';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import { RecipeDetails } from './components/recipe-details';
@@ -53,6 +54,7 @@ export function RecipeDetailScreen() {
 
   const headerButtons = (
     <>
+      <ShoppingListToggle recipeId={recipe.id} />
       <Button
         icon="pencil"
         isIconOnly
@@ -82,7 +84,7 @@ export function RecipeDetailScreen() {
         }}
       />
       <RecipeDetails recipe={recipe}>
-        <LastCooked isRemovable recipeId={recipe.id} />
+        <LastCooked isEditable recipeId={recipe.id} />
       </RecipeDetails>
     </ScrollView>
   );

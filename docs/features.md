@@ -10,11 +10,12 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
 - [Meal choice](#meal-choice): 7 scenarios
-- [Meal history](#meal-history): 7 scenarios
+- [Meal history](#meal-history): 8 scenarios
 - [On a TV](#on-a-tv): 4 scenarios
 - [Recipe list](#recipe-list): 9 scenarios
 - [Recipes](#recipes): 3 scenarios
 - [Server sync](#server-sync): 10 scenarios
+- [Shopping list](#shopping-list): 10 scenarios
 
 ## A recipe from a photo
 
@@ -242,9 +243,9 @@ The app proposes a random recipe of the chosen season and course (a main course 
 
 ## Meal history
 
-Saying "I cooked it", on the meal choice or on a recipe, records the day. The meal choice then skips the recipes cooked recently: in the last 14 days, or as chosen in Settings › Skip recent meals (Off, 7, 14 or 30 days). When every matching recipe was cooked recently, it proposes the one cooked longest ago. The history syncs with the server like the recipes, and is read-only on a TV.
+Saying "I cooked it" on a recipe's page, or "Mark as cooked" on the shopping list (offered on coming back from the share sheet), records the day; the meal choice's card shows it. The meal choice then skips the recipes cooked recently: in the last 14 days, or as chosen in Settings › Skip recent meals (Off, 7, 14 or 30 days). When every matching recipe was cooked recently, it proposes the one cooked longest ago. The history syncs with the server like the recipes, and is read-only on a TV.
 
-### The suggestion can be marked as cooked
+### A recipe can be marked as cooked on its page
 
 - **Given** these recipes:
 
@@ -252,10 +253,22 @@ Saying "I cooked it", on the meal choice or on a recipe, records the day. The me
   | ------------ | ------ |
   | Pumpkin soup | never  |
 
-- **When** I open the meal choice
-- **And** I say I cooked the suggestion
-- **Then** the suggestion says "Cooked today"
+- **When** I open "Pumpkin soup"
+- **And** I say I cooked it
+- **Then** I see "Cooked today"
 - **And** it can't be marked as cooked again today
+
+### The suggestion shows when it was last cooked
+
+- **Given** these recipes:
+
+  | title        | cooked     |
+  | ------------ | ---------- |
+  | Pumpkin soup | 3 days ago |
+
+- **When** I open the meal choice
+- **Then** I see "Cooked 3 days ago"
+- **And** the suggestion can't be marked as cooked there
 
 ### A recipe shows when it was last cooked
 
@@ -335,7 +348,7 @@ Saying "I cooked it", on the meal choice or on a recipe, records the day. The me
 
 ## On a TV
 
-On an Android TV, driven with the remote, the app is read-only: it proposes and shows recipes, which are written in the app on a phone. The ingredient list, only used to manage ingredients, isn't in the TV's menu.
+On an Android TV, driven with the remote, the app is read-only: it proposes and shows recipes, which are written in the app on a phone. The ingredient list, only used to manage ingredients, and the shopping list, only used to share one, aren't in the TV's menu.
 
 ### A recipe is shown without edit or delete
 
@@ -363,6 +376,8 @@ On an Android TV, driven with the remote, the app is read-only: it proposes and 
 - **When** I open the new recipe form on the TV
 - **Then** I am taken to the meal choice
 - **When** I open the ingredient list on the TV
+- **Then** I am taken to the meal choice
+- **When** I open the shopping list on the TV
 - **Then** I am taken to the meal choice
 
 ## Recipe list
@@ -563,3 +578,90 @@ Your data (recipes and ingredients today) is kept on the phone. It can also be s
 - **When** I stop syncing with the server
 - **Then** my data is kept on this phone only
 - **And** the phone has the recipe "Leek soup"
+
+## Shopping list
+
+Meals are picked on the meal choice ("Add to list", which proposes another recipe; a "Shopping list" button then appears at the bottom) or on a recipe. The shopping list adds up their ingredients, in the reader's units, and shares them as text with another app (notes, messages, email…). On coming back from the share sheet, it offers to mark the meals as cooked (the meal history), which empties the list: Android doesn't tell whether something was sent, so the offer also comes after closing the sheet. The list isn't saved: it's forgotten when the app closes. It holds 50 meals at most. Not on a TV.
+
+**For every scenario:**
+
+- **Given** these recipes:
+
+  | title     | ingredients                    |
+  | --------- | ------------------------------ |
+  | Leek soup | Leek: 3, Potato: 500 g, Salt   |
+  | Leek pie  | Leek: 2, Potato: 300 g, Pastry |
+
+### The meal choice explains how to make a shopping list
+
+- **When** I open the meal choice
+- **Then** I'm told to add meals, then to share them from the list's button
+- **When** I add the suggestion to the shopping list
+- **Then** I'm told 1 meal is in the shopping list
+
+### The suggestion can be added to the list, and another recipe is proposed
+
+- **When** I open the meal choice
+- **And** I add the suggestion to the shopping list
+- **Then** the other recipe is suggested
+- **And** the shopping list holds 1 meal
+
+### The meal choice doesn't suggest the meals in the list
+
+- **When** I open the meal choice
+- **And** I add the suggestion to the shopping list
+- **And** I ask for another suggestion
+- **Then** the other recipe is suggested
+
+### Nothing is suggested once every matching recipe is in the list
+
+- **When** I open the meal choice
+- **And** I add the suggestion to the shopping list
+- **And** I add the suggestion to the shopping list
+- **Then** I am told that every matching recipe is in the shopping list
+
+### The list adds up the ingredients of its meals
+
+- **Given** "Leek soup" and "Leek pie" are in the shopping list
+- **When** I open the shopping list
+- **Then** it lists "Leek: 5", "Pastry", "Potato: 800 g" and "Salt"
+
+### Sharing the list, then marking its meals as cooked
+
+- **Given** "Leek soup" and "Leek pie" are in the shopping list
+- **When** I open the shopping list
+- **And** I share it
+- **Then** the shared text lists the meals and "• Potato: 800 g"
+- **When** I mark the meals as cooked
+- **Then** the shopping list is empty
+- **And** "Leek soup" and "Leek pie" were cooked today
+
+### A meal can be taken out of the list
+
+- **Given** "Leek soup" and "Leek pie" are in the shopping list
+- **When** I open the shopping list
+- **And** I take "Leek pie" out of the list
+- **Then** it lists "Leek: 3", "Potato: 500 g" and "Salt"
+
+### A suggestion added to the list from its page is replaced
+
+- **When** I open the meal choice
+- **And** I open the suggestion and add it to the shopping list
+- **And** I go back to the meal choice
+- **Then** the other recipe is suggested
+
+### The offer to mark the meals as cooked goes once the list changes
+
+- **Given** "Leek soup" is in the shopping list
+- **When** I open the shopping list
+- **And** I share it
+- **And** "Leek pie" is added to the list
+- **Then** I'm not offered to mark the meals as cooked
+
+### A recipe can be added to the list from its page
+
+- **When** I open "Leek soup"
+- **And** I add it to the shopping list
+- **Then** the shopping list holds 1 meal
+- **When** I take it out of the shopping list
+- **Then** the shopping list is empty
