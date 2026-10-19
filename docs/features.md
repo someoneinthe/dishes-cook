@@ -15,7 +15,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Recipe list](#recipe-list): 9 scenarios
 - [Recipes](#recipes): 3 scenarios
 - [Server sync](#server-sync): 10 scenarios
-- [Shopping list](#shopping-list): 9 scenarios
+- [Shopping list](#shopping-list): 10 scenarios
 
 ## A recipe from a photo
 
@@ -579,6 +579,13 @@ Meals are picked on the meal choice ("Add to list", which proposes another recip
   | --------- | ------------------------------ |
   | Leek soup | Leek: 3, Potato: 500 g, Salt   |
   | Leek pie  | Leek: 2, Potato: 300 g, Pastry |
+
+### The meal choice explains how to make a shopping list
+
+- **When** I open the meal choice
+- **Then** I'm told to add meals, then to share them from the cart
+- **When** I add the suggestion to the shopping list
+- **Then** I'm told 1 meal is in the shopping list
 
 ### The suggestion can be added to the list, and another recipe is proposed
 

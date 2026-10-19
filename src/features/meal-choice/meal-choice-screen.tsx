@@ -19,6 +19,7 @@ import { useNewRecipe } from '@/features/recipes/hooks/use-new-recipe';
 import { useRecipe, useRecipeCount, useRecipeSyncId } from '@/features/recipes/hooks/use-recipes';
 import { usePreferences } from '@/features/settings/preferences';
 import { ShoppingListButton } from '@/features/shopping-list/components/shopping-list-button';
+import { ShoppingListHelp } from '@/features/shopping-list/components/shopping-list-help';
 import { addPick, getPicks, MAX_PICKS, usePicks } from '@/features/shopping-list/meal-picks';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
@@ -150,6 +151,7 @@ export function MealChoiceScreen() {
             title={t.mealChoice.promptTitle}
           />
         ))}
+      <ShoppingListHelp />
     </ScrollView>
   );
 }

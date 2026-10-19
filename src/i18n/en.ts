@@ -332,6 +332,15 @@ export const en = {
     emptyTitle: 'No meals picked yet',
     // On a disabled add button: why nothing can be added.
     fullHint: (max: number) => `The shopping list is full: ${max} meals at most`,
+    // Under the meal choice's suggestion: how to make a shopping list, then how far it is.
+    helpContinue: (count: number) =>
+      plural(
+        count,
+        '1 meal is in your shopping list. Add more, or open the list with the cart at the top right to share its ingredients.',
+        `${count} meals are in your shopping list. Add more, or open the list with the cart at the top right to share their ingredients.`,
+      ),
+    helpStart:
+      'To make a shopping list, add one or more meals with “Add to list”, then open the list with the cart at the top right to share their ingredients.',
     ingredients: 'Ingredients',
     markCooked: 'Mark as cooked',
     markCookedHint: 'The meal choice then skips them for a while',

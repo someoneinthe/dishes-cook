@@ -296,6 +296,13 @@ export const fr: Messages = {
     emptyMessage: `Ajoutez des repas depuis le choix du repas ou une recette${NARROW_SPACE}: leurs ingrédients sont listés ici, prêts à partager.`,
     emptyTitle: 'Aucun repas choisi',
     fullHint: (max) => `La liste de courses est pleine${NARROW_SPACE}: ${max}\u{A0}repas au plus`,
+    helpContinue: (count) =>
+      plural(
+        count,
+        '1\u{A0}repas est dans votre liste de courses. Ajoutez-en d’autres, ou ouvrez la liste avec le chariot en haut à droite pour partager ses ingrédients.',
+        `${count}\u{A0}repas sont dans votre liste de courses. Ajoutez-en d’autres, ou ouvrez la liste avec le chariot en haut à droite pour partager leurs ingrédients.`,
+      ),
+    helpStart: `Pour faire une liste de courses, ajoutez un ou plusieurs repas avec ${quote('Ajouter à la liste')}, puis ouvrez la liste avec le chariot en haut à droite pour partager leurs ingrédients.`,
     ingredients: 'Ingrédients',
     markCooked: 'Noter comme cuisinés',
     markCookedHint: 'Le choix du repas les évite ensuite pendant un temps',

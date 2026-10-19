@@ -112,6 +112,26 @@ defineFeature(feature, (test) => {
   const shownIngredients = () =>
     screen.getAllByText(/^• /).map((line) => (line.props.children as string).slice(2));
 
+  test('The meal choice explains how to make a shopping list', ({ given, then, when }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the meal choice', openTheMealChoice);
+    then("I'm told to add meals, then to share them from the cart", () => {
+      expect(
+        screen.getByText(
+          'To make a shopping list, add one or more meals with “Add to list”, then open the list with the cart at the top right to share their ingredients.',
+        ),
+      ).toBeOnTheScreen();
+    });
+    when('I add the suggestion to the shopping list', addTheSuggestion);
+    then(/^I'm told (\d+) meal is in the shopping list$/, (count: string) => {
+      expect(
+        screen.getByText(
+          `${count} meal is in your shopping list. Add more, or open the list with the cart at the top right to share its ingredients.`,
+        ),
+      ).toBeOnTheScreen();
+    });
+  });
+
   test('The suggestion can be added to the list, and another recipe is proposed', ({
     and,
     given,

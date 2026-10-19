@@ -12,6 +12,12 @@ Feature: Shopping list
       | Leek soup | Leek: 3, Potato: 500 g, Salt    |
       | Leek pie  | Leek: 2, Potato: 300 g, Pastry  |
 
+  Scenario: The meal choice explains how to make a shopping list
+    When I open the meal choice
+    Then I'm told to add meals, then to share them from the cart
+    When I add the suggestion to the shopping list
+    Then I'm told 1 meal is in the shopping list
+
   Scenario: The suggestion can be added to the list, and another recipe is proposed
     When I open the meal choice
     And I add the suggestion to the shopping list
