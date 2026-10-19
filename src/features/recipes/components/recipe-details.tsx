@@ -5,8 +5,10 @@ import { Markdown } from '@/components/markdown';
 import { usePreferences } from '@/features/settings/preferences';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { Recipe } from '../db/recipe-queries';
+import { formatTimes } from '../minutes';
 import { formatQuantity } from '../quantity';
 import { CourseLabel, SeasonLabel } from './recipe-labels';
+import { RecipePhoto } from './recipe-photo';
 
 type RecipeDetailsProps = Readonly<{
   // Shown under the season and course (e.g. when it was last cooked).
@@ -19,8 +21,12 @@ export function RecipeDetails({ children, recipe }: RecipeDetailsProps) {
   const t = useMessages();
   // Quantities in the reader's units (Settings › Units).
   const { units } = usePreferences();
+  const times = formatTimes(t, recipe);
   return (
     <View style={styles.container}>
+      {recipe.photoFile !== undefined && (
+        <RecipePhoto file={recipe.photoFile} title={recipe.title} />
+      )}
       <Text accessibilityRole="header" style={styles.title}>
         {recipe.title}
       </Text>
@@ -28,6 +34,7 @@ export function RecipeDetails({ children, recipe }: RecipeDetailsProps) {
         <SeasonLabel season={recipe.season} />
         <CourseLabel course={recipe.course} />
       </View>
+      {times !== undefined && <Text style={styles.muted}>{times}</Text>}
       {children}
 
       <Text accessibilityRole="header" style={styles.heading}>

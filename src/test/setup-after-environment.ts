@@ -73,21 +73,65 @@ jest.mock('expo-image-picker', () => ({
 
 // The app's files are native (expo-file-system): every folder exists, tests check which ones were
 // deleted (jest.mocked(Directory).mock.results).
-jest.mock('expo-file-system', () => ({
-  Directory: jest.fn((_parent: unknown, name: string) => ({
-    create: jest.fn(),
-    delete: jest.fn(),
-    exists: true,
-    name,
-    uri: ['file:///data/cache', name].join('/'),
-  })),
-  // `new File(folder, name)` or `new File(uri)`; tests read where files were moved (move.mock).
-  File: jest.fn((parent: string | { uri: string }, name?: string) => ({
-    move: jest.fn(() => Promise.resolve()),
-    uri: typeof parent === 'string' ? parent : [parent.uri, name].join('/'),
-  })),
-  Paths: { cache: { uri: 'file:///data/cache/' } },
-}));
+jest.mock('expo-file-system', () => {
+  const uriOf = (partList: readonly (string | { uri: string })[]) =>
+    partList
+      .map((part) => (typeof part === 'string' ? part : part.uri))
+      .join('/')
+      .replaceAll(/([^/:])\/{2,}/g, '$1/');
+  // `new File(folder, name)`, `new File(Paths.document, folder, name)` or `new File(uri)`; tests
+  // read where files were moved (move.mock) and which were deleted (delete.mock).
+  const File = jest.fn((...partList: (string | { uri: string })[]) => {
+    const uri = uriOf(partList);
+    return {
+      base64: jest.fn(() => Promise.resolve('cGhvdG8=')),
+      delete: jest.fn(),
+      exists: true,
+      move: jest.fn(() => Promise.resolve()),
+      name: uri.split('/').at(-1) ?? '',
+      uri,
+    };
+  });
+  Object.assign(File, {
+    downloadFileAsync: jest.fn((_url: string, destination: unknown) =>
+      Promise.resolve(destination),
+    ),
+  });
+  return {
+    Directory: jest.fn((...partList: (string | { uri: string })[]) => ({
+      create: jest.fn(),
+      delete: jest.fn(),
+      exists: true,
+      list: jest.fn(() => []),
+      name: uriOf(partList).split('/').at(-1) ?? '',
+      uri: uriOf(partList),
+    })),
+    File,
+    Paths: { cache: { uri: 'file:///data/cache/' }, document: { uri: 'file:///data/files/' } },
+  };
+});
+
+// Resizing a picked photo: a JPEG "saved" in the manipulator's cache.
+jest.mock('expo-image-manipulator', () => {
+  const context = {
+    renderAsync: jest.fn(() =>
+      Promise.resolve({
+        saveAsync: jest.fn(() =>
+          Promise.resolve({
+            height: 960,
+            uri: 'file:///data/cache/ImageManipulator/resized.jpg',
+            width: 1280,
+          }),
+        ),
+      }),
+    ),
+    resize: jest.fn(),
+  };
+  return {
+    ImageManipulator: { manipulate: jest.fn(() => context) },
+    SaveFormat: { JPEG: 'jpeg' },
+  };
+});
 
 // Making and sharing a PDF are native: a PDF "made" in the print cache, and a share sheet closed.
 jest.mock('expo-print', () => ({

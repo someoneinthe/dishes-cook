@@ -24,7 +24,9 @@ defineFeature(feature, (test) => {
 
   const readWhatStaysOnThisDevice = () => {
     expect(screen.getByRole('header', { name: 'On this device' })).toBeOnTheScreen();
-    expect(screen.getByText(/saved in a database on this device/)).toBeOnTheScreen();
+    expect(
+      screen.getByText(/photos included\), ingredients and settings are saved on this device/),
+    ).toBeOnTheScreen();
   };
 
   test('The About page tells where my data goes', ({ and, then, when }) => {

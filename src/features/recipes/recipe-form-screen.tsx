@@ -22,15 +22,20 @@ import { isTv } from '@/lib/device';
 import { cleanName } from '@/lib/text';
 import { formatAmount, parseAmount, toDisplay, toStored } from '@/lib/units';
 import type { QuantityDraft } from './components/ingredient-quantity-row';
+import type { TimeDrafts } from './components/recipe-time-fields';
 import type { Recipe } from './db/recipe-queries';
 import type { ScannedRecipe } from './recipe-from-text';
 import { IngredientQuantityRow } from './components/ingredient-quantity-row';
 import { InstructionsField } from './components/instructions-field';
+import { RecipePhotoField } from './components/recipe-photo-field';
+import { RecipeTimeFields } from './components/recipe-time-fields';
 import { SelectedIngredient } from './components/selected-ingredient';
 import { courseOptionList } from './course';
 import { getRecipe, isRecipeSaved, saveRecipe } from './db/recipe-queries';
 import { useNewIngredients } from './hooks/use-new-ingredients';
+import { parseMinutes } from './minutes';
 import { parseScannedRecipe } from './recipe-from-text';
+import { deleteRecipePhoto } from './recipe-photos';
 import { seasonOptionList } from './season';
 
 type RecipeFormProps = Readonly<{
@@ -67,6 +72,20 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
     startingText(initialRecipe, scannedRecipe, 'instructions'),
   );
   const [titleError, setTitleError] = useState<string>();
+  const [timeDrafts, setTimeDrafts] = useState<TimeDrafts>(() => ({
+    cook: initialRecipe?.cookMinutes === undefined ? '' : String(initialRecipe.cookMinutes),
+    prep: initialRecipe?.prepMinutes === undefined ? '' : String(initialRecipe.prepMinutes),
+  }));
+  const [invalidTimeList, setInvalidTimeList] = useState<(keyof TimeDrafts)[]>([]);
+  // The photo's file; one picked here is saved with the recipe, or swept at start if not.
+  const [photoFile, setPhotoFile] = useState(initialRecipe?.photoFile);
+  const changePhoto = (file: string | undefined) => {
+    // A photo picked here and replaced or removed before saving: no recipe will have it.
+    if (photoFile !== undefined && photoFile !== initialRecipe?.photoFile) {
+      deleteRecipePhoto(photoFile);
+    }
+    setPhotoFile(file);
+  };
   const { units } = usePreferences();
   // The saved quantities, as shown (Settings › Units) and as stored, by ingredient id.
   const [savedMap] = useState(() => savedQuantities(initialRecipe, t, units));
@@ -111,6 +130,8 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
     if (!cleanName(title)) {
       setTitleError(t.recipes.titleRequired);
     }
+    const { cookMinutes, invalidList: timeErrorList, prepMinutes } = readTimes(timeDrafts);
+    setInvalidTimeList(timeErrorList);
     const firstInvalid = firstInvalidField({
       amountRefMap: amountRefMap.current,
       choiceRefMap: choiceRefMap.current,
@@ -129,15 +150,19 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
       isSavedRef.current ||
       !cleanName(title) ||
       invalidIdList.length > 0 ||
-      undecidedIdList.length > 0
+      undecidedIdList.length > 0 ||
+      timeErrorList.length > 0
     ) {
       return;
     }
     const input = {
+      cookMinutes,
       course,
       ingredientIdList: selectedIngredientList.map((ingredient) => ingredient.id),
       instructions,
       newIngredientNames: newIngredients.nameMap,
+      ...photoInput(photoFile, initialRecipe?.photoFile),
+      prepMinutes,
       quantities,
       season,
       title,
@@ -177,6 +202,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
     }
     saveRecipe(database, input, initialRecipe.id);
     isSavedRef.current = true;
+    deleteReplacedPhoto(initialRecipe.photoFile, photoFile);
     router.back();
   };
 
@@ -226,6 +252,14 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
         optionList={courseOptionList(t)}
         value={course}
       />
+      <RecipeTimeFields
+        drafts={timeDrafts}
+        invalidList={invalidTimeList}
+        onChange={(drafts) => {
+          setTimeDrafts(drafts);
+          setInvalidTimeList([]);
+        }}
+      />
       <IngredientPicker
         emptyMessage={t.recipes.ingredientsEmpty}
         label={t.recipes.ingredients}
@@ -260,6 +294,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
         )}
         selectedList={selectedIngredientList}
       />
+      <RecipePhotoField file={photoFile} onChange={changePhoto} title={cleanName(title)} />
       <InstructionsField onChange={setInstructions} value={instructions} />
     </ScrollView>
   );
@@ -320,6 +355,13 @@ type RowReading = Readonly<{ isInvalid: boolean; quantity?: Quantity }>;
 
 type SavedQuantity = Readonly<{ draft: QuantityDraft; stored: Quantity }>;
 
+// The photo a saved edit replaced or removed: no recipe has it any more.
+function deleteReplacedPhoto(savedFile: string | undefined, currentFile: string | undefined) {
+  if (savedFile !== undefined && savedFile !== currentFile) {
+    deleteRecipePhoto(savedFile);
+  }
+}
+
 // The first wrong field from the top: the title, then the ingredients in order (their amount, or
 // the question whether a new one is an existing one).
 function firstInvalidField({
@@ -371,6 +413,14 @@ function moveDraft(
   return next;
 }
 
+// The recipe's new photo, or null to remove it; nothing when unchanged (not uploaded again).
+function photoInput(currentFile: string | undefined, savedFile: string | undefined) {
+  if (currentFile === savedFile) {
+    return {};
+  }
+  return { photo: currentFile === undefined ? null : { file: currentFile } };
+}
+
 // The quantities of the selected ingredients; an empty amount = no quantity.
 function readQuantities(
   selectedList: readonly Ingredient[],
@@ -404,6 +454,20 @@ function readRow(draft: QuantityDraft, saved: SavedQuantity | undefined): RowRea
     isInvalid: false,
     quantity: draft.unit === undefined ? { amount } : { amount, unit: draft.unit },
   };
+}
+
+// The typed times as minutes (null: none), and the fields that aren't a number of minutes.
+function readTimes(drafts: TimeDrafts) {
+  const prepMinutes = parseMinutes(drafts.prep);
+  const cookMinutes = parseMinutes(drafts.cook);
+  const invalidList: (keyof TimeDrafts)[] = [];
+  if (prepMinutes === undefined) {
+    invalidList.push('prep');
+  }
+  if (cookMinutes === undefined) {
+    invalidList.push('cook');
+  }
+  return { cookMinutes, invalidList, prepMinutes };
 }
 
 // The saved quantities: as the form shows them (in the reader's units, "1,5" in French), and as

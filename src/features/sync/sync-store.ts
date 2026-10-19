@@ -3,6 +3,7 @@ import Storage from 'expo-sqlite/kv-store';
 import { useSyncExternalStore } from 'react';
 import type { SyncedTable } from '@/db/schema';
 import type { AppDatabase, DatabaseConnection } from '@/db/types';
+import { recipePhotoStore } from '@/features/recipes/recipe-photos';
 import type { SyncErrorKind } from './sync-api';
 import type { SyncCursors } from './sync-engine';
 import { checkServerVersion } from './server-version';
@@ -210,6 +211,7 @@ async function runSync(connection: DatabaseConnection): Promise<void> {
     state.isAppUpdateAvailable = versionCheck === 'newer-server';
     const cursors = await synchronize(connection.db, api, stored.cursors, {
       holdChanges: connection.holdSyncChanges,
+      photos: recipePhotoStore,
     });
     // Disconnected (or connected again) while syncing: nothing to save.
     if (!isCurrent()) {

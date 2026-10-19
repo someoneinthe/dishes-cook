@@ -1,4 +1,17 @@
-import { and, asc, count, eq, inArray, lte, ne, notExists, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  ne,
+  notExists,
+  or,
+  sql,
+} from 'drizzle-orm';
 import type { Course, Season, SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { Quantity } from '@/lib/units';
@@ -13,10 +26,12 @@ import {
   SEASON_LIST,
   syncDeletions,
 } from '@/db/schema';
+import { toMinutes } from '@/features/recipes/minutes';
 import { isSyncId } from '@/lib/sync-id';
 import { cleanName, toNameKey, toSortKey } from '@/lib/text';
 import { toQuantity, toStored } from '@/lib/units';
 import type {
+  PhotoUpload,
   PullPosition,
   ServerCookedMeal,
   ServerIngredient,
@@ -54,11 +69,31 @@ const MAX_PULL_PAGES = 200;
 // A server time: "2026-10-14 18:03:59.794Z".
 const SERVER_TIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
+// Recipe photos' files on the phone (src/features/recipes/recipe-photos.ts): what the sync reads,
+// writes and deletes.
+export type PhotoStore = Readonly<{
+  // Deletes a photo's file (replaced by a download).
+  delete: (file: string) => void;
+  // Downloads a photo into a new file; resolves with its name.
+  download: (url: string) => Promise<string>;
+  // The photo's file to upload; undefined when it's missing.
+  toUpload: (file: string) => PhotoUpload | undefined;
+}>;
+
 type PullKey = Readonly<{ id: string; updated: string }>;
 
 type PushCursor = Readonly<{ id: number; updatedAt: number }>;
 
 type SyncedTableSchema = typeof cookedMeals | typeof ingredients | typeof recipes;
+
+// At most this many photos downloaded, and uploaded, per sync: the next sync carries on.
+const MAX_PHOTOS_PER_SYNC = 20;
+
+// A photo to push: taken here and not uploaded yet, or removed here and still on the server.
+const PHOTO_TO_PUSH = or(
+  and(isNotNull(recipes.photoFile), isNull(recipes.photoSynced)),
+  and(isNull(recipes.photoFile), isNotNull(recipes.photoSynced)),
+);
 
 // How many changes wait for the next sync: the deletions, and the rows changed since the last push,
 // counted in SQL. Rows dated after `now` aren't this phone's changes (its own are dated by its
@@ -76,8 +111,14 @@ export function countPendingChanges(
       .where(and(changedSince(table, pushedFrom, undefined), lte(table.updatedAt, now)))
       .get()?.count ?? 0;
   const deletionCount = database.select({ count: count() }).from(syncDeletions).get()?.count ?? 0;
+  const photoCount =
+    database.select({ count: count() }).from(recipes).where(PHOTO_TO_PUSH).get()?.count ?? 0;
   return (
-    deletionCount + countChanged(ingredients) + countChanged(recipes) + countChanged(cookedMeals)
+    deletionCount +
+    countChanged(ingredients) +
+    countChanged(recipes) +
+    countChanged(cookedMeals) +
+    photoCount
   );
 }
 
@@ -87,9 +128,14 @@ export async function synchronize(
   database: AppDatabase,
   api: SyncApi,
   cursors: SyncCursors,
-  options: Readonly<{ holdChanges?: (write: () => void) => void; now?: () => number }> = {},
+  options: Readonly<{
+    holdChanges?: (write: () => void) => void;
+    now?: () => number;
+    // Recipe photos' files; without it, photos aren't synced (tests of the rest).
+    photos?: PhotoStore;
+  }> = {},
 ): Promise<SyncCursors> {
-  const { holdChanges = (write: () => void) => write(), now = Date.now } = options;
+  const { holdChanges = (write: () => void) => write(), now = Date.now, photos } = options;
   // Changes made from now on, even during this sync, are pushed next time.
   const startedAt = now();
   const pullIngredients = (since: string) =>
@@ -153,9 +199,16 @@ export async function synchronize(
       cookedMealsPulledUntil = latest(cookedMealsPulledUntil, await pullCookedMeals(''));
     }
   }
+  if (photos) {
+    await downloadPhotos(database, api, photos, holdChanges);
+  }
   await pushDeletions(database, api, holdChanges);
   await pushIngredients(database, api, cursors.pushedFrom);
   await pushRecipes(database, api, cursors.pushedFrom);
+  if (photos) {
+    // After their recipes: the server has them (a photo is uploaded onto its recipe).
+    await pushPhotos(database, api, photos, holdChanges);
+  }
   await pushCookedMeals(database, api, cursors.pushedFrom);
   return {
     pulledUntil: {
@@ -288,11 +341,17 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
     return 0;
   }
   const local = tx
-    .select({ id: recipes.id, updatedAt: recipes.updatedAt })
+    .select({
+      id: recipes.id,
+      photoPending: recipes.photoPending,
+      photoSynced: recipes.photoSynced,
+      updatedAt: recipes.updatedAt,
+    })
     .from(recipes)
     .where(eq(recipes.syncId, row.id))
     .get();
   if (!isNewerThan(row, local)) {
+    applySameVersionPhoto(tx, local, row);
     return linkArrivedIngredients(tx, local, row);
   }
   if (row.deleted > 0) {
@@ -306,12 +365,15 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
     return 0;
   }
   const values = {
+    cookMinutes: toMinutes(row.cook_minutes) ?? null,
     course: toCourse(row.course),
     instructions: typeof row.instructions === 'string' ? row.instructions.trim() : '',
+    prepMinutes: toMinutes(row.prep_minutes) ?? null,
     season: toSeason(row.season),
     sortKey: toSortKey(title),
     title,
     updatedAt: row.modified,
+    ...pulledPhoto(row, local),
   };
   if (local) {
     tx.update(recipes).set(values).where(eq(recipes.id, local.id)).run();
@@ -350,6 +412,31 @@ function applyRecipes(
   return { oldestAddedCreated, unlinkedList };
 }
 
+// A pulled recipe of the same version as the phone's: its photo may have been uploaded since (a
+// request of its own, which doesn't change `modified`): it's downloaded.
+function applySameVersionPhoto(
+  tx: AppDatabase,
+  local:
+    | Readonly<{
+        id: number;
+        photoPending: null | string;
+        photoSynced: null | string;
+        updatedAt: number;
+      }>
+    | undefined,
+  row: ServerRecipe,
+): void {
+  // No photo on the server at the same version isn't a removal (a removal is a new version): the
+  // server just hasn't got this phone's photo yet, which the push uploads.
+  if (local?.updatedAt !== row.modified || row.deleted > 0 || !row.photo) {
+    return;
+  }
+  const photo = pulledPhoto(row, local);
+  if (photo.photoPending !== local.photoPending) {
+    tx.update(recipes).set(photo).where(eq(recipes.id, local.id)).run();
+  }
+}
+
 // Rows changed at or after `pushedFrom`, after the keyset cursor (the last row of the previous
 // page), in (updated_at, id) order: the order of the *_updated_at_id_idx indexes. After a cursor
 // (itself changed at or after `pushedFrom`), a row value: the index is read from the cursor on.
@@ -375,6 +462,53 @@ function deletePulledIngredient(tx: AppDatabase, id: number): void {
     tx.update(ingredients).set({ updatedAt: NOW_MS }).where(eq(ingredients.id, id)).run();
   } else {
     tx.delete(ingredients).where(eq(ingredients.id, id)).run();
+  }
+}
+
+// Downloads the photos pulled from other phones (photo_pending), a few per sync. The file replaces
+// the recipe's photo only if nothing changed it meanwhile; a photo that fails stays to download.
+async function downloadPhotos(
+  database: AppDatabase,
+  api: SyncApi,
+  photos: PhotoStore,
+  holdChanges: (write: () => void) => void,
+): Promise<void> {
+  const rowList = database
+    .select({
+      id: recipes.id,
+      photoFile: recipes.photoFile,
+      photoPending: recipes.photoPending,
+      syncId: recipes.syncId,
+    })
+    .from(recipes)
+    .where(isNotNull(recipes.photoPending))
+    .limit(MAX_PHOTOS_PER_SYNC)
+    .all();
+  for (const row of rowList) {
+    const pending = row.photoPending ?? '';
+    let file: string;
+    try {
+      file = await photos.download(await api.recipePhotoUrl(row.syncId, pending));
+    } catch (error) {
+      // Not this photo's fault (no server, no sign-in): the sync fails. Otherwise, next time.
+      if (error instanceof SyncError) {
+        throw error;
+      }
+      continue;
+    }
+    holdChanges(() => {
+      const appliedList = database
+        .update(recipes)
+        .set({ photoFile: file, photoPending: null, photoSynced: pending })
+        .where(and(eq(recipes.id, row.id), eq(recipes.photoPending, pending)))
+        .returning({ id: recipes.id })
+        .all();
+      // Changed meanwhile (another photo, or none): this download isn't wanted any more.
+      const unusedFile = appliedList.length === 0 ? file : row.photoFile;
+      if (unusedFile !== null) {
+        photos.delete(unusedFile);
+      }
+    });
   }
 }
 
@@ -561,6 +695,19 @@ async function pull<Table extends SyncedTable>(
   return pulledUntil;
 }
 
+// A pulled recipe's photo, compared with the phone's: none (the photo goes), the one the phone has,
+// or another one, to download (the phone's stays until then).
+function pulledPhoto(
+  row: Pick<ServerRecipe, 'photo'>,
+  local: Readonly<{ photoSynced: null | string }> | undefined,
+): Readonly<{ photoFile?: null; photoPending: null | string; photoSynced?: null }> {
+  const name = typeof row.photo === 'string' ? row.photo : '';
+  if (name === '') {
+    return { photoFile: null, photoPending: null, photoSynced: null };
+  }
+  return { photoPending: name === local?.photoSynced ? null : name };
+}
+
 // The pulled quantity of an ingredient, if the server has a usable one.
 function pulledQuantity(quantities: unknown, syncId: string): Quantity | undefined {
   if (typeof quantities !== 'object' || quantities === null || !Object.hasOwn(quantities, syncId)) {
@@ -703,14 +850,62 @@ async function pushIngredients(
   }
 }
 
+// Uploads the photos taken here, and removes on the server those removed here, a few per sync. A
+// photo whose recipe changed meanwhile (another photo) is pushed by the next sync.
+async function pushPhotos(
+  database: AppDatabase,
+  api: SyncApi,
+  photos: PhotoStore,
+  holdChanges: (write: () => void) => void,
+): Promise<void> {
+  const rowList = database
+    .select({
+      id: recipes.id,
+      photoFile: recipes.photoFile,
+      syncId: recipes.syncId,
+      updatedAt: recipes.updatedAt,
+    })
+    .from(recipes)
+    .where(PHOTO_TO_PUSH)
+    .limit(MAX_PHOTOS_PER_SYNC)
+    .all();
+  for (const row of rowList) {
+    const upload = row.photoFile === null ? null : photos.toUpload(row.photoFile);
+    // Its file is missing (deleted outside the app): nothing to upload.
+    if (upload === undefined) {
+      continue;
+    }
+    const result = await api.setRecipePhoto(row.syncId, upload, row.updatedAt);
+    if (result === 'kept-newer') {
+      continue;
+    }
+    holdChanges(() => {
+      database
+        .update(recipes)
+        .set({ photoSynced: row.photoFile === null ? null : result.name })
+        .where(
+          and(
+            eq(recipes.id, row.id),
+            row.photoFile === null
+              ? isNull(recipes.photoFile)
+              : eq(recipes.photoFile, row.photoFile),
+          ),
+        )
+        .run();
+    });
+  }
+}
+
 async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: number): Promise<void> {
   let cursor: PushCursor | undefined;
   for (;;) {
     const rowList = database
       .select({
+        cookMinutes: recipes.cookMinutes,
         course: recipes.course,
         id: recipes.id,
         instructions: recipes.instructions,
+        prepMinutes: recipes.prepMinutes,
         season: recipes.season,
         syncId: recipes.syncId,
         title: recipes.title,
@@ -759,11 +954,14 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
     await settleAll(
       rowList.map((row) =>
         api.upsert('recipes', row.syncId, {
+          // 0 = not given (a number field can't be empty).
+          cook_minutes: row.cookMinutes ?? 0,
           course: row.course,
           deleted: 0,
           ingredients: ingredientSyncIdsByRecipe.get(row.id) ?? [],
           instructions: row.instructions,
           modified: row.updatedAt,
+          prep_minutes: row.prepMinutes ?? 0,
           quantities: quantitiesByRecipe.get(row.id) ?? {},
           season: row.season,
           title: row.title,

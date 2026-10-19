@@ -5,6 +5,8 @@ import type { Recipe } from '@/features/recipes/db/recipe-queries';
 import { Button } from '@/components/button';
 import { LastCooked } from '@/features/meal-history/components/last-cooked';
 import { CourseLabel, SeasonLabel } from '@/features/recipes/components/recipe-labels';
+import { RecipePhoto } from '@/features/recipes/components/recipe-photo';
+import { formatTimes } from '@/features/recipes/minutes';
 import { MAX_PICKS } from '@/features/shopping-list/meal-picks';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
@@ -27,9 +29,13 @@ export function SuggestionCard({
   recipe,
 }: SuggestionCardProps) {
   const t = useMessages();
+  const times = formatTimes(t, recipe);
 
   return (
     <View style={styles.card}>
+      {recipe.photoFile !== undefined && (
+        <RecipePhoto file={recipe.photoFile} title={recipe.title} />
+      )}
       <Text style={styles.intro}>{t.mealChoice.suggestionIntro}</Text>
       {/* Its title is announced when a new suggestion appears (not the whole card, buttons included). */}
       <Text accessibilityLiveRegion="polite" accessibilityRole="header" style={styles.title}>
@@ -39,6 +45,7 @@ export function SuggestionCard({
         <SeasonLabel season={recipe.season} />
         <CourseLabel course={recipe.course} />
         <Text style={styles.detail}>{t.recipes.ingredientCount(recipe.ingredientList.length)}</Text>
+        {times !== undefined && <Text style={styles.detail}>{times}</Text>}
       </View>
       <LastCooked recipeId={recipe.id} />
       {/* The buttons fill their rows: when they wrap (narrow phone, large font), the rows line up

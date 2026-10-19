@@ -3,6 +3,7 @@ import { Marked } from 'marked';
 import type { Messages } from '@/i18n/en';
 import type { UnitSystem } from '@/lib/units';
 import type { Recipe } from './db/recipe-queries';
+import { formatTimes } from './minutes';
 import { formatQuantity } from './quantity';
 
 // A recipe as an HTML page, printed to a PDF to share it (src/features/recipes/share-recipe-pdf.ts).
@@ -28,6 +29,7 @@ ul, ol { margin: 0; padding-left: 18pt; }
 li { margin: 2pt 0; }
 .instructions h1, .instructions h2, .instructions h3 { font-size: 13pt; margin: 12pt 0 4pt; }
 .as-typed { white-space: pre-wrap; }
+.photo { border-radius: 6pt; display: block; margin: 0 0 10pt; max-height: 80mm; max-width: 100%; object-fit: cover; }
 table { border-collapse: collapse; }
 th, td { border: 1px solid #a8a29e; padding: 2pt 6pt; }
 `;
@@ -68,9 +70,14 @@ export function escapeHtml(text: string): string {
 export function toRecipeHtml(
   t: Messages,
   recipe: Recipe,
-  options: Readonly<{ language: string; units: UnitSystem }>,
+  options: Readonly<{
+    language: string;
+    // The recipe's photo, as JPEG data (base64): in the PDF itself, nothing to load.
+    photoBase64?: string;
+    units: UnitSystem;
+  }>,
 ): string {
-  const { language, units } = options;
+  const { language, photoBase64, units } = options;
   const season = recipe.season === 'both' ? t.seasons.winterAndSummer : t.seasons[recipe.season];
   const ingredientList = recipe.ingredientList.map(({ name, quantity }) =>
     quantity ? t.quantities.line(name, formatQuantity(t, quantity, units)) : name,
@@ -88,8 +95,10 @@ export function toRecipeHtml(
     element('style', STYLE),
     '</head>',
     '<body>',
+    photoHtml(photoBase64),
     element('h1', escapeHtml(recipe.title)),
     element('p', escapeHtml([season, t.courses[recipe.course]].join(' · ')), 'labels'),
+    timesHtml(t, recipe),
     element('h2', escapeHtml(t.recipes.ingredients)),
     ingredients,
     element('h2', escapeHtml(t.recipes.recipe)),
@@ -112,4 +121,17 @@ function instructionsHtml(t: Messages, instructions: string): string {
   return instructions.length > MAX_FORMATTED_LENGTH
     ? element('p', escapeHtml(instructions), 'as-typed')
     : element('div', markdown.parse(instructions, { async: false }), 'instructions');
+}
+
+// The photo, at most a third of the page high; nothing without one. Only base64 characters get in.
+function photoHtml(photoBase64: string | undefined): string {
+  return photoBase64 === undefined || !/^[\d+/A-Za-z]+=*$/.test(photoBase64)
+    ? ''
+    : markup`<img alt="" class="photo" src="data:image/jpeg;base64,${photoBase64}">`;
+}
+
+// The times the recipe gives, or nothing.
+function timesHtml(t: Messages, recipe: Recipe): string {
+  const times = formatTimes(t, recipe);
+  return times === undefined ? '' : element('p', escapeHtml(times), 'labels');
 }

@@ -10,6 +10,8 @@ export type FakeSyncServer = Readonly<{
   // Every row of a collection, as stored (tests read and edit them).
   collection: (name: string) => Map<string, StoredRow>;
   fetch: typeof fetch;
+  // The photos stored, by file name: their content, in base64.
+  fileMap: Map<string, string>;
   // Called before each list of a collection is read: tests write rows there, as another phone
   // would during a pull.
   setBeforeList: (callback: ((name: string) => void) | undefined) => void;
@@ -28,6 +30,8 @@ export function createFakeSyncServer(
   account: Readonly<{ email: string; password: string }>,
 ): FakeSyncServer {
   const collectionMap = new Map<string, Map<string, StoredRow>>();
+  const fileMap = new Map<string, string>();
+  const fileTokenSet = new Set<string>();
   const tokenSet = new Set<string>();
   let tokenCount = 0;
   let clock = 0;
@@ -60,6 +64,8 @@ export function createFakeSyncServer(
 
   type FakeRequest = Readonly<{
     body: Record<string, unknown>;
+    // A photo sent in a multipart body: its content, in base64.
+    file?: string;
     isSignedIn: boolean;
     method: string;
     path: string;
@@ -85,7 +91,18 @@ export function createFakeSyncServer(
     if (!stored || !request.isSignedIn || Number(request.body.modified) < stored.modified) {
       return json(404, { message: 'The requested resource was not found.' });
     }
-    const updated = { ...stored, ...request.body, id, updated: now() } as StoredRow;
+    const body: Record<string, unknown> = {
+      ...request.body,
+      modified: Number(request.body.modified),
+    };
+    // A photo: stored under a new name, PocketBase's way ("photo_<random>.jpg").
+    if (request.file !== undefined) {
+      tokenCount += 1;
+      const name = ['photo_', String(tokenCount).padStart(10, '0'), '.jpg'].join('');
+      fileMap.set(name, request.file);
+      body.photo = name;
+    }
+    const updated = { ...stored, ...body, id, updated: now() } as StoredRow;
     rowMap.set(id, updated);
     return json(200, updated);
   };
@@ -109,6 +126,27 @@ export function createFakeSyncServer(
     } as StoredRow;
     rowMap.set(id, created);
     return json(200, created);
+  };
+
+  // A file token (POST /api/files/token), and a protected file read with one.
+  const handleFiles = ({ isSignedIn, method, path, query }: FakeRequest) => {
+    if (method === 'POST' && path === '/api/files/token') {
+      if (!isSignedIn) {
+        return json(401, { message: 'Unauthorized' });
+      }
+      tokenCount += 1;
+      const token = `file-token-${tokenCount}`;
+      fileTokenSet.add(token);
+      return json(200, { token });
+    }
+    const match = /^\/api\/files\/recipes\/\w+\/([\w.]+)$/.exec(path);
+    if (method !== 'GET' || !match) {
+      return;
+    }
+    const content = fileMap.get(match[1] ?? '');
+    return content !== undefined && fileTokenSet.has(query.get('token') ?? '')
+      ? new Response(Buffer.from(content, 'base64'), { status: 200 })
+      : json(404, { message: 'Not found' });
   };
 
   const handleServerInfo = ({ method, path }: FakeRequest) => {
@@ -135,29 +173,31 @@ export function createFakeSyncServer(
     return request.method === 'POST' ? createRecord(rowMap, request) : undefined;
   };
 
-  const fakeFetch = ((input: RequestInfo | URL, init: RequestInit = {}) => {
+  const fakeFetch = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
     if (!isReachable) {
-      return Promise.reject(new TypeError('Network request failed'));
+      throw new TypeError('Network request failed');
     }
     const url = new URL(input instanceof Request ? input.url : input);
     const request: FakeRequest = {
-      body: typeof init.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : {},
+      ...(await readBody(init.body)),
       isSignedIn: tokenSet.has(new Headers(init.headers).get('Authorization') ?? ''),
       method: init.method ?? 'GET',
       path: url.pathname,
       query: url.searchParams,
     };
-    return Promise.resolve(
+    return (
       handleAuth(request) ??
-        handleServerInfo(request) ??
-        handleRecords(request) ??
-        json(404, { message: 'Not found' }),
+      handleFiles(request) ??
+      handleServerInfo(request) ??
+      handleRecords(request) ??
+      json(404, { message: 'Not found' })
     );
   }) as typeof fetch;
 
   return {
     collection,
     fetch: fakeFetch,
+    fileMap,
     setBeforeList: (callback) => {
       beforeList = callback;
     },
@@ -196,4 +236,25 @@ function listPage(rowMap: Map<string, StoredRow>, query: URLSearchParams): Store
     .filter((row) => isListed(row))
     .toSorted((a, b) => a.updated.localeCompare(b.updated) || a.id.localeCompare(b.id))
     .slice((page - 1) * perPage, page * perPage);
+}
+
+// A request's fields, and its photo's content (a multipart body). Blobs only: React Native's
+// { uri } files don't exist in Node.
+async function readBody(
+  body: RequestInit['body'],
+): Promise<Readonly<{ body: Record<string, unknown>; file?: string }>> {
+  if (typeof body === 'string') {
+    return { body: JSON.parse(body) as Record<string, unknown> };
+  }
+  if (!(body instanceof FormData)) {
+    return { body: {} };
+  }
+  const photo = body.get('photo');
+  const payload = body.get('@jsonPayload');
+  return {
+    body: typeof payload === 'string' ? (JSON.parse(payload) as Record<string, unknown>) : {},
+    ...(photo instanceof Blob && {
+      file: Buffer.from(await photo.arrayBuffer()).toString('base64'),
+    }),
+  };
 }

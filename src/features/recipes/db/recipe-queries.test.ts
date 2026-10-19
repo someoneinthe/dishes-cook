@@ -1,4 +1,6 @@
+import { eq } from 'drizzle-orm';
 import type { AppDatabase } from '@/db/types';
+import { recipes } from '@/db/schema';
 import {
   findIngredientByName,
   findOrCreateIngredient,
@@ -198,6 +200,60 @@ describe('recipe queries', () => {
       expect.objectContaining({ ingredientCount: 0, season: 'summer', title: 'Été salad' }),
       expect.objectContaining({ ingredientCount: 2, season: 'winter', title: 'Soup' }),
     ]);
+  });
+
+  it('saves the preparation and cooking times, and leaves them out when not given', () => {
+    const id = saveRecipe(database, { ...soupInput, cookMinutes: 30, prepMinutes: 15 });
+
+    expect(getRecipe(database, id)).toMatchObject({ cookMinutes: 30, prepMinutes: 15 });
+
+    saveRecipe(database, { ...soupInput, cookMinutes: null, prepMinutes: 0 }, id);
+
+    expect(getRecipe(database, id)).not.toHaveProperty('cookMinutes');
+    expect(getRecipe(database, id)).not.toHaveProperty('prepMinutes');
+  });
+
+  describe('photo', () => {
+    const photoColumnsOf = (id: number) =>
+      database
+        .select({
+          photoFile: recipes.photoFile,
+          photoPending: recipes.photoPending,
+          photoSynced: recipes.photoSynced,
+        })
+        .from(recipes)
+        .where(eq(recipes.id, id))
+        .get();
+
+    it('keeps a new photo, to upload (no server copy yet)', () => {
+      const id = saveRecipe(database, { ...soupInput, photo: { file: 'a.jpg' } });
+
+      expect(getRecipe(database, id)?.photoFile).toBe('a.jpg');
+      expect(photoColumnsOf(id)).toStrictEqual({
+        photoFile: 'a.jpg',
+        photoPending: null,
+        photoSynced: null,
+      });
+    });
+
+    it('leaves the photo as it is when the form doesn’t change it', () => {
+      const id = saveRecipe(database, { ...soupInput, photo: { file: 'a.jpg' } });
+      database.update(recipes).set({ photoSynced: 'photo_x.jpg' }).where(eq(recipes.id, id)).run();
+
+      saveRecipe(database, { ...soupInput, title: 'Leek soup' }, id);
+
+      expect(photoColumnsOf(id)).toMatchObject({ photoFile: 'a.jpg', photoSynced: 'photo_x.jpg' });
+    });
+
+    it('removes the photo and remembers the server’s copy, for the sync to remove it there', () => {
+      const id = saveRecipe(database, { ...soupInput, photo: { file: 'a.jpg' } });
+      database.update(recipes).set({ photoSynced: 'photo_x.jpg' }).where(eq(recipes.id, id)).run();
+
+      saveRecipe(database, { ...soupInput, photo: null }, id);
+
+      expect(getRecipe(database, id)).not.toHaveProperty('photoFile');
+      expect(photoColumnsOf(id)).toMatchObject({ photoFile: null, photoSynced: 'photo_x.jpg' });
+    });
   });
 
   it('deletes a recipe and its ingredient links, but not the ingredients', () => {

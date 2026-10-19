@@ -16,6 +16,7 @@ import { RecipeDetails } from './components/recipe-details';
 import { ShareRecipeButton } from './components/share-recipe-button';
 import { deleteRecipe } from './db/recipe-queries';
 import { useRecipe } from './hooks/use-recipes';
+import { deleteRecipePhoto } from './recipe-photos';
 
 export function RecipeDetailScreen() {
   const database = useDatabase();
@@ -48,6 +49,9 @@ export function RecipeDetailScreen() {
       onConfirm: () => {
         setIsDeleted(true);
         deleteRecipe(database, recipe.id);
+        if (recipe.photoFile !== undefined) {
+          deleteRecipePhoto(recipe.photoFile);
+        }
         router.back();
       },
     });

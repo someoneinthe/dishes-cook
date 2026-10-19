@@ -5,6 +5,7 @@ import { usePreferences } from '@/features/settings/preferences';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { Recipe } from '../db/recipe-queries';
 import { toRecipeHtml } from '../recipe-html';
+import { recipePhotoFile } from '../recipe-photos';
 import { shareRecipePdf } from '../share-recipe-pdf';
 
 type ShareRecipeButtonProps = Readonly<{ recipe: Recipe }>;
@@ -19,9 +20,10 @@ export function ShareRecipeButton({ recipe }: ShareRecipeButtonProps) {
   const share = async () => {
     setIsSharing(true);
     try {
+      const photoBase64 = await readPhoto(recipe.photoFile);
       await shareRecipePdf({
         dialogTitle: t.recipes.shareDialogTitle(recipe.title),
-        html: toRecipeHtml(t, recipe, { language: t.languageCode, units }),
+        html: toRecipeHtml(t, recipe, { language: t.languageCode, photoBase64, units }),
         title: recipe.title,
         units,
       });
@@ -43,4 +45,13 @@ export function ShareRecipeButton({ recipe }: ShareRecipeButtonProps) {
       variant="secondary"
     />
   );
+}
+
+// The photo's data for the PDF; none without a photo, or while it isn't downloaded.
+async function readPhoto(file: string | undefined): Promise<string | undefined> {
+  if (file === undefined) {
+    return undefined;
+  }
+  const photo = recipePhotoFile(file);
+  return photo.exists ? photo.base64() : undefined;
 }

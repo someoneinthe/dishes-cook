@@ -63,6 +63,28 @@ describe('recipe html', () => {
       expect(page).toContain('a photo a link');
     });
 
+    it('shows the times, and embeds the photo in the page', () => {
+      const page = toRecipeHtml(
+        en,
+        { ...soup, cookMinutes: 30, prepMinutes: 15 },
+        { language: 'en', photoBase64: 'cGhvdG8=', units: 'metric' },
+      );
+
+      expect(page).toContain('Preparation 15 min · Cooking 30 min · 45 min in all');
+      expect(page).toContain('<img alt="" class="photo" src="data:image/jpeg;base64,cGhvdG8=">');
+    });
+
+    it('leaves out a photo that isn’t base64 data', () => {
+      const page = toRecipeHtml(en, soup, {
+        language: 'en',
+        photoBase64: '"><script>alert(1)</script>',
+        units: 'metric',
+      });
+
+      expect(page).not.toContain('<img');
+      expect(page).not.toMatch(/<script/i);
+    });
+
     it('says when there are no ingredients or instructions', () => {
       const page = html({ ...soup, ingredientList: [], instructions: '' });
 

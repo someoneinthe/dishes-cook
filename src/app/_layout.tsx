@@ -9,6 +9,7 @@ import { MENU_ICONS } from '@/components/menu-entry-options';
 import { stackHeader } from '@/components/stack-header';
 import { DatabaseProvider } from '@/db/database-provider';
 import { LoadingScreen } from '@/features/loading/loading-screen';
+import { deleteUnusedPhotos } from '@/features/recipes/recipe-photos';
 import { deleteSharedPdfs } from '@/features/recipes/share-recipe-pdf';
 import { applyColorScheme, getPreferences, usePreferences } from '@/features/settings/preferences';
 import { useAutoSync } from '@/features/sync/use-auto-sync';
@@ -32,7 +33,8 @@ export default function RootLayout() {
     // The drawer's swipe gesture needs the gesture handler root.
     <GestureHandlerRootView style={styles.root}>
       <I18nProvider language={language}>
-        <DatabaseProvider>
+        {/* Photos no recipe uses any more (replaced by a sync, or a form left unsaved): deleted. */}
+        <DatabaseProvider onReady={({ db }) => deleteUnusedPhotos(db)}>
           <RootStack />
         </DatabaseProvider>
         <StatusBar style="auto" />

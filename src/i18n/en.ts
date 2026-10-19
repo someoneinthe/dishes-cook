@@ -48,14 +48,14 @@ export const en = {
   // or sends (sync, a new network call, analytics…) updates it in every language (CONTRIBUTING.md).
   about: {
     deviceList: [
-      'Your recipes, ingredients and settings are saved in a database on this device. It’s the reference copy: the app works fully without a server or an internet connection.',
+      'Your recipes (their photos included), ingredients and settings are saved on this device. It’s the reference copy: the app works fully without a server or an internet connection.',
       'Android’s backup doesn’t save them: without a sync server, uninstalling the app deletes them.',
     ],
     deviceTitle: 'On this device',
     intro:
       'Dishes Cook keeps your recipes on your device. Here is where your data goes, and where it doesn’t.',
     othersList: [
-      'Reading a recipe from a photo happens on your phone, with Google’s ML Kit text recognition built into the app. The app deletes its copy of the photo as soon as the text is read: the photo isn’t saved with the recipe and never leaves your phone.',
+      'Reading a recipe from a photo happens on your phone, with Google’s ML Kit text recognition built into the app. The app deletes its copy of that photo as soon as the text is read: it isn’t kept and never leaves your phone. A recipe’s own photo, added in the form, is kept with the recipe.',
       'ML Kit would report how it’s used to Google: the app blocks this.',
       'Sharing a shopping list sends its text only to the app you pick (notes, messages…). The list isn’t saved: it’s forgotten when the app closes.',
       'Sharing a recipe makes a PDF on your phone and sends it only to the app you pick. The app deletes its copy as soon as you come back from sharing.',
@@ -64,7 +64,7 @@ export const en = {
     othersTitle: 'Nothing for anyone else',
     serverList: [
       'Off by default. In Settings › Data storage, you can sync with a PocketBase server that you install and run yourself, to share your recipes between your devices.',
-      'Only that server receives your data: your recipes (title, course, season, instructions, ingredients and quantities), your ingredients, the dates you cooked each recipe, and what you deleted. Settings stay on each device.',
+      'Only that server receives your data: your recipes (title, course, season, times, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. Settings stay on each device.',
       'The device keeps the server’s address, your email and an encrypted sign-in token, never your password. The connection is encrypted (HTTPS).',
       'The server is yours: no one else runs it, and the app’s developers can’t see it.',
     ],
@@ -223,14 +223,25 @@ export const en = {
     unitOptionHint: 'Uses this unit for the quantity',
   },
   recipes: {
+    addPhoto: 'Add a photo',
+    addPhotoHint: 'Takes a photo or picks one from your gallery',
     // A recipe screen that failed to show (src/features/recipes/recipe-error-boundary.tsx).
     cantShowMessage: 'Something in it can’t be displayed. Your other recipes aren’t affected.',
     cantShowTitle: 'This recipe can’t be shown',
+    changePhoto: 'Change the photo',
+    cookTime: 'Cooking (min)',
     course: 'Course',
     deletedWhileEditingMessage:
       'It was deleted on another device while you were editing it. Save your version as a new recipe?',
     deletedWhileEditingTitle: 'This recipe was deleted',
     deleteMessage: 'Its ingredients stay in your list.',
+    // A duration from its hours and minutes: "45 min", "1 h", "1 h 30 min".
+    duration: (hours: number, minutes: number) => {
+      if (hours === 0) {
+        return `${minutes} min`;
+      }
+      return minutes === 0 ? `${hours} h` : `${hours} h ${minutes} min`;
+    },
     editRecipe: 'Edit recipe',
     emptyMessage: 'Save the dishes you like to cook, then let the meal choice pick one for you.',
     // On a TV, read-only: recipes can't be added there.
@@ -245,10 +256,12 @@ export const en = {
     ingredients: 'Ingredients',
     ingredientsEmpty: 'Type an ingredient to add it.',
     instructionsPlaceholder: 'Steps, quantities, cooking time…',
+    invalidMinutes: 'Enter a number of minutes, like 20.',
     matchCount: (count: number) =>
       count === 0
         ? 'No recipe matches these filters.'
         : plural(count, '1 recipe matches.', `${count} recipes match.`),
+    minutesPlaceholder: 'e.g. 20',
     // Label of the add-recipe buttons, shown with Settings › Show button labels.
     new: 'New',
     newHint: 'Asks whether to write it or to read it from a photo',
@@ -260,9 +273,17 @@ export const en = {
     notFoundTitle: 'Recipe not found',
     nothingToPreview: 'Nothing to preview yet.',
     openHint: 'Opens the recipe',
+    photo: 'Photo',
+    photoAlt: (title: string) => `Photo of ${title}`,
+    photoFailed: 'The photo couldn’t be added. Try another one.',
+    // The photo removed, in the confirmation: "Delete “this photo”?".
+    photoName: 'this photo',
+    prepTime: 'Preparation (min)',
     preview: 'Preview',
     recipe: 'Recipe',
     recipeText: 'Recipe text',
+    removePhoto: 'Remove the photo',
+    removePhotoMessage: 'The recipe stays as it is.',
     // What screen readers say for a row of the recipe list: "Pumpkin soup, Winter, Starter".
     // A recipe of the list, read as one: "Leek soup, Winter, Main course, 3 ingredients".
     rowLabel: (title: string, season: string, course?: string, ingredients?: string) =>
@@ -278,6 +299,15 @@ export const en = {
     shareFailedMessage: 'Try again. If it happens again, close the app and open it again.',
     shareFailedTitle: 'The PDF couldn’t be made',
     shareHint: 'Sends the recipe as a PDF to another app: messages, email, a drive…',
+    // "Preparation 15 min · Cooking 30 min · 45 min in all": the times a recipe gives.
+    times: (times: Readonly<{ cook?: string; prep?: string; total?: string }>) =>
+      [
+        times.prep && `Preparation ${times.prep}`,
+        times.cook && `Cooking ${times.cook}`,
+        times.total && `${times.total} in all`,
+      ]
+        .filter(Boolean)
+        .join(' · '),
     title: 'Title',
     titlePlaceholder: 'e.g. Pumpkin soup',
     titleRequired: 'Give the recipe a title.',
