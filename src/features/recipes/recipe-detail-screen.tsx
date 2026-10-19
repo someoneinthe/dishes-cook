@@ -84,7 +84,7 @@ export function RecipeDetailScreen() {
         }}
       />
       <RecipeDetails recipe={recipe}>
-        <LastCooked isRemovable recipeId={recipe.id} />
+        <LastCooked isEditable recipeId={recipe.id} />
       </RecipeDetails>
     </ScrollView>
   );

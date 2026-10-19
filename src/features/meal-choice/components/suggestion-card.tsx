@@ -41,6 +41,8 @@ export function SuggestionCard({
         <Text style={styles.detail}>{t.recipes.ingredientCount(recipe.ingredientList.length)}</Text>
       </View>
       <LastCooked recipeId={recipe.id} />
+      {/* The buttons fill their rows: when they wrap (narrow phone, large font), the rows line up
+          at both edges. */}
       <View style={styles.actions}>
         {!isTv && (
           <Button
@@ -50,6 +52,7 @@ export function SuggestionCard({
             accessibilityLabel={t.shoppingList.addLabel(recipe.title)}
             icon="cart-plus"
             isDisabled={isAddDisabled}
+            isFilling
             label={t.shoppingList.add}
             onPress={() => onAddToList(recipe.id)}
             variant="secondary"
@@ -58,6 +61,7 @@ export function SuggestionCard({
         <Button
           accessibilityHint={t.mealChoice.suggestHint}
           icon="dice-multiple"
+          isFilling
           label={t.mealChoice.another}
           onPress={onAnother}
           variant="secondary"
@@ -65,6 +69,7 @@ export function SuggestionCard({
         <Button
           accessibilityHint={t.recipes.openHint}
           accessibilityLabel={t.mealChoice.openLabel(recipe.title)}
+          isFilling
           label={t.mealChoice.open}
           onPress={() =>
             router.push({ params: { id: String(recipe.id) }, pathname: '/recipe/[id]' })
@@ -80,7 +85,6 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.gap(2),
-    justifyContent: 'flex-end',
   },
   card: {
     backgroundColor: theme.colors.surface,

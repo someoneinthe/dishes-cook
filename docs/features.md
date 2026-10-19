@@ -10,7 +10,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
 - [Meal choice](#meal-choice): 7 scenarios
-- [Meal history](#meal-history): 7 scenarios
+- [Meal history](#meal-history): 8 scenarios
 - [On a TV](#on-a-tv): 4 scenarios
 - [Recipe list](#recipe-list): 9 scenarios
 - [Recipes](#recipes): 3 scenarios
@@ -243,9 +243,9 @@ The app proposes a random recipe of the chosen season and course (a main course 
 
 ## Meal history
 
-Saying "I cooked it", on the meal choice or on a recipe, records the day. The meal choice then skips the recipes cooked recently: in the last 14 days, or as chosen in Settings › Skip recent meals (Off, 7, 14 or 30 days). When every matching recipe was cooked recently, it proposes the one cooked longest ago. The history syncs with the server like the recipes, and is read-only on a TV.
+Saying "I cooked it" on a recipe's page, or marking the meals of a shared shopping list as cooked, records the day; the meal choice's card shows it. The meal choice then skips the recipes cooked recently: in the last 14 days, or as chosen in Settings › Skip recent meals (Off, 7, 14 or 30 days). When every matching recipe was cooked recently, it proposes the one cooked longest ago. The history syncs with the server like the recipes, and is read-only on a TV.
 
-### The suggestion can be marked as cooked
+### A recipe can be marked as cooked on its page
 
 - **Given** these recipes:
 
@@ -253,10 +253,22 @@ Saying "I cooked it", on the meal choice or on a recipe, records the day. The me
   | ------------ | ------ |
   | Pumpkin soup | never  |
 
-- **When** I open the meal choice
-- **And** I say I cooked the suggestion
-- **Then** the suggestion says "Cooked today"
+- **When** I open "Pumpkin soup"
+- **And** I say I cooked it
+- **Then** I see "Cooked today"
 - **And** it can't be marked as cooked again today
+
+### The suggestion shows when it was last cooked
+
+- **Given** these recipes:
+
+  | title        | cooked     |
+  | ------------ | ---------- |
+  | Pumpkin soup | 3 days ago |
+
+- **When** I open the meal choice
+- **Then** I see "Cooked 3 days ago"
+- **And** the suggestion can't be marked as cooked there
 
 ### A recipe shows when it was last cooked
 

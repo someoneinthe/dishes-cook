@@ -83,18 +83,29 @@ defineFeature(feature, (test) => {
     await renderWithDatabase(<RecipeDetailScreen />, connection);
   };
 
-  test('The suggestion can be marked as cooked', ({ and, given, then, when }) => {
+  test('A recipe can be marked as cooked on its page', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
-    when('I open the meal choice', openTheMealChoice);
-    and('I say I cooked the suggestion', async () => {
+    when(/^I open "(.*)"$/, openTheRecipe);
+    and('I say I cooked it', async () => {
       expect(screen.getByText('Not cooked yet')).toBeOnTheScreen();
 
       await fireEvent.press(screen.getByRole('button', { name: 'I cooked it' }));
     });
-    then(/^the suggestion says "(.*)"$/, (text: string) => {
+    then(/^I see "(.*)"$/, (text: string) => {
       expect(screen.getByText(text)).toBeOnTheScreen();
     });
     and("it can't be marked as cooked again today", () => {
+      expect(screen.queryByRole('button', { name: 'I cooked it' })).not.toBeOnTheScreen();
+    });
+  });
+
+  test('The suggestion shows when it was last cooked', ({ and, given, then, when }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the meal choice', openTheMealChoice);
+    then(/^I see "(.*)"$/, (text: string) => {
+      expect(screen.getByText(text)).toBeOnTheScreen();
+    });
+    and("the suggestion can't be marked as cooked there", () => {
       expect(screen.queryByRole('button', { name: 'I cooked it' })).not.toBeOnTheScreen();
     });
   });
