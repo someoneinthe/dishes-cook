@@ -52,12 +52,12 @@ describe('recipe html', () => {
         ...soup,
         ingredientList: [{ id: 1, name: '<b>Leek</b>' }],
         instructions:
-          '<script>alert(1)</script>\n\n![a photo](https://example.org/x.png) [a link](https://example.org)',
+          '<script>alert(1)</script> <SCRIPT>alert(2)</SCRIPT>\n\n![a photo](https://example.org/x.png) [a link](https://example.org)',
         title: '<img src=x onerror=alert(1)>',
       });
 
       // Escaped: no tag of the recipe's own, no image to load, no link.
-      expect(page).not.toMatch(/<script|<img|<b>|<a /);
+      expect(page).not.toMatch(/<(script|img|b|a)[\s>]/i);
       expect(page).toContain('&lt;img src=x onerror=alert(1)&gt;');
       expect(page).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
       expect(page).toContain('a photo a link');
