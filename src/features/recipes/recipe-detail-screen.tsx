@@ -13,6 +13,7 @@ import { ShoppingListToggle } from '@/features/shopping-list/components/shopping
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import { RecipeDetails } from './components/recipe-details';
+import { ShareRecipeButton } from './components/share-recipe-button';
 import { deleteRecipe } from './db/recipe-queries';
 import { useRecipe } from './hooks/use-recipes';
 
@@ -54,6 +55,7 @@ export function RecipeDetailScreen() {
 
   const headerButtons = (
     <>
+      <ShareRecipeButton recipe={recipe} />
       <ShoppingListToggle recipeId={recipe.id} />
       <Button
         icon="pencil"

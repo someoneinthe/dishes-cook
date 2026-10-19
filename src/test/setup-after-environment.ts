@@ -74,6 +74,25 @@ jest.mock('expo-image-picker', () => ({
 // The app's files are native (expo-file-system): every folder exists, tests check which ones were
 // deleted (jest.mocked(Directory).mock.results).
 jest.mock('expo-file-system', () => ({
-  Directory: jest.fn(() => ({ delete: jest.fn(), exists: true })),
+  Directory: jest.fn((_parent: unknown, name: string) => ({
+    create: jest.fn(),
+    delete: jest.fn(),
+    exists: true,
+    name,
+    uri: ['file:///data/cache', name].join('/'),
+  })),
+  // `new File(folder, name)` or `new File(uri)`; tests read where files were moved (move.mock).
+  File: jest.fn((parent: string | { uri: string }, name?: string) => ({
+    move: jest.fn(() => Promise.resolve()),
+    uri: typeof parent === 'string' ? parent : [parent.uri, name].join('/'),
+  })),
   Paths: { cache: { uri: 'file:///data/cache/' } },
 }));
+
+// Making and sharing a PDF are native: a PDF "made" in the print cache, and a share sheet closed.
+jest.mock('expo-print', () => ({
+  printToFileAsync: jest.fn(() =>
+    Promise.resolve({ numberOfPages: 1, uri: 'file:///data/cache/Print/0f1e.pdf' }),
+  ),
+}));
+jest.mock('expo-sharing', () => ({ shareAsync: jest.fn(() => Promise.resolve()) }));
