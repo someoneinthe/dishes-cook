@@ -58,6 +58,7 @@ export const en = {
       'Reading a recipe from a photo happens on your phone, with Google’s ML Kit text recognition built into the app. The app deletes its copy of the photo as soon as the text is read: the photo isn’t saved with the recipe and never leaves your phone.',
       'ML Kit would report how it’s used to Google: the app blocks this.',
       'Sharing a shopping list sends its text only to the app you pick (notes, messages…). The list isn’t saved: it’s forgotten when the app closes.',
+      'Sharing a recipe makes a PDF on your phone and sends it only to the app you pick. The app deletes its copy as soon as you come back from sharing.',
       'No account with us, no ads, no analytics, no tracking. The app connects to nothing but your sync server, if you set one up.',
     ],
     othersTitle: 'Nothing for anyone else',
@@ -148,6 +149,8 @@ export const en = {
         ? 'Not used yet'
         : plural(recipeCount, 'Used in 1 recipe', `Used in ${recipeCount} recipes`),
   },
+  // The language's code (BCP 47), e.g. for the shared PDF's `lang`.
+  languageCode: 'en',
   loading: {
     hint: 'The app opens automatically once it has loaded',
     label: 'Loading Dishes Cook',
@@ -270,6 +273,11 @@ export const en = {
     search: 'Search recipes',
     searchPlaceholder: 'Search by title',
     season: 'Season',
+    share: 'Share as PDF',
+    shareDialogTitle: (title: string) => `Share ${title}`,
+    shareFailedMessage: 'Try again. If it happens again, close the app and open it again.',
+    shareFailedTitle: 'The PDF couldn’t be made',
+    shareHint: 'Sends the recipe as a PDF to another app: messages, email, a drive…',
     title: 'Title',
     titlePlaceholder: 'e.g. Pumpkin soup',
     titleRequired: 'Give the recipe a title.',

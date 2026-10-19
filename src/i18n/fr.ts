@@ -33,6 +33,7 @@ export const fr: Messages = {
       `La lecture d’une recette depuis une photo se fait sur votre téléphone, avec la reconnaissance de texte ML Kit de Google intégrée à l’application. L’application supprime sa copie de la photo dès que le texte est lu${NARROW_SPACE}: la photo n’est pas enregistrée avec la recette et ne quitte jamais votre téléphone.`,
       `ML Kit signalerait son utilisation à Google${NARROW_SPACE}: l’application le bloque.`,
       `Partager une liste de courses envoie son texte uniquement à l’application que vous choisissez (notes, messages…). La liste n’est pas enregistrée${NARROW_SPACE}: elle est oubliée quand l’application se ferme.`,
+      'Partager une recette crée un PDF sur votre téléphone et l’envoie uniquement à l’application que vous choisissez. L’application supprime sa copie dès votre retour du partage.',
       'Pas de compte chez nous, pas de publicité, pas de statistiques d’utilisation, pas de pistage. L’application ne se connecte qu’à votre serveur de synchronisation, si vous en configurez un.',
     ],
     othersTitle: 'Rien pour personne d’autre',
@@ -122,6 +123,7 @@ export const fr: Messages = {
         ? 'Pas encore utilisé'
         : plural(recipeCount, 'Utilisé dans 1 recette', `Utilisé dans ${recipeCount} recettes`),
   },
+  languageCode: 'fr',
   loading: {
     hint: 'L’application s’ouvre d’elle-même une fois chargée',
     label: 'Chargement de Dishes Cook',
@@ -238,6 +240,11 @@ export const fr: Messages = {
     search: 'Rechercher des recettes',
     searchPlaceholder: 'Chercher par titre',
     season: 'Saison',
+    share: 'Partager en PDF',
+    shareDialogTitle: (title) => `Partager ${title}`,
+    shareFailedMessage: 'Réessayez. Si cela se reproduit, fermez l’application et rouvrez-la.',
+    shareFailedTitle: 'Le PDF n’a pas pu être créé',
+    shareHint: `Envoie la recette en PDF à une autre application${NARROW_SPACE}: messages, e-mail, un drive…`,
     title: 'Titre',
     titlePlaceholder: `Ex.${NARROW_SPACE}: soupe de potiron`,
     titleRequired: 'Donnez un titre à la recette.',

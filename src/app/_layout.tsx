@@ -9,6 +9,7 @@ import { MENU_ICONS } from '@/components/menu-entry-options';
 import { stackHeader } from '@/components/stack-header';
 import { DatabaseProvider } from '@/db/database-provider';
 import { LoadingScreen } from '@/features/loading/loading-screen';
+import { deleteSharedPdfs } from '@/features/recipes/share-recipe-pdf';
 import { applyColorScheme, getPreferences, usePreferences } from '@/features/settings/preferences';
 import { useAutoSync } from '@/features/sync/use-auto-sync';
 import { I18nProvider, useMessages } from '@/i18n/i18n-provider';
@@ -16,6 +17,9 @@ import { I18nProvider, useMessages } from '@/i18n/i18n-provider';
 // Keep the native splash screen until the loading illustration is rendered. Called at module
 // scope without awaiting, as Expo recommends (Metro doesn't support top-level await).
 void preventAutoHideAsync();
+
+// PDFs left from a recipe shared when the app was closed (src/features/recipes/share-recipe-pdf.ts).
+deleteSharedPdfs();
 
 // The saved light/dark choice, before the first screen renders.
 applyColorScheme(getPreferences().colorScheme);
