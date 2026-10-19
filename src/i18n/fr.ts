@@ -275,6 +275,8 @@ export const fr: Messages = {
   },
   settings: {
     appearance: 'Apparence',
+    appGroup: 'Application et données',
+    cookingGroup: 'Cuisine',
     dark: 'Sombre',
     language: 'Langue',
     light: 'Clair',
