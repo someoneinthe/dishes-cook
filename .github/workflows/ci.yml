@@ -77,7 +77,7 @@ jobs:
       - if: steps.files.outputs.diagram == 'true'
         run: scripts/render-database-diagram.sh dist/database-diagram
       - if: steps.files.outputs.diagram == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: database-diagram
           path: dist/database-diagram/
@@ -176,7 +176,7 @@ jobs:
             npm run test:e2e -- --format junit --output "$RUNNER_TEMP/maestro-report.xml" --test-output-dir "$RUNNER_TEMP/maestro-output" .maestro
       - name: Keep screenshots and logs of failed flows
         if: failure() && steps.run.outputs.e2e == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: maestro-output
           path: |
