@@ -1,6 +1,7 @@
 Feature: Meal history
-  Saying "I cooked it" on a recipe's page, or marking the meals of a shared
-  shopping list as cooked, records the day; the meal choice's card shows it. The
+  Saying "I cooked it" on a recipe's page, or "Mark as cooked" on the shopping
+  list (offered on coming back from the share sheet), records the day; the
+  meal choice's card shows it. The
   meal choice then skips the recipes cooked recently: in the last 14 days, or
   as chosen in Settings › Skip recent meals (Off, 7, 14 or 30 days). When every
   matching recipe was cooked recently, it proposes the one cooked longest ago.

@@ -243,7 +243,7 @@ The app proposes a random recipe of the chosen season and course (a main course 
 
 ## Meal history
 
-Saying "I cooked it" on a recipe's page, or marking the meals of a shared shopping list as cooked, records the day; the meal choice's card shows it. The meal choice then skips the recipes cooked recently: in the last 14 days, or as chosen in Settings › Skip recent meals (Off, 7, 14 or 30 days). When every matching recipe was cooked recently, it proposes the one cooked longest ago. The history syncs with the server like the recipes, and is read-only on a TV.
+Saying "I cooked it" on a recipe's page, or "Mark as cooked" on the shopping list (offered on coming back from the share sheet), records the day; the meal choice's card shows it. The meal choice then skips the recipes cooked recently: in the last 14 days, or as chosen in Settings › Skip recent meals (Off, 7, 14 or 30 days). When every matching recipe was cooked recently, it proposes the one cooked longest ago. The history syncs with the server like the recipes, and is read-only on a TV.
 
 ### A recipe can be marked as cooked on its page
 
@@ -581,7 +581,7 @@ Your data (recipes and ingredients today) is kept on the phone. It can also be s
 
 ## Shopping list
 
-Meals are picked on the meal choice ("Add to list", which proposes another recipe; a "Shopping list" button then appears at the bottom) or on a recipe. The shopping list adds up their ingredients, in the reader's units, and shares them as text with another app (notes, messages, email…). Once shared, it offers to mark the meals as cooked (the meal history), which empties the list. The list isn't saved: it's forgotten when the app closes. It holds 50 meals at most. Not on a TV.
+Meals are picked on the meal choice ("Add to list", which proposes another recipe; a "Shopping list" button then appears at the bottom) or on a recipe. The shopping list adds up their ingredients, in the reader's units, and shares them as text with another app (notes, messages, email…). On coming back from the share sheet, it offers to mark the meals as cooked (the meal history), which empties the list: Android doesn't tell whether something was sent, so the offer also comes after closing the sheet. The list isn't saved: it's forgotten when the app closes. It holds 50 meals at most. Not on a TV.
 
 **For every scenario:**
 

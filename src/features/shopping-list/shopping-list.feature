@@ -2,8 +2,10 @@ Feature: Shopping list
   Meals are picked on the meal choice ("Add to list", which proposes another
   recipe; a "Shopping list" button then appears at the bottom) or on a
   recipe. The shopping list adds up their ingredients, in the reader's units,
-  and shares them as text with another app (notes, messages, email…). Once shared, it offers to mark the meals as cooked (the meal
-  history), which empties the list. The list isn't saved: it's forgotten when
+  and shares them as text with another app (notes, messages, email…). On
+  coming back from the share sheet, it offers to mark the meals as cooked
+  (the meal history), which empties the list: Android doesn't tell whether
+  something was sent, so the offer also comes after closing the sheet. The list isn't saved: it's forgotten when
   the app closes. It holds 50 meals at most. Not on a TV.
 
   Background:
