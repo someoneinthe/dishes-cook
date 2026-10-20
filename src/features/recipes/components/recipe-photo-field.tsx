@@ -4,7 +4,7 @@ import { Button } from '@/components/button';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { PhotoSource } from '../hooks/use-recipe-scan';
-import { pickRecipePhoto } from '../recipe-photos';
+import { pickRecipePhoto, recipePhotoFile } from '../recipe-photos';
 import { RecipePhoto } from './recipe-photo';
 
 type RecipePhotoFieldProps = Readonly<{
@@ -47,30 +47,48 @@ export function RecipePhotoField({ file, onChange, title }: RecipePhotoFieldProp
     });
   };
 
+  // A photo synced from another phone may not be downloaded yet: its buttons, without it, sit
+  // under the label.
+  const isPhotoShown = file !== undefined && recipePhotoFile(file).exists;
+
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{t.recipes.photo}</Text>
-      {file !== undefined && <RecipePhoto file={file} title={title} />}
-      <View style={styles.actions}>
-        <Button
-          accessibilityHint={t.recipes.addPhotoHint}
-          icon="camera-plus-outline"
-          isFilling
-          label={file === undefined ? t.recipes.addPhoto : t.recipes.changePhoto}
-          onPress={choose}
-          variant="secondary"
-        />
-        {file !== undefined && (
+      {file === undefined ? (
+        <View style={styles.actions}>
           <Button
-            accessibilityHint={t.common.deleteHint}
-            icon="trash-can-outline"
+            accessibilityHint={t.recipes.addPhotoHint}
+            icon="camera-plus-outline"
             isFilling
-            label={t.recipes.removePhoto}
-            onPress={askToRemove}
-            variant="danger"
+            label={t.recipes.addPhoto}
+            onPress={choose}
+            variant="secondary"
           />
-        )}
-      </View>
+        </View>
+      ) : (
+        <View>
+          <RecipePhoto file={file} title={title} />
+          {/* On the photo, at its bottom right; their text shows with Settings › button labels. */}
+          <View style={[styles.actions, isPhotoShown && styles.onPhoto]}>
+            <Button
+              accessibilityHint={t.recipes.addPhotoHint}
+              icon="image-edit-outline"
+              isIconOnly
+              label={t.recipes.changePhoto}
+              onPress={choose}
+              variant="secondary"
+            />
+            <Button
+              accessibilityHint={t.common.deleteHint}
+              icon="trash-can-outline"
+              isIconOnly
+              label={t.recipes.removePhoto}
+              onPress={askToRemove}
+              variant="danger"
+            />
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -80,6 +98,7 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.gap(2),
+    justifyContent: 'flex-end',
   },
   field: {
     gap: theme.gap(2),
@@ -87,5 +106,12 @@ const styles = StyleSheet.create((theme) => ({
   label: {
     ...theme.typography.label,
     color: theme.colors.text,
+  },
+  // Inside the photo's rounded corner; they wrap, right-aligned, with long labels or a large font.
+  onPhoto: {
+    bottom: theme.gap(3),
+    left: theme.gap(3),
+    position: 'absolute',
+    right: theme.gap(3),
   },
 }));
