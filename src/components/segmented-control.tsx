@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { ColorToken } from '@/theme/themes';
+import { usePreferences } from '@/features/settings/preferences';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { IconName } from './icon';
 import { Icon } from './icon';
@@ -17,6 +18,13 @@ export type SegmentedOption<T extends string> = Readonly<{
 }>;
 
 type SegmentedControlProps<T extends string> = Readonly<{
+  // As wide as its options, on the right, instead of the whole line (a small switch under a field).
+  isCompact?: boolean;
+  // Icons only, like icon-only buttons: their text shows with Settings › Show button labels, and
+  // screen readers always read it. Every option then needs an icon.
+  isIconOnly?: boolean;
+  // The visible label is left out (the field it belongs to shows it); screen readers still read it.
+  isLabelHidden?: boolean;
   label: string;
   onChange: (value: T) => void;
   optionList: readonly SegmentedOption<T>[];
@@ -26,25 +34,33 @@ type SegmentedControlProps<T extends string> = Readonly<{
 type SegmentProps<T extends string> = Readonly<{
   groupLabel: string;
   isChecked: boolean;
+  isCompact: boolean;
+  isTextShown: boolean;
   onPress: () => void;
   option: SegmentedOption<T>;
 }>;
 
 // A single choice among a few options, shown side by side (radio group semantics).
 export function SegmentedControl<T extends string>({
+  isCompact = false,
+  isIconOnly = false,
+  isLabelHidden = false,
   label,
   onChange,
   optionList,
   value,
 }: SegmentedControlProps<T>) {
   const t = useMessages();
+  const { isShowingButtonLabels } = usePreferences();
 
   return (
-    <View style={styles.field}>
+    <View style={[styles.field, isCompact && styles.compactField]}>
       {/* The group reads its label itself: screen readers skip the visible copy. */}
-      <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.label}>
-        {label}
-      </Text>
+      {!isLabelHidden && (
+        <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.label}>
+          {label}
+        </Text>
+      )}
       <View
         accessibilityHint={t.common.chooseOneOption}
         accessibilityLabel={label}
@@ -55,6 +71,8 @@ export function SegmentedControl<T extends string>({
           <Segment
             groupLabel={label}
             isChecked={option.value === value}
+            isCompact={isCompact}
+            isTextShown={!isIconOnly || isShowingButtonLabels}
             key={option.value}
             onPress={() => onChange(option.value)}
             option={option}
@@ -66,7 +84,14 @@ export function SegmentedControl<T extends string>({
 }
 
 // One option of the group.
-function Segment<T extends string>({ groupLabel, isChecked, onPress, option }: SegmentProps<T>) {
+function Segment<T extends string>({
+  groupLabel,
+  isChecked,
+  isCompact,
+  isTextShown,
+  onPress,
+  option,
+}: SegmentProps<T>) {
   // Icon colors are props, not styles.
   const { theme } = useUnistyles();
   const iconSize = useIconSize('sm');
@@ -82,7 +107,12 @@ function Segment<T extends string>({ groupLabel, isChecked, onPress, option }: S
       accessibilityState={{ checked: isChecked }}
       onPress={onPress}
       {...focusProps}
-      style={[styles.segment, isChecked && styles.checkedSegment, focusStyle]}
+      style={[
+        styles.segment,
+        isCompact && styles.compactSegment,
+        isChecked && styles.checkedSegment,
+        focusStyle,
+      ]}
     >
       {option.icon && (
         <Icon
@@ -91,7 +121,9 @@ function Segment<T extends string>({ groupLabel, isChecked, onPress, option }: S
           size={iconSize}
         />
       )}
-      <Text style={[styles.segmentLabel, isChecked && styles.checkedLabel]}>{option.label}</Text>
+      {isTextShown && (
+        <Text style={[styles.segmentLabel, isChecked && styles.checkedLabel]}>{option.label}</Text>
+      )}
     </Pressable>
   );
 }
@@ -102,6 +134,14 @@ const styles = StyleSheet.create((theme) => ({
   },
   checkedSegment: {
     backgroundColor: theme.colors.actionPrimary,
+  },
+  compactField: {
+    alignSelf: 'flex-end',
+  },
+  // A square as tall as a touch target when it shows its icon only, like an icon-only button.
+  compactSegment: {
+    flexGrow: 0,
+    minWidth: theme.size.touchTarget,
   },
   field: {
     gap: theme.gap(1),

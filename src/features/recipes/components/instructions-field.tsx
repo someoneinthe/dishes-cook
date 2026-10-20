@@ -9,14 +9,17 @@ import { useMessages } from '@/i18n/i18n-provider';
 
 type InstructionsFieldProps = Readonly<{
   onChange: (instructions: string) => void;
+  // A dish's or a drink's (src/features/recipes/kind.ts).
+  placeholder: string;
   value: string;
 }>;
 
 type Mode = 'preview' | 'write';
 
 // The recipe text, written in Markdown: "Write" edits it as typed, "Preview" shows it formatted
-// like on the recipe screen.
-export function InstructionsField({ onChange, value }: InstructionsFieldProps) {
+// like on the recipe screen. The switch sits under the field, small, icons only (their text shows
+// with Settings › Show button labels).
+export function InstructionsField({ onChange, placeholder, value }: InstructionsFieldProps) {
   const t = useMessages();
   const [mode, setMode] = useState<Mode>('write');
   const modeOptionList: readonly SegmentedOption<Mode>[] = [
@@ -26,12 +29,10 @@ export function InstructionsField({ onChange, value }: InstructionsFieldProps) {
 
   return (
     <View style={styles.field}>
-      <SegmentedControl
-        label={t.recipes.recipe}
-        onChange={setMode}
-        optionList={modeOptionList}
-        value={mode}
-      />
+      {/* The field reads its own label: screen readers skip the visible copy. */}
+      <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.label}>
+        {t.recipes.recipe}
+      </Text>
       {mode === 'write' ? (
         <TextField
           hint={t.recipes.formatHint}
@@ -39,7 +40,7 @@ export function InstructionsField({ onChange, value }: InstructionsFieldProps) {
           label={t.recipes.recipeText}
           multiline
           onChangeText={onChange}
-          placeholder={t.recipes.instructionsPlaceholder}
+          placeholder={placeholder}
           value={value}
         />
       ) : (
@@ -51,6 +52,15 @@ export function InstructionsField({ onChange, value }: InstructionsFieldProps) {
           )}
         </View>
       )}
+      <SegmentedControl
+        isCompact
+        isIconOnly
+        isLabelHidden
+        label={t.recipes.recipe}
+        onChange={setMode}
+        optionList={modeOptionList}
+        value={mode}
+      />
     </View>
   );
 }
@@ -58,6 +68,10 @@ export function InstructionsField({ onChange, value }: InstructionsFieldProps) {
 const styles = StyleSheet.create((theme) => ({
   field: {
     gap: theme.gap(2),
+  },
+  label: {
+    ...theme.typography.label,
+    color: theme.colors.text,
   },
   muted: {
     ...theme.typography.body,

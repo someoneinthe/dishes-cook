@@ -107,6 +107,7 @@ export const en = {
     emptyMessageOnTv:
       'Drinks are written in the app on a phone. To see them here, sync this TV with your server in Settings.',
     emptyTitle: 'No drinks yet',
+    instructionsPlaceholder: 'Steps, quantities…',
     matchCount: (count: number) =>
       count === 0
         ? 'No drink matches these filters.'

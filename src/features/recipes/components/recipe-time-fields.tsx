@@ -13,6 +13,8 @@ type RecipeTimeFieldsProps = Readonly<{
   // The fields, to bring a wrong one into view on Save.
   inputRefs?: Readonly<Record<keyof TimeDrafts, Ref<TextInput>>>;
   invalidList: readonly (keyof TimeDrafts)[];
+  // A drink's: the preparation time only.
+  isCookHidden?: boolean;
   onChange: (drafts: TimeDrafts) => void;
 }>;
 
@@ -21,6 +23,7 @@ export function RecipeTimeFields({
   drafts,
   inputRefs,
   invalidList,
+  isCookHidden = false,
   onChange,
 }: RecipeTimeFieldsProps) {
   const t = useMessages();
@@ -40,17 +43,19 @@ export function RecipeTimeFields({
           value={drafts.prep}
         />
       </View>
-      <View style={styles.field}>
-        <TextField
-          error={errorOf('cook')}
-          keyboardType="number-pad"
-          label={t.recipes.cookTime}
-          onChangeText={(cook) => onChange({ ...drafts, cook })}
-          placeholder={t.recipes.minutesPlaceholder}
-          ref={inputRefs?.cook}
-          value={drafts.cook}
-        />
-      </View>
+      {!isCookHidden && (
+        <View style={styles.field}>
+          <TextField
+            error={errorOf('cook')}
+            keyboardType="number-pad"
+            label={t.recipes.cookTime}
+            onChangeText={(cook) => onChange({ ...drafts, cook })}
+            placeholder={t.recipes.minutesPlaceholder}
+            ref={inputRefs?.cook}
+            value={drafts.cook}
+          />
+        </View>
+      )}
     </View>
   );
 }

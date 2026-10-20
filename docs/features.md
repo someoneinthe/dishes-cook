@@ -7,7 +7,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [A recipe from a photo](#a-recipe-from-a-photo): 10 scenarios
 - [A recipe's photo and times](#a-recipes-photo-and-times): 3 scenarios
 - [About](#about): 2 scenarios
-- [Drinks](#drinks): 3 scenarios
+- [Drinks](#drinks): 4 scenarios
 - [Ingredient quantities](#ingredient-quantities): 3 scenarios
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
@@ -155,6 +155,14 @@ Drinks (cocktails, smoothies, hot drinks…) are written like recipes, with thei
 - **When** I save the drink
 - **Then** Drinks lists "Mojito" only
 - **And** Recipes lists "Leek soup" only
+
+### A drink has a preparation time, but no cooking time
+
+- **When** I write a new drink "Mojito"
+- **Then** the form asks for a preparation time but no cooking time
+- **When** I give it 5 minutes of preparation
+- **And** I save the drink
+- **Then** the drink shows "Preparation 5 min"
 
 ### The meal choice never suggests a drink
 

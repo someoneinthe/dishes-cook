@@ -38,4 +38,11 @@ describe('minutes', () => {
     expect(formatTimes(en, {})).toBeUndefined();
     expect(formatTimes(fr, { prepMinutes: 15 })).toBe('Préparation 15\u{A0}min');
   });
+
+  it('shows a drink’s preparation time only: a drink isn’t cooked', () => {
+    expect(formatTimes(en, { cookMinutes: 30, kind: 'drink', prepMinutes: 5 })).toBe(
+      'Preparation 5 min',
+    );
+    expect(formatTimes(en, { cookMinutes: 30, kind: 'drink' })).toBeUndefined();
+  });
 });
