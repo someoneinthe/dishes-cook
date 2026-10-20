@@ -102,6 +102,15 @@ describe('units', () => {
       expect(toStored({ amount: 4 })).toStrictEqual({ amount: 4 });
     });
 
+    it.each(['clove', 'leaf', 'sprig'] as const)(
+      'keeps %s, a counted unit, as written in both systems',
+      (unit) => {
+        expect(toStored({ amount: 3, unit })).toStrictEqual({ amount: 3, unit });
+        expect(toDisplay({ amount: 3, unit }, 'metric')).toStrictEqual({ amount: 3, unit });
+        expect(toDisplay({ amount: 3, unit }, 'us')).toStrictEqual({ amount: 3, unit });
+      },
+    );
+
     it('stores a quantity that reads back the same in its own units', () => {
       expect(toDisplay(toStored({ amount: 8, unit: 'oz' }), 'us')).toStrictEqual({
         amount: 8,
