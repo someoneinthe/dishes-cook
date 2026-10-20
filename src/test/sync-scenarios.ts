@@ -435,6 +435,22 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
       expect(recipeOf(phoneB, 'Soup')?.photoFile).toBeUndefined();
     });
 
+    it('forgets a photo whose file is gone before it was uploaded', async () => {
+      addSoupWithPhoto();
+      // Deleted outside the app (e.g. the app's files cleared).
+      phoneA.photos?.files.clear();
+
+      await sync(phoneA);
+
+      // No photo any more, never uploaded: it no longer waits for (nor holds up) the photo push.
+      expect(
+        phoneA.db
+          .select({ photoFile: recipes.photoFile, photoSynced: recipes.photoSynced })
+          .from(recipes)
+          .all(),
+      ).toStrictEqual([{ photoFile: null, photoSynced: null }]);
+    });
+
     it('brings a photo uploaded after its recipe reached the other phone', async () => {
       addSoupWithPhoto();
       // A pushes the recipe, not its photo yet (as if the upload failed); B gets the recipe.

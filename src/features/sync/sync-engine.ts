@@ -888,8 +888,16 @@ async function pushPhotos(
   await settleAll(
     rowList.map(async (row) => {
       const upload = row.photoFile === null ? null : photos.toUpload(row.photoFile);
-      // Its file is missing (deleted outside the app): nothing to upload.
+      // Its file is missing (deleted outside the app): the recipe has no photo any more, never
+      // uploaded (photoSynced null), so it stops waiting for the push.
       if (upload === undefined) {
+        holdChanges(() => {
+          database
+            .update(recipes)
+            .set({ photoFile: null })
+            .where(and(eq(recipes.id, row.id), eq(recipes.photoFile, row.photoFile ?? '')))
+            .run();
+        });
         return;
       }
       const result = await api.setRecipePhoto(row.syncId, upload, row.updatedAt);
