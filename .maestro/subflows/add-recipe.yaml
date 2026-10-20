@@ -15,9 +15,6 @@ appId: io.github.someoneinthe.dishescook
     centerElement: true
 - tapOn: Search ingredients
 - inputText: ${INGREDIENT}
-# Its suggestions show under the field, behind the keyboard: scrolled into view.
-- scrollUntilVisible:
-    element: Create ${INGREDIENT}
 - tapOn: Create ${INGREDIENT}
 - hideKeyboard
 - tapOn: Save recipe

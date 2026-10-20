@@ -21,9 +21,6 @@ name: Recipes
     centerElement: true
 - tapOn: Search ingredients
 - inputText: Potato
-# Its suggestions show under the field, behind the keyboard: scrolled into view.
-- scrollUntilVisible:
-    element: Create Potato
 - tapOn: Create Potato
 - hideKeyboard
 # A quantity for Leek: 500 g.

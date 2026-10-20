@@ -1,8 +1,8 @@
 import type { RefObject } from 'react';
 import type { Text, TextInput } from 'react-native';
 import { Redirect, router, Stack, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
-import { AccessibilityInfo, Alert, ScrollView, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Alert, Keyboard, ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { Course, Season } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
@@ -110,6 +110,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
   // ScrollView's `innerViewRef` is typed as never empty, which a ref is before mounting.
   const contentRef = useRef<View>(null) as RefObject<View>;
   const titleRef = useRef<TextInput>(null);
+  const keepAtTop = useKeepAtTop(scrollViewRef, contentRef);
   const amountRefMap = useRef(new Map<number, TextInput>());
   const choiceRefMap = useRef(new Map<number, Text>());
   const chooseSimilar = (ingredient: Ingredient, similar: Ingredient) => {
@@ -272,6 +273,8 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
           const { id, name: createdName } = findOrCreateIngredient(database, name);
           return { id, name: createdName };
         }}
+        // At the top of the page: its suggestions, under it, show above the keyboard.
+        onSearchFocus={keepAtTop}
         renderSelected={(ingredient, remove) => (
           <SelectedIngredient
             choiceRef={(text) => keepRef(choiceRefMap.current, ingredient.id, text)}
@@ -492,15 +495,23 @@ function savedQuantities(
   return savedMap;
 }
 
-// Scrolls a wrong field into view and gives it the focus: the keyboard's for a text field, the
-// screen reader's for a question.
-function showField(field: InvalidField, scrollView: null | ScrollView, content: null | View) {
-  const element = 'input' in field ? field.input : field.question;
+// Scrolls the page so the element sits near its top.
+function scrollToTop(
+  element: Text | TextInput,
+  scrollView: null | ScrollView,
+  content: null | View,
+) {
   if (scrollView && content) {
     element.measureLayout(content, (_x, y) => {
       scrollView.scrollTo({ y: Math.max(0, y - SCROLL_MARGIN) });
     });
   }
+}
+
+// Scrolls a wrong field into view and gives it the focus: the keyboard's for a text field, the
+// screen reader's for a question.
+function showField(field: InvalidField, scrollView: null | ScrollView, content: null | View) {
+  scrollToTop('input' in field ? field.input : field.question, scrollView, content);
   if ('input' in field) {
     field.input.focus();
   } else {
@@ -541,6 +552,26 @@ function toSaved(quantity: Quantity, t: Messages, units: UnitSystem): SavedQuant
       unit: shown.unit,
     },
     stored: quantity,
+  };
+}
+
+// Keeps a focused field near the top of the page: the field's own content (an ingredient search's
+// suggestions) shows under it, above the keyboard. Scrolled again once the keyboard is open: the
+// page, shorter, can then scroll further.
+function useKeepAtTop(scrollViewRef: RefObject<null | ScrollView>, contentRef: RefObject<View>) {
+  const fieldRef = useRef<null | TextInput>(null);
+  useEffect(() => {
+    const subscription = Keyboard.addListener('keyboardDidShow', () => {
+      const field = fieldRef.current;
+      if (field?.isFocused()) {
+        scrollToTop(field, scrollViewRef.current, contentRef.current);
+      }
+    });
+    return () => subscription.remove();
+  }, [contentRef, scrollViewRef]);
+  return (field: TextInput) => {
+    fieldRef.current = field;
+    scrollToTop(field, scrollViewRef.current, contentRef.current);
   };
 }
 

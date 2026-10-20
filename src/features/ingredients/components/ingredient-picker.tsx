@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { TextInput } from 'react-native';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
@@ -24,6 +25,9 @@ type IngredientPickerProps = Readonly<{
   onChange: (selectedList: Ingredient[]) => void;
   // When given, a typed name that matches no ingredient can be created.
   onCreate?: (name: string) => Ingredient;
+  // The search field gets the focus (e.g. to scroll it where its suggestions show above the
+  // keyboard), with the field.
+  onSearchFocus?: (field: TextInput) => void;
   // Shows each selected ingredient (e.g. with its quantity) instead of a chip that removes it.
   renderSelected?: (ingredient: Ingredient, remove: () => void) => ReactNode;
   selectedList: readonly Ingredient[];
@@ -42,10 +46,12 @@ export function IngredientPicker({
   label,
   onChange,
   onCreate,
+  onSearchFocus,
   renderSelected,
   selectedList,
 }: IngredientPickerProps) {
   const t = useMessages();
+  const searchRef = useRef<TextInput>(null);
   const [search, setSearch] = useState('');
   const selectedIds = new Set(selectedList.map((ingredient) => ingredient.id));
   // Exact name first, then the most used: the likeliest picks before typing.
@@ -102,6 +108,11 @@ export function IngredientPicker({
           // Typing: no chip may take the focus from the field when the search shows it again.
           forgetFocus();
         }}
+        onFocus={() => {
+          if (searchRef.current) {
+            onSearchFocus?.(searchRef.current);
+          }
+        }}
         onSubmitEditing={() => {
           if (suggestionList[0]) {
             select(suggestionList[0]);
@@ -112,6 +123,7 @@ export function IngredientPicker({
         placeholder={
           onCreate ? t.ingredientPicker.placeholderWithCreate : t.ingredientPicker.placeholder
         }
+        ref={searchRef}
         returnKeyType="done"
         submitBehavior="submit"
         value={search}

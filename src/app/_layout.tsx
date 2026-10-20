@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { preventAutoHideAsync } from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
+import { KeyboardAvoidingView } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { headerTitleWithIcon } from '@/components/header-title';
@@ -35,7 +36,12 @@ export default function RootLayout() {
       <I18nProvider language={language}>
         {/* Photos no recipe uses any more (replaced by a sync, or a form left unsaved): deleted. */}
         <DatabaseProvider onReady={({ db }) => deleteUnusedPhotos(db)}>
-          <RootStack />
+          {/* Every screen ends above the keyboard: Android draws the app under it (edge to edge)
+              and doesn't always shrink the screen itself (e.g. with SwiftKey), hiding the field
+              being typed in. Where Android already does, this adds nothing. */}
+          <KeyboardAvoidingView behavior="padding" style={styles.root}>
+            <RootStack />
+          </KeyboardAvoidingView>
         </DatabaseProvider>
         <StatusBar style="auto" />
         {isLoadingScreenVisible && (
