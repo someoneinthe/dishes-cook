@@ -426,8 +426,8 @@ function applySameVersionPhoto(
     | undefined,
   row: ServerRecipe,
 ): void {
-  // No photo on the server at the same version isn't a removal (a removal is a new version): the
-  // server just hasn't got this phone's photo yet, which the push uploads.
+  // No photo on the server at the same version isn't a removal (a removal comes with a new version,
+  // see pushRecipes): the server just hasn't got this phone's photo yet, which the push uploads.
   if (local?.updatedAt !== row.modified || row.deleted > 0 || !row.photo) {
     return;
   }
@@ -465,6 +465,24 @@ function deletePulledIngredient(tx: AppDatabase, id: number): void {
   }
 }
 
+// Downloads a recipe's photo; resolves with its file, or undefined when this photo failed (tried
+// again next time). Fails when it isn't this photo's fault (no server, no sign-in).
+async function downloadPhoto(
+  api: SyncApi,
+  photos: PhotoStore,
+  syncId: string,
+  name: string,
+): Promise<string | undefined> {
+  try {
+    return await photos.download(await api.recipePhotoUrl(syncId, name));
+  } catch (error) {
+    if (error instanceof SyncError) {
+      throw error;
+    }
+    return undefined;
+  }
+}
+
 // Downloads the photos pulled from other phones (photo_pending), a few per sync. The file replaces
 // the recipe's photo only if nothing changed it meanwhile; a photo that fails stays to download.
 async function downloadPhotos(
@@ -484,32 +502,29 @@ async function downloadPhotos(
     .where(isNotNull(recipes.photoPending))
     .limit(MAX_PHOTOS_PER_SYNC)
     .all();
-  for (const row of rowList) {
-    const pending = row.photoPending ?? '';
-    let file: string;
-    try {
-      file = await photos.download(await api.recipePhotoUrl(row.syncId, pending));
-    } catch (error) {
-      // Not this photo's fault (no server, no sign-in): the sync fails. Otherwise, next time.
-      if (error instanceof SyncError) {
-        throw error;
+  // Side by side, as recipes are pushed; the sync fails only once they have all ended.
+  await settleAll(
+    rowList.map(async (row) => {
+      const pending = row.photoPending ?? '';
+      const file = await downloadPhoto(api, photos, row.syncId, pending);
+      if (file === undefined) {
+        return;
       }
-      continue;
-    }
-    holdChanges(() => {
-      const appliedList = database
-        .update(recipes)
-        .set({ photoFile: file, photoPending: null, photoSynced: pending })
-        .where(and(eq(recipes.id, row.id), eq(recipes.photoPending, pending)))
-        .returning({ id: recipes.id })
-        .all();
-      // Changed meanwhile (another photo, or none): this download isn't wanted any more.
-      const unusedFile = appliedList.length === 0 ? file : row.photoFile;
-      if (unusedFile !== null) {
-        photos.delete(unusedFile);
-      }
-    });
-  }
+      holdChanges(() => {
+        const appliedList = database
+          .update(recipes)
+          .set({ photoFile: file, photoPending: null, photoSynced: pending })
+          .where(and(eq(recipes.id, row.id), eq(recipes.photoPending, pending)))
+          .returning({ id: recipes.id })
+          .all();
+        // Changed meanwhile (another photo, or none): this download isn't wanted any more.
+        const unusedFile = appliedList.length === 0 ? file : row.photoFile;
+        if (unusedFile !== null) {
+          photos.delete(unusedFile);
+        }
+      });
+    }),
+  );
 }
 
 // The earlier of two server times, '' standing for none.
@@ -850,8 +865,9 @@ async function pushIngredients(
   }
 }
 
-// Uploads the photos taken here, and removes on the server those removed here, a few per sync. A
-// photo whose recipe changed meanwhile (another photo) is pushed by the next sync.
+// Uploads the photos taken here, and marks as gone those removed here (cleared on the server with
+// their recipe by pushRecipes, cleared again: harmless), a few per sync. A photo whose recipe
+// changed meanwhile (another photo) is pushed by the next sync.
 async function pushPhotos(
   database: AppDatabase,
   api: SyncApi,
@@ -869,31 +885,33 @@ async function pushPhotos(
     .where(PHOTO_TO_PUSH)
     .limit(MAX_PHOTOS_PER_SYNC)
     .all();
-  for (const row of rowList) {
-    const upload = row.photoFile === null ? null : photos.toUpload(row.photoFile);
-    // Its file is missing (deleted outside the app): nothing to upload.
-    if (upload === undefined) {
-      continue;
-    }
-    const result = await api.setRecipePhoto(row.syncId, upload, row.updatedAt);
-    if (result === 'kept-newer') {
-      continue;
-    }
-    holdChanges(() => {
-      database
-        .update(recipes)
-        .set({ photoSynced: row.photoFile === null ? null : result.name })
-        .where(
-          and(
-            eq(recipes.id, row.id),
-            row.photoFile === null
-              ? isNull(recipes.photoFile)
-              : eq(recipes.photoFile, row.photoFile),
-          ),
-        )
-        .run();
-    });
-  }
+  await settleAll(
+    rowList.map(async (row) => {
+      const upload = row.photoFile === null ? null : photos.toUpload(row.photoFile);
+      // Its file is missing (deleted outside the app): nothing to upload.
+      if (upload === undefined) {
+        return;
+      }
+      const result = await api.setRecipePhoto(row.syncId, upload, row.updatedAt);
+      if (result === 'kept-newer') {
+        return;
+      }
+      holdChanges(() => {
+        database
+          .update(recipes)
+          .set({ photoSynced: row.photoFile === null ? null : result.name })
+          .where(
+            and(
+              eq(recipes.id, row.id),
+              row.photoFile === null
+                ? isNull(recipes.photoFile)
+                : eq(recipes.photoFile, row.photoFile),
+            ),
+          )
+          .run();
+      });
+    }),
+  );
 }
 
 async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: number): Promise<void> {
@@ -905,6 +923,8 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
         course: recipes.course,
         id: recipes.id,
         instructions: recipes.instructions,
+        photoFile: recipes.photoFile,
+        photoSynced: recipes.photoSynced,
         prepMinutes: recipes.prepMinutes,
         season: recipes.season,
         syncId: recipes.syncId,
@@ -961,6 +981,9 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
           ingredients: ingredientSyncIdsByRecipe.get(row.id) ?? [],
           instructions: row.instructions,
           modified: row.updatedAt,
+          // A photo removed here goes with the recipe's new version, never after it: a phone
+          // pulling in between would keep it. pushPhotos then marks it removed.
+          ...(row.photoFile === null && row.photoSynced !== null && { photo: '' }),
           prep_minutes: row.prepMinutes ?? 0,
           quantities: quantitiesByRecipe.get(row.id) ?? {},
           season: row.season,

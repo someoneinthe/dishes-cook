@@ -56,19 +56,9 @@ export function deleteUnusedPhotos(database: AppDatabase): void {
       .filter((entry): entry is File => entry instanceof File)
       .map((file) => file.name);
     for (let start = 0; start < nameList.length; start += SWEEP_BATCH) {
-      const batchList = nameList.slice(start, start + SWEEP_BATCH);
-      const usedSet = new Set(
-        database
-          .select({ photoFile: recipes.photoFile })
-          .from(recipes)
-          .where(inArray(recipes.photoFile, batchList))
-          .all()
-          .map(({ photoFile }) => photoFile),
-      );
-      for (const name of batchList) {
-        if (!usedSet.has(name)) {
-          deleteRecipePhoto(name);
-        }
+      const unusedList = unusedNames(database, nameList.slice(start, start + SWEEP_BATCH));
+      for (const name of unusedList) {
+        deleteRecipePhoto(name);
       }
     }
   } catch {
@@ -146,11 +136,15 @@ function deleteTemporaryCopies(): void {
   }
 }
 
-// A new photo's file name: random, never reused.
+// The time of the last photo name given (see newPhotoName).
+const nameClock = { last: 0 };
+
+// A new photo's file name: the time, in ms, one later than the last name if two are given in the
+// same ms. It needn't be secret (the app's private files) and is never reused: if the clock went
+// back onto an existing photo, saving onto it fails, nothing is overwritten.
 function newPhotoName(): string {
-  return [[Date.now().toString(36), Math.random().toString(36).slice(2, 10)].join('-'), 'jpg'].join(
-    '.',
-  );
+  nameClock.last = Math.max(Date.now(), nameClock.last + 1);
+  return [nameClock.last.toString(36), 'jpg'].join('.');
 }
 
 // The photos' folder, created if needed.
@@ -158,4 +152,17 @@ function photoFolder(): Directory {
   const folder = new Directory(Paths.document, RECIPE_PHOTO_FOLDER);
   folder.create({ idempotent: true, intermediates: true });
   return folder;
+}
+
+// The names of the list that no recipe uses.
+function unusedNames(database: AppDatabase, nameList: readonly string[]): string[] {
+  const usedSet = new Set(
+    database
+      .select({ photoFile: recipes.photoFile })
+      .from(recipes)
+      .where(inArray(recipes.photoFile, [...nameList]))
+      .all()
+      .map(({ photoFile }) => photoFile),
+  );
+  return nameList.filter((name) => !usedSet.has(name));
 }

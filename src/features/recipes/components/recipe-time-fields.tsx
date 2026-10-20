@@ -46,7 +46,7 @@ export function RecipeTimeFields({ drafts, invalidList, onChange }: RecipeTimeFi
 
 const styles = StyleSheet.create((theme) => ({
   field: {
-    flexBasis: 160,
+    flexBasis: theme.size.minText,
     flexGrow: 1,
   },
   row: {

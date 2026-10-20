@@ -81,6 +81,7 @@ describe('recipeFormScreen', () => {
     const id = saveRecipe(connection.db, {
       ingredientIdList: [],
       instructions: '',
+      photo: { file: 'soup.jpg' },
       season: 'both',
       title: 'Soup',
     });
@@ -106,8 +107,10 @@ describe('recipeFormScreen', () => {
 
     const [{ id: savedId } = { id: -1 }] = firstRecipePage(connection.db);
 
+    // With the photo the form showed, unchanged.
     expect(getRecipe(connection.db, savedId)).toMatchObject({
       instructions: 'Simmer.',
+      photoFile: 'soup.jpg',
       title: 'Soup',
     });
     // The deleted recipe's screen, under the form, shows the new one instead.

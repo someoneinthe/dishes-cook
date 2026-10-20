@@ -416,6 +416,25 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
       expect(soup?.photo).toBe('');
     });
 
+    it('removes a photo along with its recipe’s new version', async () => {
+      const soupId = addSoupWithPhoto();
+      await syncBoth();
+
+      saveRecipe(
+        phoneA.db,
+        { ingredientIdList: [], instructions: '', photo: null, season: 'both', title: 'Soup' },
+        soupId,
+      );
+      // A pushes the recipe but not its photos (as if the sync stopped there); B pulls it.
+      const photosOfA = phoneA.photos;
+      phoneA.photos = undefined;
+      await sync(phoneA);
+      phoneA.photos = photosOfA;
+      await sync(phoneB);
+
+      expect(recipeOf(phoneB, 'Soup')?.photoFile).toBeUndefined();
+    });
+
     it('brings a photo uploaded after its recipe reached the other phone', async () => {
       addSoupWithPhoto();
       // A pushes the recipe, not its photo yet (as if the upload failed); B gets the recipe.

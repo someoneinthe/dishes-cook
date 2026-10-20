@@ -169,7 +169,11 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
     };
     // Saved first, then marked and left: if saving throws, the form stays, and Save works again.
     const saveAsNew = () => {
-      const newId = saveRecipe(database, input);
+      // A new row: its photo is the one shown, changed or not.
+      const newId = saveRecipe(database, {
+        ...input,
+        photo: photoFile === undefined ? null : { file: photoFile },
+      });
       isSavedRef.current = true;
       return newId;
     };

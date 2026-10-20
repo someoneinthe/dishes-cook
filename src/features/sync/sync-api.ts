@@ -18,7 +18,7 @@ export type PullPosition = Readonly<
 // What a push sends: the row's fields, without what the server sets.
 export type RowUpload<Table extends SyncedTable> = Omit<
   ServerRowOf<Table>,
-  'created' | 'id' | 'photo' | 'updated'
+  'created' | 'id' | 'updated'
 >;
 
 // One time a recipe was cooked (the meal history).
@@ -40,7 +40,7 @@ export type ServerRecipe = Readonly<{
   ingredients: unknown;
   instructions: string;
   // The server's file name of its photo; '' = none (see server/migrations). Uploaded apart from the
-  // other fields (a multipart request), never by `upsert`.
+  // other fields (a multipart request); `upsert` only clears it ('').
   photo?: unknown;
   prep_minutes?: unknown;
   // Quantities by ingredient sync id: { amount, unit? } (see server/migrations).
