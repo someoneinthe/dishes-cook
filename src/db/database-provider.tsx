@@ -9,13 +9,21 @@ import { openAppConnection } from './client';
 import { createQueryClient, DataProvider } from './data-provider';
 import migrations from './migrations/migrations';
 
-type DatabaseProviderProps = Readonly<{ children: ReactNode }>;
+type DatabaseProviderProps = Readonly<{
+  children: ReactNode;
+  // Runs once the database is migrated, before the first screen (e.g. housekeeping of files).
+  onReady?: (connection: DatabaseConnection) => void;
+}>;
 
-type MigratedDataProps = Readonly<{ children: ReactNode; connection: DatabaseConnection }>;
+type MigratedDataProps = Readonly<{
+  children: ReactNode;
+  connection: DatabaseConnection;
+  onReady?: (connection: DatabaseConnection) => void;
+}>;
 
 // Opens the database, applies pending migrations, then renders the app. Nothing is rendered while
 // migrating: it takes milliseconds and the loading screen covers the app meanwhile.
-export function DatabaseProvider({ children }: DatabaseProviderProps) {
+export function DatabaseProvider({ children, onReady }: DatabaseProviderProps) {
   const t = useMessages();
   const [connection] = useState(openAppConnection);
   const { error, success: isMigrated } = useMigrations(connection.db, migrations);
@@ -29,11 +37,19 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
       </View>
     );
   }
-  return isMigrated ? <MigratedData connection={connection}>{children}</MigratedData> : null;
+  return isMigrated ? (
+    <MigratedData connection={connection} onReady={onReady}>
+      {children}
+    </MigratedData>
+  ) : null;
 }
 
-function MigratedData({ children, connection }: MigratedDataProps) {
-  const [queryClient] = useState(createQueryClient);
+function MigratedData({ children, connection, onReady }: MigratedDataProps) {
+  // Once: a state initializer runs on the first render only.
+  const [queryClient] = useState(() => {
+    onReady?.(connection);
+    return createQueryClient();
+  });
 
   return (
     <DataProvider connection={connection} queryClient={queryClient}>

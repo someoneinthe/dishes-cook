@@ -23,14 +23,14 @@ const UNIT_WORDS: Readonly<Record<WordUnit, readonly [one: string, other: string
 export const fr: Messages = {
   about: {
     deviceList: [
-      `Vos recettes, ingrédients et paramètres sont enregistrés dans une base de données sur cet appareil. C’est la copie de référence${NARROW_SPACE}: l’application fonctionne entièrement sans serveur ni connexion internet.`,
+      `Vos recettes (avec leurs photos), ingrédients et paramètres sont enregistrés sur cet appareil. C’est la copie de référence${NARROW_SPACE}: l’application fonctionne entièrement sans serveur ni connexion internet.`,
       `La sauvegarde d’Android ne les inclut pas${NARROW_SPACE}: sans serveur de synchronisation, désinstaller l’application les supprime.`,
     ],
     deviceTitle: 'Sur cet appareil',
     intro:
       'Dishes Cook garde vos recettes sur votre appareil. Voici où vont vos données, et où elles ne vont pas.',
     othersList: [
-      `La lecture d’une recette depuis une photo se fait sur votre téléphone, avec la reconnaissance de texte ML Kit de Google intégrée à l’application. L’application supprime sa copie de la photo dès que le texte est lu${NARROW_SPACE}: la photo n’est pas enregistrée avec la recette et ne quitte jamais votre téléphone.`,
+      `La lecture d’une recette depuis une photo se fait sur votre téléphone, avec la reconnaissance de texte ML Kit de Google intégrée à l’application. L’application supprime sa copie de cette photo dès que le texte est lu${NARROW_SPACE}: elle n’est pas gardée et ne quitte jamais votre téléphone. La photo d’une recette, ajoutée dans le formulaire, est gardée avec la recette.`,
       `ML Kit signalerait son utilisation à Google${NARROW_SPACE}: l’application le bloque.`,
       `Partager une liste de courses envoie son texte uniquement à l’application que vous choisissez (notes, messages…). La liste n’est pas enregistrée${NARROW_SPACE}: elle est oubliée quand l’application se ferme.`,
       'Partager une recette crée un PDF sur votre téléphone et l’envoie uniquement à l’application que vous choisissez. L’application supprime sa copie dès votre retour du partage.',
@@ -39,7 +39,7 @@ export const fr: Messages = {
     othersTitle: 'Rien pour personne d’autre',
     serverList: [
       'Désactivée par défaut. Dans Paramètres › Stockage des données, vous pouvez synchroniser avec un serveur PocketBase que vous installez et gérez vous-même, pour partager vos recettes entre vos appareils.',
-      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes (titre, type de plat, saison, instructions, ingrédients et quantités), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Les paramètres restent sur chaque appareil.`,
+      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes (titre, type de plat, saison, temps, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Les paramètres restent sur chaque appareil.`,
       'L’appareil garde l’adresse du serveur, votre e-mail et un jeton de connexion chiffré, jamais votre mot de passe. La connexion est chiffrée (HTTPS).',
       `Le serveur est à vous${NARROW_SPACE}: personne d’autre ne le gère, et les développeurs de l’application ne peuvent pas le voir.`,
     ],
@@ -194,13 +194,23 @@ export const fr: Messages = {
     unitOptionHint: 'Utilise cette unité pour la quantité',
   },
   recipes: {
+    addPhoto: 'Ajouter une photo',
+    addPhotoHint: 'Prend une photo ou en choisit une dans votre galerie',
     cantShowMessage:
       'Une partie ne peut pas s’afficher. Vos autres recettes ne sont pas concernées.',
     cantShowTitle: 'Cette recette ne peut pas s’afficher',
+    changePhoto: 'Changer la photo',
+    cookTime: 'Cuisson (min)',
     course: 'Type de plat',
     deletedWhileEditingMessage: `Elle a été supprimée sur un autre appareil pendant que vous la modifiiez. Enregistrer votre version comme nouvelle recette${NARROW_SPACE}?`,
     deletedWhileEditingTitle: 'Cette recette a été supprimée',
     deleteMessage: 'Ses ingrédients restent dans votre liste.',
+    duration: (hours, minutes) => {
+      if (hours === 0) {
+        return `${minutes}\u{A0}min`;
+      }
+      return minutes === 0 ? `${hours}\u{A0}h` : `${hours}\u{A0}h\u{A0}${minutes}`;
+    },
     editRecipe: 'Modifier la recette',
     emptyMessage:
       'Enregistrez les plats que vous aimez cuisiner, puis laissez le hasard en choisir un pour vous.',
@@ -215,10 +225,12 @@ export const fr: Messages = {
     ingredients: 'Ingrédients',
     ingredientsEmpty: 'Saisissez un ingrédient pour l’ajouter.',
     instructionsPlaceholder: 'Étapes, quantités, temps de cuisson…',
+    invalidMinutes: 'Entrez un nombre de minutes, comme 20.',
     matchCount: (count) =>
       count === 0
         ? 'Aucune recette ne correspond à ces filtres.'
         : plural(count, '1 recette correspond.', `${count} recettes correspondent.`),
+    minutesPlaceholder: 'ex. 20',
     new: 'Nouvelle',
     newHint: 'Demande s’il faut l’écrire ou la lire sur une photo',
     newRecipe: 'Nouvelle recette',
@@ -229,9 +241,16 @@ export const fr: Messages = {
     notFoundTitle: 'Recette introuvable',
     nothingToPreview: 'Rien à prévisualiser pour l’instant.',
     openHint: 'Ouvre la recette',
+    photo: 'Photo',
+    photoAlt: (title) => `Photo de ${title}`,
+    photoFailed: 'La photo n’a pas pu être ajoutée. Essayez-en une autre.',
+    photoName: 'cette photo',
+    prepTime: 'Préparation (min)',
     preview: 'Aperçu',
     recipe: 'Recette',
     recipeText: 'Texte de la recette',
+    removePhoto: 'Retirer la photo',
+    removePhotoMessage: 'La recette reste telle quelle.',
     rowLabel: (title, season, course, ingredients) =>
       [title, season, course, ingredients].filter(Boolean).join(', '),
     saveAsNew: 'Enregistrer comme nouvelle',
@@ -245,6 +264,14 @@ export const fr: Messages = {
     shareFailedMessage: 'Réessayez. Si cela se reproduit, fermez l’application et rouvrez-la.',
     shareFailedTitle: 'Le PDF n’a pas pu être créé',
     shareHint: `Envoie la recette en PDF à une autre application${NARROW_SPACE}: messages, e-mail, un drive…`,
+    times: (times) =>
+      [
+        times.prep && `Préparation ${times.prep}`,
+        times.cook && `Cuisson ${times.cook}`,
+        times.total && `${times.total} en tout`,
+      ]
+        .filter(Boolean)
+        .join(' · '),
     title: 'Titre',
     titlePlaceholder: `Ex.${NARROW_SPACE}: soupe de potiron`,
     titleRequired: 'Donnez un titre à la recette.',

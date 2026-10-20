@@ -5,6 +5,9 @@ import type { ServerInfo } from './server-version';
 // The sync server's HTTP API (PocketBase, see docs/sync.md), with plain `fetch`: the few calls the
 // sync needs don't justify an SDK.
 
+// A photo file to upload: React Native's form-data file ({ uri, name, type }), or a Blob (tests).
+export type PhotoUpload = Blob | Readonly<{ name: string; type: string; uri: string }>;
+
 // Where a page of pulled rows starts, in the (updated, id) order: at a time ('' = from the start),
 // or right after a row (the last one of the previous page). Pages follow each other by key, not
 // by number: a row written meanwhile moves to the end instead of shifting the next pages.
@@ -30,10 +33,16 @@ export type ServerCookedMeal = Readonly<{
 export type ServerIngredient = Readonly<{ name: string }> & ServerRow;
 
 export type ServerRecipe = Readonly<{
+  // Minutes; 0 (or missing, from an older server) = not given. Like prep_minutes.
+  cook_minutes?: unknown;
   course: string;
   // Sync ids of its ingredients.
   ingredients: unknown;
   instructions: string;
+  // The server's file name of its photo; '' = none (see server/migrations). Uploaded apart from the
+  // other fields (a multipart request); `upsert` only clears it ('').
+  photo?: unknown;
+  prep_minutes?: unknown;
   // Quantities by ingredient sync id: { amount, unit? } (see server/migrations).
   quantities: unknown;
   season: string;
@@ -69,10 +78,19 @@ export type SyncApi = Readonly<{
     table: Table,
     position: PullPosition,
   ) => Promise<unknown[]>;
+  // Where to download a recipe's photo (a protected file): its URL with a short-lived file token.
+  recipePhotoUrl: (id: string, name: string) => Promise<string>;
   // A new sign-in token for the same account (tokens expire after a year).
   refreshToken: () => Promise<string>;
   // Marks a row deleted; 'kept-newer' when it's missing or changed later.
   sendDeletion: (table: SyncedTable, id: string, deletedAt: number) => Promise<UpsertResult>;
+  // Uploads a recipe's photo, or clears it (null), with the recipe's `modified`. Resolves with the
+  // server's file name ('' once cleared), or 'kept-newer' when the server's recipe is newer.
+  setRecipePhoto: (
+    id: string,
+    photo: null | PhotoUpload,
+    modified: number,
+  ) => Promise<'kept-newer' | Readonly<{ name: string }>>;
   upsert: <Table extends SyncedTable>(
     table: Table,
     id: string,
@@ -155,6 +173,21 @@ export function createSyncApi(
       // Never more than asked for, whatever the server sends.
       return itemList.slice(0, PAGE_SIZE) as unknown[];
     },
+    recipePhotoUrl: async (id, name) => {
+      const url = apiUrl(options.serverUrl, 'files', 'token');
+      const token = readToken(await readJson(await send(url, { method: 'POST' })));
+      const query = new URLSearchParams({ token });
+      return [
+        apiUrl(
+          options.serverUrl,
+          'files',
+          'recipes',
+          encodeURIComponent(id),
+          encodeURIComponent(name),
+        ),
+        query.toString(),
+      ].join('?');
+    },
     refreshToken: async () => {
       const url = apiUrl(options.serverUrl, 'collections', 'users', 'auth-refresh');
       return readToken(await readJson(await send(url, { method: 'POST' })));
@@ -163,6 +196,27 @@ export function createSyncApi(
       (await patch(table, id, { deleted: deletedAt, modified: deletedAt })) === 'saved'
         ? 'saved'
         : 'kept-newer',
+    setRecipePhoto: async (id, photo, modified) => {
+      let body: FormData | string;
+      if (photo === null) {
+        body = JSON.stringify({ modified, photo: '' });
+      } else {
+        const form = new FormData();
+        // The other fields as JSON (PocketBase's @jsonPayload): `modified` stays a number, which the
+        // update rule compares (a form field would be text).
+        form.append('@jsonPayload', JSON.stringify({ modified }));
+        // React Native's FormData takes { uri, name, type } as a file.
+        form.append('photo', photo as Blob, 'photo.jpg');
+        body = form;
+      }
+      const response = await send(`${records('recipes')}/${id}`, { body, method: 'PATCH' });
+      // Missing, or refused by the update rule because the server's recipe is newer.
+      if (response.status === 404) {
+        return 'kept-newer';
+      }
+      const { photo: name } = (await readJson(response)) as { photo?: unknown };
+      return { name: typeof name === 'string' ? name : '' };
+    },
     upsert: async (table, id, row) => {
       if ((await patch(table, id, row)) === 'saved') {
         return 'saved';
@@ -306,7 +360,11 @@ async function request(fetchFunction: Fetch, url: string, init: RequestInit): Pr
   try {
     return await fetchFunction(url, {
       ...init,
-      headers: { 'Content-Type': 'application/json', ...init.headers },
+      // A form (a photo upload) gets its own multipart content type, with its boundary.
+      headers:
+        init.body instanceof FormData
+          ? { ...init.headers }
+          : { 'Content-Type': 'application/json', ...init.headers },
       signal: controller.signal,
     });
   } catch (error) {

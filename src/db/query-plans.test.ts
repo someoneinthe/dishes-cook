@@ -256,8 +256,10 @@ describe('query plans', () => {
       const api: SyncApi = {
         getServerInfo: () => Promise.resolve(undefined),
         listChanges: () => Promise.resolve([]),
+        recipePhotoUrl: () => Promise.resolve(''),
         refreshToken: () => Promise.resolve('token'),
         sendDeletion: () => Promise.resolve('saved'),
+        setRecipePhoto: () => Promise.resolve({ name: '' }),
         upsert: () => Promise.resolve('saved'),
       };
       await synchronize(database, api, { ...INITIAL_CURSORS, pushedFrom: Date.now() - 1000 });
@@ -285,8 +287,10 @@ describe('query plans', () => {
     const api: SyncApi = {
       getServerInfo: () => Promise.resolve(undefined),
       listChanges: () => Promise.resolve([]),
+      recipePhotoUrl: () => Promise.resolve(''),
       refreshToken: () => Promise.resolve('token'),
       sendDeletion: () => Promise.resolve('saved'),
+      setRecipePhoto: () => Promise.resolve({ name: '' }),
       upsert: () => Promise.resolve('saved'),
     };
     await synchronize(database, api, INITIAL_CURSORS);

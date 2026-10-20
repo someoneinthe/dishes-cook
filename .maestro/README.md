@@ -38,3 +38,4 @@ The **End-to-end tests** job of `ci.yml` builds the x86_64 end-to-end APK, boots
 - The keyboard covers the lower part of the screen, but Maestro still sees the fields behind it: close it (`hideKeyboard`) and `scrollUntilVisible` a field before tapping it. CI's emulator has a Pixel 6 screen.
 - Only type in **empty** fields: on a field that already has text, Maestro waits for the screen to settle and never returns.
 - Wait for what a step leads to (`extendedWaitUntil`) rather than a fixed delay.
+- A step that fails because something is hidden or out of reach (behind the keyboard, off screen) usually shows an app bug: fix the app rather than the flow.

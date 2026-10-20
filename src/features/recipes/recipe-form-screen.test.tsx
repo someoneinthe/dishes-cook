@@ -81,6 +81,7 @@ describe('recipeFormScreen', () => {
     const id = saveRecipe(connection.db, {
       ingredientIdList: [],
       instructions: '',
+      photo: { file: 'soup.jpg' },
       season: 'both',
       title: 'Soup',
     });
@@ -106,8 +107,10 @@ describe('recipeFormScreen', () => {
 
     const [{ id: savedId } = { id: -1 }] = firstRecipePage(connection.db);
 
+    // With the photo the form showed, unchanged.
     expect(getRecipe(connection.db, savedId)).toMatchObject({
       instructions: 'Simmer.',
+      photoFile: 'soup.jpg',
       title: 'Soup',
     });
     // The deleted recipe's screen, under the form, shows the new one instead.
@@ -159,6 +162,26 @@ describe('recipeFormScreen', () => {
 
     expect(new Set(focusedList.map(({ props }) => props.accessibilityLabel))).toStrictEqual(
       new Set(['Quantity of Carrot']),
+    );
+  });
+
+  it('gives the focus to the first wrong time on Save, before a wrong amount', async () => {
+    findOrCreateIngredient(connection.db, 'carrot');
+    const focus = jest.spyOn(TextInput.prototype, 'focus');
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+    await fireEvent.changeText(screen.getByLabelText('Title'), 'Soup');
+    await fireEvent.changeText(screen.getByLabelText('Cooking (min)'), 'long');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add Carrot' }));
+    await fireEvent.changeText(screen.getByLabelText('Quantity of Carrot'), 'a lot');
+    focus.mockClear();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+    await waitFor(() => expect(focus).toHaveBeenCalledWith());
+
+    const focusedList = focus.mock.contexts as Readonly<{ props: TextInputProps }>[];
+
+    expect(new Set(focusedList.map(({ props }) => props.accessibilityLabel))).toStrictEqual(
+      new Set(['Cooking (min)']),
     );
   });
 

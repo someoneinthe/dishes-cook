@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { preventAutoHideAsync } from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
+import { KeyboardAvoidingView } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { headerTitleWithIcon } from '@/components/header-title';
@@ -9,6 +10,7 @@ import { MENU_ICONS } from '@/components/menu-entry-options';
 import { stackHeader } from '@/components/stack-header';
 import { DatabaseProvider } from '@/db/database-provider';
 import { LoadingScreen } from '@/features/loading/loading-screen';
+import { deleteUnusedPhotos } from '@/features/recipes/recipe-photos';
 import { deleteSharedPdfs } from '@/features/recipes/share-recipe-pdf';
 import { applyColorScheme, getPreferences, usePreferences } from '@/features/settings/preferences';
 import { useAutoSync } from '@/features/sync/use-auto-sync';
@@ -32,8 +34,14 @@ export default function RootLayout() {
     // The drawer's swipe gesture needs the gesture handler root.
     <GestureHandlerRootView style={styles.root}>
       <I18nProvider language={language}>
-        <DatabaseProvider>
-          <RootStack />
+        {/* Photos no recipe uses any more (replaced by a sync, or a form left unsaved): deleted. */}
+        <DatabaseProvider onReady={({ db }) => deleteUnusedPhotos(db)}>
+          {/* Every screen ends above the keyboard: Android draws the app under it (edge to edge)
+              and doesn't always shrink the screen itself (e.g. with SwiftKey), hiding the field
+              being typed in. Where Android already does, this adds nothing. */}
+          <KeyboardAvoidingView behavior="padding" style={styles.root}>
+            <RootStack />
+          </KeyboardAvoidingView>
         </DatabaseProvider>
         <StatusBar style="auto" />
         {isLoadingScreenVisible && (

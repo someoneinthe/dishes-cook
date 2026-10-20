@@ -34,9 +34,14 @@ erDiagram
   }
   recipes {
     integer id PK
+    integer cook_minutes "nullable"
     text course "starter / main / dessert"
     integer created_at
     text instructions
+    text photo_file "nullable"
+    text photo_pending "nullable"
+    text photo_synced "nullable"
+    integer prep_minutes "nullable"
     text season "winter / summer / both"
     text sort_key
     text sync_id UK
@@ -77,6 +82,7 @@ Integer primary keys are SQLite rowids.
 - **Many-to-many** through `recipe_ingredients`: its composite primary key forbids duplicate links and serves "ingredients of a recipe"; the reverse index serves "recipes using an ingredient" and covers its queries (no table lookup). Reading a recipe's ingredients also reads each link's quantity from its row.
 - **Quantities** live on the link (`recipe_ingredients.amount` and `unit`), **normalized**: weights in grams (`g`) and volumes in millilitres (`ml`), whatever unit they were typed in (1.5 kg is stored as 1500 g, 8 oz as 226.8 g). Spoons (`tsp`, `tbsp`) and counted units (`pinch`, `clove`, `bunch`, `can`) are stored as written, no unit = pieces, no amount = no quantity ("salt"). The unit is chosen on display, in the reader's units (Settings › Units): the closest one, 1000 g → 1 kg, or 2.25 lb in US units (`src/lib/units.ts`). Editing rewrites only the rows the user changed, so a value never drifts through display rounding. Normalized amounts add up directly (the shopping list, item 14). Amounts are checked by `toQuantity` in the code that writes them: a `CHECK` added to an existing table makes drizzle-kit rebuild it.
 - **Meal history**: `cooked_meals` has one row each time a recipe is cooked (`cooked_at`, in ms). Rows are only added and removed, never edited, and marking a recipe as cooked doesn't touch the recipe row: it isn't pushed again, so it can't overwrite an edit made on another phone (see [sync.md › Known limits](sync.md#known-limits)). The `(recipe_id, cooked_at)` index serves a recipe's last time cooked (the end of its entries) and the meal choice's "not cooked since".
+- **Times and photo** on `recipes`: `prep_minutes` and `cook_minutes` (whole minutes, checked by `toMinutes` in the code, null = not given), and the photo's file in the app's documents (`photo_file`, a JPEG resized to 1280 px) with the server names the sync needs (`photo_synced`, `photo_pending`, see [sync.md](sync.md#how-it-works)). Files no recipe uses are deleted at start (`deleteUnusedPhotos`).
 - **Deleting**: a recipe cascades to its links and its meal history; an ingredient still used by a recipe can't be deleted (`RESTRICT`, and the UI hides the button).
 - **Constraints in the database**, not only in the UI: `CHECK` on the season and course values and on non-blank names/titles, `NOT NULL`, foreign keys (`PRAGMA foreign_keys = ON` on every connection, since SQLite disables them by default).
 - **Integer primary keys** are SQLite's rowid: the fastest lookups and joins. They stay on the phone: across devices and on the server a row is its `sync_id` (15 characters of `[0-9a-f]`, the server's id format): random for recipes, derived from the name for ingredients, so the same ingredient added on two phones is one row (see [sync.md](sync.md)).

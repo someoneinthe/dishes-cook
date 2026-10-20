@@ -1,7 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 import type { SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
-import type { SyncCursors } from '@/features/sync/sync-engine';
+import type { PhotoStore, SyncCursors } from '@/features/sync/sync-engine';
 import { cookedMeals, ingredients, recipes, syncDeletions } from '@/db/schema';
 import {
   deleteIngredient,
@@ -19,7 +19,15 @@ import { INITIAL_CURSORS, synchronize } from '@/features/sync/sync-engine';
 import { toDisplayName } from '@/lib/text';
 import { createTestConnection } from './test-database';
 
-export type Phone = { cursors: SyncCursors; db: AppDatabase };
+// A phone; `photos` keeps its recipe photos' files when the scenario syncs them.
+export type Phone = { cursors: SyncCursors; db: AppDatabase; photos?: TestPhotos };
+
+// A phone's photo files, in memory (base64 contents by file name), as the sync reads and writes them.
+export type TestPhotos = Readonly<{ files: Map<string, string>; store: PhotoStore }>;
+
+// A tiny JPEG (its first bytes are what PocketBase checks): a photo's content in the scenarios.
+export const TEST_JPEG =
+  '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
 
 export type StoredRow = Record<string, unknown> & { id: string; updated: string };
 
@@ -56,6 +64,35 @@ export function cookedDatesOf(phone: Phone, title: string) {
     : [];
 }
 
+export function createTestPhotos(fetchFunction: typeof fetch): TestPhotos {
+  const files = new Map<string, string>();
+  let downloadCount = 0;
+  return {
+    files,
+    store: {
+      delete: (file) => {
+        files.delete(file);
+      },
+      download: async (url) => {
+        const response = await fetchFunction(url);
+        if (!response.ok) {
+          throw new Error(`Download failed: ${response.status}`);
+        }
+        downloadCount += 1;
+        const file = ['downloaded-', String(downloadCount), '.jpg'].join('');
+        files.set(file, Buffer.from(await response.arrayBuffer()).toString('base64'));
+        return file;
+      },
+      toUpload: (file) => {
+        const content = files.get(file);
+        return content === undefined
+          ? undefined
+          : new Blob([Buffer.from(content, 'base64')], { type: 'image/jpeg' });
+      },
+    },
+  };
+}
+
 // Two phones syncing with the same server: what the sync must do whatever the server is.
 export function describeSyncScenarios(createServer: () => Promise<SyncTestServer>) {
   let server: SyncTestServer;
@@ -72,7 +109,9 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     const { account, fetch, serverUrl } = server;
     const token = await signIn({ ...account, fetch, serverUrl });
     const api = createSyncApi({ fetch, serverUrl, token });
-    phone.cursors = await synchronize(phone.db, api, phone.cursors);
+    phone.cursors = await synchronize(phone.db, api, phone.cursors, {
+      photos: phone.photos?.store,
+    });
   };
   // A, then B, then A again: both have everything.
   const syncBoth = async () => {
@@ -330,6 +369,154 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
 
     expect(titlesOf(phoneB)).toStrictEqual([]);
     expect(phoneB.db.select().from(cookedMeals).all()).toStrictEqual([]);
+  });
+
+  describe('with photos', () => {
+    beforeEach(() => {
+      phoneA.photos = createTestPhotos(server.fetch);
+      phoneB.photos = createTestPhotos(server.fetch);
+    });
+
+    // Soup on A, with a photo taken there.
+    const addSoupWithPhoto = () => {
+      phoneA.photos?.files.set('taken-on-a.jpg', TEST_JPEG);
+      return saveRecipe(phoneA.db, {
+        ingredientIdList: [],
+        instructions: '',
+        photo: { file: 'taken-on-a.jpg' },
+        season: 'both',
+        title: 'Soup',
+      });
+    };
+
+    it('brings a photo taken on one phone to the other', async () => {
+      addSoupWithPhoto();
+
+      await syncBoth();
+
+      const photoOnB = recipeOf(phoneB, 'Soup')?.photoFile;
+      expect(photoOnB && phoneB.photos?.files.get(photoOnB)).toBe(TEST_JPEG);
+      const [soup] = await server.rowsOf('recipes');
+      expect(soup?.photo).toMatch(/\.jpg$/);
+    });
+
+    it('removes on the other phone a photo removed on one', async () => {
+      const soupId = addSoupWithPhoto();
+      await syncBoth();
+
+      saveRecipe(
+        phoneA.db,
+        { ingredientIdList: [], instructions: '', photo: null, season: 'both', title: 'Soup' },
+        soupId,
+      );
+      await syncBoth();
+
+      expect(recipeOf(phoneB, 'Soup')?.photoFile).toBeUndefined();
+      const [soup] = await server.rowsOf('recipes');
+      expect(soup?.photo).toBe('');
+    });
+
+    it('removes a photo along with its recipe’s new version', async () => {
+      const soupId = addSoupWithPhoto();
+      await syncBoth();
+
+      saveRecipe(
+        phoneA.db,
+        { ingredientIdList: [], instructions: '', photo: null, season: 'both', title: 'Soup' },
+        soupId,
+      );
+      // A pushes the recipe but not its photos (as if the sync stopped there); B pulls it.
+      const photosOfA = phoneA.photos;
+      phoneA.photos = undefined;
+      await sync(phoneA);
+      phoneA.photos = photosOfA;
+      await sync(phoneB);
+
+      expect(recipeOf(phoneB, 'Soup')?.photoFile).toBeUndefined();
+    });
+
+    it('forgets a photo whose file is gone before it was uploaded', async () => {
+      addSoupWithPhoto();
+      // Deleted outside the app (e.g. the app's files cleared).
+      phoneA.photos?.files.clear();
+
+      await sync(phoneA);
+
+      // No photo any more, never uploaded: it no longer waits for (nor holds up) the photo push.
+      expect(
+        phoneA.db
+          .select({ photoFile: recipes.photoFile, photoSynced: recipes.photoSynced })
+          .from(recipes)
+          .all(),
+      ).toStrictEqual([{ photoFile: null, photoSynced: null }]);
+    });
+
+    it('removes the old photo when the new one’s file is gone before it was uploaded', async () => {
+      const soupId = addSoupWithPhoto();
+      await syncBoth();
+      phoneA.photos?.files.set('second.jpg', TEST_JPEG);
+      saveRecipe(
+        phoneA.db,
+        {
+          ingredientIdList: [],
+          instructions: '',
+          photo: { file: 'second.jpg' },
+          season: 'both',
+          title: 'Soup',
+        },
+        soupId,
+      );
+      phoneA.photos?.files.delete('second.jpg');
+
+      await syncBoth();
+
+      expect(recipeOf(phoneA, 'Soup')?.photoFile).toBeUndefined();
+      expect(recipeOf(phoneB, 'Soup')?.photoFile).toBeUndefined();
+      const [soup] = await server.rowsOf('recipes');
+      expect(soup?.photo).toBe('');
+    });
+
+    it('brings a photo uploaded after its recipe reached the other phone', async () => {
+      addSoupWithPhoto();
+      // A pushes the recipe, not its photo yet (as if the upload failed); B gets the recipe.
+      const photosOfA = phoneA.photos;
+      phoneA.photos = undefined;
+      await sync(phoneA);
+      await sync(phoneB);
+      phoneA.photos = photosOfA;
+
+      // The upload doesn't change the recipe's version: B still gets the photo.
+      await sync(phoneA);
+      await sync(phoneB);
+
+      const photoOnB = recipeOf(phoneB, 'Soup')?.photoFile;
+      expect(photoOnB && phoneB.photos?.files.get(photoOnB)).toBe(TEST_JPEG);
+    });
+
+    it('brings a new photo in place of the old one', async () => {
+      const soupId = addSoupWithPhoto();
+      await syncBoth();
+      const firstOnB = recipeOf(phoneB, 'Soup')?.photoFile;
+
+      phoneA.photos?.files.set('second.jpg', TEST_JPEG);
+      saveRecipe(
+        phoneA.db,
+        {
+          ingredientIdList: [],
+          instructions: '',
+          photo: { file: 'second.jpg' },
+          season: 'both',
+          title: 'Soup',
+        },
+        soupId,
+      );
+      await syncBoth();
+
+      const secondOnB = recipeOf(phoneB, 'Soup')?.photoFile;
+      expect(secondOnB).not.toBe(firstOnB);
+      // The old photo's file is deleted once the new one is there.
+      expect([...(phoneB.photos?.files.keys() ?? [])]).toStrictEqual([secondOnB]);
+    });
   });
 
   it('only sends the rows changed since the last sync', async () => {

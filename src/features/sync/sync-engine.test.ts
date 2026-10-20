@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import type { Phone } from '@/test/sync-scenarios';
 import { PAGE_SIZE } from '@/db/pagination';
 import { cookedMeals, recipes } from '@/db/schema';
@@ -7,7 +8,7 @@ import {
   markCooked,
   removeCookedMeal,
 } from '@/features/meal-history/db/cooked-meal-queries';
-import { deleteRecipe } from '@/features/recipes/db/recipe-queries';
+import { deleteRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { toIngredientSyncId } from '@/lib/sync-id';
 import { toNameKey } from '@/lib/text';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
@@ -195,6 +196,33 @@ describe('synchronize', () => {
     expect(phoneA.db.select().from(cookedMeals).all()).toHaveLength(1);
   });
 
+  it('counts a photo waiting to be uploaded or removed as a change waiting for the sync', async () => {
+    const soupId = saveRecipe(phoneA.db, {
+      ingredientIdList: [],
+      instructions: '',
+      photo: { file: 'a.jpg' },
+      season: 'both',
+      title: 'Soup',
+    });
+    // Synced without photos: the recipe is pushed, its photo isn't.
+    await sync(phoneA);
+    const pushedFrom = Date.now() + 1;
+
+    expect(countPendingChanges(phoneA.db, pushedFrom, pushedFrom)).toBe(1);
+
+    phoneA.db
+      .update(recipes)
+      .set({ photoSynced: 'photo_x.jpg' })
+      .where(eq(recipes.id, soupId))
+      .run();
+
+    expect(countPendingChanges(phoneA.db, pushedFrom, pushedFrom)).toBe(0);
+
+    phoneA.db.update(recipes).set({ photoFile: null }).where(eq(recipes.id, soupId)).run();
+
+    expect(countPendingChanges(phoneA.db, pushedFrom, pushedFrom)).toBe(1);
+  });
+
   it('counts a meal cooked or removed as a change waiting for the sync', async () => {
     const soupId = addRecipe(phoneA, 'Soup');
     await sync(phoneA);
@@ -364,8 +392,10 @@ describe('synchronize', () => {
     const apiListing = (listChanges: SyncApi['listChanges']): SyncApi => ({
       getServerInfo: () => Promise.resolve(undefined),
       listChanges,
+      recipePhotoUrl: () => Promise.resolve(''),
       refreshToken: () => Promise.resolve('token'),
       sendDeletion: () => Promise.resolve('saved'),
+      setRecipePhoto: () => Promise.resolve({ name: '' }),
       upsert: () => Promise.resolve('saved'),
     });
 

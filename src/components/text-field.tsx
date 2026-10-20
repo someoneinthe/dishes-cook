@@ -38,6 +38,8 @@ type TextFieldProps = Readonly<
     // Hidden labels are still read by screen readers.
     isLabelHidden?: boolean;
     label: string;
+    // The field gets the focus (after its focus ring's own handling).
+    onFocus?: () => void;
     // To move the focus to the field (e.g. the first invalid one on Save).
     ref?: Ref<TextInput>;
   }
@@ -50,6 +52,7 @@ export function TextField({
   isLabelHidden = false,
   label,
   multiline,
+  onFocus,
   ...inputProps
 }: TextFieldProps) {
   const { focusProps, focusStyle } = useFocusRing();
@@ -78,6 +81,10 @@ export function TextField({
         textAlignVertical={multiline ? 'top' : 'center'}
         {...focusProps}
         {...inputProps}
+        onFocus={() => {
+          focusProps.onFocus();
+          onFocus?.();
+        }}
       />
       {hint !== undefined && (
         <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.hint}>

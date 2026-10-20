@@ -14,12 +14,18 @@ import {
 } from '@/features/meal-history/db/cooked-meal-queries';
 import { cleanName, toDisplayName, toLikeContains, toSortKey } from '@/lib/text';
 import { toQuantity, toStored } from '@/lib/units';
+import { toMinutes } from '../minutes';
 
 export type Recipe = Readonly<{
+  // Cooking time in minutes; left out when not given (like prepMinutes).
+  cookMinutes?: number;
   course: Course;
   id: number;
   ingredientList: RecipeIngredient[];
   instructions: string;
+  // Its photo's file name in the app's documents (RECIPE_PHOTO_FOLDER); left out without a photo.
+  photoFile?: string;
+  prepMinutes?: number;
   season: Season;
   title: string;
 }>;
@@ -39,6 +45,8 @@ export type RecipeFilters = Readonly<{
 export type RecipeIngredient = Ingredient & Readonly<{ quantity?: Quantity }>;
 
 export type RecipeInput = Readonly<{
+  // Minutes (positive, at most MAX_MINUTES); null or left out = none.
+  cookMinutes?: null | number;
   // A main course when left out.
   course?: Course;
   // Ids below 0: ingredients to create when the recipe is saved, named in `newIngredientNames`.
@@ -46,6 +54,10 @@ export type RecipeInput = Readonly<{
   instructions: string;
   // Names of the ingredients to create (e.g. read from a photo), by their temporary id (below 0).
   newIngredientNames?: ReadonlyMap<number, string>;
+  // A new photo (its file, already in RECIPE_PHOTO_FOLDER), null to remove it; left out = unchanged.
+  // Either way it's synced again: the server's copy no longer matches.
+  photo?: null | Readonly<{ file: string }>;
+  prepMinutes?: null | number;
   // Quantities by ingredient id; an ingredient without one has no quantity.
   quantities?: ReadonlyMap<number, Quantity>;
   season: Season;
@@ -108,9 +120,12 @@ export function deleteRecipe(database: AppDatabase, id: number): void {
 export function getRecipe(database: AppDatabase, id: number): Recipe | undefined {
   const recipe = database
     .select({
+      cookMinutes: recipes.cookMinutes,
       course: recipes.course,
       id: recipes.id,
       instructions: recipes.instructions,
+      photoFile: recipes.photoFile,
+      prepMinutes: recipes.prepMinutes,
       season: recipes.season,
       title: recipes.title,
     })
@@ -120,6 +135,7 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
   if (!recipe) {
     return undefined;
   }
+  const { cookMinutes, photoFile, prepMinutes, ...fields } = recipe;
   const linkList = database
     .select({
       amount: recipeIngredients.amount,
@@ -140,7 +156,15 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
       ? { id: ingredientId, name: shownName, quantity }
       : { id: ingredientId, name: shownName };
   });
-  return { ...recipe, ingredientList, title: toDisplayName(recipe.title) };
+  return {
+    ...fields,
+    ingredientList,
+    title: toDisplayName(recipe.title),
+    // Left out when not given: a recipe without them reads as before.
+    ...(toMinutes(cookMinutes) !== undefined && { cookMinutes: toMinutes(cookMinutes) }),
+    ...(photoFile !== null && { photoFile }),
+    ...(toMinutes(prepMinutes) !== undefined && { prepMinutes: toMinutes(prepMinutes) }),
+  };
 }
 
 // The recipe's sync id: its identity across devices, which is never reused (unlike its integer id,
@@ -220,11 +244,20 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
     throw new Error('A recipe title cannot be blank');
   }
   const values = {
+    cookMinutes: toMinutes(input.cookMinutes) ?? null,
     course: input.course ?? 'main',
     instructions: input.instructions.trim(),
+    prepMinutes: toMinutes(input.prepMinutes) ?? null,
     season: input.season,
     sortKey: toSortKey(title),
     title,
+    // A new photo: uploaded by the next sync (no server copy matches it yet). None: the server's
+    // copy (photo_synced) is kept, so that the next sync knows to remove it there.
+    ...(input.photo !== undefined && {
+      photoFile: input.photo?.file ?? null,
+      photoPending: null,
+      ...(input.photo !== null && { photoSynced: null }),
+    }),
   };
   return database.transaction((tx) => {
     // Only the new ingredients still in the recipe; one may exist by now (same name, ignoring
@@ -373,8 +406,13 @@ function updateRecipe(
   tx: Pick<AppDatabase, 'update'>,
   id: number,
   values: Readonly<{
+    cookMinutes: null | number;
     course: Course;
     instructions: string;
+    photoFile?: null | string;
+    photoPending?: null;
+    photoSynced?: null;
+    prepMinutes: null | number;
     season: Season;
     sortKey: string;
     title: string;

@@ -86,12 +86,24 @@ export const ingredients = sqliteTable(
 export const recipes = sqliteTable(
   'recipes',
   {
+    // Cooking time in minutes; null = not given. Checked by the code that writes it (a CHECK added to
+    // an existing table makes drizzle-kit rebuild it, see docs/database.md).
+    cookMinutes: integer('cook_minutes'),
     // Starter, main course or dessert: every recipe has one, a main course unless chosen otherwise.
     course: text('course', { enum: COURSE_LIST }).notNull().default('main'),
     createdAt: integer('created_at').notNull().default(NOW_MS),
     id: integer('id').primaryKey(),
     // The recipe itself (steps, quantities…). Never selected by list queries: it can be long.
     instructions: text('instructions').notNull().default(''),
+    // The recipe's photo: a file in the app's documents (RECIPE_PHOTO_FOLDER); null = none.
+    photoFile: text('photo_file'),
+    // The server's name of a newer photo to download (pulled from another phone); null = none.
+    photoPending: text('photo_pending'),
+    // The server's name of the photo that `photoFile` is (uploaded or downloaded); null while a photo
+    // taken here waits to be uploaded, or when there's none.
+    photoSynced: text('photo_synced'),
+    // Preparation time in minutes; null = not given (checked like cookMinutes).
+    prepMinutes: integer('prep_minutes'),
     season: text('season', { enum: SEASON_LIST }).notNull().default('both'),
     // Sort and search key of the title, see ingredients.sortKey.
     sortKey: text('sort_key').notNull(),

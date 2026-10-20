@@ -1,8 +1,8 @@
 import type { RefObject } from 'react';
 import type { Text, TextInput } from 'react-native';
 import { Redirect, router, Stack, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
-import { AccessibilityInfo, Alert, ScrollView, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Alert, Keyboard, ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { Course, Season } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
@@ -22,15 +22,20 @@ import { isTv } from '@/lib/device';
 import { cleanName } from '@/lib/text';
 import { formatAmount, parseAmount, toDisplay, toStored } from '@/lib/units';
 import type { QuantityDraft } from './components/ingredient-quantity-row';
+import type { TimeDrafts } from './components/recipe-time-fields';
 import type { Recipe } from './db/recipe-queries';
 import type { ScannedRecipe } from './recipe-from-text';
 import { IngredientQuantityRow } from './components/ingredient-quantity-row';
 import { InstructionsField } from './components/instructions-field';
+import { RecipePhotoField } from './components/recipe-photo-field';
+import { RecipeTimeFields } from './components/recipe-time-fields';
 import { SelectedIngredient } from './components/selected-ingredient';
 import { courseOptionList } from './course';
 import { getRecipe, isRecipeSaved, saveRecipe } from './db/recipe-queries';
 import { useNewIngredients } from './hooks/use-new-ingredients';
+import { parseMinutes } from './minutes';
 import { parseScannedRecipe } from './recipe-from-text';
+import { deleteRecipePhoto } from './recipe-photos';
 import { seasonOptionList } from './season';
 
 type RecipeFormProps = Readonly<{
@@ -67,6 +72,20 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
     startingText(initialRecipe, scannedRecipe, 'instructions'),
   );
   const [titleError, setTitleError] = useState<string>();
+  const [timeDrafts, setTimeDrafts] = useState<TimeDrafts>(() => ({
+    cook: initialRecipe?.cookMinutes === undefined ? '' : String(initialRecipe.cookMinutes),
+    prep: initialRecipe?.prepMinutes === undefined ? '' : String(initialRecipe.prepMinutes),
+  }));
+  const [invalidTimeList, setInvalidTimeList] = useState<(keyof TimeDrafts)[]>([]);
+  // The photo's file; one picked here is saved with the recipe, or swept at start if not.
+  const [photoFile, setPhotoFile] = useState(initialRecipe?.photoFile);
+  const changePhoto = (file: string | undefined) => {
+    // A photo picked here and replaced or removed before saving: no recipe will have it.
+    if (photoFile !== undefined && photoFile !== initialRecipe?.photoFile) {
+      deleteRecipePhoto(photoFile);
+    }
+    setPhotoFile(file);
+  };
   const { units } = usePreferences();
   // The saved quantities, as shown (Settings › Units) and as stored, by ingredient id.
   const [savedMap] = useState(() => savedQuantities(initialRecipe, t, units));
@@ -91,6 +110,9 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
   // ScrollView's `innerViewRef` is typed as never empty, which a ref is before mounting.
   const contentRef = useRef<View>(null) as RefObject<View>;
   const titleRef = useRef<TextInput>(null);
+  const prepRef = useRef<TextInput>(null);
+  const cookRef = useRef<TextInput>(null);
+  const keepAtTop = useKeepAtTop(scrollViewRef, contentRef);
   const amountRefMap = useRef(new Map<number, TextInput>());
   const choiceRefMap = useRef(new Map<number, Text>());
   const chooseSimilar = (ingredient: Ingredient, similar: Ingredient) => {
@@ -111,11 +133,14 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
     if (!cleanName(title)) {
       setTitleError(t.recipes.titleRequired);
     }
+    const { cookMinutes, invalidList: timeErrorList, prepMinutes } = readTimes(timeDrafts);
+    setInvalidTimeList(timeErrorList);
     const firstInvalid = firstInvalidField({
       amountRefMap: amountRefMap.current,
       choiceRefMap: choiceRefMap.current,
       invalidIdList,
       selectedList: selectedIngredientList,
+      timeInput: firstWrongTime(timeErrorList, { cook: cookRef.current, prep: prepRef.current }),
       titleInput: cleanName(title) ? undefined : titleRef.current,
       undecidedIdList,
     });
@@ -129,22 +154,30 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
       isSavedRef.current ||
       !cleanName(title) ||
       invalidIdList.length > 0 ||
-      undecidedIdList.length > 0
+      undecidedIdList.length > 0 ||
+      timeErrorList.length > 0
     ) {
       return;
     }
     const input = {
+      cookMinutes,
       course,
       ingredientIdList: selectedIngredientList.map((ingredient) => ingredient.id),
       instructions,
       newIngredientNames: newIngredients.nameMap,
+      ...photoInput(photoFile, initialRecipe?.photoFile),
+      prepMinutes,
       quantities,
       season,
       title,
     };
     // Saved first, then marked and left: if saving throws, the form stays, and Save works again.
     const saveAsNew = () => {
-      const newId = saveRecipe(database, input);
+      // A new row: its photo is the one shown, changed or not.
+      const newId = saveRecipe(database, {
+        ...input,
+        photo: photoFile === undefined ? null : { file: photoFile },
+      });
       isSavedRef.current = true;
       return newId;
     };
@@ -177,6 +210,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
     }
     saveRecipe(database, input, initialRecipe.id);
     isSavedRef.current = true;
+    deleteReplacedPhoto(initialRecipe.photoFile, photoFile);
     router.back();
   };
 
@@ -226,6 +260,15 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
         optionList={courseOptionList(t)}
         value={course}
       />
+      <RecipeTimeFields
+        drafts={timeDrafts}
+        inputRefs={{ cook: cookRef, prep: prepRef }}
+        invalidList={invalidTimeList}
+        onChange={(drafts) => {
+          setTimeDrafts(drafts);
+          setInvalidTimeList([]);
+        }}
+      />
       <IngredientPicker
         emptyMessage={t.recipes.ingredientsEmpty}
         label={t.recipes.ingredients}
@@ -234,6 +277,8 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
           const { id, name: createdName } = findOrCreateIngredient(database, name);
           return { id, name: createdName };
         }}
+        // At the top of the page: its suggestions, under it, show above the keyboard.
+        onSearchFocus={keepAtTop}
         renderSelected={(ingredient, remove) => (
           <SelectedIngredient
             choiceRef={(text) => keepRef(choiceRefMap.current, ingredient.id, text)}
@@ -260,6 +305,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
         )}
         selectedList={selectedIngredientList}
       />
+      <RecipePhotoField file={photoFile} onChange={changePhoto} title={cleanName(title)} />
       <InstructionsField onChange={setInstructions} value={instructions} />
     </ScrollView>
   );
@@ -310,6 +356,8 @@ type InvalidFieldSearch = Readonly<{
   choiceRefMap: ReadonlyMap<number, Text>;
   invalidIdList: readonly number[];
   selectedList: readonly Ingredient[];
+  // The first wrong time's field, if any.
+  timeInput: null | TextInput | undefined;
   // The title's field when it's empty.
   titleInput: null | TextInput | undefined;
   undecidedIdList: readonly number[];
@@ -320,6 +368,13 @@ type RowReading = Readonly<{ isInvalid: boolean; quantity?: Quantity }>;
 
 type SavedQuantity = Readonly<{ draft: QuantityDraft; stored: Quantity }>;
 
+// The photo a saved edit replaced or removed: no recipe has it any more.
+function deleteReplacedPhoto(savedFile: string | undefined, currentFile: string | undefined) {
+  if (savedFile !== undefined && savedFile !== currentFile) {
+    deleteRecipePhoto(savedFile);
+  }
+}
+
 // The first wrong field from the top: the title, then the ingredients in order (their amount, or
 // the question whether a new one is an existing one).
 function firstInvalidField({
@@ -327,11 +382,14 @@ function firstInvalidField({
   choiceRefMap,
   invalidIdList,
   selectedList,
+  timeInput,
   titleInput,
   undecidedIdList,
 }: InvalidFieldSearch): InvalidField | undefined {
-  if (titleInput) {
-    return { input: titleInput };
+  // In the order shown: the title, the times, then the ingredients.
+  const fieldInput = titleInput ?? timeInput;
+  if (fieldInput) {
+    return { input: fieldInput };
   }
   const wrong = selectedList.find(
     ({ id }) => invalidIdList.includes(id) || undecidedIdList.includes(id),
@@ -345,6 +403,17 @@ function firstInvalidField({
   }
   const question = choiceRefMap.get(wrong.id);
   return question ? { question } : undefined;
+}
+
+// The field of the first wrong time, in the order shown: preparation, then cooking.
+function firstWrongTime(
+  invalidList: readonly (keyof TimeDrafts)[],
+  inputs: Readonly<Record<keyof TimeDrafts, null | TextInput>>,
+): null | TextInput | undefined {
+  if (invalidList.includes('prep')) {
+    return inputs.prep;
+  }
+  return invalidList.includes('cook') ? inputs.cook : undefined;
 }
 
 // Keeps a row's element by ingredient id while it's on screen.
@@ -369,6 +438,14 @@ function moveDraft(
   }
   next.delete(fromId);
   return next;
+}
+
+// The recipe's new photo, or null to remove it; nothing when unchanged (not uploaded again).
+function photoInput(currentFile: string | undefined, savedFile: string | undefined) {
+  if (currentFile === savedFile) {
+    return {};
+  }
+  return { photo: currentFile === undefined ? null : { file: currentFile } };
 }
 
 // The quantities of the selected ingredients; an empty amount = no quantity.
@@ -406,6 +483,20 @@ function readRow(draft: QuantityDraft, saved: SavedQuantity | undefined): RowRea
   };
 }
 
+// The typed times as minutes (null: none), and the fields that aren't a number of minutes.
+function readTimes(drafts: TimeDrafts) {
+  const prepMinutes = parseMinutes(drafts.prep);
+  const cookMinutes = parseMinutes(drafts.cook);
+  const invalidList: (keyof TimeDrafts)[] = [];
+  if (prepMinutes === undefined) {
+    invalidList.push('prep');
+  }
+  if (cookMinutes === undefined) {
+    invalidList.push('cook');
+  }
+  return { cookMinutes, invalidList, prepMinutes };
+}
+
 // The saved quantities: as the form shows them (in the reader's units, "1,5" in French), and as
 // stored, kept for the rows the user doesn't touch (a display rounds: 226.8 g shows as 227 g).
 function savedQuantities(
@@ -424,15 +515,23 @@ function savedQuantities(
   return savedMap;
 }
 
-// Scrolls a wrong field into view and gives it the focus: the keyboard's for a text field, the
-// screen reader's for a question.
-function showField(field: InvalidField, scrollView: null | ScrollView, content: null | View) {
-  const element = 'input' in field ? field.input : field.question;
+// Scrolls the page so the element sits near its top.
+function scrollToTop(
+  element: Text | TextInput,
+  scrollView: null | ScrollView,
+  content: null | View,
+) {
   if (scrollView && content) {
     element.measureLayout(content, (_x, y) => {
       scrollView.scrollTo({ y: Math.max(0, y - SCROLL_MARGIN) });
     });
   }
+}
+
+// Scrolls a wrong field into view and gives it the focus: the keyboard's for a text field, the
+// screen reader's for a question.
+function showField(field: InvalidField, scrollView: null | ScrollView, content: null | View) {
+  scrollToTop('input' in field ? field.input : field.question, scrollView, content);
   if ('input' in field) {
     field.input.focus();
   } else {
@@ -473,6 +572,26 @@ function toSaved(quantity: Quantity, t: Messages, units: UnitSystem): SavedQuant
       unit: shown.unit,
     },
     stored: quantity,
+  };
+}
+
+// Keeps a focused field near the top of the page: the field's own content (an ingredient search's
+// suggestions) shows under it, above the keyboard. Scrolled again once the keyboard is open: the
+// page, shorter, can then scroll further.
+function useKeepAtTop(scrollViewRef: RefObject<null | ScrollView>, contentRef: RefObject<View>) {
+  const fieldRef = useRef<null | TextInput>(null);
+  useEffect(() => {
+    const subscription = Keyboard.addListener('keyboardDidShow', () => {
+      const field = fieldRef.current;
+      if (field?.isFocused()) {
+        scrollToTop(field, scrollViewRef.current, contentRef.current);
+      }
+    });
+    return () => subscription.remove();
+  }, [contentRef, scrollViewRef]);
+  return (field: TextInput) => {
+    fieldRef.current = field;
+    scrollToTop(field, scrollViewRef.current, contentRef.current);
   };
 }
 
