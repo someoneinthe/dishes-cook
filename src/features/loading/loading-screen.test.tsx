@@ -29,7 +29,7 @@ describe('loadingScreen', () => {
     expect(hideSplashScreen).toHaveBeenCalledTimes(1);
   });
 
-  it('fades out after the minimum display time once the illustration is displayed', async () => {
+  it('fades out after the minimum display time once the icon is displayed', async () => {
     expect.hasAssertions();
 
     const onFinish = jest.fn();
@@ -50,7 +50,7 @@ describe('loadingScreen', () => {
     expect(onFinish).toHaveBeenCalledTimes(1);
   });
 
-  it('still finishes when the illustration fails to load', async () => {
+  it('still finishes when the icon fails to load', async () => {
     expect.hasAssertions();
 
     const onFinish = jest.fn();

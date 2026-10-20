@@ -30,7 +30,7 @@ defineFeature(feature, (test) => {
     });
   };
 
-  test('The illustration replaces the native splash screen', ({ given, then, when }) => {
+  test('The icon replaces the native splash screen', ({ given, then, when }) => {
     given('the app is starting', theAppIsStarting);
     when('the loading screen is laid out', async () => {
       await fireEvent(screen.getByTestId('loading-screen'), 'layout', {
@@ -42,9 +42,9 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('The app opens once the illustration has been shown', ({ and, given, then, when }) => {
+  test('The app opens once the icon has been shown', ({ and, given, then, when }) => {
     given('the app is starting', theAppIsStarting);
-    and('the illustration is displayed', async () => {
+    and('the icon is displayed', async () => {
       await fireEvent(screen.getByTestId('loading-screen-image'), 'display');
     });
     when(/^(\d+) milliseconds have passed$/, millisecondsHavePassed);
@@ -53,9 +53,9 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('The app still opens when the illustration fails to load', ({ and, given, then, when }) => {
+  test('The app still opens when the icon fails to load', ({ and, given, then, when }) => {
     given('the app is starting', theAppIsStarting);
-    and('the illustration fails to load', async () => {
+    and('the icon fails to load', async () => {
       await fireEvent(screen.getByTestId('loading-screen-image'), 'error', {
         nativeEvent: { error: 'Failed to load the image' },
       });
