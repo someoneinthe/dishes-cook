@@ -41,9 +41,10 @@ type SegmentProps<T extends string> = Readonly<{
   option: SegmentedOption<T>;
 }>;
 
-// An attached switch's options are chip-sized (36 dp): they still answer taps down to a touch
+// An attached switch's options are small (28 dp high): they still answer taps down to a touch
 // target's height (48 dp), under them (above is the field).
-const ATTACHED_HIT_SLOP = { bottom: 12 } as const;
+const ATTACHED_HEIGHT = 28;
+const ATTACHED_HIT_SLOP = { bottom: 48 - ATTACHED_HEIGHT } as const;
 
 // A single choice among a few options, shown side by side (radio group semantics).
 export function SegmentedControl<T extends string>({
@@ -144,12 +145,13 @@ const styles = StyleSheet.create((theme) => ({
     // One border between the field and the switch.
     marginTop: -theme.borderWidth,
   },
-  // Small, like a chip: a little square when it shows its icon only (its touch area reaches the
-  // touch target's height below it: ATTACHED_HIT_SLOP).
+  // Small: a little tab when it shows its icon only (its touch area reaches the touch target's
+  // height below it: ATTACHED_HIT_SLOP).
   attachedSegment: {
     flexGrow: 0,
-    minHeight: theme.size.chip,
-    minWidth: theme.size.chip + theme.gap(2),
+    minHeight: ATTACHED_HEIGHT,
+    minWidth: ATTACHED_HEIGHT + theme.gap(2),
+    paddingHorizontal: theme.gap(1),
   },
   checkedLabel: {
     color: theme.colors.onAction,
