@@ -18,8 +18,9 @@ export type SegmentedOption<T extends string> = Readonly<{
 }>;
 
 type SegmentedControlProps<T extends string> = Readonly<{
-  // As wide as its options, on the right, instead of the whole line (a small switch under a field).
-  isCompact?: boolean;
+  // A small switch attached under a field (TextField's `attachment`): as wide as its options, on
+  // the right, against the field (top corners square, the borders shared).
+  isAttached?: boolean;
   // Icons only, like icon-only buttons: their text shows with Settings › Show button labels, and
   // screen readers always read it. Every option then needs an icon.
   isIconOnly?: boolean;
@@ -33,16 +34,20 @@ type SegmentedControlProps<T extends string> = Readonly<{
 
 type SegmentProps<T extends string> = Readonly<{
   groupLabel: string;
+  isAttached: boolean;
   isChecked: boolean;
-  isCompact: boolean;
   isTextShown: boolean;
   onPress: () => void;
   option: SegmentedOption<T>;
 }>;
 
+// An attached switch's options are chip-sized (36 dp): they still answer taps down to a touch
+// target's height (48 dp), under them (above is the field).
+const ATTACHED_HIT_SLOP = { bottom: 12 } as const;
+
 // A single choice among a few options, shown side by side (radio group semantics).
 export function SegmentedControl<T extends string>({
-  isCompact = false,
+  isAttached = false,
   isIconOnly = false,
   isLabelHidden = false,
   label,
@@ -54,7 +59,7 @@ export function SegmentedControl<T extends string>({
   const { isShowingButtonLabels } = usePreferences();
 
   return (
-    <View style={[styles.field, isCompact && styles.compactField]}>
+    <View style={[styles.field, isAttached && styles.attachedField]}>
       {/* The group reads its label itself: screen readers skip the visible copy. */}
       {!isLabelHidden && (
         <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.label}>
@@ -65,13 +70,13 @@ export function SegmentedControl<T extends string>({
         accessibilityHint={t.common.chooseOneOption}
         accessibilityLabel={label}
         accessibilityRole="radiogroup"
-        style={styles.group}
+        style={[styles.group, isAttached && styles.attachedGroup]}
       >
         {optionList.map((option) => (
           <Segment
             groupLabel={label}
+            isAttached={isAttached}
             isChecked={option.value === value}
-            isCompact={isCompact}
             isTextShown={!isIconOnly || isShowingButtonLabels}
             key={option.value}
             onPress={() => onChange(option.value)}
@@ -86,8 +91,8 @@ export function SegmentedControl<T extends string>({
 // One option of the group.
 function Segment<T extends string>({
   groupLabel,
+  isAttached,
   isChecked,
-  isCompact,
   isTextShown,
   onPress,
   option,
@@ -105,11 +110,12 @@ function Segment<T extends string>({
       accessibilityLabel={option.label}
       accessibilityRole="radio"
       accessibilityState={{ checked: isChecked }}
+      hitSlop={isAttached ? ATTACHED_HIT_SLOP : undefined}
       onPress={onPress}
       {...focusProps}
       style={[
         styles.segment,
-        isCompact && styles.compactSegment,
+        isAttached && styles.attachedSegment,
         isChecked && styles.checkedSegment,
         focusStyle,
       ]}
@@ -129,19 +135,27 @@ function Segment<T extends string>({
 }
 
 const styles = StyleSheet.create((theme) => ({
+  attachedField: {
+    alignSelf: 'flex-end',
+  },
+  attachedGroup: {
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    // One border between the field and the switch.
+    marginTop: -theme.borderWidth,
+  },
+  // Small, like a chip: a little square when it shows its icon only (its touch area reaches the
+  // touch target's height below it: ATTACHED_HIT_SLOP).
+  attachedSegment: {
+    flexGrow: 0,
+    minHeight: theme.size.chip,
+    minWidth: theme.size.chip + theme.gap(2),
+  },
   checkedLabel: {
     color: theme.colors.onAction,
   },
   checkedSegment: {
     backgroundColor: theme.colors.actionPrimary,
-  },
-  compactField: {
-    alignSelf: 'flex-end',
-  },
-  // A square as tall as a touch target when it shows its icon only, like an icon-only button.
-  compactSegment: {
-    flexGrow: 0,
-    minWidth: theme.size.touchTarget,
   },
   field: {
     gap: theme.gap(1),

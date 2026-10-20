@@ -17,8 +17,8 @@ type InstructionsFieldProps = Readonly<{
 type Mode = 'preview' | 'write';
 
 // The recipe text, written in Markdown: "Write" edits it as typed, "Preview" shows it formatted
-// like on the recipe screen. The switch sits under the field, small, icons only (their text shows
-// with Settings › Show button labels).
+// like on the recipe screen. The switch is attached under the field, on its right, icons only
+// (their text shows with Settings › Show button labels).
 export function InstructionsField({ onChange, placeholder, value }: InstructionsFieldProps) {
   const t = useMessages();
   const [mode, setMode] = useState<Mode>('write');
@@ -26,6 +26,17 @@ export function InstructionsField({ onChange, placeholder, value }: Instructions
     { icon: 'pencil-outline', label: t.recipes.write, value: 'write' },
     { icon: 'eye-outline', label: t.recipes.preview, value: 'preview' },
   ];
+  const modeSwitch = (
+    <SegmentedControl
+      isAttached
+      isIconOnly
+      isLabelHidden
+      label={t.recipes.recipe}
+      onChange={setMode}
+      optionList={modeOptionList}
+      value={mode}
+    />
+  );
 
   return (
     <View style={styles.field}>
@@ -35,6 +46,7 @@ export function InstructionsField({ onChange, placeholder, value }: Instructions
       </Text>
       {mode === 'write' ? (
         <TextField
+          attachment={modeSwitch}
           hint={t.recipes.formatHint}
           isLabelHidden
           label={t.recipes.recipeText}
@@ -44,23 +56,17 @@ export function InstructionsField({ onChange, placeholder, value }: Instructions
           value={value}
         />
       ) : (
-        <View style={styles.preview}>
-          {value.trim() ? (
-            <Markdown text={value} />
-          ) : (
-            <Text style={styles.muted}>{t.recipes.nothingToPreview}</Text>
-          )}
+        <View>
+          <View style={styles.preview}>
+            {value.trim() ? (
+              <Markdown text={value} />
+            ) : (
+              <Text style={styles.muted}>{t.recipes.nothingToPreview}</Text>
+            )}
+          </View>
+          {modeSwitch}
         </View>
       )}
-      <SegmentedControl
-        isCompact
-        isIconOnly
-        isLabelHidden
-        label={t.recipes.recipe}
-        onChange={setMode}
-        optionList={modeOptionList}
-        value={mode}
-      />
     </View>
   );
 }
@@ -79,6 +85,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   // Same frame as the text field, so switching doesn't make the screen jump.
   preview: {
+    borderBottomRightRadius: 0,
     borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.md,
     borderWidth: theme.borderWidth,
