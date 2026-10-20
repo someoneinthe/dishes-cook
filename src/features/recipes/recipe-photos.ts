@@ -74,9 +74,11 @@ export const recipePhotoStore: PhotoStore = {
     await File.downloadFileAsync(url, photo);
     return photo.name;
   },
+  // The file itself: a Blob, which the app's fetch (Expo's) sends. It refuses React Native's
+  // { uri, name, type } files.
   toUpload: (file) => {
     const photo = recipePhotoFile(file);
-    return photo.exists ? { name: photo.name, type: 'image/jpeg', uri: photo.uri } : undefined;
+    return photo.exists ? photo : undefined;
   },
 };
 
