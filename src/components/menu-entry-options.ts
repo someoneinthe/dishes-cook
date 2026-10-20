@@ -6,6 +6,7 @@ import { headerTitleWithIcon } from './header-title';
 // The icon of each menu entry, also shown before the title of its screens.
 export const MENU_ICONS = {
   about: 'information-outline',
+  drinks: 'glass-cocktail',
   ingredients: 'carrot',
   mealChoice: 'dice-multiple',
   recipes: 'book-open-page-variant',

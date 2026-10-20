@@ -39,6 +39,8 @@ export type ServerRecipe = Readonly<{
   // Sync ids of its ingredients.
   ingredients: unknown;
   instructions: string;
+  // 'dish' or 'drink'; empty (or missing, from an older server) = a dish.
+  kind?: unknown;
   // The server's file name of its photo; '' = none (see server/migrations). Uploaded apart from the
   // other fields (a multipart request); `upsert` only clears it ('').
   photo?: unknown;

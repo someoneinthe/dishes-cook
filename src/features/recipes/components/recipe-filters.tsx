@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { SegmentedOption } from '@/components/segmented-control';
+import type { RecipeKind } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import type { Messages } from '@/i18n/en';
 import { SegmentedControl } from '@/components/segmented-control';
@@ -25,6 +26,8 @@ export const NO_FILTERS: RecipeFilterValues = { course: 'any', ingredientList: [
 type RecipeFiltersProps = Readonly<{
   // Season and course only (the meal choice).
   isIngredientPickerHidden?: boolean;
+  // A drink's: ingredients only (drinks have no season nor course).
+  kind?: RecipeKind;
   onChange: (values: RecipeFilterValues) => void;
   values: RecipeFilterValues;
 }>;
@@ -46,6 +49,7 @@ export function hasFilters(values: RecipeFilterValues): boolean {
 // (toQueryFilters).
 export function RecipeFilters({
   isIngredientPickerHidden = false,
+  kind = 'dish',
   onChange,
   values,
 }: RecipeFiltersProps) {
@@ -53,18 +57,22 @@ export function RecipeFilters({
 
   return (
     <View style={styles.container}>
-      <SegmentedControl
-        label={t.recipes.season}
-        onChange={(season) => onChange({ ...values, season })}
-        optionList={seasonFilterOptionList(t)}
-        value={values.season}
-      />
-      <SegmentedControl
-        label={t.recipes.course}
-        onChange={(course) => onChange({ ...values, course })}
-        optionList={courseFilterOptionList(t)}
-        value={values.course}
-      />
+      {kind === 'dish' && (
+        <>
+          <SegmentedControl
+            label={t.recipes.season}
+            onChange={(season) => onChange({ ...values, season })}
+            optionList={seasonFilterOptionList(t)}
+            value={values.season}
+          />
+          <SegmentedControl
+            label={t.recipes.course}
+            onChange={(course) => onChange({ ...values, course })}
+            optionList={courseFilterOptionList(t)}
+            value={values.course}
+          />
+        </>
+      )}
       {!isIngredientPickerHidden && (
         <IngredientPicker
           emptyMessage={t.filters.noUsedIngredient}
@@ -78,13 +86,18 @@ export function RecipeFilters({
   );
 }
 
-// The filters as the recipe queries take them.
-export function toQueryFilters(values: RecipeFilterValues, search: string): RecipeQueryFilters {
+// The filters as the recipe queries take them, for the dishes or the drinks (no season nor course).
+export function toQueryFilters(
+  values: RecipeFilterValues,
+  search: string,
+  kind: RecipeKind,
+): RecipeQueryFilters {
   return {
-    course: values.course === 'any' ? undefined : values.course,
+    course: kind === 'drink' || values.course === 'any' ? undefined : values.course,
     ingredientIdList: values.ingredientList.map((ingredient) => ingredient.id),
+    kind,
     search,
-    season: values.season === 'any' ? undefined : values.season,
+    season: kind === 'drink' || values.season === 'any' ? undefined : values.season,
   };
 }
 

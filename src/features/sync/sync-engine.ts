@@ -12,7 +12,7 @@ import {
   or,
   sql,
 } from 'drizzle-orm';
-import type { Course, Season, SyncedTable } from '@/db/schema';
+import type { Course, RecipeKind, Season, SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { Quantity } from '@/lib/units';
 import { PAGE_SIZE } from '@/db/pagination';
@@ -368,6 +368,7 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
     cookMinutes: toMinutes(row.cook_minutes) ?? null,
     course: toCourse(row.course),
     instructions: typeof row.instructions === 'string' ? row.instructions.trim() : '',
+    kind: toRecipeKind(row.kind),
     prepMinutes: toMinutes(row.prep_minutes) ?? null,
     season: toSeason(row.season),
     sortKey: toSortKey(title),
@@ -947,6 +948,7 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
         course: recipes.course,
         id: recipes.id,
         instructions: recipes.instructions,
+        kind: recipes.kind,
         photoFile: recipes.photoFile,
         photoPending: recipes.photoPending,
         photoSynced: recipes.photoSynced,
@@ -1006,6 +1008,7 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
           deleted: 0,
           ingredients: ingredientSyncIdsByRecipe.get(row.id) ?? [],
           instructions: row.instructions,
+          kind: row.kind,
           modified: row.updatedAt,
           // The server's photo goes with the recipe's new version, never after it (a phone
           // pulling in between would keep it), unless it's the one this phone shows or is about
@@ -1054,6 +1057,11 @@ function toPullKey(item: unknown): PullKey | undefined {
   return typeof updated === 'string' && SERVER_TIME.test(updated) && isSyncId(id)
     ? { id, updated }
     : undefined;
+}
+
+// A pulled recipe's kind: a dish unless it says drink (empty on a server from before drinks).
+function toRecipeKind(value: unknown): RecipeKind {
+  return value === 'drink' ? 'drink' : 'dish';
 }
 
 function toSeason(value: string): Season {

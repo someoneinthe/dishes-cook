@@ -83,6 +83,22 @@ describe('cooked meal queries', () => {
     expect(database.select().from(cookedMeals).all()).toHaveLength(2);
   });
 
+  it('leaves the drinks out when marking a list as cooked: they have no meal history', () => {
+    const mojitoId = saveRecipe(database, {
+      ingredientIdList: [],
+      instructions: '',
+      kind: 'drink',
+      season: 'both',
+      title: 'Mojito',
+    });
+
+    markAllCooked(database, [soupId, mojitoId]);
+    markAllCooked(database, [mojitoId]);
+
+    expect(getLastCookedMeal(database, mojitoId)).toBeUndefined();
+    expect(database.select().from(cookedMeals).all()).toHaveLength(1);
+  });
+
   it('forgets the meals of a deleted recipe', () => {
     markCooked(database, soupId, 1000);
 

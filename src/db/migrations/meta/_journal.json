@@ -43,6 +43,13 @@
       "when": 1792419775542,
       "tag": "0005_recipe-photo-and-times",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792499002528,
+      "tag": "0006_drinks",
+      "breakpoints": true
     }
   ]
 }

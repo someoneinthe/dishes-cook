@@ -7,6 +7,7 @@ import m0002 from './0002_ingredient-names-lowercase.sql';
 import m0003 from './0003_recipe-titles-lowercase.sql';
 import m0004 from './0004_meal-history.sql';
 import m0005 from './0005_recipe-photo-and-times.sql';
+import m0006 from './0006_drinks.sql';
 
   export default {
     journal,
@@ -16,7 +17,8 @@ m0001,
 m0002,
 m0003,
 m0004,
-m0005
+m0005,
+m0006
     }
   }
   

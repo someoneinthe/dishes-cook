@@ -519,6 +519,24 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     });
   });
 
+  it('brings a drink to the other phone as a drink', async () => {
+    saveRecipe(phoneA.db, {
+      ingredientIdList: [],
+      instructions: '',
+      kind: 'drink',
+      season: 'summer',
+      title: 'Mojito',
+    });
+    addRecipe(phoneA, 'Soup');
+
+    await syncBoth();
+
+    expect(recipeOf(phoneB, 'Mojito')?.kind).toBe('drink');
+    expect(recipeOf(phoneB, 'Soup')?.kind).toBe('dish');
+    const rowList = await server.rowsOf('recipes');
+    expect(new Set(rowList.map(({ kind }) => kind))).toStrictEqual(new Set(['dish', 'drink']));
+  });
+
   it('only sends the rows changed since the last sync', async () => {
     addRecipe(phoneA, 'Soup');
     // Changed a while ago: not in the same millisecond as the sync below starts.

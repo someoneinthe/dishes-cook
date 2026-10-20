@@ -56,6 +56,7 @@ describe('recipeFormScreen', () => {
         { id: expect.any(Number) as number, name: 'Ginger' },
       ],
       instructions: 'Simmer.',
+      kind: 'dish',
       season: 'winter',
       title: 'Carrot soup',
     });

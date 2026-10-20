@@ -19,12 +19,12 @@ export function useRecipe(id: number | undefined) {
 
 export function useRecipeCount(filters: RecipeFilters) {
   const database = useDatabase();
-  const { course, ingredientIdList, search, season } = filters;
-  const count = () => countRecipes(database, { course, ingredientIdList, search, season });
+  const { course, ingredientIdList, kind, search, season } = filters;
+  const count = () => countRecipes(database, { course, ingredientIdList, kind, search, season });
   const { data } = useQuery({
     initialData: count,
     queryFn: count,
-    queryKey: ['recipes', 'count', { course, ingredientIdList, search, season }],
+    queryKey: ['recipes', 'count', { course, ingredientIdList, kind, search, season }],
   });
   return data;
 }
@@ -32,12 +32,12 @@ export function useRecipeCount(filters: RecipeFilters) {
 // The alphabetical recipe list, page by page, narrowed by the filters.
 export function useRecipePages(filters: RecipeFilters) {
   const database = useDatabase();
-  const { course, ingredientIdList, search, season } = filters;
+  const { course, ingredientIdList, kind, search, season } = filters;
   return usePagedQuery(
-    ['recipes', 'pages', { course, ingredientIdList, search, season }],
+    ['recipes', 'pages', { course, ingredientIdList, kind, search, season }],
     (pageParameter) =>
       listRecipePage(database, {
-        filters: { course, ingredientIdList, search, season },
+        filters: { course, ingredientIdList, kind, search, season },
         pageParam: pageParameter,
       }),
   );

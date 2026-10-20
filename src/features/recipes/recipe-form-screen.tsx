@@ -4,7 +4,7 @@ import { Redirect, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Alert, Keyboard, ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
-import type { Course, Season } from '@/db/schema';
+import type { Course, RecipeKind, Season } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import type { Messages } from '@/i18n/en';
 import type { Quantity, UnitSystem } from '@/lib/units';
@@ -33,6 +33,7 @@ import { SelectedIngredient } from './components/selected-ingredient';
 import { courseOptionList } from './course';
 import { getRecipe, isRecipeSaved, saveRecipe } from './db/recipe-queries';
 import { useNewIngredients } from './hooks/use-new-ingredients';
+import { kindTexts, useKindHeaderOptions } from './kind';
 import { parseMinutes } from './minutes';
 import { parseScannedRecipe } from './recipe-from-text';
 import { deleteRecipePhoto } from './recipe-photos';
@@ -41,6 +42,8 @@ import { seasonOptionList } from './season';
 type RecipeFormProps = Readonly<{
   // Undefined for a new recipe.
   initialRecipe: Recipe | undefined;
+  // A dish or a drink (no course for a drink).
+  kind: RecipeKind;
   // A new recipe started from a photo (useNewRecipe): the form starts filled in with it.
   scannedRecipe: ScannedRecipe | undefined;
   screenTitle: string;
@@ -56,13 +59,16 @@ export function RecipeFormScreen() {
   return <RecipeFormRoute />;
 }
 
-function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormProps) {
+function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeFormProps) {
   const database = useDatabase();
   const t = useMessages();
+  const kindHeaderOptions = useKindHeaderOptions(kind);
   // A recipe started from a photo: its ingredients, matched to the existing ones.
   const newIngredients = useNewIngredients(scannedRecipe?.ingredientList);
   const [title, setTitle] = useState(() => startingText(initialRecipe, scannedRecipe, 'title'));
   const [season, setSeason] = useState<Season>(initialRecipe?.season ?? 'both');
+  // A drink has no season: it's for both.
+  const savedSeason: Season = kind === 'drink' ? 'both' : season;
   // Every recipe has a course: a main course unless chosen otherwise.
   const [course, setCourse] = useState<Course>(initialRecipe?.course ?? 'main');
   const [selectedIngredientList, setSelectedIngredientList] = useState<Ingredient[]>(
@@ -131,7 +137,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
     const undecidedIdList = newIngredients.undecidedIdList(selectedIngredientList);
     setIsChoiceMissing(undecidedIdList.length > 0);
     if (!cleanName(title)) {
-      setTitleError(t.recipes.titleRequired);
+      setTitleError(kindTexts(t, kind).titleRequired);
     }
     const { cookMinutes, invalidList: timeErrorList, prepMinutes } = readTimes(timeDrafts);
     setInvalidTimeList(timeErrorList);
@@ -164,11 +170,12 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
       course,
       ingredientIdList: selectedIngredientList.map((ingredient) => ingredient.id),
       instructions,
+      kind,
       newIngredientNames: newIngredients.nameMap,
       ...photoInput(photoFile, initialRecipe?.photoFile),
       prepMinutes,
       quantities,
-      season,
+      season: savedSeason,
       title,
     };
     // Saved first, then marked and left: if saving throws, the form stays, and Save works again.
@@ -190,7 +197,8 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
     }
     // Deleted meanwhile, on another device (pulled by a sync): the edits aren't lost.
     if (!isRecipeSaved(database, initialRecipe.id)) {
-      Alert.alert(t.recipes.deletedWhileEditingTitle, t.recipes.deletedWhileEditingMessage, [
+      const texts = kindTexts(t, kind);
+      Alert.alert(texts.deletedWhileEditingTitle, texts.deletedWhileEditingMessage, [
         { style: 'cancel', text: t.common.cancel },
         {
           onPress: () => {
@@ -226,8 +234,8 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
         options={{
           headerRight: headerActions(
             <Button
-              accessibilityHint={t.recipes.saveHint}
-              accessibilityLabel={t.recipes.saveRecipe}
+              accessibilityHint={kindTexts(t, kind).saveHint}
+              accessibilityLabel={kindTexts(t, kind).saveRecipe}
               icon="check"
               isIconOnly
               label={t.common.save}
@@ -235,6 +243,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
             />,
           ),
           title: screenTitle,
+          ...kindHeaderOptions,
         }}
       />
       <TextField
@@ -244,22 +253,27 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
           setTitle(text);
           setTitleError(undefined);
         }}
-        placeholder={t.recipes.titlePlaceholder}
+        placeholder={kindTexts(t, kind).titlePlaceholder}
         ref={titleRef}
         value={title}
       />
-      <SegmentedControl
-        label={t.recipes.season}
-        onChange={setSeason}
-        optionList={seasonOptionList(t)}
-        value={season}
-      />
-      <SegmentedControl
-        label={t.recipes.course}
-        onChange={setCourse}
-        optionList={courseOptionList(t)}
-        value={course}
-      />
+      {/* A drink has no season nor course. */}
+      {kind === 'dish' && (
+        <>
+          <SegmentedControl
+            label={t.recipes.season}
+            onChange={setSeason}
+            optionList={seasonOptionList(t)}
+            value={season}
+          />
+          <SegmentedControl
+            label={t.recipes.course}
+            onChange={setCourse}
+            optionList={courseOptionList(t)}
+            value={course}
+          />
+        </>
+      )}
       <RecipeTimeFields
         drafts={timeDrafts}
         inputRefs={{ cook: cookRef, prep: prepRef }}
@@ -314,7 +328,15 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
 // Creates a recipe (/recipe/new) or edits one (/recipe/[id]/edit).
 function RecipeFormRoute() {
   const database = useDatabase();
-  const { id, scanned } = useLocalSearchParams<{ id?: string; scanned?: string }>();
+  const {
+    id,
+    kind: kindParameter,
+    scanned,
+  } = useLocalSearchParams<{
+    id?: string;
+    kind?: string;
+    scanned?: string;
+  }>();
   const recipeId = id === undefined ? undefined : Number(id);
   // The form starts from the saved recipe; reads are synchronous, so it's ready on first render.
   const [initialRecipe] = useState(() =>
@@ -324,19 +346,24 @@ function RecipeFormRoute() {
     recipeId === undefined ? parseScannedRecipe(scanned) : undefined,
   );
   const t = useMessages();
-  const screenTitle = recipeId === undefined ? t.recipes.newRecipe : t.recipes.editRecipe;
+  // An edit keeps the recipe's kind; a new recipe takes the one it was started for (useNewRecipe).
+  const kind: RecipeKind = initialRecipe?.kind ?? (kindParameter === 'drink' ? 'drink' : 'dish');
+  const texts = kindTexts(t, kind);
+  const screenTitle = recipeId === undefined ? texts.newRecipe : texts.editRecipe;
+  const kindHeaderOptions = useKindHeaderOptions(kind);
 
   if (recipeId !== undefined && !initialRecipe) {
     return (
       <View style={styles.screen}>
-        <Stack.Screen options={{ title: screenTitle }} />
-        <EmptyState message={t.recipes.notFoundMessage} title={t.recipes.notFoundTitle} />
+        <Stack.Screen options={{ title: screenTitle, ...kindHeaderOptions }} />
+        <EmptyState message={t.recipes.notFoundMessage} title={texts.notFoundTitle} />
       </View>
     );
   }
   return (
     <RecipeForm
       initialRecipe={initialRecipe}
+      kind={kind}
       scannedRecipe={scannedRecipe}
       screenTitle={screenTitle}
     />

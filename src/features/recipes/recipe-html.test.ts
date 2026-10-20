@@ -12,6 +12,7 @@ const soup: Recipe = {
     { id: 3, name: 'Salt' },
   ],
   instructions: '# Steps\n\n1. Cut the **leeks**.\n2. Simmer.',
+  kind: 'dish',
   season: 'winter',
   title: 'Leek & potato soup',
 };
@@ -61,6 +62,13 @@ describe('recipe html', () => {
       expect(page).toContain('&lt;img src=x onerror=alert(1)&gt;');
       expect(page).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
       expect(page).toContain('a photo a link');
+    });
+
+    it('shows a drink without a season nor a course', () => {
+      const page = html({ ...soup, kind: 'drink', title: 'Mojito' });
+
+      expect(page).not.toContain('Winter');
+      expect(page).not.toContain('Main course');
     });
 
     it('shows the times, and embeds the photo in the page', () => {

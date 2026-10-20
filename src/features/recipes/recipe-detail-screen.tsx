@@ -16,6 +16,7 @@ import { RecipeDetails } from './components/recipe-details';
 import { ShareRecipeButton } from './components/share-recipe-button';
 import { deleteRecipe } from './db/recipe-queries';
 import { useRecipe } from './hooks/use-recipes';
+import { useKindHeaderOptions } from './kind';
 import { deleteRecipePhoto } from './recipe-photos';
 
 export function RecipeDetailScreen() {
@@ -32,6 +33,7 @@ export function RecipeDetailScreen() {
   }
   const [isDeleted, setIsDeleted] = useState(false);
   const recipe = isDeleted ? lastRecipe : liveRecipe;
+  const kindHeaderOptions = useKindHeaderOptions(recipe?.kind ?? 'dish');
 
   if (!recipe) {
     return (
@@ -87,10 +89,12 @@ export function RecipeDetailScreen() {
           // Read-only on a TV: recipes are edited on the phone.
           headerRight: isTv ? undefined : headerActions(headerButtons),
           title: recipe.title,
+          ...kindHeaderOptions,
         }}
       />
       <RecipeDetails recipe={recipe}>
-        <LastCooked isEditable recipeId={recipe.id} />
+        {/* Drinks have no meal history. */}
+        {recipe.kind === 'dish' && <LastCooked isEditable recipeId={recipe.id} />}
       </RecipeDetails>
     </ScrollView>
   );

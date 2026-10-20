@@ -39,7 +39,7 @@ describe('recipesScreen', () => {
 
     await alert.press('Write it');
 
-    expect(router.push).toHaveBeenCalledWith('/recipe/new');
+    expect(router.push).toHaveBeenCalledWith({ params: { kind: 'dish' }, pathname: '/recipe/new' });
   });
 
   it('lists the recipes with their season, course and ingredient count, and opens one', async () => {
@@ -108,6 +108,21 @@ describe('recipesScreen', () => {
 
     expect(screen.getByRole('button', { name: 'Filters' })).toBeOnTheScreen();
     expect(screen.queryByText('Filters')).not.toBeOnTheScreen();
+  });
+
+  it('tells which filters the Filters button shows: a drink has only the ingredient one', async () => {
+    saveRecipe(connection.db, {
+      ingredientIdList: [],
+      instructions: '',
+      kind: 'drink',
+      season: 'both',
+      title: 'Mojito',
+    });
+    await renderWithDatabase(<RecipesScreen kind="drink" />, connection);
+
+    expect(screen.getByHintText('Shows the ingredient filter')).toBe(
+      screen.getByRole('button', { name: 'Filters' }),
+    );
   });
 
   it('tints the Filters button while filters are on', async () => {

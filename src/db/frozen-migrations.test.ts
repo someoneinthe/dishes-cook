@@ -28,6 +28,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
     '26705f6032b3ac6d7f7d9bfcf5f1af93629d214905f4a9de8276c497a27798f9',
   ],
   [
+    'server/migrations/1792500000-drinks.js',
+    '82d674a1d6381c835f07769ed67351884600cb68a5c2bbf24c2f18577dbd0e63',
+  ],
+  [
     'src/db/migrations/0000_init.sql',
     '76cc3f90b737b4d4fc587e49f95b56a56dbffc1d15747624574ea1ef73c7a018',
   ],
@@ -50,6 +54,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
   [
     'src/db/migrations/0005_recipe-photo-and-times.sql',
     '3cd5f32e14931f57b95758e8b548954f05c2cac837c38ce3d544dac21a882246',
+  ],
+  [
+    'src/db/migrations/0006_drinks.sql',
+    '7a8c754f7a99222b998b9501bf87369b3feb6c683f7425f63832eff5365bf309',
   ],
 ]);
 

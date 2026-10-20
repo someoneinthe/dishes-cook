@@ -3,6 +3,7 @@ import { Drawer } from 'expo-router/drawer';
 import { useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import type { RecipeKind } from '@/db/schema';
 import type { Messages } from '@/i18n/en';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
@@ -16,6 +17,7 @@ import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import type { RecipeFilterValues } from './components/recipe-filters';
 import type { RecipeListItem } from './db/recipe-queries';
+import type { KindTexts } from './kind';
 import { ReadingPhoto } from './components/reading-photo';
 import {
   countFilters,
@@ -27,33 +29,34 @@ import {
 import { CourseLabel, SeasonLabel } from './components/recipe-labels';
 import { useNewRecipe } from './hooks/use-new-recipe';
 import { useRecipeCount, useRecipePages } from './hooks/use-recipes';
+import { kindTexts } from './kind';
 import { describeSeason } from './season';
 
-type RecipeRowProps = Readonly<{ recipe: RecipeListItem }>;
+type RecipeRowProps = Readonly<{ kind: RecipeKind; recipe: RecipeListItem }>;
 
-export function RecipesScreen() {
+// Dishes (Recipes, in the menu) or drinks (Drinks).
+type RecipesScreenProps = Readonly<{ kind?: RecipeKind }>;
+
+export function RecipesScreen({ kind = 'dish' }: RecipesScreenProps) {
   const t = useMessages();
+  const texts = kindTexts(t, kind);
   const [search, setSearch] = useState('');
   const [filterValues, setFilterValues] = useState<RecipeFilterValues>(NO_FILTERS);
   // Only the title search shows at first; hidden filters stay applied.
   const [isFiltersShown, setIsFiltersShown] = useState(false);
-  const queryFilters = toQueryFilters(filterValues, search);
+  const queryFilters = toQueryFilters(filterValues, search, kind);
   // Filtered in SQL, PAGE_SIZE rows at a time; counts in SQL too.
   const recipePages = useRecipePages(queryFilters);
   const matchCount = useRecipeCount(queryFilters);
-  const recipeCount = useRecipeCount({ ingredientIdList: [] });
+  const recipeCount = useRecipeCount({ ingredientIdList: [], kind });
   const isFiltering = search.trim() !== '' || hasFilters(filterValues);
-  // Only search with a title: "no recipe matches “pizza”".
-  const matchText =
-    matchCount === 0 && !hasFilters(filterValues)
-      ? t.recipes.noMatch(search)
-      : t.recipes.matchCount(matchCount);
+  const matchText = describeMatches(matchCount, search, filterValues, texts);
 
   return (
     <>
       <Drawer.Screen
         options={{
-          headerRight: recipesHeaderActions,
+          headerRight: HEADER_ACTIONS[kind],
         }}
       />
       <FlatList
@@ -65,8 +68,8 @@ export function RecipesScreen() {
           // Before the first recipe; while filtering, the header tells there's no match.
           recipeCount === 0 ? (
             <EmptyState
-              message={isTv ? t.recipes.emptyMessageOnTv : t.recipes.emptyMessage}
-              title={t.recipes.emptyTitle}
+              message={isTv ? texts.emptyMessageOnTv : texts.emptyMessage}
+              title={texts.emptyTitle}
             />
           ) : null
         }
@@ -78,7 +81,7 @@ export function RecipesScreen() {
                 <View style={styles.searchField}>
                   <TextField
                     isLabelHidden
-                    label={t.recipes.search}
+                    label={texts.search}
                     onChangeText={setSearch}
                     placeholder={t.recipes.searchPlaceholder}
                     returnKeyType="search"
@@ -86,7 +89,7 @@ export function RecipesScreen() {
                   />
                 </View>
                 <Button
-                  accessibilityHint={isFiltersShown ? t.filters.hideHint : t.filters.showHint}
+                  accessibilityHint={isFiltersShown ? t.filters.hideHint : texts.showFiltersHint}
                   // A funnel; with a check mark while filters are on.
                   icon={hasFilters(filterValues) ? 'filter-check' : 'filter'}
                   isExpanded={isFiltersShown}
@@ -98,7 +101,9 @@ export function RecipesScreen() {
                   variant={hasFilters(filterValues) ? 'active' : 'secondary'}
                 />
               </View>
-              {isFiltersShown && <RecipeFilters onChange={setFilterValues} values={filterValues} />}
+              {isFiltersShown && (
+                <RecipeFilters kind={kind} onChange={setFilterValues} values={filterValues} />
+              )}
               {isFiltering && (
                 <Text accessibilityLiveRegion="polite" style={styles.matchCount}>
                   {matchText}
@@ -107,7 +112,7 @@ export function RecipesScreen() {
             </View>
           ) : null
         }
-        renderItem={({ item }) => <RecipeRow recipe={item} />}
+        renderItem={({ item }) => <RecipeRow kind={kind} recipe={item} />}
         style={styles.list}
         {...getPagingProps(recipePages)}
         {...screenScrollProps}
@@ -116,34 +121,56 @@ export function RecipesScreen() {
   );
 }
 
-// What a screen reader announces for a row: its labels, read as one.
-function describeRecipeRow(item: RecipeListItem, t: Messages): string {
-  return t.recipes.rowLabel(
-    item.title,
-    describeSeason(item.season, t),
-    t.courses[item.course],
-    t.recipes.ingredientCount(item.ingredientCount),
-  );
+// How many match: "3 recipes match."; with a title search only: "No recipe matches “pizza”.".
+function describeMatches(
+  matchCount: number,
+  search: string,
+  filterValues: RecipeFilterValues,
+  texts: KindTexts,
+): string {
+  return matchCount === 0 && !hasFilters(filterValues)
+    ? texts.noMatch(search)
+    : texts.matchCount(matchCount);
+}
+
+// What a screen reader announces for a row: its labels, read as one (a drink has no course).
+function describeRecipeRow(item: RecipeListItem, kind: RecipeKind, t: Messages): string {
+  const ingredients = t.recipes.ingredientCount(item.ingredientCount);
+  return kind === 'drink'
+    ? t.recipes.rowLabel(item.title, undefined, undefined, ingredients)
+    : t.recipes.rowLabel(
+        item.title,
+        describeSeason(item.season, t),
+        t.courses[item.course],
+        ingredients,
+      );
 }
 
 // Read-only on a TV: recipes are written on the phone.
 const recipesHeaderActions = headerActions(
   <>
     <SyncStatusButton />
-    {!isTv && <NewRecipeButton />}
+    {!isTv && <NewRecipeButton kind="dish" />}
   </>,
 );
+const drinksHeaderActions = headerActions(
+  <>
+    <SyncStatusButton />
+    {!isTv && <NewRecipeButton kind="drink" />}
+  </>,
+);
+const HEADER_ACTIONS = { dish: recipesHeaderActions, drink: drinksHeaderActions } as const;
 
-// Opens the form of a new recipe.
-function NewRecipeButton() {
+// Opens the form of a new recipe (a dish or a drink).
+function NewRecipeButton({ kind }: Readonly<{ kind: RecipeKind }>) {
   const t = useMessages();
-  const { isReading, start } = useNewRecipe();
+  const { isReading, start } = useNewRecipe(kind);
 
   return (
     <>
       <Button
         accessibilityHint={t.recipes.newHint}
-        accessibilityLabel={t.recipes.newRecipe}
+        accessibilityLabel={kindTexts(t, kind).newRecipe}
         icon="plus"
         isDisabled={isReading}
         isIconOnly
@@ -156,14 +183,14 @@ function NewRecipeButton() {
 }
 
 // A recipe of the list: opens it.
-function RecipeRow({ recipe }: RecipeRowProps) {
+function RecipeRow({ kind, recipe }: RecipeRowProps) {
   const t = useMessages();
   const { focusProps, focusStyle } = useFocusRing();
 
   return (
     <Pressable
-      accessibilityHint={t.recipes.openHint}
-      accessibilityLabel={describeRecipeRow(recipe, t)}
+      accessibilityHint={kindTexts(t, kind).openHint}
+      accessibilityLabel={describeRecipeRow(recipe, kind, t)}
       accessibilityRole="button"
       onPress={() => router.push({ params: { id: String(recipe.id) }, pathname: '/recipe/[id]' })}
       {...focusProps}
@@ -171,10 +198,13 @@ function RecipeRow({ recipe }: RecipeRowProps) {
     >
       <Text style={styles.title}>{recipe.title}</Text>
       <View style={styles.details}>
-        <View style={styles.labels}>
-          <SeasonLabel season={recipe.season} />
-          <CourseLabel course={recipe.course} />
-        </View>
+        {/* A drink has no season nor course. */}
+        {kind === 'dish' && (
+          <View style={styles.labels}>
+            <SeasonLabel season={recipe.season} />
+            <CourseLabel course={recipe.course} />
+          </View>
+        )}
         <Text style={styles.detail}>{t.recipes.ingredientCount(recipe.ingredientCount)}</Text>
       </View>
     </Pressable>

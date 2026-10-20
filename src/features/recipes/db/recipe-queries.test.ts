@@ -13,6 +13,7 @@ import {
   deleteRecipe,
   getRecipe,
   getRecipeSyncId,
+  listRecipePage,
   pickRandomRecipeId,
   type RecipeFilters,
   type RecipeInput,
@@ -51,6 +52,8 @@ describe('recipe queries', () => {
         { id: leekId, name: 'Leek' },
       ],
       instructions: 'Simmer for 30 minutes.',
+      // A dish when none is given.
+      kind: 'dish',
       season: 'winter',
       title: 'Carrot soup',
     });
@@ -180,6 +183,26 @@ describe('recipe queries', () => {
     expect(firstRecipePage(database)).toStrictEqual([expect.objectContaining({ course: 'main' })]);
   });
 
+  it('keeps dishes and drinks apart in lists, counts and random picks', () => {
+    const soupId = saveRecipe(database, soupInput);
+    const mojitoId = saveRecipe(database, { ...soupInput, kind: 'drink', title: 'Mojito' });
+    const page = (kind: 'dish' | 'drink') =>
+      listRecipePage(database, {
+        filters: { ingredientIdList: [], kind },
+        pageParam: null,
+      }).itemList.map(({ id }) => id);
+
+    expect(page('dish')).toStrictEqual([soupId]);
+    expect(page('drink')).toStrictEqual([mojitoId]);
+    expect(countRecipes(database, { ingredientIdList: [], kind: 'drink' })).toBe(1);
+    expect(pickRandomRecipeId(database, { ingredientIdList: [], kind: 'dish' })).toBe(soupId);
+
+    // An edit that doesn't say keeps the kind.
+    saveRecipe(database, { ...soupInput, title: 'Mojito' }, mojitoId);
+
+    expect(getRecipe(database, mojitoId)?.kind).toBe('drink');
+  });
+
   it('refuses a blank title and an unknown recipe', () => {
     expect(() => saveRecipe(database, { ...soupInput, title: ' ' })).toThrow('cannot be blank');
     expect(() => saveRecipe(database, soupInput, 999)).toThrow('does not exist');
@@ -262,7 +285,7 @@ describe('recipe queries', () => {
     deleteRecipe(database, id);
 
     expect(getRecipe(database, id)).toBeUndefined();
-    expect(countRecipes(database, { ingredientIdList: [carrotId] })).toBe(0);
+    expect(countRecipes(database, { ingredientIdList: [carrotId], kind: 'dish' })).toBe(0);
     expect(findOrCreateIngredient(database, 'carrot').isNew).toBe(false);
   });
 
@@ -300,7 +323,7 @@ describe('recipe queries', () => {
     });
 
     it('returns every recipe without filters', () => {
-      expect(findSortedIds({ ingredientIdList: [] })).toStrictEqual([
+      expect(findSortedIds({ ingredientIdList: [], kind: 'dish' })).toStrictEqual([
         winterSoupId,
         summerSaladId,
         allYearStewId,
@@ -308,45 +331,50 @@ describe('recipe queries', () => {
     });
 
     it('includes the recipes for both seasons in a season', () => {
-      expect(findSortedIds({ ingredientIdList: [], season: 'winter' })).toStrictEqual([
-        winterSoupId,
-        allYearStewId,
-      ]);
+      expect(findSortedIds({ ingredientIdList: [], kind: 'dish', season: 'winter' })).toStrictEqual(
+        [winterSoupId, allYearStewId],
+      );
     });
 
     it('keeps the recipes of the course (a main course when saved without one)', () => {
-      expect(findSortedIds({ course: 'main', ingredientIdList: [] })).toStrictEqual([
+      expect(findSortedIds({ course: 'main', ingredientIdList: [], kind: 'dish' })).toStrictEqual([
         winterSoupId,
         allYearStewId,
       ]);
       expect(
-        findSortedIds({ course: 'starter', ingredientIdList: [tomatoId], season: 'summer' }),
+        findSortedIds({
+          course: 'starter',
+          ingredientIdList: [tomatoId],
+          kind: 'dish',
+          season: 'summer',
+        }),
       ).toStrictEqual([summerSaladId]);
-      expect(findSortedIds({ course: 'dessert', ingredientIdList: [] })).toStrictEqual([]);
+      expect(
+        findSortedIds({ course: 'dessert', ingredientIdList: [], kind: 'dish' }),
+      ).toStrictEqual([]);
     });
 
     it('keeps the recipes containing all the selected ingredients', () => {
-      expect(findSortedIds({ ingredientIdList: [leekId] })).toStrictEqual([
+      expect(findSortedIds({ ingredientIdList: [leekId], kind: 'dish' })).toStrictEqual([
         winterSoupId,
         allYearStewId,
       ]);
-      expect(findSortedIds({ ingredientIdList: [leekId, tomatoId, leekId] })).toStrictEqual([
-        allYearStewId,
-      ]);
+      expect(
+        findSortedIds({ ingredientIdList: [leekId, tomatoId, leekId], kind: 'dish' }),
+      ).toStrictEqual([allYearStewId]);
     });
 
     it('combines season and ingredients', () => {
-      expect(findSortedIds({ ingredientIdList: [tomatoId], season: 'summer' })).toStrictEqual([
-        summerSaladId,
-        allYearStewId,
-      ]);
-      expect(findSortedIds({ ingredientIdList: [leekId], season: 'summer' })).toStrictEqual([
-        allYearStewId,
-      ]);
+      expect(
+        findSortedIds({ ingredientIdList: [tomatoId], kind: 'dish', season: 'summer' }),
+      ).toStrictEqual([summerSaladId, allYearStewId]);
+      expect(
+        findSortedIds({ ingredientIdList: [leekId], kind: 'dish', season: 'summer' }),
+      ).toStrictEqual([allYearStewId]);
     });
 
     it('never picks the excluded recipe when another one matches', () => {
-      const winterFilters = { ingredientIdList: [], season: 'winter' } as const;
+      const winterFilters = { ingredientIdList: [], kind: 'dish', season: 'winter' } as const;
 
       expect(
         pickRandomRecipeId(database, winterFilters, { excludedId: winterSoupId, random: () => 0 }),
@@ -360,7 +388,7 @@ describe('recipe queries', () => {
     });
 
     it('picks the excluded recipe again when it is the only match', () => {
-      const filters = { ingredientIdList: [leekId], season: 'summer' } as const;
+      const filters = { ingredientIdList: [leekId], kind: 'dish', season: 'summer' } as const;
 
       expect(pickRandomRecipeId(database, filters, { excludedId: allYearStewId })).toBe(
         allYearStewId,
@@ -368,11 +396,13 @@ describe('recipe queries', () => {
     });
 
     it('picks nothing when no recipe matches', () => {
-      expect(pickRandomRecipeId(database, { ingredientIdList: [leekId, 999] })).toBeUndefined();
+      expect(
+        pickRandomRecipeId(database, { ingredientIdList: [leekId, 999], kind: 'dish' }),
+      ).toBeUndefined();
     });
 
     it('never picks the recipes left out (those in the shopping list)', () => {
-      const winterFilters = { ingredientIdList: [], season: 'winter' } as const;
+      const winterFilters = { ingredientIdList: [], kind: 'dish', season: 'winter' } as const;
 
       expect(
         [0, 0.5, 0.99].map((value) =>
@@ -396,7 +426,7 @@ describe('recipe queries', () => {
       const DAY = 24 * 60 * 60 * 1000;
       const now = Date.UTC(2026, 9, 17, 12);
       const lastWeek = now - 7 * DAY;
-      const winterFilters = { ingredientIdList: [], season: 'winter' } as const;
+      const winterFilters = { ingredientIdList: [], kind: 'dish', season: 'winter' } as const;
       // Every id the pick can return when skipping the meals cooked in the last week.
       const findSkippingIds = () =>
         [0, 0.5, 0.99].map((value) =>

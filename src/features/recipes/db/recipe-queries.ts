@@ -1,7 +1,7 @@
 import type { SQL } from 'drizzle-orm';
 import { and, asc, count, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import type { Page, PageRequest } from '@/db/pagination';
-import type { Course, Season } from '@/db/schema';
+import type { Course, RecipeKind, Season } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import type { Quantity } from '@/lib/units';
@@ -23,6 +23,7 @@ export type Recipe = Readonly<{
   id: number;
   ingredientList: RecipeIngredient[];
   instructions: string;
+  kind: RecipeKind;
   // Its photo's file name in the app's documents (RECIPE_PHOTO_FOLDER); left out without a photo.
   photoFile?: string;
   prepMinutes?: number;
@@ -35,6 +36,8 @@ export type RecipeFilters = Readonly<{
   course?: Course;
   // Recipes made with ALL these ingredients.
   ingredientIdList: readonly number[];
+  // Dishes or drinks: every list is one or the other.
+  kind: RecipeKind;
   // Titles containing it, ignoring case and accents; undefined or blank = any title.
   search?: string;
   // A season also matches the recipes for both seasons; undefined = any season.
@@ -52,6 +55,8 @@ export type RecipeInput = Readonly<{
   // Ids below 0: ingredients to create when the recipe is saved, named in `newIngredientNames`.
   ingredientIdList: readonly number[];
   instructions: string;
+  // A dish when left out on a new recipe; left out = unchanged on an edit.
+  kind?: RecipeKind;
   // Names of the ingredients to create (e.g. read from a photo), by their temporary id (below 0).
   newIngredientNames?: ReadonlyMap<number, string>;
   // A new photo (its file, already in RECIPE_PHOTO_FOLDER), null to remove it; left out = unchanged.
@@ -124,6 +129,7 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
       course: recipes.course,
       id: recipes.id,
       instructions: recipes.instructions,
+      kind: recipes.kind,
       photoFile: recipes.photoFile,
       prepMinutes: recipes.prepMinutes,
       season: recipes.season,
@@ -183,7 +189,7 @@ export function isRecipeSaved(database: AppDatabase, id: number): boolean {
 
 // One page (PAGE_SIZE) of the alphabetical recipe list, narrowed by the filters (title search,
 // season, course, ingredients). `instructions` (possibly long) is left out.
-// Plan: walk the (sort_key, id) index from the cursor, count links on the primary key.
+// Plan: walk the (kind, sort_key, id) index from the cursor, count links on the primary key.
 export function listRecipePage(
   database: AppDatabase,
   options: Readonly<{ filters: RecipeFilters; pageParam: PageRequest }>,
@@ -212,7 +218,8 @@ export function listRecipePage(
 
 // A random recipe among those matching the filters (see PickOptions).
 // Reads one id at a random offset instead of loading every matching id, in (sort_key, id) order:
-// without filters, the walk to the offset stays in that index instead of reading whole rows.
+// without other filters than the kind, the walk to the offset stays in the (kind, sort_key, id)
+// index instead of reading whole rows.
 export function pickRandomRecipeId(
   database: AppDatabase,
   filters: RecipeFilters,
@@ -247,6 +254,7 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
     cookMinutes: toMinutes(input.cookMinutes) ?? null,
     course: input.course ?? 'main',
     instructions: input.instructions.trim(),
+    ...(input.kind !== undefined && { kind: input.kind }),
     prepMinutes: toMinutes(input.prepMinutes) ?? null,
     season: input.season,
     sortKey: toSortKey(title),
@@ -322,7 +330,15 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
 // ingredients, the plan starts from the (ingredient_id, recipe_id) index, so only recipes
 // containing a selected ingredient are visited.
 function filtersWhere(database: AppDatabase, filters: RecipeFilters): SQL | undefined {
-  const conditionList: SQL[] = [];
+  const ingredientIdList = [...new Set(filters.ingredientIdList)];
+  // Without ingredients, the list walks the (kind, sort_key, id) index. With some, the plan starts
+  // from the few recipes using them (the ingredient index): `+kind` keeps SQLite off the kind
+  // index, which would walk every dish instead.
+  const conditionList: SQL[] = [
+    ingredientIdList.length > 0
+      ? sql`+${recipes.kind} = ${filters.kind}`
+      : eq(recipes.kind, filters.kind),
+  ];
   const titleSearch = titleSearchWhere(filters.search ?? '');
   if (titleSearch) {
     conditionList.push(titleSearch);
@@ -333,7 +349,6 @@ function filtersWhere(database: AppDatabase, filters: RecipeFilters): SQL | unde
   if (filters.course) {
     conditionList.push(eq(recipes.course, filters.course));
   }
-  const ingredientIdList = [...new Set(filters.ingredientIdList)];
   if (ingredientIdList.length > 0) {
     // The primary key forbids duplicate links, so "all of them" = "as many links as ingredients".
     const recipesWithAllIngredients = database
