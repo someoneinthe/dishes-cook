@@ -154,6 +154,8 @@ describe('units', () => {
       'pinch',
       'clove',
       'bunch',
+      'sprig',
+      'leaf',
       'can',
     ]);
     expect(unitOptionList('us')).not.toContain('g');

@@ -15,7 +15,9 @@ const UNIT_WORDS: Readonly<Record<WordUnit, readonly [one: string, other: string
   can: ['boîte', 'boîtes'],
   clove: ['gousse', 'gousses'],
   cup: ['tasse', 'tasses'],
+  leaf: ['feuille', 'feuilles'],
   pinch: ['pincée', 'pincées'],
+  sprig: ['brin', 'brins'],
   tbsp: ['c. à soupe', 'c. à soupe'],
   tsp: ['c. à café', 'c. à café'],
 };
