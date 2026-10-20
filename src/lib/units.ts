@@ -34,9 +34,11 @@ const UNIT_INFO: Readonly<Record<Unit, UnitInfo>> = {
   kg: { base: 1000, kind: 'mass', system: 'metric' },
   l: { base: 1000, kind: 'volume', system: 'metric' },
   lb: { base: 453.59237, kind: 'mass', system: 'us' },
+  leaf: { kind: 'count', system: 'both' },
   ml: { base: 1, kind: 'volume', system: 'metric' },
   oz: { base: 28.349523125, kind: 'mass', system: 'us' },
   pinch: { kind: 'count', system: 'both' },
+  sprig: { kind: 'count', system: 'both' },
   tbsp: { base: 15, kind: 'volume', system: 'both' },
   tsp: { base: 5, kind: 'volume', system: 'both' },
 };
@@ -46,7 +48,16 @@ const SYSTEM_UNIT_LIST: Readonly<Record<UnitSystem, readonly Unit[]>> = {
   metric: ['g', 'kg', 'ml', 'cl', 'l'],
   us: ['oz', 'lb', 'fl_oz', 'cup'],
 };
-const SHARED_UNIT_LIST: readonly Unit[] = ['tsp', 'tbsp', 'pinch', 'clove', 'bunch', 'can'];
+const SHARED_UNIT_LIST: readonly Unit[] = [
+  'tsp',
+  'tbsp',
+  'pinch',
+  'clove',
+  'bunch',
+  'sprig',
+  'leaf',
+  'can',
+];
 
 // Largest amount typed in the form: more is a typo.
 export const MAX_AMOUNT = 100_000;

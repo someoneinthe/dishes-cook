@@ -23,6 +23,25 @@ describe('recipe-from-text', () => {
       });
     });
 
+    it('reads herbs counted in sprigs and leaves', () => {
+      expect(readIngredientLine('3 brins de thym')).toStrictEqual({
+        name: 'thym',
+        quantity: { amount: 3, unit: 'sprig' },
+      });
+      expect(readIngredientLine('2 feuilles de laurier')).toStrictEqual({
+        name: 'laurier',
+        quantity: { amount: 2, unit: 'leaf' },
+      });
+      expect(readIngredientLine('4 basil leaves')).toStrictEqual({
+        name: 'basil leaves',
+        quantity: { amount: 4 },
+      });
+      expect(readIngredientLine('1 sprig of rosemary')).toStrictEqual({
+        name: 'rosemary',
+        quantity: { amount: 1, unit: 'sprig' },
+      });
+    });
+
     it('reads a unit stuck to the amount, abbreviated or in words', () => {
       expect(readIngredientLine('500g pommes de terre')).toStrictEqual({
         name: 'pommes de terre',

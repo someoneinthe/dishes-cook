@@ -38,6 +38,8 @@ export const UNIT_LIST = [
   'clove',
   'bunch',
   'can',
+  'leaf',
+  'sprig',
 ] as const;
 export type Unit = (typeof UNIT_LIST)[number];
 
