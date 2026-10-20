@@ -112,7 +112,7 @@ $ADB logcat -d -s ReactNativeJS | tail -50              # console.log/warn/error
 - **Server sync**: test against a throwaway PocketBase, never the user's real server: `adb reverse tcp:<port> tcp:<port>`, then connect to `http://localhost:<port>` in Settings › Data storage (plain HTTP works in debug builds only). Steps in `docs/sync.md` › Testing during development.
 - **After a schema change**: restart Metro with `--clear` (it caches the inlined SQL) and reopen the app, which applies the new migration. Don't clear its data: check that the recipes from before the change are still there.
 
-Expected startup: native splash (plate on white / `#121212` in dark mode) → full illustration (~1.5 s) → home screen. The illustration is short: take screenshots in a quick loop to catch it.
+Expected startup: native splash (the plate and cutlery on the icon's blue-grey, light and dark mode) → the loading screen, the same icon larger on the same blue-grey (~1.5 s) → home screen. It's short: take screenshots in a quick loop to catch it.
 
 ## 7. Android TV (emulator; a real TV when asked)
 

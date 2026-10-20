@@ -10,7 +10,8 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
   return {
     ...config,
     android: {
-      // App icon (assets/source/app-icon.jpg): plate and cutlery on the icon's blue-grey;
+      // App icon (assets/source/app-icon.jpg, its shadows removed): plate and cutlery on the
+      // icon's blue-grey;
       // monochrome = simplified glyph for Android 13+ themed icons.
       adaptiveIcon: {
         backgroundColor: '#C0CBCF',
@@ -71,12 +72,12 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
       ['./plugins/with-android-tv.js', { banner: './assets/images/tv-banner.png' }],
       [
         'expo-splash-screen',
-        // Android 12+ only allows a centered icon: the app icon's plate and cutlery.
+        // Android 12+ only allows a centered icon: the app icon's plate and cutlery, on the icon's
+        // blue-grey in light and dark mode, like the loading screen that follows.
         {
-          backgroundColor: '#FFFFFF',
-          // Dark mode: Material dark surface instead of a white flash before the loading screen.
+          backgroundColor: '#C0CBCF',
           dark: {
-            backgroundColor: '#121212',
+            backgroundColor: '#C0CBCF',
             image: './assets/images/splash-icon.png',
           },
           image: './assets/images/splash-icon.png',

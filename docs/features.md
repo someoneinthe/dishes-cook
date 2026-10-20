@@ -219,25 +219,25 @@ Each ingredient exists once and can be shared by many recipes.
 
 ## Loading screen
 
-At startup, the dishes illustration replaces the native splash screen, stays on screen for a moment, then fades into the app.
+At startup, the app icon (its plate and cutlery, on its blue-grey background, over the whole screen) replaces the native splash screen, stays on screen for a moment, then fades into the app.
 
-### The illustration replaces the native splash screen
+### The icon replaces the native splash screen
 
 - **Given** the app is starting
 - **When** the loading screen is laid out
 - **Then** the native splash screen is hidden
 
-### The app opens once the illustration has been shown
+### The app opens once the icon has been shown
 
 - **Given** the app is starting
-- **And** the illustration is displayed
+- **And** the icon is displayed
 - **When** 1900 milliseconds have passed
 - **Then** the loading screen is finished
 
-### The app still opens when the illustration fails to load
+### The app still opens when the icon fails to load
 
 - **Given** the app is starting
-- **And** the illustration fails to load
+- **And** the icon fails to load
 - **When** 1900 milliseconds have passed
 - **Then** the loading screen is finished
 

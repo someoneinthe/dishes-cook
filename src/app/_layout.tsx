@@ -16,7 +16,7 @@ import { applyColorScheme, getPreferences, usePreferences } from '@/features/set
 import { useAutoSync } from '@/features/sync/use-auto-sync';
 import { I18nProvider, useMessages } from '@/i18n/i18n-provider';
 
-// Keep the native splash screen until the loading illustration is rendered. Called at module
+// Keep the native splash screen until the loading screen (the icon) is rendered. Called at module
 // scope without awaiting, as Expo recommends (Metro doesn't support top-level await).
 void preventAutoHideAsync();
 
