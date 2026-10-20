@@ -32,7 +32,7 @@ export function RecipeDetails({ children, recipe }: RecipeDetailsProps) {
       </Text>
       <View style={styles.labels}>
         <SeasonLabel season={recipe.season} />
-        <CourseLabel course={recipe.course} />
+        {recipe.kind === 'dish' && <CourseLabel course={recipe.course} />}
       </View>
       {times !== undefined && <Text style={styles.muted}>{times}</Text>}
       {children}

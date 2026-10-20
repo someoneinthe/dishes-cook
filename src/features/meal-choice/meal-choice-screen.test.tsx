@@ -31,7 +31,7 @@ describe('mealChoiceScreen', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Create a recipe' }));
     await alert.press('Write it');
 
-    expect(router.push).toHaveBeenCalledWith('/recipe/new');
+    expect(router.push).toHaveBeenCalledWith({ params: { kind: 'dish' }, pathname: '/recipe/new' });
   });
 
   it('invites to ask again once the suggested main course is deleted', async () => {

@@ -42,6 +42,7 @@ describe('query plans', () => {
     saveRecipe(database, {
       ingredientIdList: [carrotId, leekId],
       instructions: '',
+      kind: 'dish',
       season: 'both',
       title: 'Soup',
     });
@@ -99,11 +100,13 @@ describe('query plans', () => {
     expect(lastQuery()?.query.match(/replace\(/g)).toHaveLength(16);
   });
 
-  it('picks a random recipe without filters in the (sort_key, id) index', () => {
-    pickRandomRecipeId(database, { ingredientIdList: [] }, { random: () => 0 });
+  it('picks a random dish without filters in the (kind, sort_key, id) index', () => {
+    pickRandomRecipeId(database, { ingredientIdList: [], kind: 'dish' }, { random: () => 0 });
 
     expect(lastPlan()).toStrictEqual([
-      expect.stringMatching(/^SCAN recipes USING COVERING INDEX recipes_sort_key_id_idx/),
+      expect.stringMatching(
+        /^SEARCH recipes USING COVERING INDEX recipes_kind_sort_key_id_idx \(kind=\?\)/,
+      ),
     ]);
   });
 
@@ -111,10 +114,16 @@ describe('query plans', () => {
     /^SEARCH cooked_meals USING COVERING INDEX cooked_meals_recipe_cooked_at_idx/;
 
   it('skips the recently cooked recipes with one lookup of the meal index each', () => {
-    pickRandomRecipeId(database, { ingredientIdList: [] }, { random: () => 0, skipCookedSince: 1 });
+    pickRandomRecipeId(
+      database,
+      { ingredientIdList: [], kind: 'dish' },
+      { random: () => 0, skipCookedSince: 1 },
+    );
     const planList = lastPlan();
 
-    expect(planList[0]).toMatch(/^SCAN recipes USING COVERING INDEX recipes_sort_key_id_idx/);
+    expect(planList[0]).toMatch(
+      /^SEARCH recipes USING COVERING INDEX recipes_kind_sort_key_id_idx \(kind=\?\)/,
+    );
     expect(planList).toContainEqual(
       expect.stringMatching(
         /^SEARCH cooked_meals USING COVERING INDEX cooked_meals_recipe_cooked_at_idx \(recipe_id=\? AND cooked_at>\?\)/,
@@ -125,7 +134,11 @@ describe('query plans', () => {
   it('picks the recipe cooked longest ago with the meal index when all were cooked recently', () => {
     markCooked(database, 1, Date.now());
     queryList = [];
-    pickRandomRecipeId(database, { ingredientIdList: [] }, { random: () => 0, skipCookedSince: 1 });
+    pickRandomRecipeId(
+      database,
+      { ingredientIdList: [], kind: 'dish' },
+      { random: () => 0, skipCookedSince: 1 },
+    );
 
     expect(lastQuery()?.query).toContain('max("cooked_meals"."cooked_at")');
     expect(lastPlan()).toContainEqual(expect.stringMatching(COOKED_INDEX));
@@ -176,12 +189,20 @@ describe('query plans', () => {
 
   it('reads filtered recipe pages in index order and counts ingredients with the primary key', () => {
     listRecipePage(database, {
-      filters: { course: 'main', ingredientIdList: [], search: 'so', season: 'winter' },
+      filters: {
+        course: 'main',
+        ingredientIdList: [],
+        kind: 'dish',
+        search: 'so',
+        season: 'winter',
+      },
       pageParam: { after: CURSOR },
     });
     const planList = lastPlan();
 
-    expect(planList[0]).toMatch(/^SEARCH recipes USING INDEX recipes_sort_key_id_idx/);
+    expect(planList[0]).toMatch(
+      /^SEARCH recipes USING INDEX recipes_kind_sort_key_id_idx \(kind=\? AND sort_key>\?\)/,
+    );
     expect(planList).toContainEqual(
       expect.stringMatching(/^SEARCH recipe_ingredients USING COVERING INDEX sqlite_autoindex/),
     );
@@ -192,7 +213,13 @@ describe('query plans', () => {
     // Every filter on. The selected ingredients are the most selective: SQLite reads the recipes
     // using them (covering index), then those recipes by primary key, and sorts only them.
     listRecipePage(database, {
-      filters: { course: 'main', ingredientIdList: [carrotId], search: 'so', season: 'winter' },
+      filters: {
+        course: 'main',
+        ingredientIdList: [carrotId],
+        kind: 'dish',
+        search: 'so',
+        season: 'winter',
+      },
       pageParam: { after: CURSOR },
     });
 
@@ -221,13 +248,16 @@ describe('query plans', () => {
   });
 
   it.each([
-    ['counts', () => countRecipes(database, { ingredientIdList: [1, 2], season: 'winter' })],
+    [
+      'counts',
+      () => countRecipes(database, { ingredientIdList: [1, 2], kind: 'dish', season: 'winter' }),
+    ],
     [
       'picks',
       () =>
         pickRandomRecipeId(
           database,
-          { ingredientIdList: [1], season: 'winter' },
+          { ingredientIdList: [1], kind: 'dish', season: 'winter' },
           { excludedId: 1, random: () => 0 },
         ),
     ],
@@ -280,6 +310,7 @@ describe('query plans', () => {
       saveRecipe(database, {
         ingredientIdList: [],
         instructions: '',
+        kind: 'dish',
         season: 'both',
         title: `Recipe ${index}`,
       });

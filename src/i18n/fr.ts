@@ -25,7 +25,7 @@ const UNIT_WORDS: Readonly<Record<WordUnit, readonly [one: string, other: string
 export const fr: Messages = {
   about: {
     deviceList: [
-      `Vos recettes (avec leurs photos), ingrédients et paramètres sont enregistrés sur cet appareil. C’est la copie de référence${NARROW_SPACE}: l’application fonctionne entièrement sans serveur ni connexion internet.`,
+      `Vos recettes et boissons (avec leurs photos), ingrédients et paramètres sont enregistrés sur cet appareil. C’est la copie de référence${NARROW_SPACE}: l’application fonctionne entièrement sans serveur ni connexion internet.`,
       `La sauvegarde d’Android ne les inclut pas${NARROW_SPACE}: sans serveur de synchronisation, désinstaller l’application les supprime.`,
     ],
     deviceTitle: 'Sur cet appareil',
@@ -41,7 +41,7 @@ export const fr: Messages = {
     othersTitle: 'Rien pour personne d’autre',
     serverList: [
       'Désactivée par défaut. Dans Paramètres › Stockage des données, vous pouvez synchroniser avec un serveur PocketBase que vous installez et gérez vous-même, pour partager vos recettes entre vos appareils.',
-      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes (titre, type de plat, saison, temps, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Les paramètres restent sur chaque appareil.`,
+      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes et boissons (titre, plat ou boisson, type de plat, saison, temps, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Les paramètres restent sur chaque appareil.`,
       'L’appareil garde l’adresse du serveur, votre e-mail et un jeton de connexion chiffré, jamais votre mot de passe. La connexion est chiffrée (HTTPS).',
       `Le serveur est à vous${NARROW_SPACE}: personne d’autre ne le gère, et les développeurs de l’application ne peuvent pas le voir.`,
     ],
@@ -70,6 +70,28 @@ export const fr: Messages = {
   },
   database: {
     openFailed: (reason) => `Impossible d’ouvrir la base des recettes${NARROW_SPACE}: ${reason}`,
+  },
+  drinks: {
+    deletedWhileEditingMessage: `Elle a été supprimée sur un autre appareil pendant que vous la modifiiez. Enregistrer votre version comme nouvelle boisson${NARROW_SPACE}?`,
+    deletedWhileEditingTitle: 'Cette boisson a été supprimée',
+    editRecipe: 'Modifier la boisson',
+    emptyMessage: `Enregistrez les boissons que vous aimez préparer${NARROW_SPACE}: cocktails, smoothies, boissons chaudes…`,
+    emptyMessageOnTv:
+      'Les boissons s’écrivent dans l’application, sur un téléphone. Pour les voir ici, synchronisez cette télé avec votre serveur dans les Paramètres.',
+    emptyTitle: 'Aucune boisson pour l’instant',
+    matchCount: (count) =>
+      count === 0
+        ? 'Aucune boisson ne correspond à ces filtres.'
+        : plural(count, '1 boisson correspond.', `${count} boissons correspondent.`),
+    newRecipe: 'Nouvelle boisson',
+    noMatch: (search) => `Aucune boisson ne correspond à ${quote(search)}.`,
+    notFoundTitle: 'Boisson introuvable',
+    openHint: 'Ouvre la boisson',
+    saveHint: 'Enregistre la boisson et l’affiche',
+    saveRecipe: 'Enregistrer la boisson',
+    search: 'Rechercher des boissons',
+    titlePlaceholder: `Ex.${NARROW_SPACE}: mojito`,
+    titleRequired: 'Donnez un nom à la boisson.',
   },
   filters: {
     any: 'Indifférent',
@@ -173,6 +195,7 @@ export const fr: Messages = {
   menu: {
     about: 'À propos',
     close: 'Fermer le menu',
+    drinks: 'Boissons',
     ingredients: 'Ingrédients',
     mealChoice: 'Choix du repas',
     open: 'Ouvrir le menu',

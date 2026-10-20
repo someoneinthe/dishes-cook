@@ -21,6 +21,10 @@ export const COURSE_LIST = ['starter', 'main', 'dessert'] as const;
 export type Course = (typeof COURSE_LIST)[number];
 const COURSE_SQL_LIST = COURSE_LIST.map((course) => `'${course}'`).join(', ');
 
+// A recipe is a dish (with a course, suggested by Meal choice) or a drink (its own list).
+export const RECIPE_KIND_LIST = ['dish', 'drink'] as const;
+export type RecipeKind = (typeof RECIPE_KIND_LIST)[number];
+
 // Units of ingredient quantities (conversions and the units setting: src/lib/units.ts).
 export const UNIT_LIST = [
   'g',
@@ -92,11 +96,14 @@ export const recipes = sqliteTable(
     // an existing table makes drizzle-kit rebuild it, see docs/database.md).
     cookMinutes: integer('cook_minutes'),
     // Starter, main course or dessert: every recipe has one, a main course unless chosen otherwise.
+    // Unused for a drink (left at its default).
     course: text('course', { enum: COURSE_LIST }).notNull().default('main'),
     createdAt: integer('created_at').notNull().default(NOW_MS),
     id: integer('id').primaryKey(),
     // The recipe itself (steps, quantities…). Never selected by list queries: it can be long.
     instructions: text('instructions').notNull().default(''),
+    // A dish or a drink (RECIPE_KIND_LIST); checked by the code that writes it, like cookMinutes.
+    kind: text('kind', { enum: RECIPE_KIND_LIST }).notNull().default('dish'),
     // The recipe's photo: a file in the app's documents (RECIPE_PHOTO_FOLDER); null = none.
     photoFile: text('photo_file'),
     // The server's name of a newer photo to download (pulled from another phone); null = none.
@@ -122,8 +129,8 @@ export const recipes = sqliteTable(
     check('recipes_season_valid', sql`${table.season} in (${sql.raw(SEASON_SQL_LIST)})`),
     check('recipes_course_valid', sql`${table.course} in (${sql.raw(COURSE_SQL_LIST)})`),
     // No index on season or course: 3 values each, so an index can't beat a scan of the (small) table.
-    // Pages of the alphabetical list, see ingredients_sort_key_id_idx.
-    index('recipes_sort_key_id_idx').on(table.sortKey, table.id),
+    // Pages of the alphabetical list of dishes or of drinks, see ingredients_sort_key_id_idx.
+    index('recipes_kind_sort_key_id_idx').on(table.kind, table.sortKey, table.id),
   ],
 );
 

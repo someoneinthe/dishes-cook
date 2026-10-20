@@ -39,7 +39,7 @@ describe('recipesScreen', () => {
 
     await alert.press('Write it');
 
-    expect(router.push).toHaveBeenCalledWith('/recipe/new');
+    expect(router.push).toHaveBeenCalledWith({ params: { kind: 'dish' }, pathname: '/recipe/new' });
   });
 
   it('lists the recipes with their season, course and ingredient count, and opens one', async () => {

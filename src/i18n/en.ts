@@ -50,7 +50,7 @@ export const en = {
   // or sends (sync, a new network call, analytics…) updates it in every language (CONTRIBUTING.md).
   about: {
     deviceList: [
-      'Your recipes (their photos included), ingredients and settings are saved on this device. It’s the reference copy: the app works fully without a server or an internet connection.',
+      'Your recipes and drinks (their photos included), ingredients and settings are saved on this device. It’s the reference copy: the app works fully without a server or an internet connection.',
       'Android’s backup doesn’t save them: without a sync server, uninstalling the app deletes them.',
     ],
     deviceTitle: 'On this device',
@@ -66,7 +66,7 @@ export const en = {
     othersTitle: 'Nothing for anyone else',
     serverList: [
       'Off by default. In Settings › Data storage, you can sync with a PocketBase server that you install and run yourself, to share your recipes between your devices.',
-      'Only that server receives your data: your recipes (title, course, season, times, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. Settings stay on each device.',
+      'Only that server receives your data: your recipes and drinks (title, dish or drink, course, season, times, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. Settings stay on each device.',
       'The device keeps the server’s address, your email and an encrypted sign-in token, never your password. The connection is encrypted (HTTPS).',
       'The server is yours: no one else runs it, and the app’s developers can’t see it.',
     ],
@@ -96,6 +96,30 @@ export const en = {
   },
   database: {
     openFailed: (reason: string) => `The recipes database could not be opened: ${reason}`,
+  },
+  // The texts of src/features/recipes/kind.ts that differ for a drink (the others are the recipes').
+  drinks: {
+    deletedWhileEditingMessage:
+      'It was deleted on another device while you were editing it. Save your version as a new drink?',
+    deletedWhileEditingTitle: 'This drink was deleted',
+    editRecipe: 'Edit drink',
+    emptyMessage: 'Save the drinks you like to make: cocktails, smoothies, hot drinks…',
+    emptyMessageOnTv:
+      'Drinks are written in the app on a phone. To see them here, sync this TV with your server in Settings.',
+    emptyTitle: 'No drinks yet',
+    matchCount: (count: number) =>
+      count === 0
+        ? 'No drink matches these filters.'
+        : plural(count, '1 drink matches.', `${count} drinks match.`),
+    newRecipe: 'New drink',
+    noMatch: (search: string) => `No drink matches “${search}”.`,
+    notFoundTitle: 'Drink not found',
+    openHint: 'Opens the drink',
+    saveHint: 'Saves the drink and shows it',
+    saveRecipe: 'Save drink',
+    search: 'Search drinks',
+    titlePlaceholder: 'e.g. Mojito',
+    titleRequired: 'Give the drink a name.',
   },
   filters: {
     any: 'Any',
@@ -202,6 +226,7 @@ export const en = {
   menu: {
     about: 'About',
     close: 'Close the menu',
+    drinks: 'Drinks',
     ingredients: 'Ingredients',
     mealChoice: 'Meal choice',
     open: 'Show navigation menu',

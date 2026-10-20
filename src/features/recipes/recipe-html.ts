@@ -97,7 +97,13 @@ export function toRecipeHtml(
     '<body>',
     photoHtml(photoBase64),
     element('h1', escapeHtml(recipe.title)),
-    element('p', escapeHtml([season, t.courses[recipe.course]].join(' · ')), 'labels'),
+    element(
+      'p',
+      escapeHtml(
+        (recipe.kind === 'drink' ? [season] : [season, t.courses[recipe.course]]).join(' · '),
+      ),
+      'labels',
+    ),
     timesHtml(t, recipe),
     element('h2', escapeHtml(t.recipes.ingredients)),
     ingredients,

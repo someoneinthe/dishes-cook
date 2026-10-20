@@ -38,6 +38,7 @@ erDiagram
     text course "starter / main / dessert"
     integer created_at
     text instructions
+    text kind "dish / drink"
     text photo_file "nullable"
     text photo_pending "nullable"
     text photo_synced "nullable"
@@ -73,7 +74,7 @@ Integer primary keys are SQLite rowids.
 | `recipe_ingredients` | `recipe_ingredients_ingredient_recipe_idx` | `ingredient_id`, `recipe_id` |        |
 | `recipes`            | `recipes_sync_id_unique`                   | `sync_id`                    | yes    |
 | `recipes`            | `recipes_updated_at_id_idx`                | `updated_at`, `id`           |        |
-| `recipes`            | `recipes_sort_key_id_idx`                  | `sort_key`, `id`             |        |
+| `recipes`            | `recipes_kind_sort_key_id_idx`             | `kind`, `sort_key`, `id`     |        |
 | `sync_deletions`     | primary key                                | `table_name`, `sync_id`      | yes    |
 
 <!-- db-diagram:end -->
@@ -123,7 +124,7 @@ While the PR is open you can delete your new migration and generate it again; on
 
 A change to a synced table (`recipes`, `ingredients`, `recipe_ingredients`, `cooked_meals`) usually needs a server migration too: a new file in `server/migrations/`, frozen the same way, and added to `SERVER_MIGRATION_LIST` so the app checks the server has it (see [sync.md › Versions](sync.md#versions)). Once merged, deploy it (`npm run server:deploy`, see [sync.md › Updating the server](sync.md#updating-the-server)).
 
-Drinks (planned) will likely reuse `recipes` with a `kind` column (`'dish' | 'drink'`) so they share ingredients, live queries and the random pick.
+**Drinks** are recipes too: `recipes.kind` is `'dish'` (the default) or `'drink'`, so they share ingredients, photos, quantities and the sync. Every list, count and random pick asks for one kind (`RecipeFilters.kind`) and walks the `(kind, sort_key, id)` index; with an ingredient filter, `+kind` keeps the plan on the ingredient index instead. A drink's `course` is unused (left at its default), it has no meal history, and Meal choice only picks dishes. The kind is checked by the code that writes it (no `CHECK`: adding one would rebuild the table).
 
 ## Tests
 

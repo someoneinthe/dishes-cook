@@ -41,7 +41,7 @@ export function MealChoiceScreen() {
   const pickList = usePicks();
   const [filterValues, setFilterValues] = useState(INITIAL_FILTERS);
   const pick = (values: RecipeFilterValues, excludedId?: number) =>
-    pickRandomRecipeId(database, toQueryFilters(values, ''), {
+    pickRandomRecipeId(database, toQueryFilters(values, '', 'dish'), {
       excludedId,
       // Read when picking: a meal just added to the list is left out at once.
       omittedSyncIdList: getPicks(),
@@ -49,8 +49,8 @@ export function MealChoiceScreen() {
     });
   // A recipe is proposed as soon as the screen opens (reads are synchronous).
   const [suggestedId, setSuggestedId] = useState(() => pick(INITIAL_FILTERS));
-  const recipeCount = useRecipeCount({ ingredientIdList: [] });
-  const matchCount = useRecipeCount(toQueryFilters(filterValues, ''));
+  const recipeCount = useRecipeCount({ ingredientIdList: [], kind: 'dish' });
+  const matchCount = useRecipeCount(toQueryFilters(filterValues, '', 'dish'));
   // Undefined once the suggested recipe is deleted.
   const suggestion = useRecipe(suggestedId);
   // The suggestion added to the shopping list on its own screen: another one is proposed.
