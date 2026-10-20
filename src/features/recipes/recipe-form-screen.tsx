@@ -110,6 +110,8 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
   // ScrollView's `innerViewRef` is typed as never empty, which a ref is before mounting.
   const contentRef = useRef<View>(null) as RefObject<View>;
   const titleRef = useRef<TextInput>(null);
+  const prepRef = useRef<TextInput>(null);
+  const cookRef = useRef<TextInput>(null);
   const keepAtTop = useKeepAtTop(scrollViewRef, contentRef);
   const amountRefMap = useRef(new Map<number, TextInput>());
   const choiceRefMap = useRef(new Map<number, Text>());
@@ -138,6 +140,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
       choiceRefMap: choiceRefMap.current,
       invalidIdList,
       selectedList: selectedIngredientList,
+      timeInput: firstWrongTime(timeErrorList, { cook: cookRef.current, prep: prepRef.current }),
       titleInput: cleanName(title) ? undefined : titleRef.current,
       undecidedIdList,
     });
@@ -259,6 +262,7 @@ function RecipeForm({ initialRecipe, scannedRecipe, screenTitle }: RecipeFormPro
       />
       <RecipeTimeFields
         drafts={timeDrafts}
+        inputRefs={{ cook: cookRef, prep: prepRef }}
         invalidList={invalidTimeList}
         onChange={(drafts) => {
           setTimeDrafts(drafts);
@@ -352,6 +356,8 @@ type InvalidFieldSearch = Readonly<{
   choiceRefMap: ReadonlyMap<number, Text>;
   invalidIdList: readonly number[];
   selectedList: readonly Ingredient[];
+  // The first wrong time's field, if any.
+  timeInput: null | TextInput | undefined;
   // The title's field when it's empty.
   titleInput: null | TextInput | undefined;
   undecidedIdList: readonly number[];
@@ -376,11 +382,14 @@ function firstInvalidField({
   choiceRefMap,
   invalidIdList,
   selectedList,
+  timeInput,
   titleInput,
   undecidedIdList,
 }: InvalidFieldSearch): InvalidField | undefined {
-  if (titleInput) {
-    return { input: titleInput };
+  // In the order shown: the title, the times, then the ingredients.
+  const fieldInput = titleInput ?? timeInput;
+  if (fieldInput) {
+    return { input: fieldInput };
   }
   const wrong = selectedList.find(
     ({ id }) => invalidIdList.includes(id) || undecidedIdList.includes(id),
@@ -394,6 +403,17 @@ function firstInvalidField({
   }
   const question = choiceRefMap.get(wrong.id);
   return question ? { question } : undefined;
+}
+
+// The field of the first wrong time, in the order shown: preparation, then cooking.
+function firstWrongTime(
+  invalidList: readonly (keyof TimeDrafts)[],
+  inputs: Readonly<Record<keyof TimeDrafts, null | TextInput>>,
+): null | TextInput | undefined {
+  if (invalidList.includes('prep')) {
+    return inputs.prep;
+  }
+  return invalidList.includes('cook') ? inputs.cook : undefined;
 }
 
 // Keeps a row's element by ingredient id while it's on screen.

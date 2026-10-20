@@ -1,3 +1,5 @@
+import type { Ref } from 'react';
+import type { TextInput } from 'react-native';
 import { View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { TextField } from '@/components/text-field';
@@ -8,12 +10,19 @@ export type TimeDrafts = Readonly<{ cook: string; prep: string }>;
 
 type RecipeTimeFieldsProps = Readonly<{
   drafts: TimeDrafts;
+  // The fields, to bring a wrong one into view on Save.
+  inputRefs?: Readonly<Record<keyof TimeDrafts, Ref<TextInput>>>;
   invalidList: readonly (keyof TimeDrafts)[];
   onChange: (drafts: TimeDrafts) => void;
 }>;
 
 // Preparation and cooking times, in minutes, side by side (they wrap with a large font).
-export function RecipeTimeFields({ drafts, invalidList, onChange }: RecipeTimeFieldsProps) {
+export function RecipeTimeFields({
+  drafts,
+  inputRefs,
+  invalidList,
+  onChange,
+}: RecipeTimeFieldsProps) {
   const t = useMessages();
   const errorOf = (field: keyof TimeDrafts) =>
     invalidList.includes(field) ? t.recipes.invalidMinutes : undefined;
@@ -27,6 +36,7 @@ export function RecipeTimeFields({ drafts, invalidList, onChange }: RecipeTimeFi
           label={t.recipes.prepTime}
           onChangeText={(prep) => onChange({ ...drafts, prep })}
           placeholder={t.recipes.minutesPlaceholder}
+          ref={inputRefs?.prep}
           value={drafts.prep}
         />
       </View>
@@ -37,6 +47,7 @@ export function RecipeTimeFields({ drafts, invalidList, onChange }: RecipeTimeFi
           label={t.recipes.cookTime}
           onChangeText={(cook) => onChange({ ...drafts, cook })}
           placeholder={t.recipes.minutesPlaceholder}
+          ref={inputRefs?.cook}
           value={drafts.cook}
         />
       </View>

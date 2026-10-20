@@ -165,6 +165,26 @@ describe('recipeFormScreen', () => {
     );
   });
 
+  it('gives the focus to the first wrong time on Save, before a wrong amount', async () => {
+    findOrCreateIngredient(connection.db, 'carrot');
+    const focus = jest.spyOn(TextInput.prototype, 'focus');
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+    await fireEvent.changeText(screen.getByLabelText('Title'), 'Soup');
+    await fireEvent.changeText(screen.getByLabelText('Cooking (min)'), 'long');
+    await fireEvent.press(screen.getByRole('button', { name: 'Add Carrot' }));
+    await fireEvent.changeText(screen.getByLabelText('Quantity of Carrot'), 'a lot');
+    focus.mockClear();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+    await waitFor(() => expect(focus).toHaveBeenCalledWith());
+
+    const focusedList = focus.mock.contexts as Readonly<{ props: TextInputProps }>[];
+
+    expect(new Set(focusedList.map(({ props }) => props.accessibilityLabel))).toStrictEqual(
+      new Set(['Cooking (min)']),
+    );
+  });
+
   it('gives the screen reader the unanswered question about a similar ingredient on Save', async () => {
     findOrCreateIngredient(connection.db, 'carrot');
     const scanned = { ingredientList: [{ name: 'carrots' }], instructions: '', title: 'Soup' };
