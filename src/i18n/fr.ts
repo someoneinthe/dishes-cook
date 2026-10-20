@@ -90,6 +90,7 @@ export const fr: Messages = {
     saveHint: 'Enregistre la boisson et l’affiche',
     saveRecipe: 'Enregistrer la boisson',
     search: 'Rechercher des boissons',
+    showFiltersHint: 'Affiche le filtre d’ingrédients',
     titlePlaceholder: `Ex.${NARROW_SPACE}: mojito`,
     titleRequired: 'Donnez un nom à la boisson.',
   },
@@ -97,7 +98,6 @@ export const fr: Messages = {
     any: 'Indifférent',
     hideHint: 'Masque les filtres, qui restent appliqués',
     noUsedIngredient: 'Aucun ingrédient n’est encore utilisé dans une recette.',
-    showHint: 'Affiche les filtres de saison, de type de plat et d’ingrédients',
     toggle: (activeCount) => (activeCount > 0 ? `Filtres (${activeCount})` : 'Filtres'),
     withIngredients: 'Avec les ingrédients',
   },
@@ -289,6 +289,7 @@ export const fr: Messages = {
     shareFailedMessage: 'Réessayez. Si cela se reproduit, fermez l’application et rouvrez-la.',
     shareFailedTitle: 'Le PDF n’a pas pu être créé',
     shareHint: `Envoie la recette en PDF à une autre application${NARROW_SPACE}: messages, e-mail, un drive…`,
+    showFiltersHint: 'Affiche les filtres de saison, de type de plat et d’ingrédients',
     times: (times) =>
       [
         times.prep && `Préparation ${times.prep}`,

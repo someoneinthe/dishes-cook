@@ -1,7 +1,7 @@
 import type { SQL } from 'drizzle-orm';
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { AppDatabase } from '@/db/types';
-import { cookedMeals, NOW_MS, syncDeletions } from '@/db/schema';
+import { cookedMeals, NOW_MS, recipes, syncDeletions } from '@/db/schema';
 
 // The meal history (see docs/database.md): one row each time a recipe is cooked.
 
@@ -19,14 +19,23 @@ export function getLastCookedMeal(database: AppDatabase, recipeId: number): Cook
     .get();
 }
 
-// Records that these recipes were all cooked now (the meals of a shopping list), in one go.
+// Records that these recipes were all cooked now (the meals of a shopping list), in one go. Drinks
+// on the list are left out: they have no meal history.
 export function markAllCooked(database: AppDatabase, recipeIdList: readonly number[]): void {
   if (recipeIdList.length === 0) {
     return;
   }
+  const dishIdList = database
+    .select({ id: recipes.id })
+    .from(recipes)
+    .where(and(inArray(recipes.id, [...recipeIdList]), eq(recipes.kind, 'dish')))
+    .all();
+  if (dishIdList.length === 0) {
+    return;
+  }
   database
     .insert(cookedMeals)
-    .values(recipeIdList.map((recipeId) => ({ recipeId })))
+    .values(dishIdList.map(({ id }) => ({ recipeId: id })))
     .run();
 }
 

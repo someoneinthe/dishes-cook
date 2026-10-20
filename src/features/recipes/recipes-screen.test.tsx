@@ -110,6 +110,21 @@ describe('recipesScreen', () => {
     expect(screen.queryByText('Filters')).not.toBeOnTheScreen();
   });
 
+  it('tells which filters the Filters button shows: a drink has only the ingredient one', async () => {
+    saveRecipe(connection.db, {
+      ingredientIdList: [],
+      instructions: '',
+      kind: 'drink',
+      season: 'both',
+      title: 'Mojito',
+    });
+    await renderWithDatabase(<RecipesScreen kind="drink" />, connection);
+
+    expect(screen.getByHintText('Shows the ingredient filter')).toBe(
+      screen.getByRole('button', { name: 'Filters' }),
+    );
+  });
+
   it('tints the Filters button while filters are on', async () => {
     saveRecipe(connection.db, {
       ingredientIdList: [],

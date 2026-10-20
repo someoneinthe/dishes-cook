@@ -118,6 +118,7 @@ export const en = {
     saveHint: 'Saves the drink and shows it',
     saveRecipe: 'Save drink',
     search: 'Search drinks',
+    showFiltersHint: 'Shows the ingredient filter',
     titlePlaceholder: 'e.g. Mojito',
     titleRequired: 'Give the drink a name.',
   },
@@ -125,7 +126,6 @@ export const en = {
     any: 'Any',
     hideHint: 'Hides the filters; they stay applied',
     noUsedIngredient: 'No ingredient is used by a recipe yet.',
-    showHint: 'Shows the season, course and ingredient filters',
     // The show / hide button, with how many filters are on: "Filters (2)".
     toggle: (activeCount: number) => (activeCount > 0 ? `Filters (${activeCount})` : 'Filters'),
     withIngredients: 'With ingredients',
@@ -326,6 +326,8 @@ export const en = {
     shareFailedMessage: 'Try again. If it happens again, close the app and open it again.',
     shareFailedTitle: 'The PDF couldn’t be made',
     shareHint: 'Sends the recipe as a PDF to another app: messages, email, a drive…',
+    // The Filters button of the recipe list (a drink's: drinks.showFiltersHint).
+    showFiltersHint: 'Shows the season, course and ingredient filters',
     // "Preparation 15 min · Cooking 30 min · 45 min in all": the times a recipe gives.
     times: (times: Readonly<{ cook?: string; prep?: string; total?: string }>) =>
       [

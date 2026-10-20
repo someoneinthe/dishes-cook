@@ -89,7 +89,7 @@ export function RecipesScreen({ kind = 'dish' }: RecipesScreenProps) {
                   />
                 </View>
                 <Button
-                  accessibilityHint={isFiltersShown ? t.filters.hideHint : t.filters.showHint}
+                  accessibilityHint={isFiltersShown ? t.filters.hideHint : texts.showFiltersHint}
                   // A funnel; with a check mark while filters are on.
                   icon={hasFilters(filterValues) ? 'filter-check' : 'filter'}
                   isExpanded={isFiltersShown}
