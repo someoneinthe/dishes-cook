@@ -170,9 +170,13 @@ function Segment<T extends string>({
 const styles = StyleSheet.create((theme) => ({
   attachedField: {
     alignSelf: 'flex-end',
+    // Never wider than the field: tabs that don't fit go on another line (labels, large fonts).
+    maxWidth: '100%',
   },
   attachedGroup: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
     // One border between the field and the switch.
     marginTop: -theme.borderWidth,
   },
