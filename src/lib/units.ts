@@ -118,10 +118,12 @@ export function toDisplay(quantity: Quantity, system: UnitSystem): Quantity {
 
 // A quantity read from storage or the sync server; undefined when it isn't a usable one.
 export function toQuantity(amount: unknown, unit: unknown): Quantity | undefined {
-  if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
-    return undefined;
-  }
-  if (amount > MAX_STORED_AMOUNT) {
+  if (
+    typeof amount !== 'number' ||
+    !Number.isFinite(amount) ||
+    amount <= 0 ||
+    amount > MAX_STORED_AMOUNT
+  ) {
     return undefined;
   }
   return isUnit(unit) ? { amount, unit } : { amount };

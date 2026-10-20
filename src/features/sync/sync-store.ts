@@ -254,7 +254,7 @@ function toState(stored: StoredSync | undefined): SyncState {
   return {
     connection: stored ? { email: stored.email, serverUrl: stored.serverUrl } : undefined,
     error: stored ? state.error : undefined,
-    isAppUpdateAvailable: stored ? state.isAppUpdateAvailable : false,
+    isAppUpdateAvailable: Boolean(stored) && state.isAppUpdateAvailable,
     isSyncing: state.isSyncing,
     lastSyncedAt: stored?.lastSyncedAt,
   };
