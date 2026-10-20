@@ -141,10 +141,29 @@ The same APK runs on Android TV, read-only (`isTv`), driven with the D-pad. Chec
   adb reverse tcp:8082 tcp:8082
   ```
 
+## 8. The maintainer's real phone (when asked)
+
+Their phone holds their real recipes. Check with them first, and keep it that way:
+
+- **Never change its settings** (stay awake, keyboard, navigation mode, developer options, font size): ask them to unlock it or to change a setting themselves. Drive the app only, and never save, delete or sync anything unless asked; leave a form with Back without saving.
+- **Not a branch with an unmerged migration** (it would run on their data, and the migration may still change in review): build a worktree on `origin/main` with only the change to test, as a local release build, and install it over theirs. Their app is a local release build too (same debug-key signature), so `install -r` keeps their data:
+
+  ```bash
+  git worktree add --detach ../dishes-cook-test origin/main   # then apply the change there
+  cd ../dishes-cook-test && npm ci && npx expo prebuild --platform android --clean
+  (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a)   # JDK 17 and ANDROID_HOME as in step 2
+  adb -s <phone-serial> install -r android/app/build/outputs/apk/release/app-release.apk
+  ```
+
+  JS logs of a release build still reach `logcat` (`console.warn`). Remove the worktree afterwards, and once the PR merges, install `main` the same way.
+
+- **What only a real phone shows**: its own keyboard (SwiftKey on the maintainer's Pixel 9a didn't shrink the screen, Gboard on the emulator does), 3-button navigation, the camera.
+
 ## Troubleshooting
 
 - **Blank/black screen, `splashscreen_icon_view` still in the view hierarchy**: the native splash is never hidden; JS errors are hidden behind it, so check `metro.log` and `logcat`.
 - **Edits don't show up**: see step 4 (`CI=1`, file watcher, stale bundle).
 - **Metro died with `MODULE_NOT_FOUND`** (e.g. `@expo/metro`): `npm ci` or `npx expo install` ran while it was serving. Restart it as in step 4; if the new one asks for port 8082, the old one hadn't exited yet: wait a second and start it again.
 - **`adb: device offline`, or the emulator rebooted**: wait for `sys.boot_completed` again (step 1), then reopen the app (step 4).
+- **"isn't responding" dialogs again and again**, and `logcat` shows a system service restarting in a loop (e.g. `libnfc_nci: Timeout waiting for NFC AIDL service`): the emulator itself is unhealthy, often after a Gradle build starved it. `adb reboot`, wait for `sys.boot_completed`, `adb reverse` again and reopen the app. Don't drive an emulator while Gradle builds.
 - **Theme check**: `$ADB shell cmd uimode night yes|no` toggles dark mode live.

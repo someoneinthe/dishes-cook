@@ -56,6 +56,7 @@ React Native specifics:
 
 - unicorn rules that push APIs Hermes / React Native lack (`structuredClone`, `Blob#text()`, `URL.canParse`, `AbortSignal.any`, top-level `await`…) are off. Iterator helpers, Set methods and `Promise.withResolvers` are off until verified on a device.
 - `sonarjs/pseudo-random` is off: picking a random recipe is the app's purpose.
+- In the app's code (not tests), `no-await-in-loop`, `no-continue` and `sonarjs/nested-control-flow` (3 levels) are on: SonarQube Cloud checks them and its quality gate fails CI on any new issue. Run requests of a page side by side (`settleAll`); a loop that must wait (pages read one after another from a cursor) says why in its `eslint-disable-next-line`.
 - `unicorn/filename-case` is kebab-case (`_layout.tsx` excepted), not the SPA's camel/Pascal case.
 
 `eslint-plugin-react` and `eslint-plugin-import` (bundled by Expo), `eslint-plugin-react-native` and `eslint-plugin-react-native-a11y` don't declare ESLint 10 support yet: npm `overrides` in `package.json` let them install with our ESLint, and `@eslint/compat` shims the APIs ESLint 10 removed. Drop both workarounds once those plugins support ESLint 10.

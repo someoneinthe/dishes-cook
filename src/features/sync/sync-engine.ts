@@ -703,6 +703,7 @@ async function pull<Table extends SyncedTable>(
   let position: PullPosition = { since };
   let pulledUntil = since;
   for (let page = 0; page < MAX_PULL_PAGES; page++) {
+    // eslint-disable-next-line no-await-in-loop -- pages one after another: each starts at the previous one's cursor
     const itemList = await api.listChanges(table, position);
     apply(itemList.filter((item): item is ServerRowOf<Table> => isServerRow(item)));
     for (const item of itemList) {
@@ -783,6 +784,7 @@ async function pushCookedMeals(
             .where(inArray(recipes.id, recipeIdList))
             .all();
     const recipeSyncIdMap = new Map(recipeList.map(({ id, syncId }) => [id, syncId]));
+    // eslint-disable-next-line no-await-in-loop -- pages one after another: each starts at the previous one's cursor
     await settleAll(
       rowList.flatMap((row) => {
         const recipeSyncId = recipeSyncIdMap.get(row.recipeId);
@@ -821,6 +823,7 @@ async function pushDeletions(
     // A page's rows are independent: sent together. The ones sent are forgotten, together; when
     // one is missing on the server (never pushed) or changed there later, there's nothing more to
     // tell.
+    // eslint-disable-next-line no-await-in-loop -- pages one after another: each starts at the previous one's cursor
     const resultList = await Promise.allSettled(
       deletionList.map((deletion) =>
         api.sendDeletion(deletion.tableName, deletion.syncId, deletion.deletedAt),
@@ -861,6 +864,7 @@ async function pushIngredients(
       .orderBy(asc(ingredients.updatedAt), asc(ingredients.id))
       .limit(PAGE_SIZE)
       .all();
+    // eslint-disable-next-line no-await-in-loop -- pages one after another: each starts at the previous one's cursor
     await settleAll(
       rowList.map((row) =>
         api.upsert('ingredients', row.syncId, {
@@ -992,6 +996,7 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
       }
       quantitiesByRecipe.set(link.recipeId, quantities);
     }
+    // eslint-disable-next-line no-await-in-loop -- pages one after another: each starts at the previous one's cursor
     await settleAll(
       rowList.map((row) =>
         api.upsert('recipes', row.syncId, {

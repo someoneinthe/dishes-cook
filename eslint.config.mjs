@@ -224,6 +224,18 @@ export default defineConfig([
     },
   },
 
+  // Rules SonarQube Cloud checks on the app's code (sonar-project.properties: src without tests),
+  // whose quality gate fails CI on any new issue: found here first (S9382, S909/S135, S134).
+  {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: [...TEST_FILES, 'src/test/**'],
+    rules: {
+      'no-await-in-loop': 'error',
+      'no-continue': 'error',
+      'sonarjs/nested-control-flow': ['error', { maximumNestingLevel: 3 }],
+    },
+  },
+
   // UI text comes from the dictionaries (src/i18n/en.ts, fr.ts…), never written in JSX: text in
   // JSX, and the props users see or hear (labels, hints, placeholders, messages).
   {
