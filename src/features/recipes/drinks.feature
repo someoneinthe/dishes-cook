@@ -14,6 +14,13 @@ Feature: Drinks
     Then Drinks lists "Mojito" only
     And Recipes lists "Leek soup" only
 
+  Scenario: A drink has a preparation time, but no cooking time
+    When I write a new drink "Mojito"
+    Then the form asks for a preparation time but no cooking time
+    When I give it 5 minutes of preparation
+    And I save the drink
+    Then the drink shows "Preparation 5 min"
+
   Scenario: The meal choice never suggests a drink
     Given the drink "Mojito" exists
     Then the meal choice has no recipe to suggest

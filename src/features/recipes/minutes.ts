@@ -1,3 +1,4 @@
+import type { RecipeKind } from '@/db/schema';
 import type { Messages } from '@/i18n/en';
 
 // Preparation and cooking times, in whole minutes.
@@ -13,9 +14,11 @@ export function formatMinutes(t: Messages, minutes: number): string {
 // "Preparation 15 min · Cooking 30 min · 45 min in all"; undefined when the recipe gives none.
 export function formatTimes(
   t: Messages,
-  times: Readonly<{ cookMinutes?: number; prepMinutes?: number }>,
+  times: Readonly<{ cookMinutes?: number; kind?: RecipeKind; prepMinutes?: number }>,
 ): string | undefined {
-  const { cookMinutes, prepMinutes } = times;
+  // A drink has a preparation time only.
+  const cookMinutes = times.kind === 'drink' ? undefined : times.cookMinutes;
+  const { prepMinutes } = times;
   if (cookMinutes === undefined && prepMinutes === undefined) {
     return undefined;
   }

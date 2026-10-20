@@ -1,4 +1,4 @@
-import type { Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import type { TextInputProps } from 'react-native';
 import { Text, TextInput, View } from 'react-native';
 import { StyleSheet, withUnistyles } from 'react-native-unistyles';
@@ -29,6 +29,9 @@ type TextFieldProps = Readonly<
     | 'textContentType'
     | 'value'
   > & {
+    // A control attached under the field, on its right, against it (e.g. a switch): the field's
+    // bottom-right corner is square there. The help comes under both.
+    attachment?: ReactNode;
     error?: string;
     // An error the caller shows elsewhere (e.g. under a whole row): a red border, and read with the
     // field by screen readers, like `error`.
@@ -46,6 +49,7 @@ type TextFieldProps = Readonly<
 >;
 
 export function TextField({
+  attachment,
   error,
   externalError,
   hint,
@@ -66,26 +70,30 @@ export function TextField({
           {label}
         </Text>
       )}
-      <ThemedTextInput
-        // Read after the label: the error if any, else the help shown under the field.
-        accessibilityHint={shownError ?? hint}
-        accessibilityLabel={label}
-        multiline={multiline}
-        style={[
-          styles.input,
-          multiline && styles.multiline,
-          shownError !== undefined && styles.invalid,
-          // On a TV, the remote's focus ring; a phone shows the cursor and the keyboard instead.
-          isTv && focusStyle,
-        ]}
-        textAlignVertical={multiline ? 'top' : 'center'}
-        {...focusProps}
-        {...inputProps}
-        onFocus={() => {
-          focusProps.onFocus();
-          onFocus?.();
-        }}
-      />
+      <View>
+        <ThemedTextInput
+          // Read after the label: the error if any, else the help shown under the field.
+          accessibilityHint={shownError ?? hint}
+          accessibilityLabel={label}
+          multiline={multiline}
+          style={[
+            styles.input,
+            multiline && styles.multiline,
+            attachment !== undefined && styles.attachedInput,
+            shownError !== undefined && styles.invalid,
+            // On a TV, the remote's focus ring; a phone shows the cursor and the keyboard instead.
+            isTv && focusStyle,
+          ]}
+          textAlignVertical={multiline ? 'top' : 'center'}
+          {...focusProps}
+          {...inputProps}
+          onFocus={() => {
+            focusProps.onFocus();
+            onFocus?.();
+          }}
+        />
+        {attachment}
+      </View>
       {hint !== undefined && (
         <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.hint}>
           {hint}
@@ -101,6 +109,9 @@ export function TextField({
 }
 
 const styles = StyleSheet.create((theme) => ({
+  attachedInput: {
+    borderBottomRightRadius: 0,
+  },
   error: {
     ...theme.typography.caption,
     color: theme.colors.danger,

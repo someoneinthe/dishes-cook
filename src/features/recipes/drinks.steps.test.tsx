@@ -5,7 +5,7 @@ import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
 import { MealChoiceScreen } from '@/features/meal-choice/meal-choice-screen';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
-import { saveRecipe } from './db/recipe-queries';
+import { listRecipePage, saveRecipe } from './db/recipe-queries';
 import { DrinksScreen } from './drinks-screen';
 import { RecipeDetailScreen } from './recipe-detail-screen';
 import { RecipeFormScreen } from './recipe-form-screen';
@@ -38,6 +38,14 @@ defineFeature(feature, (test) => {
       season: 'both',
       title,
     });
+  const writeNewDrink = async (title: string) => {
+    jest.mocked(useLocalSearchParams).mockReturnValue({ kind: 'drink' });
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+    await fireEvent.changeText(screen.getByLabelText('Title'), title);
+  };
+  const saveTheDrink = async () => {
+    await fireEvent.press(screen.getByRole('button', { name: 'Save drink' }));
+  };
   // The titles a list shows, by their row's label ("Mojito, Winter & summer, 0 ingredients").
   const listedTitles = () =>
     screen.getAllByRole('button', { name: /ingredients?$/ }).map((row) => {
@@ -54,18 +62,12 @@ defineFeature(feature, (test) => {
     given(/^the dish "(.*)" exists$/, (title: string) => {
       save(title, 'dish');
     });
-    when(/^I write a new drink "(.*)"$/, async (title: string) => {
-      jest.mocked(useLocalSearchParams).mockReturnValue({ kind: 'drink' });
-      await renderWithDatabase(<RecipeFormScreen />, connection);
-      await fireEvent.changeText(screen.getByLabelText('Title'), title);
-    });
+    when(/^I write a new drink "(.*)"$/, writeNewDrink);
     then('the form asks for no season nor course', () => {
       expect(screen.queryByText('Season')).not.toBeOnTheScreen();
       expect(screen.queryByText('Course')).not.toBeOnTheScreen();
     });
-    when('I save the drink', async () => {
-      await fireEvent.press(screen.getByRole('button', { name: 'Save drink' }));
-    });
+    when('I save the drink', saveTheDrink);
     then(/^Drinks lists "(.*)" only$/, async (title: string) => {
       await renderWithDatabase(<DrinksScreen />, connection);
 
@@ -75,6 +77,28 @@ defineFeature(feature, (test) => {
       await renderWithDatabase(<RecipesScreen />, connection);
 
       expect(listedTitles()).toStrictEqual([title]);
+    });
+  });
+
+  test('A drink has a preparation time, but no cooking time', ({ and, then, when }) => {
+    when(/^I write a new drink "(.*)"$/, writeNewDrink);
+    then('the form asks for a preparation time but no cooking time', () => {
+      expect(screen.getByLabelText('Preparation (min)')).toBeOnTheScreen();
+      expect(screen.queryByLabelText('Cooking (min)')).not.toBeOnTheScreen();
+    });
+    when(/^I give it (\d+) minutes of preparation$/, async (minutes: string) => {
+      await fireEvent.changeText(screen.getByLabelText('Preparation (min)'), minutes);
+    });
+    and('I save the drink', saveTheDrink);
+    then(/^the drink shows "(.*)"$/, async (times: string) => {
+      const [drink] = listRecipePage(connection.db, {
+        filters: { ingredientIdList: [], kind: 'drink' },
+        pageParam: null,
+      }).itemList;
+      jest.mocked(useLocalSearchParams).mockReturnValue({ id: String(drink?.id) });
+      await renderWithDatabase(<RecipeDetailScreen />, connection);
+
+      expect(screen.getByText(times)).toBeOnTheScreen();
     });
   });
 

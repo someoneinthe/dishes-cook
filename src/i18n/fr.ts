@@ -79,6 +79,7 @@ export const fr: Messages = {
     emptyMessageOnTv:
       'Les boissons s’écrivent dans l’application, sur un téléphone. Pour les voir ici, synchronisez cette télé avec votre serveur dans les Paramètres.',
     emptyTitle: 'Aucune boisson pour l’instant',
+    instructionsPlaceholder: 'Étapes, quantités…',
     matchCount: (count) =>
       count === 0
         ? 'Aucune boisson ne correspond à ces filtres.'

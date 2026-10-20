@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { ColorToken } from '@/theme/themes';
+import { usePreferences } from '@/features/settings/preferences';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { IconName } from './icon';
 import { Icon } from './icon';
@@ -17,6 +18,14 @@ export type SegmentedOption<T extends string> = Readonly<{
 }>;
 
 type SegmentedControlProps<T extends string> = Readonly<{
+  // A small switch attached under a field (TextField's `attachment`): as wide as its options, on
+  // the right, against the field (top corners square, the borders shared).
+  isAttached?: boolean;
+  // Icons only, like icon-only buttons: their text shows with Settings › Show button labels, and
+  // screen readers always read it. Every option then needs an icon.
+  isIconOnly?: boolean;
+  // The visible label is left out (the field it belongs to shows it); screen readers still read it.
+  isLabelHidden?: boolean;
   label: string;
   onChange: (value: T) => void;
   optionList: readonly SegmentedOption<T>[];
@@ -25,36 +34,54 @@ type SegmentedControlProps<T extends string> = Readonly<{
 
 type SegmentProps<T extends string> = Readonly<{
   groupLabel: string;
+  isAttached: boolean;
   isChecked: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  isTextShown: boolean;
   onPress: () => void;
   option: SegmentedOption<T>;
 }>;
 
+// An attached switch's options look small (28 dp high), each inside a touch target (48 dp) that
+// reaches below it: a Pressable only answers within its parent, so the touch area is real.
+const ATTACHED_HEIGHT = 28;
+
 // A single choice among a few options, shown side by side (radio group semantics).
 export function SegmentedControl<T extends string>({
+  isAttached = false,
+  isIconOnly = false,
+  isLabelHidden = false,
   label,
   onChange,
   optionList,
   value,
 }: SegmentedControlProps<T>) {
   const t = useMessages();
+  const { isShowingButtonLabels } = usePreferences();
 
   return (
-    <View style={styles.field}>
+    <View style={[styles.field, isAttached && styles.attachedField]}>
       {/* The group reads its label itself: screen readers skip the visible copy. */}
-      <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.label}>
-        {label}
-      </Text>
+      {!isLabelHidden && (
+        <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.label}>
+          {label}
+        </Text>
+      )}
       <View
         accessibilityHint={t.common.chooseOneOption}
         accessibilityLabel={label}
         accessibilityRole="radiogroup"
-        style={styles.group}
+        style={isAttached ? styles.attachedGroup : styles.group}
       >
-        {optionList.map((option) => (
+        {optionList.map((option, index) => (
           <Segment
             groupLabel={label}
+            isAttached={isAttached}
             isChecked={option.value === value}
+            isFirst={index === 0}
+            isLast={index === optionList.length - 1}
+            isTextShown={!isIconOnly || isShowingButtonLabels}
             key={option.value}
             onPress={() => onChange(option.value)}
             option={option}
@@ -65,14 +92,47 @@ export function SegmentedControl<T extends string>({
   );
 }
 
+// An attached tab's own frame: its place among its neighbours.
+function attachedTabStyle(isFirst: boolean, isLast: boolean) {
+  return [
+    styles.attachedTab,
+    isFirst ? styles.attachedTabFirst : styles.attachedTabAfterFirst,
+    isLast && styles.attachedTabLast,
+  ];
+}
+
 // One option of the group.
-function Segment<T extends string>({ groupLabel, isChecked, onPress, option }: SegmentProps<T>) {
+function Segment<T extends string>({
+  groupLabel,
+  isAttached,
+  isChecked,
+  isFirst,
+  isLast,
+  isTextShown,
+  onPress,
+  option,
+}: SegmentProps<T>) {
   // Icon colors are props, not styles.
   const { theme } = useUnistyles();
   const iconSize = useIconSize('sm');
   const t = useMessages();
   // Inside the option: the group clips its rounded corners.
   const { focusProps, focusStyle } = useFocusRing({ isInset: true, isOnAction: isChecked });
+
+  const content = (
+    <>
+      {option.icon && (
+        <Icon
+          color={isChecked ? theme.colors.onAction : theme.colors[option.iconColor ?? 'text']}
+          name={option.icon}
+          size={iconSize}
+        />
+      )}
+      {isTextShown && (
+        <Text style={[styles.segmentLabel, isChecked && styles.checkedLabel]}>{option.label}</Text>
+      )}
+    </>
+  );
 
   return (
     <Pressable
@@ -82,21 +142,71 @@ function Segment<T extends string>({ groupLabel, isChecked, onPress, option }: S
       accessibilityState={{ checked: isChecked }}
       onPress={onPress}
       {...focusProps}
-      style={[styles.segment, isChecked && styles.checkedSegment, focusStyle]}
+      style={
+        isAttached
+          ? styles.attachedTouchArea
+          : [styles.segment, isChecked && styles.checkedSegment, focusStyle]
+      }
     >
-      {option.icon && (
-        <Icon
-          color={isChecked ? theme.colors.onAction : theme.colors[option.iconColor ?? 'text']}
-          name={option.icon}
-          size={iconSize}
-        />
+      {isAttached ? (
+        // The visible tab, at the top of its touch area; its borders join the field's and its
+        // neighbour's, its outer bottom corner rounded.
+        <View
+          style={[
+            attachedTabStyle(isFirst, isLast),
+            isChecked && styles.checkedSegment,
+            focusStyle,
+          ]}
+        >
+          {content}
+        </View>
+      ) : (
+        content
       )}
-      <Text style={[styles.segmentLabel, isChecked && styles.checkedLabel]}>{option.label}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create((theme) => ({
+  attachedField: {
+    alignSelf: 'flex-end',
+    // Never wider than the field: tabs that don't fit go on another line (labels, large fonts).
+    maxWidth: '100%',
+  },
+  attachedGroup: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    // One border between the field and the switch.
+    marginTop: -theme.borderWidth,
+  },
+  attachedTab: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.borderStrong,
+    borderWidth: theme.borderWidth,
+    flexDirection: 'row',
+    gap: theme.gap(1),
+    justifyContent: 'center',
+    minHeight: ATTACHED_HEIGHT,
+    paddingHorizontal: theme.gap(2),
+  },
+  // Its left border is its neighbour's right one.
+  attachedTabAfterFirst: {
+    marginLeft: -theme.borderWidth,
+  },
+  attachedTabFirst: {
+    borderBottomLeftRadius: theme.radius.md,
+  },
+  attachedTabLast: {
+    borderBottomRightRadius: theme.radius.md,
+  },
+  // A touch target (48 dp) around the small tab, which sits at its top.
+  attachedTouchArea: {
+    justifyContent: 'flex-start',
+    minHeight: theme.size.touchTarget,
+    minWidth: theme.size.touchTarget,
+  },
   checkedLabel: {
     color: theme.colors.onAction,
   },

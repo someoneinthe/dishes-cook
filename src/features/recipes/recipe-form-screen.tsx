@@ -78,8 +78,10 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
     startingText(initialRecipe, scannedRecipe, 'instructions'),
   );
   const [titleError, setTitleError] = useState<string>();
+  // A drink has no cooking time: none is kept or saved.
+  const savedCookMinutes = kind === 'drink' ? undefined : initialRecipe?.cookMinutes;
   const [timeDrafts, setTimeDrafts] = useState<TimeDrafts>(() => ({
-    cook: initialRecipe?.cookMinutes === undefined ? '' : String(initialRecipe.cookMinutes),
+    cook: savedCookMinutes === undefined ? '' : String(savedCookMinutes),
     prep: initialRecipe?.prepMinutes === undefined ? '' : String(initialRecipe.prepMinutes),
   }));
   const [invalidTimeList, setInvalidTimeList] = useState<(keyof TimeDrafts)[]>([]);
@@ -278,6 +280,7 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
         drafts={timeDrafts}
         inputRefs={{ cook: cookRef, prep: prepRef }}
         invalidList={invalidTimeList}
+        isCookHidden={kind === 'drink'}
         onChange={(drafts) => {
           setTimeDrafts(drafts);
           setInvalidTimeList([]);
@@ -320,7 +323,11 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
         selectedList={selectedIngredientList}
       />
       <RecipePhotoField file={photoFile} onChange={changePhoto} title={cleanName(title)} />
-      <InstructionsField onChange={setInstructions} value={instructions} />
+      <InstructionsField
+        onChange={setInstructions}
+        placeholder={kindTexts(t, kind).instructionsPlaceholder}
+        value={instructions}
+      />
     </ScrollView>
   );
 }
@@ -643,10 +650,13 @@ function withScannedDrafts(
   return next;
 }
 
-const styles = StyleSheet.create((theme) => ({
+const styles = StyleSheet.create((theme, rt) => ({
   content: {
     gap: theme.gap(5),
     padding: theme.gap(4),
+    // The page is drawn under Android's navigation buttons (edge to edge): its end stays above them,
+    // with the usual margin.
+    paddingBottom: theme.gap(4) + rt.insets.bottom,
   },
   screen: {
     backgroundColor: theme.colors.background,
