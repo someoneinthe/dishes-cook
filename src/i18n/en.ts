@@ -313,7 +313,7 @@ export const en = {
     removePhotoMessage: 'The recipe stays as it is.',
     // What screen readers say for a row of the recipe list: "Pumpkin soup, Winter, Starter".
     // A recipe of the list, read as one: "Leek soup, Winter, Main course, 3 ingredients".
-    rowLabel: (title: string, season: string, course?: string, ingredients?: string) =>
+    rowLabel: (title: string, season?: string, course?: string, ingredients?: string) =>
       [title, season, course, ingredients].filter(Boolean).join(', '),
     saveAsNew: 'Save as new',
     saveHint: 'Saves the recipe and shows it',

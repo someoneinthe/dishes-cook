@@ -102,11 +102,7 @@ export function RecipesScreen({ kind = 'dish' }: RecipesScreenProps) {
                 />
               </View>
               {isFiltersShown && (
-                <RecipeFilters
-                  isCourseHidden={kind === 'drink'}
-                  onChange={setFilterValues}
-                  values={filterValues}
-                />
+                <RecipeFilters kind={kind} onChange={setFilterValues} values={filterValues} />
               )}
               {isFiltering && (
                 <Text accessibilityLiveRegion="polite" style={styles.matchCount}>
@@ -139,12 +135,15 @@ function describeMatches(
 
 // What a screen reader announces for a row: its labels, read as one (a drink has no course).
 function describeRecipeRow(item: RecipeListItem, kind: RecipeKind, t: Messages): string {
-  return t.recipes.rowLabel(
-    item.title,
-    describeSeason(item.season, t),
-    kind === 'drink' ? undefined : t.courses[item.course],
-    t.recipes.ingredientCount(item.ingredientCount),
-  );
+  const ingredients = t.recipes.ingredientCount(item.ingredientCount);
+  return kind === 'drink'
+    ? t.recipes.rowLabel(item.title, undefined, undefined, ingredients)
+    : t.recipes.rowLabel(
+        item.title,
+        describeSeason(item.season, t),
+        t.courses[item.course],
+        ingredients,
+      );
 }
 
 // Read-only on a TV: recipes are written on the phone.
@@ -199,10 +198,13 @@ function RecipeRow({ kind, recipe }: RecipeRowProps) {
     >
       <Text style={styles.title}>{recipe.title}</Text>
       <View style={styles.details}>
-        <View style={styles.labels}>
-          <SeasonLabel season={recipe.season} />
-          {kind === 'dish' && <CourseLabel course={recipe.course} />}
-        </View>
+        {/* A drink has no season nor course. */}
+        {kind === 'dish' && (
+          <View style={styles.labels}>
+            <SeasonLabel season={recipe.season} />
+            <CourseLabel course={recipe.course} />
+          </View>
+        )}
         <Text style={styles.detail}>{t.recipes.ingredientCount(recipe.ingredientCount)}</Text>
       </View>
     </Pressable>

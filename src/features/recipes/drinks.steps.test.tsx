@@ -45,7 +45,7 @@ defineFeature(feature, (test) => {
       return label.split(', ', 1)[0];
     });
 
-  test('A drink is written without a course and listed with the drinks only', ({
+  test('A drink is written without a season nor a course, and listed with the drinks only', ({
     and,
     given,
     then,
@@ -59,7 +59,8 @@ defineFeature(feature, (test) => {
       await renderWithDatabase(<RecipeFormScreen />, connection);
       await fireEvent.changeText(screen.getByLabelText('Title'), title);
     });
-    then('the form asks for no course', () => {
+    then('the form asks for no season nor course', () => {
+      expect(screen.queryByText('Season')).not.toBeOnTheScreen();
       expect(screen.queryByText('Course')).not.toBeOnTheScreen();
     });
     when('I save the drink', async () => {
@@ -88,7 +89,12 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test("A drink's page has no course and no meal history", ({ and, given, then, when }) => {
+  test("A drink's page has no season, no course and no meal history", ({
+    and,
+    given,
+    then,
+    when,
+  }) => {
     given(/^the drink "(.*)" exists$/, (title: string) => {
       drinkId = save(title, 'drink');
     });
@@ -96,8 +102,9 @@ defineFeature(feature, (test) => {
       jest.mocked(useLocalSearchParams).mockReturnValue({ id: String(drinkId) });
       await renderWithDatabase(<RecipeDetailScreen />, connection);
     });
-    then('it shows no course and no "I cooked it"', () => {
+    then('it shows no season, no course and no "I cooked it"', () => {
       expect(screen.getByRole('header', { name: 'Mojito' })).toBeOnTheScreen();
+      expect(screen.queryByText('Winter & summer')).not.toBeOnTheScreen();
       expect(screen.queryByText('Main course')).not.toBeOnTheScreen();
       expect(screen.queryByRole('button', { name: /I cooked it/ })).not.toBeOnTheScreen();
     });

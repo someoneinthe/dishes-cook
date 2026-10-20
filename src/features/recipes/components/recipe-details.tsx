@@ -30,10 +30,13 @@ export function RecipeDetails({ children, recipe }: RecipeDetailsProps) {
       <Text accessibilityRole="header" style={styles.title}>
         {recipe.title}
       </Text>
-      <View style={styles.labels}>
-        <SeasonLabel season={recipe.season} />
-        {recipe.kind === 'dish' && <CourseLabel course={recipe.course} />}
-      </View>
+      {/* A drink has no season nor course. */}
+      {recipe.kind === 'dish' && (
+        <View style={styles.labels}>
+          <SeasonLabel season={recipe.season} />
+          <CourseLabel course={recipe.course} />
+        </View>
+      )}
       {times !== undefined && <Text style={styles.muted}>{times}</Text>}
       {children}
 

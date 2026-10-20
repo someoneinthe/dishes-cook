@@ -67,6 +67,8 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
   const newIngredients = useNewIngredients(scannedRecipe?.ingredientList);
   const [title, setTitle] = useState(() => startingText(initialRecipe, scannedRecipe, 'title'));
   const [season, setSeason] = useState<Season>(initialRecipe?.season ?? 'both');
+  // A drink has no season: it's for both.
+  const savedSeason: Season = kind === 'drink' ? 'both' : season;
   // Every recipe has a course: a main course unless chosen otherwise.
   const [course, setCourse] = useState<Course>(initialRecipe?.course ?? 'main');
   const [selectedIngredientList, setSelectedIngredientList] = useState<Ingredient[]>(
@@ -173,7 +175,7 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
       ...photoInput(photoFile, initialRecipe?.photoFile),
       prepMinutes,
       quantities,
-      season,
+      season: savedSeason,
       title,
     };
     // Saved first, then marked and left: if saving throws, the form stays, and Save works again.
@@ -255,19 +257,22 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
         ref={titleRef}
         value={title}
       />
-      <SegmentedControl
-        label={t.recipes.season}
-        onChange={setSeason}
-        optionList={seasonOptionList(t)}
-        value={season}
-      />
+      {/* A drink has no season nor course. */}
       {kind === 'dish' && (
-        <SegmentedControl
-          label={t.recipes.course}
-          onChange={setCourse}
-          optionList={courseOptionList(t)}
-          value={course}
-        />
+        <>
+          <SegmentedControl
+            label={t.recipes.season}
+            onChange={setSeason}
+            optionList={seasonOptionList(t)}
+            value={season}
+          />
+          <SegmentedControl
+            label={t.recipes.course}
+            onChange={setCourse}
+            optionList={courseOptionList(t)}
+            value={course}
+          />
+        </>
       )}
       <RecipeTimeFields
         drafts={timeDrafts}

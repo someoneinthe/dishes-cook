@@ -64,10 +64,10 @@ describe('recipe html', () => {
       expect(page).toContain('a photo a link');
     });
 
-    it('shows a drink without a course', () => {
+    it('shows a drink without a season nor a course', () => {
       const page = html({ ...soup, kind: 'drink', title: 'Mojito' });
 
-      expect(page).toContain('>Winter</p>');
+      expect(page).not.toContain('Winter');
       expect(page).not.toContain('Main course');
     });
 

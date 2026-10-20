@@ -24,10 +24,10 @@ export type SeasonFilter = 'any' | NonNullable<RecipeQueryFilters['season']>;
 export const NO_FILTERS: RecipeFilterValues = { course: 'any', ingredientList: [], season: 'any' };
 
 type RecipeFiltersProps = Readonly<{
-  // No course filter (drinks have none).
-  isCourseHidden?: boolean;
   // Season and course only (the meal choice).
   isIngredientPickerHidden?: boolean;
+  // A drink's: ingredients only (drinks have no season nor course).
+  kind?: RecipeKind;
   onChange: (values: RecipeFilterValues) => void;
   values: RecipeFilterValues;
 }>;
@@ -48,8 +48,8 @@ export function hasFilters(values: RecipeFilterValues): boolean {
 // Season, course and ingredients the recipes must have. The list is narrowed in SQL
 // (toQueryFilters).
 export function RecipeFilters({
-  isCourseHidden = false,
   isIngredientPickerHidden = false,
+  kind = 'dish',
   onChange,
   values,
 }: RecipeFiltersProps) {
@@ -57,19 +57,21 @@ export function RecipeFilters({
 
   return (
     <View style={styles.container}>
-      <SegmentedControl
-        label={t.recipes.season}
-        onChange={(season) => onChange({ ...values, season })}
-        optionList={seasonFilterOptionList(t)}
-        value={values.season}
-      />
-      {!isCourseHidden && (
-        <SegmentedControl
-          label={t.recipes.course}
-          onChange={(course) => onChange({ ...values, course })}
-          optionList={courseFilterOptionList(t)}
-          value={values.course}
-        />
+      {kind === 'dish' && (
+        <>
+          <SegmentedControl
+            label={t.recipes.season}
+            onChange={(season) => onChange({ ...values, season })}
+            optionList={seasonFilterOptionList(t)}
+            value={values.season}
+          />
+          <SegmentedControl
+            label={t.recipes.course}
+            onChange={(course) => onChange({ ...values, course })}
+            optionList={courseFilterOptionList(t)}
+            value={values.course}
+          />
+        </>
       )}
       {!isIngredientPickerHidden && (
         <IngredientPicker
@@ -84,7 +86,7 @@ export function RecipeFilters({
   );
 }
 
-// The filters as the recipe queries take them, for the dishes or the drinks (no course).
+// The filters as the recipe queries take them, for the dishes or the drinks (no season nor course).
 export function toQueryFilters(
   values: RecipeFilterValues,
   search: string,
@@ -95,7 +97,7 @@ export function toQueryFilters(
     ingredientIdList: values.ingredientList.map((ingredient) => ingredient.id),
     kind,
     search,
-    season: values.season === 'any' ? undefined : values.season,
+    season: kind === 'drink' || values.season === 'any' ? undefined : values.season,
   };
 }
 

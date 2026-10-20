@@ -124,7 +124,7 @@ While the PR is open you can delete your new migration and generate it again; on
 
 A change to a synced table (`recipes`, `ingredients`, `recipe_ingredients`, `cooked_meals`) usually needs a server migration too: a new file in `server/migrations/`, frozen the same way, and added to `SERVER_MIGRATION_LIST` so the app checks the server has it (see [sync.md › Versions](sync.md#versions)). Once merged, deploy it (`npm run server:deploy`, see [sync.md › Updating the server](sync.md#updating-the-server)).
 
-**Drinks** are recipes too: `recipes.kind` is `'dish'` (the default) or `'drink'`, so they share ingredients, photos, quantities and the sync. Every list, count and random pick asks for one kind (`RecipeFilters.kind`) and walks the `(kind, sort_key, id)` index; with an ingredient filter, `+kind` keeps the plan on the ingredient index instead. A drink's `course` is unused (left at its default), it has no meal history, and Meal choice only picks dishes. The kind is checked by the code that writes it (no `CHECK`: adding one would rebuild the table).
+**Drinks** are recipes too: `recipes.kind` is `'dish'` (the default) or `'drink'`, so they share ingredients, photos, quantities and the sync. Every list, count and random pick asks for one kind (`RecipeFilters.kind`) and walks the `(kind, sort_key, id)` index; with an ingredient filter, `+kind` keeps the plan on the ingredient index instead. A drink's `course` and `season` are unused (left at `main` and `both`), it has no meal history, and Meal choice only picks dishes. The kind is checked by the code that writes it (no `CHECK`: adding one would rebuild the table).
 
 ## Tests
 
