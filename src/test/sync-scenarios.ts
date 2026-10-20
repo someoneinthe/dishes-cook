@@ -451,6 +451,31 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
       ).toStrictEqual([{ photoFile: null, photoSynced: null }]);
     });
 
+    it('removes the old photo when the new one’s file is gone before it was uploaded', async () => {
+      const soupId = addSoupWithPhoto();
+      await syncBoth();
+      phoneA.photos?.files.set('second.jpg', TEST_JPEG);
+      saveRecipe(
+        phoneA.db,
+        {
+          ingredientIdList: [],
+          instructions: '',
+          photo: { file: 'second.jpg' },
+          season: 'both',
+          title: 'Soup',
+        },
+        soupId,
+      );
+      phoneA.photos?.files.delete('second.jpg');
+
+      await syncBoth();
+
+      expect(recipeOf(phoneA, 'Soup')?.photoFile).toBeUndefined();
+      expect(recipeOf(phoneB, 'Soup')?.photoFile).toBeUndefined();
+      const [soup] = await server.rowsOf('recipes');
+      expect(soup?.photo).toBe('');
+    });
+
     it('brings a photo uploaded after its recipe reached the other phone', async () => {
       addSoupWithPhoto();
       // A pushes the recipe, not its photo yet (as if the upload failed); B gets the recipe.

@@ -583,6 +583,18 @@ function isNewerThan(row: ServerRow, local: Readonly<{ updatedAt: number }> | un
   return local === undefined || row.modified > local.updatedAt;
 }
 
+// Whether the server's photo of a recipe is the one the phone shows (uploaded or downloaded), or
+// one it hasn't downloaded yet: then a push of the recipe leaves it.
+function isServerPhotoKept(
+  row: Readonly<{
+    photoFile: null | string;
+    photoPending: null | string;
+    photoSynced: null | string;
+  }>,
+): boolean {
+  return row.photoPending !== null || (row.photoFile !== null && row.photoSynced !== null);
+}
+
 // An item of a pulled page is an object; its fields are checked when it's applied.
 function isServerRow(item: unknown): item is ServerRow {
   return typeof item === 'object' && item !== null && !Array.isArray(item);
@@ -932,6 +944,7 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
         id: recipes.id,
         instructions: recipes.instructions,
         photoFile: recipes.photoFile,
+        photoPending: recipes.photoPending,
         photoSynced: recipes.photoSynced,
         prepMinutes: recipes.prepMinutes,
         season: recipes.season,
@@ -989,9 +1002,11 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
           ingredients: ingredientSyncIdsByRecipe.get(row.id) ?? [],
           instructions: row.instructions,
           modified: row.updatedAt,
-          // A photo removed here goes with the recipe's new version, never after it: a phone
-          // pulling in between would keep it. pushPhotos then marks it removed.
-          ...(row.photoFile === null && row.photoSynced !== null && { photo: '' }),
+          // The server's photo goes with the recipe's new version, never after it (a phone
+          // pulling in between would keep it), unless it's the one this phone shows or is about
+          // to download: removed here, or replaced (pushPhotos then uploads the new one onto
+          // this version), or the new photo's file went missing.
+          ...(!isServerPhotoKept(row) && { photo: '' }),
           prep_minutes: row.prepMinutes ?? 0,
           quantities: quantitiesByRecipe.get(row.id) ?? {},
           season: row.season,
