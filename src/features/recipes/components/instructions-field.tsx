@@ -22,6 +22,8 @@ type Mode = 'preview' | 'write';
 export function InstructionsField({ onChange, placeholder, value }: InstructionsFieldProps) {
   const t = useMessages();
   const [mode, setMode] = useState<Mode>('write');
+  // The height the field had in Write: Preview keeps at least it, so switching moves nothing.
+  const [writeHeight, setWriteHeight] = useState(0);
   const modeOptionList: readonly SegmentedOption<Mode>[] = [
     { icon: 'pencil-outline', label: t.recipes.write, value: 'write' },
     { icon: 'eye-outline', label: t.recipes.preview, value: 'preview' },
@@ -44,29 +46,42 @@ export function InstructionsField({ onChange, placeholder, value }: Instructions
       <Text accessibilityElementsHidden importantForAccessibility="no" style={styles.label}>
         {t.recipes.recipe}
       </Text>
-      {mode === 'write' ? (
-        <TextField
-          attachment={modeSwitch}
-          hint={t.recipes.formatHint}
-          isLabelHidden
-          label={t.recipes.recipeText}
-          multiline
-          onChangeText={onChange}
-          placeholder={placeholder}
-          value={value}
-        />
-      ) : (
-        <View>
-          <View style={styles.preview}>
-            {value.trim() ? (
-              <Markdown text={value} />
-            ) : (
-              <Text style={styles.muted}>{t.recipes.nothingToPreview}</Text>
-            )}
+      <View
+        onLayout={(event) => {
+          if (mode === 'write') {
+            setWriteHeight(event.nativeEvent.layout.height);
+          }
+        }}
+        style={mode === 'preview' && { minHeight: writeHeight }}
+      >
+        {mode === 'write' ? (
+          <TextField
+            attachment={modeSwitch}
+            hint={t.recipes.formatHint}
+            isLabelHidden
+            label={t.recipes.recipeText}
+            multiline
+            onChangeText={onChange}
+            placeholder={placeholder}
+            value={value}
+          />
+        ) : (
+          // Laid out like the text field (switch, then the format help), so switching doesn't move it.
+          <View style={styles.previewField}>
+            <View style={styles.previewFrame}>
+              <View style={styles.preview}>
+                {value.trim() ? (
+                  <Markdown text={value} />
+                ) : (
+                  <Text style={styles.muted}>{t.recipes.nothingToPreview}</Text>
+                )}
+              </View>
+              {modeSwitch}
+            </View>
+            <Text style={styles.hint}>{t.recipes.formatHint}</Text>
           </View>
-          {modeSwitch}
-        </View>
-      )}
+        )}
+      </View>
     </View>
   );
 }
@@ -74,6 +89,11 @@ export function InstructionsField({ onChange, placeholder, value }: Instructions
 const styles = StyleSheet.create((theme) => ({
   field: {
     gap: theme.gap(2),
+  },
+  // As TextField shows its help.
+  hint: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
   },
   label: {
     ...theme.typography.label,
@@ -89,8 +109,18 @@ const styles = StyleSheet.create((theme) => ({
     borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.md,
     borderWidth: theme.borderWidth,
+    flexGrow: 1,
     minHeight: theme.size.multilineInput,
     paddingHorizontal: theme.gap(3),
     paddingVertical: theme.gap(2),
+  },
+  // As TextField's own layout: the field, then its help. It grows to the Write height (the help
+  // stays at the bottom, where it was), and so do the frame and the preview in it.
+  previewField: {
+    flexGrow: 1,
+    gap: theme.gap(1),
+  },
+  previewFrame: {
+    flexGrow: 1,
   },
 }));

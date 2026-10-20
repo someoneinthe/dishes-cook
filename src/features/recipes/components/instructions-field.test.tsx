@@ -25,6 +25,14 @@ describe('instructionsField', () => {
     expect(screen.getByRole('radio', { name: 'Preview' })).toBeChecked();
   });
 
+  it('keeps the format help in Preview: switching moves nothing', async () => {
+    await render(<InstructionsField onChange={jest.fn()} placeholder="Steps…" value="Simmer." />);
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'Preview' }));
+
+    expect(screen.getByText(/^Format it with Markdown/)).toBeOnTheScreen();
+  });
+
   it('shows the switch’s text with Settings › Show button labels', async () => {
     await render(<InstructionsField onChange={jest.fn()} placeholder="Steps…" value="" />);
 
