@@ -32,7 +32,7 @@ describe('recipesScreen', () => {
 
     expect(alert.spy).toHaveBeenLastCalledWith(
       'New recipe',
-      expect.stringContaining('fill it in from a photo'),
+      expect.stringContaining('fill it in from a file'),
       expect.anything(),
       { cancelable: true },
     );

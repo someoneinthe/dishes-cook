@@ -12,7 +12,14 @@ import { format, resolveConfig } from 'prettier';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DOC_PATH = path.join(ROOT, 'docs/features.md');
 const STEP_KEYWORD_SET = new Set(['*', 'And', 'But', 'Given', 'Then', 'When']);
-const SCENARIO_KEYWORD_SET = new Set(['Example', 'Scenario']);
+const SCENARIO_KEYWORD_SET = new Set([
+  'Example',
+  'Scenario',
+  'Scenario Outline',
+  'Scenario Template',
+]);
+// The table of values a scenario outline runs with.
+const EXAMPLES_KEYWORD_SET = new Set(['Examples', 'Scenarios']);
 
 // GitHub's heading anchors: lower case, punctuation removed, spaces as dashes.
 function anchorOf(title) {
@@ -26,7 +33,7 @@ function anchorOf(title) {
 // with their steps and data tables. Comments and tags are left out.
 function parseFeature(text) {
   const feature = { backgroundStepList: [], descriptionList: [], scenarioList: [], title: '' };
-  const state = { stepList: undefined };
+  const state = { exampleRowList: undefined, stepList: undefined };
   for (const rawLine of text.split('\n')) {
     const line = rawLine.trim();
     const isSignificant = line !== '' && !line.startsWith('#') && !line.startsWith('@');
@@ -62,7 +69,8 @@ async function readCurrent() {
 }
 
 // Reads one significant line into the feature; `state.stepList` is where steps go (background or
-// current scenario), undefined while still in the description.
+// current scenario), undefined while still in the description; `state.exampleRowList`, where an
+// outline's examples go once its Examples line is read.
 function readLine(feature, state, line) {
   const { keyword, rest } = splitKeyword(line);
   if (keyword === 'Feature') {
@@ -75,7 +83,12 @@ function readLine(feature, state, line) {
   }
   if (SCENARIO_KEYWORD_SET.has(keyword)) {
     state.stepList = [];
-    feature.scenarioList.push({ stepList: state.stepList, title: rest });
+    state.exampleRowList = undefined;
+    feature.scenarioList.push({ exampleRowList: [], stepList: state.stepList, title: rest });
+    return;
+  }
+  if (EXAMPLES_KEYWORD_SET.has(keyword)) {
+    state.exampleRowList = feature.scenarioList.at(-1)?.exampleRowList;
     return;
   }
   if (state.stepList === undefined) {
@@ -83,7 +96,7 @@ function readLine(feature, state, line) {
     return;
   }
   if (line.startsWith('|')) {
-    state.stepList.at(-1)?.rowList.push(parseRow(line));
+    (state.exampleRowList ?? state.stepList.at(-1)?.rowList)?.push(parseRow(line));
     return;
   }
   const step = parseStep(line);
@@ -106,6 +119,9 @@ function renderFeature(feature) {
       '',
       ...renderSteps(scenario.stepList),
       '',
+      ...(scenario.exampleRowList.length > 0
+        ? ['**With each of:**', ...renderTable(scenario.exampleRowList)]
+        : []),
     ]),
   ].join('\n');
 }

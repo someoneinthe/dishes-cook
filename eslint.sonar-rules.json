@@ -7,7 +7,7 @@
     "@typescript-eslint/no-extraneous-class": "error",
     "@typescript-eslint/no-mixed-enums": "error",
     "@typescript-eslint/no-non-null-assertion": "error",
-    "@typescript-eslint/no-shadow": "error",
+    "@typescript-eslint/no-shadow": ["error", { "hoist": "all" }],
     "@typescript-eslint/no-unnecessary-type-arguments": "error",
     "@typescript-eslint/prefer-enum-initializers": "error",
     "@typescript-eslint/prefer-for-of": "error",

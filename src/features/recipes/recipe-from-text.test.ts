@@ -237,6 +237,17 @@ describe('recipe-from-text', () => {
       ]);
     });
 
+    it('finds the title of a level page (a PDF’s) when it is only a little larger than a heading', () => {
+      const blockList = [
+        block(['Tarte aux pommes'], 64),
+        block(['Ingrédients'], 56),
+        block(['4 pommes']),
+      ];
+
+      expect(readRecipeText(blockList).title).toBe('');
+      expect(readRecipeText(blockList, true).title).toBe('Tarte aux pommes');
+    });
+
     it('takes the ingredients from the short lines before the steps when there is no heading', () => {
       expect(
         readRecipeText([

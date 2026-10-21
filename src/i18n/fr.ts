@@ -32,7 +32,7 @@ export const fr: Messages = {
     intro:
       'Dishes Cook garde vos recettes sur votre appareil. Voici où vont vos données, et où elles ne vont pas.',
     othersList: [
-      `La lecture d’une recette depuis une photo se fait sur votre téléphone, avec la reconnaissance de texte ML Kit de Google intégrée à l’application. L’application supprime sa copie de cette photo dès que le texte est lu${NARROW_SPACE}: elle n’est pas gardée et ne quitte jamais votre téléphone. La photo d’une recette, ajoutée dans le formulaire, est gardée avec la recette.`,
+      `La lecture d’une recette depuis une photo ou un fichier (un PDF, un document Word, OpenDocument ou texte) se fait sur votre téléphone${NARROW_SPACE}: les photos et les pages des PDF avec la reconnaissance de texte ML Kit de Google intégrée à l’application, les autres documents par l’application elle-même. L’application supprime ses copies de la photo ou du fichier (et des pages du PDF) dès qu’ils sont lus${NARROW_SPACE}: rien n’est gardé et rien ne quitte votre téléphone. La photo d’une recette, ajoutée dans le formulaire, est gardée avec la recette.`,
       `ML Kit signalerait son utilisation à Google${NARROW_SPACE}: l’application le bloque.`,
       `Partager une liste de courses envoie son texte uniquement à l’application que vous choisissez (notes, messages…). La liste n’est pas enregistrée${NARROW_SPACE}: elle est oubliée quand l’application se ferme.`,
       'Partager une recette crée un PDF sur votre téléphone et l’envoie uniquement à l’application que vous choisissez. L’application supprime sa copie dès votre retour du partage.',
@@ -263,7 +263,7 @@ export const fr: Messages = {
     months: (count) => `${count}\u{A0}mois`,
     monthsPlaceholder: 'ex. 0,5',
     new: 'Nouvelle',
-    newHint: 'Demande s’il faut l’écrire ou la lire sur une photo',
+    newHint: 'Demande s’il faut l’écrire, ou la lire depuis un fichier ou une photo',
     newRecipe: 'Nouvelle recette',
     noIngredients: 'Aucun ingrédient indiqué.',
     noInstructions: 'Pas encore d’instructions.',
@@ -311,24 +311,29 @@ export const fr: Messages = {
   },
   recipeScan: {
     cameraDenied:
-      'Autorisez l’appareil photo dans les réglages du téléphone pour prendre une photo, ou choisissez-en une existante.',
+      'Autorisez l’appareil photo dans les réglages du téléphone pour prendre une photo, ou choisissez plutôt un fichier.',
     choiceRequired: (existing) =>
       `Vous avez déjà ${quote(existing)}${NARROW_SPACE}: faites votre choix pour enregistrer la recette.`,
+    chooseFile: 'Choisir un fichier',
     choosePhoto: 'Choisir une photo',
     chooseTitle: 'Lire une recette sur une photo',
     keepNew: 'Garder le nouveau',
     keepNewHint: 'Crée cet ingrédient à l’enregistrement de la recette',
     keepNewLabel: (name) => `Garder ${quote(name)} comme nouvel ingrédient`,
     nothingFoundMessage:
-      'Aucun texte n’a pu être lu. Essayez une photo nette et bien éclairée de la page.',
+      'Aucun texte n’a pu être lu. Pour une photo, essayez-en une nette et bien éclairée de la page.',
     nothingFoundTitle: 'Aucune recette trouvée',
-    readFailed:
-      'Impossible de lire la photo. Si cela se reproduit, fermez l’application et rouvrez-la.',
-    reading: 'Lecture de la photo…',
+    pagesCutMessage: (maxPages) =>
+      `Seules ses ${maxPages} premières pages ont été lues${NARROW_SPACE}: vérifiez la fin de la recette.`,
+    pagesCutTitle: 'Un long PDF',
+    readFailed: `Impossible de lire le fichier (abîmé, ou protégé par un mot de passe${NARROW_SPACE}?). Si cela se reproduit avec d’autres, fermez l’application et rouvrez-la.`,
+    reading: 'Lecture de la recette…',
     similarMessage: (existing) =>
       `Vous avez déjà ${quote(existing)}. L’utiliser à la place${NARROW_SPACE}?`,
-    startMessage: `Écrivez-la vous-même, ou remplissez-la depuis la photo d’une recette${NARROW_SPACE}: le texte est lu sur votre téléphone et la photo n’est pas gardée.`,
+    startMessage: `Écrivez-la vous-même, ou remplissez-la depuis un fichier (une photo, un PDF, un document Word, OpenDocument ou texte) ou la photo d’une page de recette${NARROW_SPACE}: c’est lu sur votre téléphone et rien n’est gardé.`,
     takePhoto: 'Prendre une photo',
+    unsupportedMessage: `Choisissez une photo, un PDF, un fichier Word (.docx), OpenDocument (.odt) ou texte (.txt). Les anciens fichiers Word (.doc) ne peuvent pas être lus${NARROW_SPACE}: enregistrez-les d’abord en .docx.`,
+    unsupportedTitle: 'Ce fichier ne peut pas être lu',
     useSimilar: (existing) => `Utiliser ${quote(existing)}`,
     useSimilarHint: 'Utilise votre ingrédient existant au lieu d’en créer un nouveau',
     write: 'L’écrire',

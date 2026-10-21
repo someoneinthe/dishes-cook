@@ -61,7 +61,7 @@ VirtualizedList.defaultProps = {
 };
 
 // Text recognition (ML Kit) and the photo picker are native: tests choose what they return
-// (jest.mocked(recognizeText), jest.mocked(launchImageLibraryAsync)…). By default, the user cancels.
+// (jest.mocked(recognizeText), jest.mocked(launchCameraAsync)…). By default, the user cancels.
 jest.mock('@infinitered/react-native-mlkit-text-recognition', () => ({
   recognizeText: jest.fn(() => Promise.resolve({ blocks: [], text: '' })),
 }));
@@ -69,6 +69,17 @@ jest.mock('expo-image-picker', () => ({
   launchCameraAsync: jest.fn(() => Promise.resolve({ assets: null, canceled: true })),
   launchImageLibraryAsync: jest.fn(() => Promise.resolve({ assets: null, canceled: true })),
   requestCameraPermissionsAsync: jest.fn(() => Promise.resolve({ granted: true })),
+}));
+
+// The file picker and the PDF renderer are native too: by default, the user cancels and a PDF has
+// no page (tests choose: jest.mocked(getDocumentAsync), jest.mocked(renderPdfPages)).
+jest.mock('expo-document-picker', () => ({
+  getDocumentAsync: jest.fn(() => Promise.resolve({ assets: null, canceled: true })),
+}));
+jest.mock('@/lib/pdf-pages', () => ({
+  renderPdfPages: jest.fn(() =>
+    Promise.resolve({ folderUri: 'file:///data/cache/pdf-pages/1', pageCount: 0, pageUriList: [] }),
+  ),
 }));
 
 // The app's files are native (expo-file-system): every folder exists, tests check which ones were
@@ -85,10 +96,12 @@ jest.mock('expo-file-system', () => {
     const uri = uriOf(partList);
     return {
       base64: jest.fn(() => Promise.resolve('cGhvdG8=')),
+      bytes: jest.fn(() => Promise.resolve(new Uint8Array())),
       delete: jest.fn(),
       exists: true,
       move: jest.fn(() => Promise.resolve()),
       name: uri.split('/').at(-1) ?? '',
+      text: jest.fn(() => Promise.resolve('')),
       uri,
     };
   });

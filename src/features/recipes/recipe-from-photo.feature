@@ -1,8 +1,9 @@
 Feature: A recipe from a photo
   Adding a recipe asks whether to write it or to fill it in from a photo of a recipe page, taken
-  with the camera or chosen among the phone's photos (a book, a recipe website on a screen…). The
-  text is read on the phone: the photo is neither sent nor kept (the copies the photo picker makes
-  in the app's cache are deleted once read, even when the reading fails).
+  with the camera (cropped to the recipe) or chosen with Choose a file, which also takes documents
+  (see "A recipe from a document"). The text is read on the phone: the photo is neither sent nor
+  kept (the copies the pickers make in the app's cache are deleted once read, even when the
+  reading fails).
   The title, the ingredients with their quantities and the steps fill in the form, to check before
   saving. An ingredient that already exists (same name, ignoring case) is used; a new one is only
   created when the recipe is saved. When a new one looks like an existing one (singular or plural,
@@ -12,7 +13,7 @@ Feature: A recipe from a photo
 
   Scenario: Adding a recipe asks how to start
     When I add a recipe from the recipe list
-    Then I am asked whether to write it, choose a photo or take one
+    Then I am asked whether to write it, choose a file or take a photo
     When I choose a photo of "Leek soup" listing "2 leeks"
     Then the new recipe opens filled in with "Leek soup" and "Leeks: 2"
 
@@ -56,7 +57,7 @@ Feature: A recipe from a photo
   Scenario: The camera needs my permission
     Given I refuse the camera
     When I try to take a photo for a new recipe
-    Then I am told to allow the camera or to choose an existing photo
+    Then I am told to allow the camera or to choose a file
 
   Scenario: A photo without text
     When I fill in a new recipe from a photo without text

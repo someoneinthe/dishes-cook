@@ -4,6 +4,7 @@
 
 What the app does, scenario by scenario. Every scenario runs as a test (jest-cucumber), so this page only describes behaviour that is checked.
 
+- [A recipe from a document](#a-recipe-from-a-document): 5 scenarios
 - [A recipe from a photo](#a-recipe-from-a-photo): 10 scenarios
 - [A recipe's photo and times](#a-recipes-photo-and-times): 3 scenarios
 - [About](#about): 2 scenarios
@@ -20,14 +21,55 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Sharing a recipe](#sharing-a-recipe): 2 scenarios
 - [Shopping list](#shopping-list): 10 scenarios
 
+## A recipe from a document
+
+Choose a file (when adding a recipe or a drink) also takes documents: a PDF, a Word document (.docx), an OpenDocument text (.odt) or a text file (.txt). Everything is read on the phone, nothing is sent nor kept: a PDF's pages are drawn as images (Android's own PDF renderer) and read by the same text recognition as photos, one page after the other, up to 5 pages; the other documents are read directly, their title found by its style or size (a text file's first line). The title, the ingredients and the steps then fill in the form, as from a photo.
+
+### A PDF fills in a new recipe, page after page
+
+- **When** I fill in a new recipe from a PDF whose first page has "Tarte aux pommes" and "3 pommes" and its second page "Cuire 30 min."
+- **Then** the new recipe opens filled in with "Tarte aux pommes", "Pommes: 3" and "Cuire 30 min."
+- **And** the PDF's page images are deleted
+
+### Only the first 5 pages of a long PDF are read
+
+- **When** I fill in a new recipe from a PDF of 8 pages
+- **Then** only its first 5 pages are read
+- **And** I am told that only its first 5 pages were read
+
+### A document fills in a new recipe
+
+- **When** I fill in a new recipe from <document> "Soupe de poireaux" listing "2 poireaux" then "Mixer."
+- **Then** the new recipe opens filled in with "Soupe de poireaux", "Poireaux: 2" and "Mixer."
+
+**With each of:**
+
+| document             |
+| -------------------- |
+| a Word document      |
+| an OpenDocument text |
+| a text file          |
+
+### An old Word document can't be read
+
+- **When** I choose the file "Recette.doc" for a new recipe
+- **Then** I am told to save it as .docx first
+- **And** no recipe form opens
+
+### A PDF that can't be opened
+
+- **When** I choose a PDF protected by a password for a new recipe
+- **Then** I am told that the file couldn't be read
+- **And** the copies of the file are deleted
+
 ## A recipe from a photo
 
-Adding a recipe asks whether to write it or to fill it in from a photo of a recipe page, taken with the camera or chosen among the phone's photos (a book, a recipe website on a screen…). The text is read on the phone: the photo is neither sent nor kept (the copies the photo picker makes in the app's cache are deleted once read, even when the reading fails). The title, the ingredients with their quantities and the steps fill in the form, to check before saving. An ingredient that already exists (same name, ignoring case) is used; a new one is only created when the recipe is saved. When a new one looks like an existing one (singular or plural, other accents: "carrot" and "Carrots"), or contains one ("bouteille de vin rouge" and "Vin rouge"), its row asks which to keep, and the recipe can't be saved until the user chooses.
+Adding a recipe asks whether to write it or to fill it in from a photo of a recipe page, taken with the camera (cropped to the recipe) or chosen with Choose a file, which also takes documents (see "A recipe from a document"). The text is read on the phone: the photo is neither sent nor kept (the copies the pickers make in the app's cache are deleted once read, even when the reading fails). The title, the ingredients with their quantities and the steps fill in the form, to check before saving. An ingredient that already exists (same name, ignoring case) is used; a new one is only created when the recipe is saved. When a new one looks like an existing one (singular or plural, other accents: "carrot" and "Carrots"), or contains one ("bouteille de vin rouge" and "Vin rouge"), its row asks which to keep, and the recipe can't be saved until the user chooses.
 
 ### Adding a recipe asks how to start
 
 - **When** I add a recipe from the recipe list
-- **Then** I am asked whether to write it, choose a photo or take one
+- **Then** I am asked whether to write it, choose a file or take a photo
 - **When** I choose a photo of "Leek soup" listing "2 leeks"
 - **Then** the new recipe opens filled in with "Leek soup" and "Leeks: 2"
 
@@ -77,7 +119,7 @@ Adding a recipe asks whether to write it or to fill it in from a photo of a reci
 
 - **Given** I refuse the camera
 - **When** I try to take a photo for a new recipe
-- **Then** I am told to allow the camera or to choose an existing photo
+- **Then** I am told to allow the camera or to choose a file
 
 ### A photo without text
 
