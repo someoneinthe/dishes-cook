@@ -1,11 +1,13 @@
 import type { Ref } from 'react';
 import type { View } from 'react-native';
+import { use } from 'react';
 import { Pressable, Text } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { usePreferences } from '@/features/settings/preferences';
 import { isTv } from '@/lib/device';
 import type { IconName } from './icon';
 import { Icon } from './icon';
+import { MenuContext } from './menu-context';
 import { useFocusRing } from './use-focus-ring';
 import { useIconSize } from './use-icon-size';
 
@@ -70,7 +72,9 @@ export function Button({
 }: ButtonProps) {
   // Settings › "Show button labels" brings the text back on icon-only buttons.
   const { isShowingButtonLabels } = usePreferences();
-  const isLabelHidden = isIconOnly && !isShowingButtonLabels;
+  // In a header's ⋮ menu: labeled, and pressing it closes the menu.
+  const closeMenu = use(MenuContext);
+  const isLabelHidden = isIconOnly && !isShowingButtonLabels && closeMenu === undefined;
   styles.useVariants({ isIconOnly: isLabelHidden, variant });
   // The icon's color is a prop, not a style: read from the theme like the label's.
   const { theme } = useUnistyles();
@@ -93,7 +97,7 @@ export function Button({
       // Android requests the focus when this turns true (the typings only mention Apple TV).
       // eslint-disable-next-line sonarjs/deprecation
       hasTVPreferredFocus={isTv && isTvPreferredFocus}
-      onPress={onPress}
+      onPress={closingMenu(onPress, closeMenu)}
       ref={ref}
       {...focusProps}
       style={({ pressed }) => [
@@ -107,6 +111,16 @@ export function Button({
       {!isLabelHidden && <Text style={styles.label}>{label}</Text>}
     </Pressable>
   );
+}
+
+// `onPress`, closing the menu the button is in first, if any.
+function closingMenu(onPress: () => void, closeMenu: (() => void) | undefined): () => void {
+  return closeMenu
+    ? () => {
+        closeMenu();
+        onPress();
+      }
+    : onPress;
 }
 
 const styles = StyleSheet.create((theme) => ({

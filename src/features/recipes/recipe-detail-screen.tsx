@@ -59,10 +59,15 @@ export function RecipeDetailScreen() {
     });
   };
 
-  const headerButtons = (
+  // Sharing and the shopping list go in a ⋮ menu when the header has no room for them.
+  const moreHeaderButtons = (
     <>
       <ShareRecipeButton recipe={recipe} />
       <ShoppingListToggle recipeId={recipe.id} />
+    </>
+  );
+  const headerButtons = (
+    <>
       <Button
         icon="pencil"
         isIconOnly
@@ -87,7 +92,7 @@ export function RecipeDetailScreen() {
       <Stack.Screen
         options={{
           // Read-only on a TV: recipes are edited on the phone.
-          headerRight: isTv ? undefined : headerActions(headerButtons),
+          headerRight: isTv ? undefined : headerActions(headerButtons, moreHeaderButtons),
           title: recipe.title,
           ...kindHeaderOptions,
         }}

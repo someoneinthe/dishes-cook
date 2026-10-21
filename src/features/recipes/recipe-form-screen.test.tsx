@@ -7,7 +7,7 @@ import type { NavigationMock } from '@/test/navigation-mock';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { toStored } from '@/lib/units';
 import { spyOnAlert } from '@/test/alert';
-import { firstRecipePage } from '@/test/queries';
+import { firstIngredientPage, firstRecipePage } from '@/test/queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { deleteRecipe, getRecipe, saveRecipe } from './db/recipe-queries';
 import { RecipeFormScreen } from './recipe-form-screen';
@@ -64,6 +64,42 @@ describe('recipeFormScreen', () => {
       params: { id: String(savedId) },
       pathname: '/recipe/[id]',
     });
+  });
+
+  it('creates a new ingredient on Save, and only if it is still in the recipe', async () => {
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    await fireEvent.changeText(screen.getByLabelText('Title'), 'Carrot soup');
+    await fireEvent.changeText(screen.getByLabelText('Search ingredients'), 'Ginger');
+    await fireEvent.press(screen.getByRole('button', { name: 'Create Ginger' }));
+    await fireEvent.changeText(screen.getByLabelText('Search ingredients'), 'leek');
+    await fireEvent.press(screen.getByRole('button', { name: 'Create leek' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove Ginger' }));
+
+    // Picked, not saved yet.
+    expect(firstIngredientPage(connection.db)).toStrictEqual([]);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+
+    expect(firstIngredientPage(connection.db).map(({ name }) => name)).toStrictEqual(['Leek']);
+  });
+
+  it('keeps one new ingredient typed again after being removed', async () => {
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    await fireEvent.changeText(screen.getByLabelText('Title'), 'Ginger tea');
+    await fireEvent.changeText(screen.getByLabelText('Search ingredients'), 'Ginger');
+    await fireEvent.press(screen.getByRole('button', { name: 'Create Ginger' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove Ginger' }));
+    await fireEvent.changeText(screen.getByLabelText('Search ingredients'), 'GINGER');
+    await fireEvent.press(screen.getByRole('button', { name: 'Create GINGER' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
+
+    const [{ id: savedId } = { id: -1 }] = firstRecipePage(connection.db);
+
+    expect(getRecipe(connection.db, savedId)?.ingredientList).toStrictEqual([
+      { id: expect.any(Number) as number, name: 'Ginger' },
+    ]);
   });
 
   it('saves a new recipe once, however fast Save is tapped again', async () => {
