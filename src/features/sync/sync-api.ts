@@ -5,8 +5,8 @@ import type { ServerInfo } from './server-version';
 // The sync server's HTTP API (PocketBase, see docs/sync.md), with plain `fetch`: the few calls the
 // sync needs don't justify an SDK.
 
-// A photo file to upload: React Native's form-data file ({ uri, name, type }), or a Blob (tests).
-export type PhotoUpload = Blob | Readonly<{ name: string; type: string; uri: string }>;
+// A photo file to upload: the photo's file (expo-file-system's File is a Blob), or a Blob (tests).
+export type PhotoUpload = Blob;
 
 // Where a page of pulled rows starts, in the (updated, id) order: at a time ('' = from the start),
 // or right after a row (the last one of the previous page). Pages follow each other by key, not
@@ -207,8 +207,7 @@ export function createSyncApi(
         // The other fields as JSON (PocketBase's @jsonPayload): `modified` stays a number, which the
         // update rule compares (a form field would be text).
         form.append('@jsonPayload', JSON.stringify({ modified }));
-        // React Native's FormData takes { uri, name, type } as a file.
-        form.append('photo', photo as Blob, 'photo.jpg');
+        form.append('photo', photo, 'photo.jpg');
         body = form;
       }
       const response = await send(`${records('recipes')}/${id}`, { body, method: 'PATCH' });

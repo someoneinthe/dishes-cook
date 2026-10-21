@@ -122,12 +122,12 @@ describe('recipe photos', () => {
   });
 
   describe('recipePhotoStore', () => {
-    it('uploads a photo as a JPEG file, and downloads one into a new file', async () => {
-      expect(recipePhotoStore.toUpload('a.jpg')).toStrictEqual({
-        name: 'a.jpg',
-        type: 'image/jpeg',
-        uri: 'file:///data/files/recipe-photos/a.jpg',
-      });
+    it('uploads a photo’s file itself (a Blob), and downloads one into a new file', async () => {
+      const upload = recipePhotoStore.toUpload('a.jpg');
+
+      // The File, not React Native's { uri, name, type }, which Expo's fetch refuses.
+      expect(upload).toBe(jest.mocked(File).mock.results.at(-1)?.value);
+      expect(upload).toMatchObject({ uri: 'file:///data/files/recipe-photos/a.jpg' });
 
       const name = await recipePhotoStore.download('https://example.org/api/files/x?token=t');
 

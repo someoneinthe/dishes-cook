@@ -238,8 +238,7 @@ function listPage(rowMap: Map<string, StoredRow>, query: URLSearchParams): Store
     .slice((page - 1) * perPage, page * perPage);
 }
 
-// A request's fields, and its photo's content (a multipart body). Blobs only: React Native's
-// { uri } files don't exist in Node.
+// A request's fields, and its photo's content (a multipart body): a Blob, as the app sends.
 async function readBody(
   body: RequestInit['body'],
 ): Promise<Readonly<{ body: Record<string, unknown>; file?: string }>> {
