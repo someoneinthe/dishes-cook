@@ -4,7 +4,8 @@
 // its ESLint rule by eslint-plugin-sonarjs (its rules' docs URLs and its README's table of the
 // other plugins' rules). Rules of plugins this project doesn't use, rules without an ESLint
 // equivalent, the rules eslint.config.mjs turns off on purpose ('off': Hermes lacks the APIs
-// they push, a random pick is the app's purpose…) and the exceptions below are left out.
+// they push, a random pick is the app's purpose…), the formatting rules eslint-config-prettier
+// turns off after them (Prettier owns formatting) and the exceptions below are left out.
 //
 //   npm run lint:sonar-rules             rewrites eslint.sonar-rules.json
 //   npm run lint:sonar-rules -- --check  fails if SonarQube Cloud's rules changed since
@@ -203,10 +204,15 @@ async function readEslintEquivalents() {
   return ruleMap;
 }
 
-// The rules eslint.config.mjs turns off itself ('rule': 'off'), not left off by a plugin's preset.
+// The rules eslint.config.mjs turns off itself ('rule': 'off'), not left off by a plugin's preset,
+// and the formatting rules eslint-config-prettier turns off at its end, after the generated ones.
 async function readOffRules(file) {
   const text = await readFile(file, 'utf8');
-  return new Set([...text.matchAll(/'([^'\s]+)': 'off'/g)].map(([, rule]) => rule));
+  const { rules: prettierRuleMap } = require('eslint-config-prettier');
+  return new Set([
+    ...[...text.matchAll(/'([^'\s]+)': 'off'/g)].map(([, rule]) => rule),
+    ...Object.keys(prettierRuleMap).filter((rule) => [0, 'off'].includes(prettierRuleMap[rule])),
+  ]);
 }
 
 async function readProperties(file) {
