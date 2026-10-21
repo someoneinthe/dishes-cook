@@ -1,10 +1,19 @@
 import type { DrawerContentComponentProps } from 'expo-router/drawer';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
+import type { View as ViewType } from 'react-native';
 import { DrawerContentScrollView } from 'expo-router/drawer';
-import { useState } from 'react';
-import { StyleSheet as NativeStyleSheet, Pressable, Text, useWindowDimensions } from 'react-native';
+import { useCallback, useState } from 'react';
+import {
+  findNodeHandle,
+  StyleSheet as NativeStyleSheet,
+  Pressable,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { useMessages } from '@/i18n/i18n-provider';
+import { toMenuSections } from './menu-sections';
 import { useFocusRing } from './use-focus-ring';
 import { useIconSize } from './use-icon-size';
 
@@ -14,7 +23,12 @@ type TvMenuEntryProps = Readonly<{
   // Takes the remote's focus when it turns true (back from the screen this entry opened).
   isTvPreferredFocus: boolean;
   label: string;
+  // The entries the remote's Down and Up keys go to (Android view ids), when they aren't the
+  // nearest ones on screen.
+  nextFocusDown?: number;
+  nextFocusUp?: number;
   onPress: () => void;
+  ref?: Ref<ViewType>;
 }>;
 
 // The menu widens with the font size, so its entries' words aren't cut; up to half again, beyond
@@ -48,35 +62,69 @@ function TvMenu({ descriptors, navigation, state }: Readonly<DrawerContentCompon
   const { theme } = useUnistyles();
   const { focusReturnKey, openFromMenu } = useMenuFocusReturn(state);
 
+  const shownKey = state.routes[state.index]?.key;
+  const { bottomList, topList } = toMenuSections(
+    state.routes.filter((route) => {
+      const options = descriptors[route.key]?.options;
+      return (
+        options?.title && NativeStyleSheet.flatten(options.drawerItemStyle)?.display !== 'none'
+      );
+    }),
+  );
+  // Down from the last top entry goes to the first bottom one, and Up back: the remote would go to
+  // the screen, nearer than the gap between them.
+  const [lastTopId, setLastTopId] = useState<number>();
+  const [firstBottomId, setFirstBottomId] = useState<number>();
+  const lastTopRef = useCallback((view: null | ViewType) => setLastTopId(viewId(view)), []);
+  const firstBottomRef = useCallback((view: null | ViewType) => setFirstBottomId(viewId(view)), []);
+  const entryList = (routeList: typeof state.routes, edge: 'first' | 'last') =>
+    routeList.map((route, index) => {
+      const options = descriptors[route.key]?.options;
+      if (!options?.title) {
+        return null;
+      }
+      const isEdge = index === (edge === 'first' ? 0 : routeList.length - 1);
+      const isActive = route.key === shownKey;
+      const color = isActive ? theme.colors.onActionSoft : theme.colors.text;
+      return (
+        <TvMenuEntry
+          icon={options.drawerIcon?.({ color, focused: isActive, size: iconSize })}
+          isActive={isActive}
+          isTvPreferredFocus={route.key === focusReturnKey}
+          key={route.key}
+          label={options.title}
+          {...(isEdge &&
+            (edge === 'last'
+              ? { nextFocusDown: firstBottomId, ref: lastTopRef }
+              : { nextFocusUp: lastTopId, ref: firstBottomRef }))}
+          onPress={() => {
+            openFromMenu(route.key);
+            navigation.navigate(route.name);
+          }}
+        />
+      );
+    });
+
   return (
+    // Settings and About at the bottom of the screen; they follow the others when the menu scrolls
+    // (with a large font).
     <DrawerContentScrollView contentContainerStyle={styles.list}>
-      {state.routes.map((route, index) => {
-        const options = descriptors[route.key]?.options;
-        const isHidden = NativeStyleSheet.flatten(options?.drawerItemStyle)?.display === 'none';
-        if (isHidden || !options?.title) {
-          return null;
-        }
-        const isActive = index === state.index;
-        const color = isActive ? theme.colors.onActionSoft : theme.colors.text;
-        return (
-          <TvMenuEntry
-            icon={options.drawerIcon?.({ color, focused: isActive, size: iconSize })}
-            isActive={isActive}
-            isTvPreferredFocus={route.key === focusReturnKey}
-            key={route.key}
-            label={options.title}
-            onPress={() => {
-              openFromMenu(route.key);
-              navigation.navigate(route.name);
-            }}
-          />
-        );
-      })}
+      <View style={styles.top}>{entryList(topList, 'last')}</View>
+      {entryList(bottomList, 'first')}
     </DrawerContentScrollView>
   );
 }
 
-function TvMenuEntry({ icon, isActive, isTvPreferredFocus, label, onPress }: TvMenuEntryProps) {
+function TvMenuEntry({
+  icon,
+  isActive,
+  isTvPreferredFocus,
+  label,
+  nextFocusDown,
+  nextFocusUp,
+  onPress,
+  ref,
+}: TvMenuEntryProps) {
   styles.useVariants({ isActive });
   const t = useMessages();
   const { focusProps, focusStyle } = useFocusRing();
@@ -93,6 +141,9 @@ function TvMenuEntry({ icon, isActive, isTvPreferredFocus, label, onPress }: TvM
       // eslint-disable-next-line sonarjs/deprecation
       hasTVPreferredFocus={isTvPreferredFocus}
       onPress={onPress}
+      ref={ref}
+      // Android view props, passed on to the view (missing from Pressable's typings).
+      {...{ nextFocusDown, nextFocusUp }}
       {...focusProps}
       style={[styles.entry, focusStyle]}
     >
@@ -120,6 +171,11 @@ function useMenuFocusReturn({ index, routes }: DrawerContentComponentProps['stat
     setFocusReturnKey(!isFromMenu && index === 0 ? openedKey : undefined);
   }
   return { focusReturnKey, openFromMenu: setPressedKey };
+}
+
+// A view's Android id, for the `nextFocus…` props.
+function viewId(view: null | ViewType): number | undefined {
+  return (view && findNodeHandle(view)) ?? undefined;
 }
 
 const styles = StyleSheet.create((theme) => ({
@@ -156,7 +212,13 @@ const styles = StyleSheet.create((theme) => ({
     },
   },
   list: {
+    // At least the menu's height, so the bottom entries reach its bottom.
+    flexGrow: 1,
     gap: theme.gap(1),
     padding: theme.gap(3),
+  },
+  top: {
+    flexGrow: 1,
+    gap: theme.gap(1),
   },
 }));

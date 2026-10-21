@@ -12,6 +12,8 @@ describe('text', () => {
 
   it('builds a sort key without case or accents', () => {
     expect(toSortKey('  Pommes de terre   Écrasées')).toBe('pommes de terre ecrasees');
+    expect(toSortKey('Œuf')).toBe('oeuf');
+    expect(toSortKey('Cæcum')).toBe('caecum');
   });
 
   it('lists the singular and plural forms of a name', () => {

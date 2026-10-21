@@ -1,6 +1,9 @@
 // Text helpers for user-typed names (ingredients, recipe titles).
 
 const COMBINING_MARKS = /[̀-ͯ]/g;
+// Ligatures Unicode doesn't split into letters (NFD keeps "œ"): written out, as people type them.
+const LIGATURE = /[æœ]/g;
+const LIGATURE_LETTERS: Readonly<Record<string, string>> = { æ: 'ae', œ: 'oe' };
 const WHITESPACE_RUN = /\s+/g;
 
 // Trims and collapses inner whitespace: "  Olive   oil " -> "Olive oil".
@@ -26,9 +29,14 @@ export function toNameKey(name: string): string {
   return cleanName(name).toLowerCase();
 }
 
-// Loose form for searching: no case, no accents ("ecrase" finds "Écrasé").
+// Loose form for searching: no case, no accents, ligatures written out ("ecrase" finds "Écrasé",
+// "oeuf" finds "Œuf").
 export function toSearchText(text: string): string {
-  return cleanName(text).normalize('NFD').replaceAll(COMBINING_MARKS, '').toLowerCase();
+  return cleanName(text)
+    .normalize('NFD')
+    .replaceAll(COMBINING_MARKS, '')
+    .toLowerCase()
+    .replaceAll(LIGATURE, (ligature) => LIGATURE_LETTERS[ligature] ?? ligature);
 }
 
 // Stored as `sort_key` to sort and search in SQL, which can't strip accents.

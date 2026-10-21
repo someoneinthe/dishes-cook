@@ -3,6 +3,7 @@ import { useUnistyles } from 'react-native-unistyles';
 import { drawerToggle } from '@/components/drawer-toggle';
 import { headerTitleOptions } from '@/components/header-title';
 import { MENU_ICONS, menuEntryOptions } from '@/components/menu-entry-options';
+import { phoneMenu } from '@/components/phone-menu';
 import { noMenuButton, tvMenu, useTvMenuWidth } from '@/components/tv-menu';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
@@ -21,7 +22,8 @@ export default function DrawerLayout() {
   return (
     <Drawer
       backBehavior="initialRoute"
-      drawerContent={isTv ? tvMenu : undefined}
+      // Settings and About at the bottom of the menu (src/components/menu-sections.ts).
+      drawerContent={isTv ? tvMenu : phoneMenu}
       screenOptions={{
         ...headerTitleOptions,
         // The current screen: a light blue tint, like other options that are on (text ≥ 4.5:1).
@@ -53,24 +55,8 @@ export default function DrawerLayout() {
         )}
       />
       <Drawer.Screen
-        name="shopping-list"
-        options={{
-          ...menuEntryOptions(
-            t.menu.shoppingList,
-            MENU_ICONS.shoppingList,
-            theme.colors.menuShoppingList,
-          ),
-          // Not on a TV: it's read-only and can't share the list.
-          drawerItemStyle: isTv ? { display: 'none' } : undefined,
-        }}
-      />
-      <Drawer.Screen
         name="recipes"
         options={menuEntryOptions(t.menu.recipes, MENU_ICONS.recipes, theme.colors.menuRecipes)}
-      />
-      <Drawer.Screen
-        name="drinks"
-        options={menuEntryOptions(t.menu.drinks, MENU_ICONS.drinks, theme.colors.menuDrinks)}
       />
       <Drawer.Screen
         name="ingredients"
@@ -81,6 +67,22 @@ export default function DrawerLayout() {
             theme.colors.menuIngredients,
           ),
           // Read-only on a TV: the ingredient list is only there to manage ingredients.
+          drawerItemStyle: isTv ? { display: 'none' } : undefined,
+        }}
+      />
+      <Drawer.Screen
+        name="drinks"
+        options={menuEntryOptions(t.menu.drinks, MENU_ICONS.drinks, theme.colors.menuDrinks)}
+      />
+      <Drawer.Screen
+        name="shopping-list"
+        options={{
+          ...menuEntryOptions(
+            t.menu.shoppingList,
+            MENU_ICONS.shoppingList,
+            theme.colors.menuShoppingList,
+          ),
+          // Not on a TV: it's read-only and can't share the list.
           drawerItemStyle: isTv ? { display: 'none' } : undefined,
         }}
       />

@@ -59,6 +59,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
     'src/db/migrations/0006_drinks.sql',
     '7a8c754f7a99222b998b9501bf87369b3feb6c683f7425f63832eff5365bf309',
   ],
+  [
+    'src/db/migrations/0007_sort-keys-ligatures.sql',
+    '6418f1637541e967d7614581b81c7ecbd934b3a79ea4e0388e9559bc9bcdf148',
+  ],
 ]);
 
 const ROOT = path.join(__dirname, '../..');

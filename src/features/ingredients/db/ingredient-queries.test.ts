@@ -38,10 +38,11 @@ describe('ingredient queries', () => {
       .map(({ name }) => name);
 
     expect(wine.name).toBe('Vin rouge');
-    expect(savedNameList).toStrictEqual(['vin rouge', 'œuf de caille']);
+    // "Œuf" sorts as "oeuf", before "vin".
+    expect(savedNameList).toStrictEqual(['œuf de caille', 'vin rouge']);
     expect(firstIngredientPage(database).map(({ name }) => name)).toStrictEqual([
-      'Vin rouge',
       'Œuf de caille',
+      'Vin rouge',
     ]);
   });
 
@@ -203,5 +204,16 @@ describe('ingredient queries', () => {
     expect(suggest({ isUsedOnly: true })).toStrictEqual(['Baby carrot']);
     expect(suggest({ search: '' }).at(0)).toBe('Baby carrot');
     expect(carrotCake.isNew).toBe(true);
+  });
+
+  it('suggests an ingredient written with a ligature, typed without it', () => {
+    findOrCreateIngredient(database, 'Œuf');
+    const suggest = (search: string) =>
+      suggestIngredients(database, { excludeIdList: [], isUsedOnly: false, limit: 12, search }).map(
+        (ingredient) => ingredient.name,
+      );
+
+    expect(suggest('oeuf')).toStrictEqual(['Œuf']);
+    expect(suggest('Œu')).toStrictEqual(['Œuf']);
   });
 });

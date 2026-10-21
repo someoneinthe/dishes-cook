@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import type { Quantity } from '@/lib/units';
@@ -24,8 +24,9 @@ type Resolved = Readonly<{
 }> &
   ScanResult;
 
-// Ingredients read from a photo, in the recipe form. One that exists (same name, ignoring case) is
-// used; the others are new, with a temporary id below 0, and created when the recipe is saved.
+// Ingredients typed or read from a photo, in the recipe form. One that exists (same name, ignoring
+// case) is used; the others are new, with a temporary id below 0, and created when the recipe is
+// saved (only if still in it).
 // When a new one looks like an existing one ("carrot" / "Carrots"), the user chooses: use the
 // existing one, or keep the new one; the recipe can't be saved before. `scannedList`: the
 // ingredients of a recipe started from a photo (useNewRecipe), read when the form opens.
@@ -39,12 +40,34 @@ export function useNewIngredients(scannedList: readonly ScannedIngredient[] = []
   const [similarMap, setSimilarMap] = useState<ReadonlyMap<number, Ingredient>>(
     () => new Map(initial.newSimilarList),
   );
+  // The next temporary id, below the scanned ones'.
+  const nextIdRef = useRef(-1 - initial.newNameList.length);
 
   const forget = (id: number) => {
     setSimilarMap((previous) => withoutKey(previous, id));
   };
 
   return {
+    // An ingredient typed in the picker: the existing one with this name, or a new one (the same
+    // one when typed again after being removed, keeping its quantity).
+    add: (name: string): Ingredient => {
+      const existing = findIngredientByName(database, name);
+      if (existing) {
+        return existing;
+      }
+      const nameKey = toNameKey(name);
+      // Shown like the saved ones: a capital first letter (it's saved in lowercase).
+      const shownName = toDisplayName(nameKey);
+      const [addedId] =
+        [...nameMap].find(([, addedName]) => toNameKey(addedName) === nameKey) ?? [];
+      if (addedId !== undefined) {
+        return { id: addedId, name: shownName };
+      }
+      const id = nextIdRef.current;
+      nextIdRef.current -= 1;
+      setNameMap((previous) => new Map(previous).set(id, name));
+      return { id, name: shownName };
+    },
     // The existing ingredient replaces the new one (the form swaps them): nothing to create.
     chooseSimilar: (id: number) => {
       forget(id);

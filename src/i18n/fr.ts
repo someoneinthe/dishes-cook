@@ -58,6 +58,8 @@ export const fr: Messages = {
     edit: 'Modifier',
     loadingMore: 'Chargement de la suite',
     loadingMoreHint: 'D’autres éléments s’affichent une fois chargés',
+    more: 'Plus d’actions',
+    moreHint: 'Ouvre un menu avec les autres actions',
     ok: 'OK',
     save: 'Enregistrer',
     setsChoice: (label, option) => `Choisit ${option} comme ${label.toLowerCase()}`,

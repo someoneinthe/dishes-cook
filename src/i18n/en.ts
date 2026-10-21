@@ -83,6 +83,8 @@ export const en = {
     edit: 'Edit',
     loadingMore: 'Loading more',
     loadingMoreHint: 'More items appear when they are loaded',
+    more: 'More actions',
+    moreHint: 'Opens a menu with the other actions',
     ok: 'OK',
     save: 'Save',
     // Hint of a segmented choice: "Sets season to Winter" (options keep their case: "English").

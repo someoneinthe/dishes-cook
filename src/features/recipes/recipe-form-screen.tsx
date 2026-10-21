@@ -15,7 +15,6 @@ import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
 import { useDatabase } from '@/db/database-context';
 import { IngredientPicker } from '@/features/ingredients/components/ingredient-picker';
-import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { usePreferences } from '@/features/settings/preferences';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
@@ -63,7 +62,8 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
   const database = useDatabase();
   const t = useMessages();
   const kindHeaderOptions = useKindHeaderOptions(kind);
-  // A recipe started from a photo: its ingredients, matched to the existing ones.
+  // New ingredients, created on Save: typed in the picker, or read from a photo (matched to the
+  // existing ones).
   const newIngredients = useNewIngredients(scannedRecipe?.ingredientList);
   const [title, setTitle] = useState(() => startingText(initialRecipe, scannedRecipe, 'title'));
   const [season, setSeason] = useState<Season>(initialRecipe?.season ?? 'both');
@@ -290,10 +290,8 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
         emptyMessage={t.recipes.ingredientsEmpty}
         label={t.recipes.ingredients}
         onChange={setSelectedIngredientList}
-        onCreate={(name) => {
-          const { id, name: createdName } = findOrCreateIngredient(database, name);
-          return { id, name: createdName };
-        }}
+        // Created when the recipe is saved, if still in it.
+        onCreate={newIngredients.add}
         // At the top of the page: its suggestions, under it, show above the keyboard.
         onSearchFocus={keepAtTop}
         renderSelected={(ingredient, remove) => (
