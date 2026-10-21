@@ -65,7 +65,7 @@ export function SuggestionCard({
         <Button
           accessibilityHint={t.recipes.openHint}
           accessibilityLabel={t.mealChoice.openLabel(recipe.title)}
-          icon="book-open-variant"
+          icon="eye"
           isIconOnly
           label={t.mealChoice.open}
           onPress={() =>
