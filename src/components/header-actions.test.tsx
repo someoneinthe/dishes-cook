@@ -33,7 +33,9 @@ describe('headerActions', () => {
   const onEdit = jest.fn();
   const onShare = jest.fn();
 
-  const renderActions = async (widths: Readonly<{ children: number; more: number }>) => {
+  const renderActions = async (
+    widths: Readonly<{ children: number; menuButton?: number; more: number }>,
+  ) => {
     await render(
       <HeaderActions
         more={<Button icon="share-variant" isIconOnly label="Share" onPress={onShare} />}
@@ -54,7 +56,7 @@ describe('headerActions', () => {
     await fireEvent(
       screen.getByTestId('measured-menuButton', { includeHiddenElements: true }),
       'layout',
-      layoutEvent(48),
+      layoutEvent(widths.menuButton ?? 48),
     );
   };
 
@@ -80,6 +82,14 @@ describe('headerActions', () => {
 
     expect(onShare).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('Share')).not.toBeOnTheScreen();
+  });
+
+  it('shows ⋮ as an icon only when its label leaves it no room', async () => {
+    await renderActions({ children: 600, menuButton: 600, more: 48 });
+
+    expect(screen.getByRole('button', { name: 'More actions' })).not.toHaveTextContent(
+      'More actions',
+    );
   });
 
   it('puts every action in the menu when even the main ones do not fit', async () => {

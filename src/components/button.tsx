@@ -22,6 +22,9 @@ type ButtonProps = Readonly<
     // Grows to fill its row (a wrapping row of buttons): rows line up at both edges, and the buttons
     // of a row are as tall as the tallest.
     isFilling?: boolean;
+    // With `isIconOnly`, the label stays hidden even with Settings › "Show button labels" (and in a
+    // ⋮ menu): where it has no room.
+    isLabelAlwaysHidden?: boolean;
     // Takes the remote's focus on a TV when it turns true, its view being on screen. Ignored on a
     // phone: it would make the button focusable by touch, so a first tap would focus it instead of
     // pressing it.
@@ -64,6 +67,7 @@ export function Button({
   isExpanded,
   isFilling = false,
   isIconOnly = false,
+  isLabelAlwaysHidden,
   isTvPreferredFocus = false,
   label,
   onPress,
@@ -74,7 +78,12 @@ export function Button({
   const { isShowingButtonLabels } = usePreferences();
   // In a header's ⋮ menu: labeled, and pressing it closes the menu.
   const closeMenu = use(MenuContext);
-  const isLabelHidden = isIconOnly && !isShowingButtonLabels && closeMenu === undefined;
+  const isLabelHidden = isOnlyIconShown({
+    isIconOnly,
+    isInMenu: closeMenu !== undefined,
+    isLabelAlwaysHidden,
+    isShowingButtonLabels,
+  });
   styles.useVariants({ isIconOnly: isLabelHidden, variant });
   // The icon's color is a prop, not a style: read from the theme like the label's.
   const { theme } = useUnistyles();
@@ -177,3 +186,17 @@ const styles = StyleSheet.create((theme) => ({
     },
   },
 }));
+
+// Whether an icon-only button shows only its icon: not with Settings › "Show button labels", nor in a
+// ⋮ menu, unless its label has no room.
+function isOnlyIconShown(
+  options: Readonly<{
+    isIconOnly: boolean;
+    isInMenu: boolean;
+    isLabelAlwaysHidden: boolean | undefined;
+    isShowingButtonLabels: boolean;
+  }>,
+): boolean {
+  const { isIconOnly, isInMenu, isLabelAlwaysHidden = false, isShowingButtonLabels } = options;
+  return isIconOnly && (isLabelAlwaysHidden || (!isShowingButtonLabels && !isInMenu));
+}

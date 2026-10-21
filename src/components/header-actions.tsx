@@ -57,12 +57,12 @@ function FittingHeaderActions({
     const { width } = event.nativeEvent.layout;
     setWidths((previous) => (previous[key] === width ? previous : { ...previous, [key]: width }));
   };
-  const fit = toFit(widths, {
-    gap: theme.gap(2),
-    // The back button and the start of the title (its icon and a few letters), then the row's
-    // padding.
-    room: windowWidth - theme.size.touchTarget * 3 - theme.gap(3),
-  });
+  // The back button and the start of the title (its icon and a few letters), then the row's
+  // padding.
+  const room = windowWidth - theme.size.touchTarget * 3 - theme.gap(3);
+  const fit = toFit(widths, { gap: theme.gap(2), room });
+  // Labeled (Settings › "Show button labels"), ⋮ may not fit alone: then it's an icon only.
+  const isMenuLabelHidden = (widths.menuButton ?? 0) > room;
   const openMenu = () => {
     menuButtonRef.current?.measureInWindow((x, y, width, height) => {
       setAnchor({ right: windowWidth - x - width, top: y + height + theme.gap(1) });
@@ -91,7 +91,9 @@ function FittingHeaderActions({
       </View>
       {fit === 'all' && more}
       {fit !== 'menu' && children}
-      {fit !== 'all' && <MenuButton onPress={openMenu} ref={menuButtonRef} />}
+      {fit !== 'all' && (
+        <MenuButton isLabelHidden={isMenuLabelHidden} onPress={openMenu} ref={menuButtonRef} />
+      )}
       {anchor && (
         <Modal
           animationType="fade"
@@ -120,7 +122,11 @@ function FittingHeaderActions({
 }
 
 // The ⋮ button, opening the menu of the actions that don't fit.
-function MenuButton({ onPress, ref }: Readonly<{ onPress: () => void; ref?: Ref<ViewType> }>) {
+function MenuButton({
+  isLabelHidden = false,
+  onPress,
+  ref,
+}: Readonly<{ isLabelHidden?: boolean; onPress: () => void; ref?: Ref<ViewType> }>) {
   const t = useMessages();
 
   return (
@@ -128,6 +134,7 @@ function MenuButton({ onPress, ref }: Readonly<{ onPress: () => void; ref?: Ref<
       accessibilityHint={t.common.moreHint}
       icon="dots-vertical"
       isIconOnly
+      isLabelAlwaysHidden={isLabelHidden}
       label={t.common.more}
       onPress={onPress}
       ref={ref}
