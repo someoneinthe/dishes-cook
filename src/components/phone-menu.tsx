@@ -43,31 +43,36 @@ function MenuEntryList({
     inactiveTintColor: shownOptions?.drawerInactiveTintColor,
   };
 
-  return routeList.map((route) => {
-    const isFocused = route.key === shownKey;
-    const onPress = () => {
-      const event = navigation.emit({
-        canPreventDefault: true,
-        target: route.key,
-        type: 'drawerItemPress',
-      });
-      if (!event.defaultPrevented) {
-        navigation.dispatch({
-          ...(isFocused ? DrawerActions.closeDrawer() : CommonActions.navigate(route)),
-          target: state.key,
-        });
-      }
-    };
-    return (
-      <DrawerItem
-        {...colors}
-        {...entryOptions(route, descriptors[route.key]?.options)}
-        focused={isFocused}
-        key={route.key}
-        onPress={onPress}
-      />
-    );
-  });
+  // A fragment: Sonar (S100) only sees a component when it returns a JSX element, not an array.
+  return (
+    <>
+      {routeList.map((route) => {
+        const isFocused = route.key === shownKey;
+        const onPress = () => {
+          const event = navigation.emit({
+            canPreventDefault: true,
+            target: route.key,
+            type: 'drawerItemPress',
+          });
+          if (!event.defaultPrevented) {
+            navigation.dispatch({
+              ...(isFocused ? DrawerActions.closeDrawer() : CommonActions.navigate(route)),
+              target: state.key,
+            });
+          }
+        };
+        return (
+          <DrawerItem
+            {...colors}
+            {...entryOptions(route, descriptors[route.key]?.options)}
+            focused={isFocused}
+            key={route.key}
+            onPress={onPress}
+          />
+        );
+      })}
+    </>
+  );
 }
 
 function PhoneMenu(props: Readonly<DrawerContentComponentProps>) {
