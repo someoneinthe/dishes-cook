@@ -70,7 +70,7 @@ async function readCurrent() {
 
 // Reads one significant line into the feature; `state.stepList` is where steps go (background or
 // current scenario), undefined while still in the description; `state.exampleRowList`, where an
-// outline's examples go once its Examples line is read.
+// outline's examples go once an Examples line is read: each Examples section is a table of its own.
 function readLine(feature, state, line) {
   const { keyword, rest } = splitKeyword(line);
   if (keyword === 'Feature') {
@@ -84,11 +84,12 @@ function readLine(feature, state, line) {
   if (SCENARIO_KEYWORD_SET.has(keyword)) {
     state.stepList = [];
     state.exampleRowList = undefined;
-    feature.scenarioList.push({ exampleRowList: [], stepList: state.stepList, title: rest });
+    feature.scenarioList.push({ exampleTableList: [], stepList: state.stepList, title: rest });
     return;
   }
   if (EXAMPLES_KEYWORD_SET.has(keyword)) {
-    state.exampleRowList = feature.scenarioList.at(-1)?.exampleRowList;
+    state.exampleRowList = [];
+    feature.scenarioList.at(-1)?.exampleTableList.push(state.exampleRowList);
     return;
   }
   if (state.stepList === undefined) {
@@ -119,9 +120,9 @@ function renderFeature(feature) {
       '',
       ...renderSteps(scenario.stepList),
       '',
-      ...(scenario.exampleRowList.length > 0
-        ? ['**With each of:**', ...renderTable(scenario.exampleRowList)]
-        : []),
+      ...scenario.exampleTableList.flatMap((rowList) =>
+        rowList.length > 0 ? ['**With each of:**', ...renderTable(rowList)] : [],
+      ),
     ]),
   ].join('\n');
 }
