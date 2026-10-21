@@ -41,7 +41,7 @@ export const fr: Messages = {
     othersTitle: 'Rien pour personne d’autre',
     serverList: [
       'Désactivée par défaut. Dans Paramètres › Stockage des données, vous pouvez synchroniser avec un serveur PocketBase que vous installez et gérez vous-même, pour partager vos recettes entre vos appareils.',
-      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes et boissons (titre, plat ou boisson, type de plat, saison, temps, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Les paramètres restent sur chaque appareil.`,
+      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes et boissons (titre, plat ou boisson, type de plat, saison, temps de préparation et de cuisson, temps de maturation d’une boisson, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Les paramètres restent sur chaque appareil.`,
       'L’appareil garde l’adresse du serveur, votre e-mail et un jeton de connexion chiffré, jamais votre mot de passe. La connexion est chiffrée (HTTPS).',
       `Le serveur est à vous${NARROW_SPACE}: personne d’autre ne le gère, et les développeurs de l’application ne peuvent pas le voir.`,
     ],
@@ -253,12 +253,16 @@ export const fr: Messages = {
     ingredients: 'Ingrédients',
     ingredientsEmpty: 'Saisissez un ingrédient pour l’ajouter.',
     instructionsPlaceholder: 'Étapes, quantités, temps de cuisson…',
+    invalidMaturation: 'Entrez un nombre de mois jusqu’à 24, comme 0,5 ou 2.',
     invalidMinutes: 'Entrez un nombre de minutes, comme 20.',
     matchCount: (count) =>
       count === 0
         ? 'Aucune recette ne correspond à ces filtres.'
         : plural(count, '1 recette correspond.', `${count} recettes correspondent.`),
+    maturationTime: 'Maturation (mois)',
     minutesPlaceholder: 'ex. 20',
+    months: (count) => `${count}\u{A0}mois`,
+    monthsPlaceholder: 'ex. 0,5',
     new: 'Nouvelle',
     newHint: 'Demande s’il faut l’écrire ou la lire sur une photo',
     newRecipe: 'Nouvelle recette',
@@ -279,8 +283,7 @@ export const fr: Messages = {
     recipeText: 'Texte de la recette',
     removePhoto: 'Retirer la photo',
     removePhotoMessage: 'La recette reste telle quelle.',
-    rowLabel: (title, season, course, ingredients) =>
-      [title, season, course, ingredients].filter(Boolean).join(', '),
+    rowLabel: (title, detailList) => [title, ...detailList].filter(Boolean).join(', '),
     saveAsNew: 'Enregistrer comme nouvelle',
     saveHint: 'Enregistre la recette et l’affiche',
     saveRecipe: 'Enregistrer la recette',
@@ -298,6 +301,7 @@ export const fr: Messages = {
         times.prep && `Préparation ${times.prep}`,
         times.cook && `Cuisson ${times.cook}`,
         times.total && `${times.total} en tout`,
+        times.maturation && `Maturation ${times.maturation}`,
       ]
         .filter(Boolean)
         .join(' · '),

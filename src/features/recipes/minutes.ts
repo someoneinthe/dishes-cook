@@ -1,5 +1,6 @@
 import type { RecipeKind } from '@/db/schema';
 import type { Messages } from '@/i18n/en';
+import { formatMonths } from './months';
 
 // Preparation and cooking times, in whole minutes.
 
@@ -11,21 +12,31 @@ export function formatMinutes(t: Messages, minutes: number): string {
   return t.recipes.duration(Math.floor(minutes / 60), minutes % 60);
 }
 
-// "Preparation 15 min · Cooking 30 min · 45 min in all"; undefined when the recipe gives none.
+// "Preparation 15 min · Cooking 30 min · 45 min in all", "Preparation 15 min · Maturation 2 months"
+// for a drink; undefined when the recipe gives none.
 export function formatTimes(
   t: Messages,
-  times: Readonly<{ cookMinutes?: number; kind?: RecipeKind; prepMinutes?: number }>,
+  times: Readonly<{
+    cookMinutes?: number;
+    kind?: RecipeKind;
+    maturationMonths?: number;
+    prepMinutes?: number;
+  }>,
 ): string | undefined {
-  // A drink has a preparation time only.
-  const cookMinutes = times.kind === 'drink' ? undefined : times.cookMinutes;
+  // A drink has a preparation time and a maturation time; a dish, preparation and cooking.
+  const isDrink = times.kind === 'drink';
+  const cookMinutes = isDrink ? undefined : times.cookMinutes;
+  const maturationMonths = isDrink ? times.maturationMonths : undefined;
   const { prepMinutes } = times;
-  if (cookMinutes === undefined && prepMinutes === undefined) {
+  if (cookMinutes === undefined && prepMinutes === undefined && maturationMonths === undefined) {
     return undefined;
   }
   const format = (minutes: number | undefined) =>
     minutes === undefined ? undefined : formatMinutes(t, minutes);
   return t.recipes.times({
     cook: format(cookMinutes),
+    // Apart from the total: the waiting isn't time spent on the drink.
+    maturation: maturationMonths === undefined ? undefined : formatMonths(t, maturationMonths),
     prep: format(prepMinutes),
     total:
       cookMinutes === undefined || prepMinutes === undefined

@@ -34,6 +34,7 @@ import { getRecipe, isRecipeSaved, saveRecipe } from './db/recipe-queries';
 import { useNewIngredients } from './hooks/use-new-ingredients';
 import { kindTexts, useKindHeaderOptions } from './kind';
 import { parseMinutes } from './minutes';
+import { formatTypedMonths, parseMonths } from './months';
 import { parseScannedRecipe } from './recipe-from-text';
 import { deleteRecipePhoto } from './recipe-photos';
 import { seasonOptionList } from './season';
@@ -82,6 +83,8 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
   const savedCookMinutes = kind === 'drink' ? undefined : initialRecipe?.cookMinutes;
   const [timeDrafts, setTimeDrafts] = useState<TimeDrafts>(() => ({
     cook: savedCookMinutes === undefined ? '' : String(savedCookMinutes),
+    // A drink's only, as typed back ("1,5" in French).
+    maturation: formatTypedMonths(t, initialRecipe?.maturationMonths),
     prep: initialRecipe?.prepMinutes === undefined ? '' : String(initialRecipe.prepMinutes),
   }));
   const [invalidTimeList, setInvalidTimeList] = useState<(keyof TimeDrafts)[]>([]);
@@ -120,6 +123,7 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
   const titleRef = useRef<TextInput>(null);
   const prepRef = useRef<TextInput>(null);
   const cookRef = useRef<TextInput>(null);
+  const maturationRef = useRef<TextInput>(null);
   const keepAtTop = useKeepAtTop(scrollViewRef, contentRef);
   const amountRefMap = useRef(new Map<number, TextInput>());
   const choiceRefMap = useRef(new Map<number, Text>());
@@ -141,14 +145,23 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
     if (!cleanName(title)) {
       setTitleError(kindTexts(t, kind).titleRequired);
     }
-    const { cookMinutes, invalidList: timeErrorList, prepMinutes } = readTimes(timeDrafts);
+    const {
+      cookMinutes,
+      invalidList: timeErrorList,
+      maturationMonths,
+      prepMinutes,
+    } = readTimes(timeDrafts, kind);
     setInvalidTimeList(timeErrorList);
     const firstInvalid = firstInvalidField({
       amountRefMap: amountRefMap.current,
       choiceRefMap: choiceRefMap.current,
       invalidIdList,
       selectedList: selectedIngredientList,
-      timeInput: firstWrongTime(timeErrorList, { cook: cookRef.current, prep: prepRef.current }),
+      timeInput: firstWrongTime(timeErrorList, {
+        cook: cookRef.current,
+        maturation: maturationRef.current,
+        prep: prepRef.current,
+      }),
       titleInput: cleanName(title) ? undefined : titleRef.current,
       undecidedIdList,
     });
@@ -173,6 +186,7 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
       ingredientIdList: selectedIngredientList.map((ingredient) => ingredient.id),
       instructions,
       kind,
+      maturationMonths,
       newIngredientNames: newIngredients.nameMap,
       ...photoInput(photoFile, initialRecipe?.photoFile),
       prepMinutes,
@@ -278,9 +292,9 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
       )}
       <RecipeTimeFields
         drafts={timeDrafts}
-        inputRefs={{ cook: cookRef, prep: prepRef }}
+        inputRefs={{ cook: cookRef, maturation: maturationRef, prep: prepRef }}
         invalidList={invalidTimeList}
-        isCookHidden={kind === 'drink'}
+        kind={kind}
         onChange={(drafts) => {
           setTimeDrafts(drafts);
           setInvalidTimeList([]);
@@ -379,6 +393,8 @@ const EMPTY_DRAFT: QuantityDraft = { amountText: '' };
 
 // Space kept above a field brought into view, so its label shows too.
 const SCROLL_MARGIN = 48;
+// The time fields, in the order shown (a dish's cooking and a drink's maturation share a place).
+const TIME_FIELD_ORDER: readonly (keyof TimeDrafts)[] = ['prep', 'cook', 'maturation'];
 
 // A field Save found wrong: a text field, or a question to answer.
 type InvalidField = Readonly<{ input: TextInput } | { question: Text }>;
@@ -437,15 +453,13 @@ function firstInvalidField({
   return question ? { question } : undefined;
 }
 
-// The field of the first wrong time, in the order shown: preparation, then cooking.
+// The field of the first wrong time, in the order shown: preparation, then cooking or maturation.
 function firstWrongTime(
   invalidList: readonly (keyof TimeDrafts)[],
   inputs: Readonly<Record<keyof TimeDrafts, null | TextInput>>,
 ): null | TextInput | undefined {
-  if (invalidList.includes('prep')) {
-    return inputs.prep;
-  }
-  return invalidList.includes('cook') ? inputs.cook : undefined;
+  const field = TIME_FIELD_ORDER.find((name) => invalidList.includes(name));
+  return field === undefined ? undefined : inputs[field];
 }
 
 // Keeps a row's element by ingredient id while it's on screen.
@@ -515,18 +529,20 @@ function readRow(draft: QuantityDraft, saved: SavedQuantity | undefined): RowRea
   };
 }
 
-// The typed times as minutes (null: none), and the fields that aren't a number of minutes.
-function readTimes(drafts: TimeDrafts) {
-  const prepMinutes = parseMinutes(drafts.prep);
-  const cookMinutes = parseMinutes(drafts.cook);
-  const invalidList: (keyof TimeDrafts)[] = [];
-  if (prepMinutes === undefined) {
-    invalidList.push('prep');
-  }
-  if (cookMinutes === undefined) {
-    invalidList.push('cook');
-  }
-  return { cookMinutes, invalidList, prepMinutes };
+// The typed times as minutes, and a drink's maturation as months (null: none), and the fields
+// that aren't a usable time. A drink has no cooking time, a dish no maturation.
+function readTimes(drafts: TimeDrafts, kind: RecipeKind) {
+  const timeMap = {
+    cook: kind === 'dish' ? parseMinutes(drafts.cook) : null,
+    maturation: kind === 'drink' ? parseMonths(drafts.maturation) : null,
+    prep: parseMinutes(drafts.prep),
+  };
+  return {
+    cookMinutes: timeMap.cook,
+    invalidList: TIME_FIELD_ORDER.filter((field) => timeMap[field] === undefined),
+    maturationMonths: timeMap.maturation,
+    prepMinutes: timeMap.prep,
+  };
 }
 
 // The saved quantities: as the form shows them (in the reader's units, "1,5" in French), and as

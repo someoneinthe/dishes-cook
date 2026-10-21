@@ -39,6 +39,7 @@ erDiagram
     integer created_at
     text instructions
     text kind "dish / drink"
+    real maturation_months "nullable"
     text photo_file "nullable"
     text photo_pending "nullable"
     text photo_synced "nullable"

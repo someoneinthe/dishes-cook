@@ -104,6 +104,9 @@ export const recipes = sqliteTable(
     instructions: text('instructions').notNull().default(''),
     // A dish or a drink (RECIPE_KIND_LIST); checked by the code that writes it, like cookMinutes.
     kind: text('kind', { enum: RECIPE_KIND_LIST }).notNull().default('dish'),
+    // A drink's maturation time in months, as typed (0.5, 2); null = not given or a dish. Checked by
+    // the code that writes it, like cookMinutes.
+    maturationMonths: real('maturation_months'),
     // The recipe's photo: a file in the app's documents (RECIPE_PHOTO_FOLDER); null = none.
     photoFile: text('photo_file'),
     // The server's name of a newer photo to download (pulled from another phone); null = none.

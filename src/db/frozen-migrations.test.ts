@@ -32,6 +32,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
     '82d674a1d6381c835f07769ed67351884600cb68a5c2bbf24c2f18577dbd0e63',
   ],
   [
+    'server/migrations/1792600000-drink-maturation.js',
+    '27985b1a91f51989208660ba92e0285da2a89b135634733c5852bbe3132be3c8',
+  ],
+  [
     'src/db/migrations/0000_init.sql',
     '76cc3f90b737b4d4fc587e49f95b56a56dbffc1d15747624574ea1ef73c7a018',
   ],
@@ -62,6 +66,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
   [
     'src/db/migrations/0007_sort-keys-ligatures.sql',
     '6418f1637541e967d7614581b81c7ecbd934b3a79ea4e0388e9559bc9bcdf148',
+  ],
+  [
+    'src/db/migrations/0008_drink-maturation.sql',
+    '52b9b1c1731e3380200335f634277afc44e106345f7bcaf87d72055f554dcce7',
   ],
 ]);
 

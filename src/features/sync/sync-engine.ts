@@ -27,6 +27,7 @@ import {
   syncDeletions,
 } from '@/db/schema';
 import { toMinutes } from '@/features/recipes/minutes';
+import { toMonths } from '@/features/recipes/months';
 import { isSyncId } from '@/lib/sync-id';
 import { cleanName, toNameKey, toSortKey } from '@/lib/text';
 import { toQuantity, toStored } from '@/lib/units';
@@ -365,11 +366,10 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
     return 0;
   }
   const values = {
-    cookMinutes: toMinutes(row.cook_minutes) ?? null,
     course: toCourse(row.course),
     instructions: typeof row.instructions === 'string' ? row.instructions.trim() : '',
     kind: toRecipeKind(row.kind),
-    prepMinutes: toMinutes(row.prep_minutes) ?? null,
+    ...pulledTimes(row),
     season: toSeason(row.season),
     sortKey: toSortKey(title),
     title,
@@ -754,6 +754,15 @@ function pulledQuantity(quantities: unknown, syncId: string): Quantity | undefin
   return stored && toQuantity(stored.amount, stored.unit);
 }
 
+// A pulled recipe's times, kept when usable: minutes, and a drink's maturation in months.
+function pulledTimes(row: ServerRecipe) {
+  return {
+    cookMinutes: toMinutes(row.cook_minutes) ?? null,
+    maturationMonths: toMonths(row.maturation_months) ?? null,
+    prepMinutes: toMinutes(row.prep_minutes) ?? null,
+  };
+}
+
 async function pushCookedMeals(
   database: AppDatabase,
   api: SyncApi,
@@ -949,6 +958,7 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
         id: recipes.id,
         instructions: recipes.instructions,
         kind: recipes.kind,
+        maturationMonths: recipes.maturationMonths,
         photoFile: recipes.photoFile,
         photoPending: recipes.photoPending,
         photoSynced: recipes.photoSynced,
@@ -1009,6 +1019,7 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
           ingredients: ingredientSyncIdsByRecipe.get(row.id) ?? [],
           instructions: row.instructions,
           kind: row.kind,
+          maturation_months: row.maturationMonths ?? 0,
           modified: row.updatedAt,
           // The server's photo goes with the recipe's new version, never after it (a phone
           // pulling in between would keep it), unless it's the one this phone shows or is about

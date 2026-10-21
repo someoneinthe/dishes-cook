@@ -71,6 +71,15 @@ describe('recipe html', () => {
       expect(page).not.toContain('Main course');
     });
 
+    it('shows a drink’s maturation time, in the reader’s language', () => {
+      const drink = { ...soup, kind: 'drink' as const, maturationMonths: 1.5, prepMinutes: 20 };
+
+      expect(html(drink)).toContain('Preparation 20 min · Maturation 1.5 months');
+      expect(toRecipeHtml(fr, drink, { language: 'fr', units: 'metric' })).toContain(
+        'Maturation 1,5\u{A0}mois',
+      );
+    });
+
     it('shows the times, and embeds the photo in the page', () => {
       const page = toRecipeHtml(
         en,

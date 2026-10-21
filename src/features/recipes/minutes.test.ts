@@ -45,4 +45,14 @@ describe('minutes', () => {
     );
     expect(formatTimes(en, { cookMinutes: 30, kind: 'drink' })).toBeUndefined();
   });
+
+  it('shows a drink’s maturation time apart from the total, and never a dish’s', () => {
+    expect(formatTimes(en, { kind: 'drink', maturationMonths: 2, prepMinutes: 15 })).toBe(
+      'Preparation 15 min · Maturation 2 months',
+    );
+    expect(formatTimes(fr, { kind: 'drink', maturationMonths: 0.5 })).toBe(
+      'Maturation 0,5\u{A0}mois',
+    );
+    expect(formatTimes(en, { maturationMonths: 2 })).toBeUndefined();
+  });
 });
