@@ -84,21 +84,25 @@ describe('recipeFormScreen', () => {
     expect(firstIngredientPage(connection.db).map(({ name }) => name)).toStrictEqual(['Leek']);
   });
 
-  it('keeps one new ingredient typed again after being removed', async () => {
+  it('keeps one new ingredient typed again after being removed, with its quantity', async () => {
     await renderWithDatabase(<RecipeFormScreen />, connection);
 
     await fireEvent.changeText(screen.getByLabelText('Title'), 'Ginger tea');
     await fireEvent.changeText(screen.getByLabelText('Search ingredients'), 'Ginger');
     await fireEvent.press(screen.getByRole('button', { name: 'Create Ginger' }));
+    await fireEvent.changeText(screen.getByLabelText('Quantity of Ginger'), '2');
     await fireEvent.press(screen.getByRole('button', { name: 'Remove Ginger' }));
     await fireEvent.changeText(screen.getByLabelText('Search ingredients'), 'GINGER');
     await fireEvent.press(screen.getByRole('button', { name: 'Create GINGER' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
 
+    // The same new ingredient: its quantity as typed before it was removed.
+    expect(screen.getByLabelText('Quantity of Ginger')).toHaveDisplayValue('2');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
     const [{ id: savedId } = { id: -1 }] = firstRecipePage(connection.db);
 
     expect(getRecipe(connection.db, savedId)?.ingredientList).toStrictEqual([
-      { id: expect.any(Number) as number, name: 'Ginger' },
+      { id: expect.any(Number) as number, name: 'Ginger', quantity: { amount: 2 } },
     ]);
   });
 

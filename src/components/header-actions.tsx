@@ -25,11 +25,12 @@ type Widths = Readonly<{ children: number; menuButton: number; more: number }>;
 
 // The buttons of a screen, at the top right of its header (`headerRight` option).
 export function HeaderActions({ children, more }: HeaderActionsProps) {
-  return more === undefined ? (
-    <View style={styles.row}>{children}</View>
-  ) : (
-    <FittingHeaderActions more={more}>{children}</FittingHeaderActions>
-  );
+  // Sonar (S100) only sees a component when it returns a JSX element, not a ternary.
+  // eslint-disable-next-line unicorn/prefer-ternary
+  if (more === undefined) {
+    return <View style={styles.row}>{children}</View>;
+  }
+  return <FittingHeaderActions more={more}>{children}</FittingHeaderActions>;
 }
 
 // `headerRight` option showing `children` (and `more`, see HeaderActions) at the top right of the
