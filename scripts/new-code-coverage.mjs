@@ -120,7 +120,9 @@ function readLcovLine(line, fileMap, state) {
   const [tag, value = ''] = line.split(/:(.*)/s, 2);
   if (tag === 'SF') {
     state.coverage = { branchHitMap: new Map(), lineHitMap: new Map() };
-    fileMap.set(path.relative(ROOT, path.resolve(ROOT, value)), state.coverage);
+    // With / as git writes them, whatever the system.
+    const file = path.relative(ROOT, path.resolve(ROOT, value)).split(path.sep).join('/');
+    fileMap.set(file, state.coverage);
     return;
   }
   const { coverage } = state;

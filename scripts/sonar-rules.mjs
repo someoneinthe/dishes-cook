@@ -12,6 +12,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 import { format, resolveConfig } from 'prettier';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -145,7 +146,9 @@ async function readActiveRules({ organization, project }) {
 async function readBaseConfig() {
   const { ESLint } = require('eslint');
   const { builtinRules } = require('eslint/use-at-your-own-risk');
-  const { default: configList } = await import(path.join(ROOT, 'eslint.config.mjs'));
+  const { default: configList } = await import(
+    pathToFileURL(path.join(ROOT, 'eslint.config.mjs')).href
+  );
   const eslint = new ESLint({
     baseConfig: configList.filter(({ name }) => name !== GENERATED_BLOCK_NAME),
     cwd: ROOT,
