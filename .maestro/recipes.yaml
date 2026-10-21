@@ -12,7 +12,8 @@ name: Recipes
 - assertVisible: • Leek
 
 # Edit it. (Maestro hangs after tapping a text field that already has text: only empty fields are
-# typed in.)
+# typed in.) Its actions are in the header's ⋮ menu.
+- tapOn: More actions
 - tapOn: Edit
 - tapOn: Summer
 - tapOn: Main course
@@ -59,6 +60,7 @@ name: Recipes
 
 # Delete it, after confirming.
 - tapOn: Leek soup.*
+- tapOn: More actions
 - tapOn: Delete
 - assertVisible: Delete “Leek soup”?
 - tapOn:

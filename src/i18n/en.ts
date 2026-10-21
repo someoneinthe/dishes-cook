@@ -190,7 +190,6 @@ export const en = {
   mealChoice: {
     // Every matching recipe is in the shopping list: none left to suggest.
     allPicked: 'Every matching recipe is in your shopping list.',
-    another: 'Another one',
     createRecipe: 'Create a recipe',
     emptyMessage: 'Add a few recipes, then come back to let chance decide what to eat.',
     open: 'Open',
@@ -424,7 +423,7 @@ export const en = {
         `${count} meals are in your shopping list. Add more, or open the list with the button below to share their ingredients.`,
       ),
     helpStart:
-      'To make a shopping list, add one or more meals with “Add to list”, then open the list with the button that appears at the bottom to share their ingredients.',
+      'To make a shopping list, add one or more meals with the cart button, then open the list with the button that appears at the bottom to share their ingredients.',
     ingredients: 'Ingredients',
     markCooked: 'Mark as cooked',
     markCookedHint: 'The meal choice then skips them for a while',

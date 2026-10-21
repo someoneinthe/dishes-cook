@@ -104,18 +104,6 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('The suggestion offers another one', ({ and, given, then, when }) => {
-    given('these recipes:', theseRecipes);
-    when('I open the meal choice', openTheMealChoice);
-    and('I ask the suggestion for another one', async () => {
-      await fireEvent.press(screen.getByRole('button', { name: 'Another one' }));
-    });
-    then('the two suggestions are different', () => {
-      expect(firstSuggestion).toBeDefined();
-      expect(currentSuggestion()).not.toBe(firstSuggestion);
-    });
-  });
-
   test('The suggested recipe opens in full', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the meal choice', openTheMealChoice);

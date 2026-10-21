@@ -136,7 +136,6 @@ export function MealChoiceScreen() {
             <SuggestionCard
               isAddDisabled={pickList.length >= MAX_PICKS}
               onAddToList={addToList}
-              onAnother={suggestAnother}
               recipe={suggestion}
             />
           ) : (

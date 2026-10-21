@@ -11,7 +11,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Ingredient quantities](#ingredient-quantities): 3 scenarios
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
-- [Meal choice](#meal-choice): 7 scenarios
+- [Meal choice](#meal-choice): 6 scenarios
 - [Meal history](#meal-history): 8 scenarios
 - [On a TV](#on-a-tv): 4 scenarios
 - [Recipe list](#recipe-list): 9 scenarios
@@ -301,12 +301,6 @@ The app proposes a random recipe of the chosen season and course (a main course 
 
 - **When** I open the meal choice
 - **And** I ask for another suggestion
-- **Then** the two suggestions are different
-
-### The suggestion offers another one
-
-- **When** I open the meal choice
-- **And** I ask the suggestion for another one
 - **Then** the two suggestions are different
 
 ### The suggested recipe opens in full
@@ -675,7 +669,7 @@ A recipe's page shares it as a PDF (Share as PDF, at the top), through the phone
 
 ## Shopping list
 
-Meals are picked on the meal choice ("Add to list", which proposes another recipe; a "Shopping list" button then appears at the bottom) or on a recipe. The shopping list adds up their ingredients, in the reader's units, and shares them as text with another app (notes, messages, email…). On coming back from the share sheet, it offers to mark the meals as cooked (the meal history), which empties the list: Android doesn't tell whether something was sent, so the offer also comes after closing the sheet. The list isn't saved: it's forgotten when the app closes. It holds 50 meals at most. Not on a TV.
+Meals are picked on the meal choice (the cart button, "Add to list", which proposes another recipe; a "Shopping list" button then appears at the bottom) or on a recipe. The shopping list adds up their ingredients, in the reader's units, and shares them as text with another app (notes, messages, email…). On coming back from the share sheet, it offers to mark the meals as cooked (the meal history), which empties the list: Android doesn't tell whether something was sent, so the offer also comes after closing the sheet. The list isn't saved: it's forgotten when the app closes. It holds 50 meals at most. Not on a TV.
 
 **For every scenario:**
 

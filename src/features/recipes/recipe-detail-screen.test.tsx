@@ -1,9 +1,10 @@
-import { fireEvent, screen } from '@testing-library/react-native';
+import { screen } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { spyOnAlert } from '@/test/alert';
+import { pressInHeaderMenu } from '@/test/header-menu';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { getRecipe, saveRecipe } from './db/recipe-queries';
 import { RecipeDetailScreen } from './recipe-detail-screen';
@@ -49,7 +50,7 @@ describe('recipeDetailScreen', () => {
   it('opens the editor', async () => {
     await renderWithDatabase(<RecipeDetailScreen />, connection);
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Edit' }));
+    await pressInHeaderMenu('Edit');
 
     expect(router.push).toHaveBeenCalledWith({
       params: { id: String(id) },
@@ -61,7 +62,7 @@ describe('recipeDetailScreen', () => {
     const alert = spyOnAlert();
     await renderWithDatabase(<RecipeDetailScreen />, connection);
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Delete' }));
+    await pressInHeaderMenu('Delete');
     await alert.press('Delete');
 
     expect(getRecipe(connection.db, id)).toBeUndefined();

@@ -1,4 +1,3 @@
-import { fireEvent, screen } from '@testing-library/react-native';
 import { Directory } from 'expo-file-system';
 import { printToFileAsync } from 'expo-print';
 import { useLocalSearchParams } from 'expo-router';
@@ -8,6 +7,7 @@ import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { spyOnAlert } from '@/test/alert';
+import { pressInHeaderMenu } from '@/test/header-menu';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { saveRecipe } from './db/recipe-queries';
 import { RecipeDetailScreen } from './recipe-detail-screen';
@@ -51,7 +51,7 @@ defineFeature(feature, (test) => {
     await renderWithDatabase(<RecipeDetailScreen />, connection);
   };
   const shareIt = async () => {
-    await fireEvent.press(screen.getByRole('button', { name: 'Share as PDF' }));
+    await pressInHeaderMenu('Share as PDF');
   };
 
   test('A recipe is shared as a PDF named after it', ({ and, given, then, when }) => {
