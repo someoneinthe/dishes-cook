@@ -9,7 +9,7 @@ import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 
 // Opening the app lands on the meal choice.
-// eslint-disable-next-line @typescript-eslint/naming-convention -- name required by Expo Router.
+// eslint-disable-next-line @typescript-eslint/naming-convention, sonarjs/variable-name -- name required by Expo Router.
 export const unstable_settings = { initialRouteName: 'index' };
 
 // The burger menu.
