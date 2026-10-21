@@ -111,6 +111,7 @@ jobs:
               - '.maestro/**'
               - 'scripts/test-e2e.sh'
               - 'scripts/pocketbase-server.sh'
+              - 'scripts/e2e-failed-flows.mjs'
               - '.github/actions/build-android-apk/**'
               - '.github/workflows/ci.yml'
       - name: Decide whether to run
@@ -169,19 +170,35 @@ jobs:
           # The launcher of a freshly booted emulator freezes now and then ("Pixel Launcher isn't
           # responding"), and its dialog covers the app at any step. The flows start the app
           # themselves: hide such dialogs and switch the launcher off.
+          # --retry: a flow that fails runs once more (on a new sync server), and fails the job only
+          # if it fails again; one that passes the second time leaves a "Flaky end-to-end flow"
+          # warning on the run. It's for this x86_64 emulator's own crashes, which a rerun passes:
+          # the app killed at launch right after clearState, a native SIGSEGV in GWP-ASan's
+          # backtrace during a Hermes free. A flow failing because something is hidden or out of
+          # reach (behind the keyboard, off screen) is an app bug that users hit too (CLAUDE.md):
+          # it fails twice, so fix the app, don't count on the retry.
           script: |
             adb install "$APK"
             adb shell settings put global hide_error_dialogs 1
             adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
-            npm run test:e2e -- --format junit --output "$RUNNER_TEMP/maestro-report.xml" --test-output-dir "$RUNNER_TEMP/maestro-output" .maestro
+            npm run test:e2e -- --retry --output-dir "$RUNNER_TEMP/maestro-output" .maestro
+      # Whether a flow failed once (attempt-2 holds its retry), to keep the screenshots and logs of
+      # a flaky run too.
+      - name: Check for a retried flow
+        id: retried
+        if: (success() || failure()) && steps.run.outputs.e2e == 'true'
+        run: |
+          if [[ -d "$RUNNER_TEMP/maestro-output/attempt-2" ]]; then
+            echo "retried=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Keep screenshots and logs of failed flows
-        if: failure() && steps.run.outputs.e2e == 'true'
+        if: (failure() || steps.retried.outputs.retried == 'true') && steps.run.outputs.e2e == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: maestro-output
-          path: |
-            ${{ runner.temp }}/maestro-output/
-            ${{ runner.temp }}/maestro-report.xml
+          # attempt-1, and attempt-2 for the retry: Maestro's JUnit report, screenshots and logs,
+          # and the emulator's log (logcat.txt) of a failed run.
+          path: ${{ runner.temp }}/maestro-output/
 
   changes:
     # Decides whether the Android build must run:

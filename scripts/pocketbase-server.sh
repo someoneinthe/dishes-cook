@@ -1,5 +1,6 @@
 # Sourced by test-pocketbase.sh and test-e2e.sh: starts a throwaway PocketBase for tests, stopped
-# and deleted when the calling script exits. The version is server/pocketbase-version's (or
+# and deleted when the calling script exits (or by stop_pocketbase: start_pocketbase then starts a
+# new, empty one). The version is server/pocketbase-version's (or
 # $POCKETBASE_VERSION), downloaded once into node_modules/.cache and checked against the release's
 # checksums; it starts empty with server/migrations on a free local port.
 # Sets POCKETBASE_URL, POCKETBASE_PORT and a throwaway superuser (POCKETBASE_SUPERUSER_EMAIL and
@@ -39,14 +40,18 @@ pocketbase_binary() {
   echo "$cache/pocketbase"
 }
 
-pocketbase_work="$(mktemp -d)"
+pocketbase_work=""
 pocketbase_pid=""
 stop_pocketbase() {
   if [[ -n "$pocketbase_pid" ]]; then
     kill "$pocketbase_pid" 2>/dev/null || true
     wait "$pocketbase_pid" 2>/dev/null || true
+    pocketbase_pid=""
   fi
-  rm -rf "$pocketbase_work"
+  if [[ -n "$pocketbase_work" ]]; then
+    rm -rf "$pocketbase_work"
+    pocketbase_work=""
+  fi
 }
 trap stop_pocketbase EXIT
 
@@ -74,6 +79,7 @@ exclude_this_machine_from_rate_limits() {
 start_pocketbase() {
   local binary
   binary="$(pocketbase_binary)"
+  pocketbase_work="$(mktemp -d)"
   POCKETBASE_PORT="$(node -e 'const s = require("node:net").createServer().listen(0, "127.0.0.1", () => { console.log(s.address().port); s.close(); })')"
   POCKETBASE_URL="http://127.0.0.1:$POCKETBASE_PORT"
   POCKETBASE_SUPERUSER_EMAIL="superuser@example.org"
