@@ -8,6 +8,7 @@
 //   npm run coverage:new                    fails if the new code's coverage is under 80 %
 //   npm run coverage:new -- --base <commit>  the new code since another commit
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -17,6 +18,10 @@ const LCOV_PATH = path.join(ROOT, 'coverage/lcov.info');
 // SonarQube Cloud's quality gate: coverage on new code.
 const MIN_COVERAGE = 80;
 const BASE_BRANCH_LIST = ['origin/main', 'main'];
+// The files Jest measures (jest.config.js › collectCoverageFrom) and Sonar counts: the app's code,
+// without the tests, their helpers, the routes (src/app) and type declarations.
+const UNMEASURED_PATTERN = /\.test\.tsx?$|\.d\.ts$|^src\/(?:app|test)\//;
+const MEASURED_PATTERN = /\.tsx?$/;
 
 const coverageMap = parseLcov(await readFile(LCOV_PATH, 'utf8'));
 const baseOption = process.argv.indexOf('--base');
@@ -27,9 +32,15 @@ const changedLineMap = readChangedLines(
 const total = { covered: 0, toCover: 0 };
 const uncoveredList = [];
 for (const [file, lineSet] of changedLineMap) {
+  if (!MEASURED_PATTERN.test(file) || UNMEASURED_PATTERN.test(file)) {
+    continue;
+  }
   const coverage = coverageMap.get(file);
   if (coverage === undefined) {
-    continue;
+    // A report older than the file: its lines would be left out of the count.
+    throw new Error(
+      `${file} isn't in coverage/lcov.info: run the tests with coverage first (npm run test:coverage).`,
+    );
   }
   const missedLineList = [];
   for (const line of lineSet) {
@@ -92,7 +103,8 @@ function readBase() {
   throw new Error('No main branch to compare with: `git fetch origin main` first.');
 }
 
-// The lines added or changed since `base`, by file (relative path): the "+" side of each hunk.
+// The lines added or changed since `base`, by file (relative path): the "+" side of each hunk, and
+// every line of the files git doesn't track yet.
 function readChangedLines(base) {
   const lineMap = new Map();
   let file;
@@ -111,6 +123,14 @@ function readChangedLines(base) {
       lineSet.add(Number(start) + offset);
     }
     lineMap.set(file, lineSet);
+  }
+  const untrackedList = git('ls-files', '--others', '--exclude-standard', '--', 'src').split('\n');
+  for (const untracked of untrackedList) {
+    if (untracked === '') {
+      continue;
+    }
+    const lineCount = readFileSync(path.join(ROOT, untracked), 'utf8').split('\n').length;
+    lineMap.set(untracked, new Set(Array.from({ length: lineCount }, (_, index) => index + 1)));
   }
   return lineMap;
 }

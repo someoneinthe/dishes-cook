@@ -84,7 +84,7 @@ const next = await format(JSON.stringify(generated), {
   ...(await resolveConfig(RULES_PATH)),
   filepath: RULES_PATH,
 });
-const current = await readCurrent();
+const current = await readFile(RULES_PATH, 'utf8');
 
 if (process.argv.includes('--check')) {
   if (next === current) {
@@ -168,15 +168,6 @@ async function readBaseConfig() {
     const [severity] = [config.rules[rule] ?? 0].flat();
     return severity !== 0 && severity !== 'off';
   };
-}
-
-// The rules file as committed; none yet the first time.
-async function readCurrent() {
-  try {
-    return await readFile(RULES_PATH, 'utf8');
-  } catch {
-    return '';
-  }
 }
 
 // Sonar rule keys (S107…) and their ESLint rules: eslint-plugin-sonarjs's own, by their docs URL,
