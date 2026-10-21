@@ -20,8 +20,9 @@ type HeaderActionsProps = Readonly<{
   more?: ReactNode;
 }>;
 
-// Widths of the buttons as they'd be shown in the header: `children`, `more`, and the ⋮ button.
-type Widths = Readonly<{ children: number; menuButton: number; more: number }>;
+// Widths of the buttons as they'd be shown in the header: `children`, `more`, and the ⋮ button,
+// labeled as other buttons are and as an icon only.
+type Widths = Readonly<{ children: number; menuButton: number; menuIcon: number; more: number }>;
 
 // The buttons of a screen, at the top right of its header (`headerRight` option).
 export function HeaderActions({ children, more }: HeaderActionsProps) {
@@ -60,9 +61,13 @@ function FittingHeaderActions({
   // The back button and the start of the title (its icon and a few letters), then the row's
   // padding.
   const room = windowWidth - theme.size.touchTarget * 3 - theme.gap(3);
-  const fit = toFit(widths, { gap: theme.gap(2), room });
-  // Labeled (Settings › "Show button labels"), ⋮ may not fit alone: then it's an icon only.
+  // Labeled (Settings › "Show button labels"), ⋮ may not fit alone: then it's an icon only, and
+  // what fits is worked out with that width.
   const isMenuLabelHidden = (widths.menuButton ?? 0) > room;
+  const fit = toFit(
+    { ...widths, menuButton: isMenuLabelHidden ? widths.menuIcon : widths.menuButton },
+    { gap: theme.gap(2), room },
+  );
   const openMenu = () => {
     menuButtonRef.current?.measureInWindow((x, y, width, height) => {
       setAnchor({ right: windowWidth - x - width, top: y + height + theme.gap(1) });
@@ -87,6 +92,9 @@ function FittingHeaderActions({
         </View>
         <View onLayout={measure('menuButton')} style={styles.group} testID="measured-menuButton">
           <MenuButton onPress={() => {}} />
+        </View>
+        <View onLayout={measure('menuIcon')} style={styles.group} testID="measured-menuIcon">
+          <MenuButton isLabelHidden onPress={() => {}} />
         </View>
       </View>
       {fit === 'all' && more}
@@ -146,7 +154,7 @@ function MenuButton({
 // What fits in `room`: every button, else `children` and ⋮, else ⋮ alone. Every button until
 // they're measured: they usually fit.
 function toFit(
-  widths: Partial<Widths>,
+  widths: Partial<Omit<Widths, 'menuIcon'>>,
   { gap, room }: Readonly<{ gap: number; room: number }>,
 ): Fit {
   const { children, menuButton, more } = widths;

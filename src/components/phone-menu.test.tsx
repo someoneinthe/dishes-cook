@@ -43,12 +43,11 @@ describe('phoneMenu', () => {
 
     const entryList = screen.getAllByRole('button');
 
-    expect(entryList.map((entry) => entry.props.accessibilityLabel as unknown)).toStrictEqual([
-      'Meal choice',
-      'Recipes',
-      'Settings',
-      'About',
-    ]);
+    expect(entryList).toStrictEqual(
+      ['Meal choice', 'Recipes', 'Settings', 'About'].map((name) =>
+        screen.getByRole('button', { name }),
+      ),
+    );
   });
 
   it('opens the screen of an entry, and closes the menu on the screen shown', async () => {

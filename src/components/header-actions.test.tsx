@@ -58,6 +58,11 @@ describe('headerActions', () => {
       'layout',
       layoutEvent(widths.menuButton ?? 48),
     );
+    await fireEvent(
+      screen.getByTestId('measured-menuIcon', { includeHiddenElements: true }),
+      'layout',
+      layoutEvent(48),
+    );
   };
 
   afterEach(() => {
@@ -90,6 +95,12 @@ describe('headerActions', () => {
     expect(screen.getByRole('button', { name: 'More actions' })).not.toHaveTextContent(
       'More actions',
     );
+  });
+
+  it('keeps the main actions beside ⋮ when it fits as an icon only', async () => {
+    await renderActions({ children: 500, menuButton: 750, more: 600 });
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeOnTheScreen();
   });
 
   it('puts every action in the menu when even the main ones do not fit', async () => {
