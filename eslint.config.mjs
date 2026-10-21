@@ -15,8 +15,11 @@ import testingLibrary from 'eslint-plugin-testing-library';
 import unicorn from 'eslint-plugin-unicorn';
 import unusedImports from 'eslint-plugin-unused-imports';
 import { defineConfig } from 'eslint/config';
+import { createRequire } from 'node:module';
 import tseslint from 'typescript-eslint';
 
+// The rules SonarQube Cloud checks that the rest of this config leaves off (scripts/sonar-rules.mjs).
+const sonarRules = createRequire(import.meta.url)('./eslint.sonar-rules.json');
 const TS_FILES = ['**/*.ts', '**/*.tsx'];
 const TEST_FILES = ['**/*.test.ts', '**/*.test.tsx'];
 // Text rules (no-restricted-syntax below): what users read comes from the dictionaries.
@@ -225,7 +228,14 @@ export default defineConfig([
   },
 
   // Rules SonarQube Cloud checks on the app's code (sonar-project.properties: src without tests),
-  // whose quality gate fails CI on any new issue: found here first (S9382, S909/S135, S134).
+  // whose quality gate fails CI on any new issue: found here first. The ones the rest of this config
+  // leaves off come from its quality profile (`npm run lint:sonar-rules`, scripts/sonar-rules.mjs).
+  {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: [...TEST_FILES, 'src/test/**'],
+    name: 'sonar/generated',
+    rules: sonarRules.rules,
+  },
   {
     files: ['src/**/*.ts', 'src/**/*.tsx'],
     ignores: [...TEST_FILES, 'src/test/**'],

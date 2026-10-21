@@ -1,0 +1,4 @@
+# What CI's "Lint, typecheck & test" job checks, locally (SonarQube Cloud's rules and its coverage of
+# new code included; not the PocketBase sync tests), so a push doesn't fail on it: skip with
+# `git push --no-verify`.
+npm run check
