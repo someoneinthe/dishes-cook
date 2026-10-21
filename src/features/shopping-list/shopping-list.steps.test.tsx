@@ -12,6 +12,7 @@ import { getLastCookedMeal } from '@/features/meal-history/db/cooked-meal-querie
 import { getRecipeSyncId, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { RecipeDetailScreen } from '@/features/recipes/recipe-detail-screen';
 import { calendarDaysAgo } from '@/lib/dates';
+import { pressInHeaderMenu } from '@/test/header-menu';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { addPick, clearPicks, getPicks } from './meal-picks';
 import { ShoppingListScreen } from './shopping-list-screen';
@@ -120,7 +121,7 @@ defineFeature(feature, (test) => {
       expect(screen.queryByRole('button', { name: /^Shopping list/ })).not.toBeOnTheScreen();
       expect(
         screen.getByText(
-          'To make a shopping list, add one or more meals with “Add to list”, then open the list with the button that appears at the bottom to share their ingredients.',
+          'To make a shopping list, add one or more meals with the cart button, then open the list with the button that appears at the bottom to share their ingredients.',
         ),
       ).toBeOnTheScreen();
     });
@@ -247,7 +248,7 @@ defineFeature(feature, (test) => {
         .mocked(useLocalSearchParams)
         .mockReturnValue({ id: String(idByTitle.get(firstSuggestion!)) });
       await rerender(<MealChoiceWithRecipe isRecipeOpen />);
-      await fireEvent.press(screen.getByRole('button', { name: 'Add to the shopping list' }));
+      await pressInHeaderMenu('Add to the shopping list');
     });
     and('I go back to the meal choice', async () => {
       await rerender(<MealChoiceWithRecipe />);
@@ -288,13 +289,13 @@ defineFeature(feature, (test) => {
     given('these recipes:', theseRecipes);
     when(/^I open "(.*)"$/, openTheRecipe);
     and('I add it to the shopping list', async () => {
-      await fireEvent.press(screen.getByRole('button', { name: 'Add to the shopping list' }));
+      await pressInHeaderMenu('Add to the shopping list');
     });
     then(/^the shopping list holds (\d+) meal$/, (count: string) => {
       expect(getPicks()).toHaveLength(Number(count));
     });
     when('I take it out of the shopping list', async () => {
-      await fireEvent.press(screen.getByRole('button', { name: 'Remove from the shopping list' }));
+      await pressInHeaderMenu('Remove from the shopping list');
     });
     then('the shopping list is empty', () => {
       expect(getPicks()).toStrictEqual([]);

@@ -160,7 +160,6 @@ export const fr: Messages = {
   },
   mealChoice: {
     allPicked: 'Toutes les recettes qui correspondent sont dans votre liste de courses.',
-    another: 'Une autre',
     createRecipe: 'Créer une recette',
     emptyMessage: 'Ajoutez quelques recettes, puis revenez laisser le hasard choisir le repas.',
     open: 'Ouvrir',
@@ -371,7 +370,7 @@ export const fr: Messages = {
         '1\u{A0}repas est dans votre liste de courses. Ajoutez-en d’autres, ou ouvrez la liste avec le bouton ci-dessous pour partager ses ingrédients.',
         `${count}\u{A0}repas sont dans votre liste de courses. Ajoutez-en d’autres, ou ouvrez la liste avec le bouton ci-dessous pour partager leurs ingrédients.`,
       ),
-    helpStart: `Pour faire une liste de courses, ajoutez un ou plusieurs repas avec ${quote('Ajouter à la liste')}, puis ouvrez la liste avec le bouton qui apparaît en bas pour partager leurs ingrédients.`,
+    helpStart: `Pour faire une liste de courses, ajoutez un ou plusieurs repas avec le bouton panier, puis ouvrez la liste avec le bouton qui apparaît en bas pour partager leurs ingrédients.`,
     ingredients: 'Ingrédients',
     markCooked: 'Noter comme cuisinés',
     markCookedHint: 'Le choix du repas les évite ensuite pendant un temps',

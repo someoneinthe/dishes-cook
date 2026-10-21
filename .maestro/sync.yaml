@@ -73,6 +73,7 @@ name: Server sync
 
 # A deletion reaches the server, marked deleted there.
 - tapOn: Pumpkin pie.*
+- tapOn: More actions
 - tapOn: Delete
 - tapOn:
     text: DELETE|Delete

@@ -4,6 +4,7 @@ import { defineFeature, loadFeature } from 'jest-cucumber';
 import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
 import { MealChoiceScreen } from '@/features/meal-choice/meal-choice-screen';
+import { openHeaderMenu } from '@/test/header-menu';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { listRecipePage, saveRecipe } from './db/recipe-queries';
 import { DrinksScreen } from './drinks-screen';
@@ -162,7 +163,9 @@ defineFeature(feature, (test) => {
       expect(screen.queryByText('Main course')).not.toBeOnTheScreen();
       expect(screen.queryByRole('button', { name: /I cooked it/ })).not.toBeOnTheScreen();
     });
-    and('it can be added to the shopping list', () => {
+    and('it can be added to the shopping list', async () => {
+      await openHeaderMenu();
+
       expect(screen.getByRole('button', { name: 'Add to the shopping list' })).toBeOnTheScreen();
     });
   });

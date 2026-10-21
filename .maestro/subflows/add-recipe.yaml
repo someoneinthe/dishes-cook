@@ -19,5 +19,5 @@ appId: io.github.someoneinthe.dishescook
 - hideKeyboard
 - tapOn: Save recipe
 - extendedWaitUntil:
-    visible: Edit
+    visible: More actions
     timeout: 10000

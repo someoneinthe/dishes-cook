@@ -4,7 +4,7 @@ import { ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
-import { headerActions } from '@/components/header-actions';
+import { headerMenu } from '@/components/header-actions';
 import { screenScrollProps } from '@/components/screen-scroll-props';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useDatabase } from '@/db/database-context';
@@ -59,13 +59,7 @@ export function RecipeDetailScreen() {
     });
   };
 
-  // Sharing and the shopping list go in a ⋮ menu when the header has no room for them.
-  const moreHeaderButtons = (
-    <>
-      <ShareRecipeButton recipe={recipe} />
-      <ShoppingListToggle recipeId={recipe.id} />
-    </>
-  );
+  // Every action in a ⋮ menu, labeled: deletion last.
   const headerButtons = (
     <>
       <Button
@@ -77,6 +71,8 @@ export function RecipeDetailScreen() {
         }
         variant="secondary"
       />
+      <ShareRecipeButton recipe={recipe} />
+      <ShoppingListToggle recipeId={recipe.id} />
       <Button
         icon="trash-can-outline"
         isIconOnly
@@ -92,7 +88,7 @@ export function RecipeDetailScreen() {
       <Stack.Screen
         options={{
           // Read-only on a TV: recipes are edited on the phone.
-          headerRight: isTv ? undefined : headerActions(headerButtons, moreHeaderButtons),
+          headerRight: isTv ? undefined : headerMenu(headerButtons),
           title: recipe.title,
           ...kindHeaderOptions,
         }}

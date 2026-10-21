@@ -43,6 +43,18 @@ export function headerActions(children: ReactNode, more?: ReactNode) {
   };
 }
 
+// `headerRight` option showing only ⋮, its menu holding every button in `children` (labeled): for a
+// screen whose actions read better with their text than as a row of icons.
+export function headerMenu(children: ReactNode) {
+  return function HeaderRight() {
+    return (
+      <View style={styles.row}>
+        <HeaderMenu>{children}</HeaderMenu>
+      </View>
+    );
+  };
+}
+
 // The buttons that fit, the others in a ⋮ menu. Their widths depend on the labels (Settings ›
 // "Show button labels"), the language and the font size: an invisible copy of them is measured.
 function FittingHeaderActions({
@@ -52,8 +64,6 @@ function FittingHeaderActions({
   const { theme } = useUnistyles();
   const { width: windowWidth } = useWindowDimensions();
   const [widths, setWidths] = useState<Partial<Widths>>({});
-  const [anchor, setAnchor] = useState<Anchor>();
-  const menuButtonRef = useRef<ViewType>(null);
   const measure = (key: keyof Widths) => (event: LayoutChangeEvent) => {
     const { width } = event.nativeEvent.layout;
     setWidths((previous) => (previous[key] === width ? previous : { ...previous, [key]: width }));
@@ -68,12 +78,6 @@ function FittingHeaderActions({
     { ...widths, menuButton: isMenuLabelHidden ? widths.menuIcon : widths.menuButton },
     { gap: theme.gap(2), room },
   );
-  const openMenu = () => {
-    menuButtonRef.current?.measureInWindow((x, y, width, height) => {
-      setAnchor({ right: windowWidth - x - width, top: y + height + theme.gap(1) });
-    });
-  };
-  const closeMenu = () => setAnchor(undefined);
 
   return (
     <View style={styles.row}>
@@ -100,8 +104,34 @@ function FittingHeaderActions({
       {fit === 'all' && more}
       {fit !== 'menu' && children}
       {fit !== 'all' && (
-        <MenuButton isLabelHidden={isMenuLabelHidden} onPress={openMenu} ref={menuButtonRef} />
+        <HeaderMenu isLabelHidden={isMenuLabelHidden}>
+          {more}
+          {fit === 'menu' && children}
+        </HeaderMenu>
       )}
+    </View>
+  );
+}
+
+// The ⋮ button and the menu it opens, holding `children`.
+function HeaderMenu({
+  children,
+  isLabelHidden = false,
+}: Readonly<{ children: ReactNode; isLabelHidden?: boolean }>) {
+  const { theme } = useUnistyles();
+  const { width: windowWidth } = useWindowDimensions();
+  const [anchor, setAnchor] = useState<Anchor>();
+  const menuButtonRef = useRef<ViewType>(null);
+  const openMenu = () => {
+    menuButtonRef.current?.measureInWindow((x, y, width, height) => {
+      setAnchor({ right: windowWidth - x - width, top: y + height + theme.gap(1) });
+    });
+  };
+  const closeMenu = () => setAnchor(undefined);
+
+  return (
+    <>
+      <MenuButton isLabelHidden={isLabelHidden} onPress={openMenu} ref={menuButtonRef} />
       {anchor && (
         <Modal
           animationType="fade"
@@ -118,14 +148,11 @@ function FittingHeaderActions({
             style={styles.backdrop}
           />
           <View accessibilityViewIsModal style={[styles.menu, anchor]}>
-            <MenuContext value={closeMenu}>
-              {more}
-              {fit === 'menu' && children}
-            </MenuContext>
+            <MenuContext value={closeMenu}>{children}</MenuContext>
           </View>
         </Modal>
       )}
-    </View>
+    </>
   );
 }
 

@@ -16,16 +16,13 @@ type SuggestionCardProps = Readonly<{
   isAddDisabled?: boolean;
   // Adds it to the shopping list (then another one is proposed). No button on a TV.
   onAddToList: (recipeId: number) => void;
-  // Picks another recipe with the same filters.
-  onAnother: () => void;
   recipe: Recipe;
 }>;
 
-// The suggested recipe, in short: Open shows it in full, Another one picks again.
+// The suggested recipe, in short: Open shows it in full (the header's Suggest picks another one).
 export function SuggestionCard({
   isAddDisabled = false,
   onAddToList,
-  onAnother,
   recipe,
 }: SuggestionCardProps) {
   const t = useMessages();
@@ -48,8 +45,8 @@ export function SuggestionCard({
         {times !== undefined && <Text style={styles.detail}>{times}</Text>}
       </View>
       <LastCooked recipeId={recipe.id} />
-      {/* The buttons fill their rows: when they wrap (narrow phone, large font), the rows line up
-          at both edges. */}
+      {/* Icons only, like the other icon buttons (their text with Settings › Show button labels), at
+          the end of the card. */}
       <View style={styles.actions}>
         {!isTv && (
           <Button
@@ -59,24 +56,17 @@ export function SuggestionCard({
             accessibilityLabel={t.shoppingList.addLabel(recipe.title)}
             icon="cart-plus"
             isDisabled={isAddDisabled}
-            isFilling
+            isIconOnly
             label={t.shoppingList.add}
             onPress={() => onAddToList(recipe.id)}
             variant="secondary"
           />
         )}
         <Button
-          accessibilityHint={t.mealChoice.suggestHint}
-          icon="dice-multiple"
-          isFilling
-          label={t.mealChoice.another}
-          onPress={onAnother}
-          variant="secondary"
-        />
-        <Button
           accessibilityHint={t.recipes.openHint}
           accessibilityLabel={t.mealChoice.openLabel(recipe.title)}
-          isFilling
+          icon="eye"
+          isIconOnly
           label={t.mealChoice.open}
           onPress={() =>
             router.push({ params: { id: String(recipe.id) }, pathname: '/recipe/[id]' })
@@ -92,6 +82,7 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.gap(2),
+    justifyContent: 'flex-end',
   },
   card: {
     backgroundColor: theme.colors.surface,

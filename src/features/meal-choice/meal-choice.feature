@@ -37,11 +37,6 @@ Feature: Meal choice
     And I ask for another suggestion
     Then the two suggestions are different
 
-  Scenario: The suggestion offers another one
-    When I open the meal choice
-    And I ask the suggestion for another one
-    Then the two suggestions are different
-
   Scenario: The suggested recipe opens in full
     When I open the meal choice
     And I open the suggestion

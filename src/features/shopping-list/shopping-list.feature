@@ -1,6 +1,6 @@
 Feature: Shopping list
-  Meals are picked on the meal choice ("Add to list", which proposes another
-  recipe; a "Shopping list" button then appears at the bottom) or on a
+  Meals are picked on the meal choice (the cart button, "Add to list", which
+  proposes another recipe; a "Shopping list" button then appears at the bottom) or on a
   recipe. The shopping list adds up their ingredients, in the reader's units,
   and shares them as text with another app (notes, messages, email…). On
   coming back from the share sheet, it offers to mark the meals as cooked
