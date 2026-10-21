@@ -33,10 +33,12 @@ function decodeXml(text) {
   return text.replaceAll(/&(amp|apos|gt|lt|quot);/g, (_, entity) => XML_ENTITY_MAP[entity]);
 }
 
+// Maestro writes the file absolute or relative to where it ran (the repository's root, as this
+// script): both resolved the same way.
 function isFlowOf(testCase, flow) {
   return testCase.file === undefined
     ? testCase.name === flow.name
-    : testCase.file === path.resolve(flow.file);
+    : path.resolve(testCase.file) === path.resolve(flow.file);
 }
 
 function listFlowFiles(flowPath) {

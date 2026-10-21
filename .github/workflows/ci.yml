@@ -111,6 +111,7 @@ jobs:
               - '.maestro/**'
               - 'scripts/test-e2e.sh'
               - 'scripts/pocketbase-server.sh'
+              - 'scripts/e2e-failed-flows.mjs'
               - '.github/actions/build-android-apk/**'
               - '.github/workflows/ci.yml'
       - name: Decide whether to run
