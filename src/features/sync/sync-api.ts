@@ -41,6 +41,8 @@ export type ServerRecipe = Readonly<{
   instructions: string;
   // 'dish' or 'drink'; empty (or missing, from an older server) = a dish.
   kind?: unknown;
+  // A drink's maturation time in months; 0 (or missing, from an older server) = not given.
+  maturation_months?: unknown;
   // The server's file name of its photo; '' = none (see server/migrations). Uploaded apart from the
   // other fields (a multipart request); `upsert` only clears it ('').
   photo?: unknown;

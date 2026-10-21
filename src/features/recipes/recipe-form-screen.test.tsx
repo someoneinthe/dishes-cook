@@ -294,6 +294,33 @@ describe('recipeFormScreen', () => {
     expect(router.back).toHaveBeenCalledTimes(1);
   });
 
+  it('edits a drink’s maturation time, shown as typed, and empties it', async () => {
+    const id = saveRecipe(connection.db, {
+      ingredientIdList: [],
+      instructions: '',
+      kind: 'drink',
+      maturationMonths: 1.5,
+      season: 'both',
+      title: 'Limoncello',
+    });
+    jest.mocked(useLocalSearchParams).mockReturnValue({ id: String(id) });
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    expect(screen.getByLabelText('Maturation (months)')).toHaveDisplayValue('1.5');
+
+    await fireEvent.changeText(screen.getByLabelText('Maturation (months)'), '');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save drink' }));
+
+    expect(getRecipe(connection.db, id)?.maturationMonths).toBeUndefined();
+  });
+
+  it('asks a dish for no maturation time', async () => {
+    await renderWithDatabase(<RecipeFormScreen />, connection);
+
+    expect(screen.getByLabelText('Cooking (min)')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Maturation (months)')).not.toBeOnTheScreen();
+  });
+
   it('requires a course: main course for a new recipe, the saved one when editing', async () => {
     jest.mocked(useLocalSearchParams).mockReturnValue({});
     await renderWithDatabase(<RecipeFormScreen />, connection);

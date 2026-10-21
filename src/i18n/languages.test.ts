@@ -27,9 +27,9 @@ describe('i18n', () => {
       expect(fr.recipes.ingredientCount(2)).toBe('2 ingrédients');
     });
 
-    it('describe a recipe row for screen readers, without its course when it has none', () => {
-      expect(fr.recipes.rowLabel('Soupe', 'Hiver', 'Entrée')).toBe('Soupe, Hiver, Entrée');
-      expect(en.recipes.rowLabel('Soup', 'Winter')).toBe('Soup, Winter');
+    it('describe a recipe row for screen readers, without the details it doesn’t have', () => {
+      expect(fr.recipes.rowLabel('Soupe', ['Hiver', 'Entrée'])).toBe('Soupe, Hiver, Entrée');
+      expect(en.recipes.rowLabel('Soup', ['Winter', undefined])).toBe('Soup, Winter');
     });
 
     it('follow French typography', () => {

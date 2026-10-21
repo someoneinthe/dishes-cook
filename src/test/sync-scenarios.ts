@@ -537,6 +537,25 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     expect(new Set(rowList.map(({ kind }) => kind))).toStrictEqual(new Set(['dish', 'drink']));
   });
 
+  it('brings a drink’s maturation time to the other phone, in months as typed', async () => {
+    saveRecipe(phoneA.db, {
+      ingredientIdList: [],
+      instructions: '',
+      kind: 'drink',
+      maturationMonths: 1.5,
+      season: 'both',
+      title: 'Limoncello',
+    });
+    addRecipe(phoneA, 'Soup');
+
+    await syncBoth();
+
+    expect(recipeOf(phoneB, 'Limoncello')?.maturationMonths).toBe(1.5);
+    expect(recipeOf(phoneB, 'Soup')?.maturationMonths).toBeUndefined();
+    const rowList = await server.rowsOf('recipes');
+    expect(new Set(rowList.map((row) => row.maturation_months))).toStrictEqual(new Set([0, 1.5]));
+  });
+
   it('only sends the rows changed since the last sync', async () => {
     addRecipe(phoneA, 'Soup');
     // Changed a while ago: not in the same millisecond as the sync below starts.

@@ -7,7 +7,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [A recipe from a photo](#a-recipe-from-a-photo): 10 scenarios
 - [A recipe's photo and times](#a-recipes-photo-and-times): 3 scenarios
 - [About](#about): 2 scenarios
-- [Drinks](#drinks): 4 scenarios
+- [Drinks](#drinks): 5 scenarios
 - [Ingredient quantities](#ingredient-quantities): 3 scenarios
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
@@ -145,7 +145,7 @@ The About page, in the menu, tells how the app handles your data: what stays on 
 
 ## Drinks
 
-Drinks (cocktails, smoothies, hot drinks…) are written like recipes, with their ingredients, times and photo, but without a season nor a course. They have their own list, Drinks in the menu, with the title search and the ingredient filter; Recipes lists the dishes only. The meal choice only suggests dishes, and drinks have no meal history, but a drink can be added to the shopping list from its page. They sync with the server like the dishes. Read-only on a TV.
+Drinks (cocktails, smoothies, hot drinks…) are written like recipes, with their ingredients, times and photo, but without a season nor a course nor a cooking time. A drink can have a maturation time instead (a liqueur, a flavoured wine), in months, which can be a fraction: it shows apart from the preparation time, on the drink's page, its PDF and the Drinks list. Drinks have their own list, Drinks in the menu, with the title search and the ingredient filter; Recipes lists the dishes only. The meal choice only suggests dishes, and drinks have no meal history, but a drink can be added to the shopping list from its page. They sync with the server like the dishes. Read-only on a TV.
 
 ### A drink is written without a season nor a course, and listed with the drinks only
 
@@ -156,13 +156,21 @@ Drinks (cocktails, smoothies, hot drinks…) are written like recipes, with thei
 - **Then** Drinks lists "Mojito" only
 - **And** Recipes lists "Leek soup" only
 
-### A drink has a preparation time, but no cooking time
+### A drink has a preparation and a maturation time, but no cooking time
 
-- **When** I write a new drink "Mojito"
-- **Then** the form asks for a preparation time but no cooking time
-- **When** I give it 5 minutes of preparation
+- **When** I write a new drink "Limoncello"
+- **Then** the form asks for a preparation and a maturation time but no cooking time
+- **When** I give it 20 minutes of preparation and "1.5" months of maturation
 - **And** I save the drink
-- **Then** the drink shows "Preparation 5 min"
+- **Then** the drink shows "Preparation 20 min · Maturation 1.5 months"
+- **And** Drinks shows "Maturation 1.5 months" on its row
+
+### A maturation time is a number of months up to 24
+
+- **When** I write a new drink "Limoncello"
+- **And** I give it 20 minutes of preparation and "1.125" months of maturation
+- **And** I save the drink
+- **Then** the form says "Enter a number of months up to 24, like 0.5 or 2."
 
 ### The meal choice never suggests a drink
 

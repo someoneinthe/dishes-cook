@@ -43,6 +43,10 @@ defineFeature(feature, (test) => {
     await renderWithDatabase(<RecipeFormScreen />, connection);
     await fireEvent.changeText(screen.getByLabelText('Title'), title);
   };
+  const giveTimes = async (minutes: string, months: string) => {
+    await fireEvent.changeText(screen.getByLabelText('Preparation (min)'), minutes);
+    await fireEvent.changeText(screen.getByLabelText('Maturation (months)'), months);
+  };
   const saveTheDrink = async () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Save drink' }));
   };
@@ -80,15 +84,18 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('A drink has a preparation time, but no cooking time', ({ and, then, when }) => {
+  test('A drink has a preparation and a maturation time, but no cooking time', ({
+    and,
+    then,
+    when,
+  }) => {
     when(/^I write a new drink "(.*)"$/, writeNewDrink);
-    then('the form asks for a preparation time but no cooking time', () => {
+    then('the form asks for a preparation and a maturation time but no cooking time', () => {
       expect(screen.getByLabelText('Preparation (min)')).toBeOnTheScreen();
+      expect(screen.getByLabelText('Maturation (months)')).toBeOnTheScreen();
       expect(screen.queryByLabelText('Cooking (min)')).not.toBeOnTheScreen();
     });
-    when(/^I give it (\d+) minutes of preparation$/, async (minutes: string) => {
-      await fireEvent.changeText(screen.getByLabelText('Preparation (min)'), minutes);
-    });
+    when(/^I give it (\d+) minutes of preparation and "(.*)" months of maturation$/, giveTimes);
     and('I save the drink', saveTheDrink);
     then(/^the drink shows "(.*)"$/, async (times: string) => {
       const [drink] = listRecipePage(connection.db, {
@@ -99,6 +106,29 @@ defineFeature(feature, (test) => {
       await renderWithDatabase(<RecipeDetailScreen />, connection);
 
       expect(screen.getByText(times)).toBeOnTheScreen();
+    });
+    and(/^Drinks shows "(.*)" on its row$/, async (maturation: string) => {
+      await renderWithDatabase(<DrinksScreen />, connection);
+
+      expect(screen.getByText(maturation)).toBeOnTheScreen();
+      expect(
+        screen.getByRole('button', { name: `Limoncello, ${maturation}, 0 ingredients` }),
+      ).toBeOnTheScreen();
+    });
+  });
+
+  test('A maturation time is a number of months up to 24', ({ and, then, when }) => {
+    when(/^I write a new drink "(.*)"$/, writeNewDrink);
+    and(/^I give it (\d+) minutes of preparation and "(.*)" months of maturation$/, giveTimes);
+    and('I save the drink', saveTheDrink);
+    then(/^the form says "(.*)"$/, (message: string) => {
+      expect(screen.getByText(message)).toBeOnTheScreen();
+      expect(
+        listRecipePage(connection.db, {
+          filters: { ingredientIdList: [], kind: 'drink' },
+          pageParam: null,
+        }).itemList,
+      ).toStrictEqual([]);
     });
   });
 

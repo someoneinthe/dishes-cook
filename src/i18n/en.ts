@@ -66,7 +66,7 @@ export const en = {
     othersTitle: 'Nothing for anyone else',
     serverList: [
       'Off by default. In Settings › Data storage, you can sync with a PocketBase server that you install and run yourself, to share your recipes between your devices.',
-      'Only that server receives your data: your recipes and drinks (title, dish or drink, course, season, times, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. Settings stay on each device.',
+      'Only that server receives your data: your recipes and drinks (title, dish or drink, course, season, preparation and cooking times, a drink’s maturation time, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. Settings stay on each device.',
       'The device keeps the server’s address, your email and an encrypted sign-in token, never your password. The connection is encrypted (HTTPS).',
       'The server is yours: no one else runs it, and the app’s developers can’t see it.',
     ],
@@ -286,12 +286,18 @@ export const en = {
     ingredients: 'Ingredients',
     ingredientsEmpty: 'Type an ingredient to add it.',
     instructionsPlaceholder: 'Steps, quantities, cooking time…',
+    invalidMaturation: 'Enter a number of months up to 24, like 0.5 or 2.',
     invalidMinutes: 'Enter a number of minutes, like 20.',
     matchCount: (count: number) =>
       count === 0
         ? 'No recipe matches these filters.'
         : plural(count, '1 recipe matches.', `${count} recipes match.`),
+    // The time a drink rests before it's ready (a liqueur, a flavoured wine), in months.
+    maturationTime: 'Maturation (months)',
     minutesPlaceholder: 'e.g. 20',
+    // A number of months, from its digits as written ("0.5") and its value: "0.5 months".
+    months: (count: string, months: number) => `${count} ${months === 1 ? 'month' : 'months'}`,
+    monthsPlaceholder: 'e.g. 0.5',
     // Label of the add-recipe buttons, shown with Settings › Show button labels.
     new: 'New',
     newHint: 'Asks whether to write it or to read it from a photo',
@@ -315,9 +321,10 @@ export const en = {
     removePhoto: 'Remove the photo',
     removePhotoMessage: 'The recipe stays as it is.',
     // What screen readers say for a row of the recipe list: "Pumpkin soup, Winter, Starter".
-    // A recipe of the list, read as one: "Leek soup, Winter, Main course, 3 ingredients".
-    rowLabel: (title: string, season?: string, course?: string, ingredients?: string) =>
-      [title, season, course, ingredients].filter(Boolean).join(', '),
+    // A recipe of the list, read as one: "Leek soup, Winter, Main course, 3 ingredients"; a drink's:
+    // "Limoncello, Maturation 2 months, 3 ingredients".
+    rowLabel: (title: string, detailList: readonly (string | undefined)[]) =>
+      [title, ...detailList].filter(Boolean).join(', '),
     saveAsNew: 'Save as new',
     saveHint: 'Saves the recipe and shows it',
     saveRecipe: 'Save recipe',
@@ -332,11 +339,15 @@ export const en = {
     // The Filters button of the recipe list (a drink's: drinks.showFiltersHint).
     showFiltersHint: 'Shows the season, course and ingredient filters',
     // "Preparation 15 min · Cooking 30 min · 45 min in all": the times a recipe gives.
-    times: (times: Readonly<{ cook?: string; prep?: string; total?: string }>) =>
+    // "Preparation 15 min · Maturation 2 months" for a drink: the waiting isn't in the total.
+    times: (
+      times: Readonly<{ cook?: string; maturation?: string; prep?: string; total?: string }>,
+    ) =>
       [
         times.prep && `Preparation ${times.prep}`,
         times.cook && `Cooking ${times.cook}`,
         times.total && `${times.total} in all`,
+        times.maturation && `Maturation ${times.maturation}`,
       ]
         .filter(Boolean)
         .join(' · '),

@@ -1,0 +1,1 @@
+ALTER TABLE `recipes` ADD `maturation_months` real;

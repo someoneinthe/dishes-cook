@@ -15,6 +15,7 @@ import {
 import { cleanName, toDisplayName, toLikeContains, toSortKey } from '@/lib/text';
 import { toQuantity, toStored } from '@/lib/units';
 import { toMinutes } from '../minutes';
+import { toMonths } from '../months';
 
 export type Recipe = Readonly<{
   // Cooking time in minutes; left out when not given (like prepMinutes).
@@ -24,6 +25,8 @@ export type Recipe = Readonly<{
   ingredientList: RecipeIngredient[];
   instructions: string;
   kind: RecipeKind;
+  // A drink's maturation time in months; left out when not given (like prepMinutes).
+  maturationMonths?: number;
   // Its photo's file name in the app's documents (RECIPE_PHOTO_FOLDER); left out without a photo.
   photoFile?: string;
   prepMinutes?: number;
@@ -57,6 +60,8 @@ export type RecipeInput = Readonly<{
   instructions: string;
   // A dish when left out on a new recipe; left out = unchanged on an edit.
   kind?: RecipeKind;
+  // A drink's maturation time in months (above 0, at most MAX_MONTHS); null or left out = none.
+  maturationMonths?: null | number;
   // Names of the ingredients to create (e.g. read from a photo), by their temporary id (below 0).
   newIngredientNames?: ReadonlyMap<number, string>;
   // A new photo (its file, already in RECIPE_PHOTO_FOLDER), null to remove it; left out = unchanged.
@@ -73,6 +78,8 @@ export type RecipeListItem = Readonly<{
   course: Course;
   id: number;
   ingredientCount: number;
+  // A drink's maturation time in months; left out when not given.
+  maturationMonths?: number;
   season: Season;
   sortKey: string;
   title: string;
@@ -130,6 +137,7 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
       id: recipes.id,
       instructions: recipes.instructions,
       kind: recipes.kind,
+      maturationMonths: recipes.maturationMonths,
       photoFile: recipes.photoFile,
       prepMinutes: recipes.prepMinutes,
       season: recipes.season,
@@ -141,7 +149,7 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
   if (!recipe) {
     return undefined;
   }
-  const { cookMinutes, photoFile, prepMinutes, ...fields } = recipe;
+  const { cookMinutes, maturationMonths, photoFile, prepMinutes, ...fields } = recipe;
   const linkList = database
     .select({
       amount: recipeIngredients.amount,
@@ -168,6 +176,9 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
     title: toDisplayName(recipe.title),
     // Left out when not given: a recipe without them reads as before.
     ...(toMinutes(cookMinutes) !== undefined && { cookMinutes: toMinutes(cookMinutes) }),
+    ...(toMonths(maturationMonths) !== undefined && {
+      maturationMonths: toMonths(maturationMonths),
+    }),
     ...(photoFile !== null && { photoFile }),
     ...(toMinutes(prepMinutes) !== undefined && { prepMinutes: toMinutes(prepMinutes) }),
   };
@@ -201,6 +212,7 @@ export function listRecipePage(
       course: recipes.course,
       id: recipes.id,
       ingredientCount: INGREDIENT_COUNT,
+      maturationMonths: recipes.maturationMonths,
       season: recipes.season,
       sortKey: recipes.sortKey,
       title: recipes.title,
@@ -211,7 +223,13 @@ export function listRecipePage(
     .limit(PAGE_SIZE + 1)
     .all();
   return toPage(
-    rowList.map((row) => ({ ...row, title: toDisplayName(row.title) })),
+    rowList.map(({ maturationMonths, ...row }) => ({
+      ...row,
+      title: toDisplayName(row.title),
+      ...(toMonths(maturationMonths) !== undefined && {
+        maturationMonths: toMonths(maturationMonths),
+      }),
+    })),
     pageParameter,
   );
 }
@@ -255,6 +273,7 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
     course: input.course ?? 'main',
     instructions: input.instructions.trim(),
     ...(input.kind !== undefined && { kind: input.kind }),
+    maturationMonths: toMonths(input.maturationMonths) ?? null,
     prepMinutes: toMinutes(input.prepMinutes) ?? null,
     season: input.season,
     sortKey: toSortKey(title),
@@ -424,6 +443,7 @@ function updateRecipe(
     cookMinutes: null | number;
     course: Course;
     instructions: string;
+    maturationMonths: null | number;
     photoFile?: null | string;
     photoPending?: null;
     photoSynced?: null;

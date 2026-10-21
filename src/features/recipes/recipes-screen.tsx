@@ -30,6 +30,7 @@ import { CourseLabel, SeasonLabel } from './components/recipe-labels';
 import { useNewRecipe } from './hooks/use-new-recipe';
 import { useRecipeCount, useRecipePages } from './hooks/use-recipes';
 import { kindTexts } from './kind';
+import { formatMonths } from './months';
 import { describeSeason } from './season';
 
 type RecipeRowProps = Readonly<{ kind: RecipeKind; recipe: RecipeListItem }>;
@@ -133,17 +134,23 @@ function describeMatches(
     : texts.matchCount(matchCount);
 }
 
+// "Maturation 2 months" for a drink that gives it.
+function describeMaturation(item: RecipeListItem, t: Messages): string | undefined {
+  return item.maturationMonths === undefined
+    ? undefined
+    : t.recipes.times({ maturation: formatMonths(t, item.maturationMonths) });
+}
+
 // What a screen reader announces for a row: its labels, read as one (a drink has no course).
 function describeRecipeRow(item: RecipeListItem, kind: RecipeKind, t: Messages): string {
   const ingredients = t.recipes.ingredientCount(item.ingredientCount);
   return kind === 'drink'
-    ? t.recipes.rowLabel(item.title, undefined, undefined, ingredients)
-    : t.recipes.rowLabel(
-        item.title,
+    ? t.recipes.rowLabel(item.title, [describeMaturation(item, t), ingredients])
+    : t.recipes.rowLabel(item.title, [
         describeSeason(item.season, t),
         t.courses[item.course],
         ingredients,
-      );
+      ]);
 }
 
 // Read-only on a TV: recipes are written on the phone.
@@ -186,6 +193,7 @@ function NewRecipeButton({ kind }: Readonly<{ kind: RecipeKind }>) {
 function RecipeRow({ kind, recipe }: RecipeRowProps) {
   const t = useMessages();
   const { focusProps, focusStyle } = useFocusRing();
+  const maturation = describeMaturation(recipe, t);
 
   return (
     <Pressable
@@ -198,12 +206,14 @@ function RecipeRow({ kind, recipe }: RecipeRowProps) {
     >
       <Text style={styles.title}>{recipe.title}</Text>
       <View style={styles.details}>
-        {/* A drink has no season nor course. */}
-        {kind === 'dish' && (
+        {/* A drink has no season nor course: its maturation time, if it has one. */}
+        {kind === 'dish' ? (
           <View style={styles.labels}>
             <SeasonLabel season={recipe.season} />
             <CourseLabel course={recipe.course} />
           </View>
+        ) : (
+          maturation !== undefined && <Text style={styles.detail}>{maturation}</Text>
         )}
         <Text style={styles.detail}>{t.recipes.ingredientCount(recipe.ingredientCount)}</Text>
       </View>

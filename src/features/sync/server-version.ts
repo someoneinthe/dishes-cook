@@ -12,6 +12,7 @@ export const SERVER_MIGRATION_LIST: readonly string[] = [
   '1792270000-meal-history.js',
   '1792420000-recipe-photo-and-times.js',
   '1792500000-drinks.js',
+  '1792600000-drink-maturation.js',
 ];
 
 // This app's sync version. Raised together with the server's minimum (MINIMUM_APP_SYNC_VERSION in
