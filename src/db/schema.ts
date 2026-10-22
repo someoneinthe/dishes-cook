@@ -99,6 +99,10 @@ export const recipes = sqliteTable(
     // Unused for a drink (left at its default).
     course: text('course', { enum: COURSE_LIST }).notNull().default('main'),
     createdAt: integer('created_at').notNull().default(NOW_MS),
+    // Who added it: the id of the sync server's account that created it, set by the server and
+    // pulled (see docs/sync.md); null = added on this phone and not on the server yet (so the
+    // phone's own); '' = pulled without one. The Mine filter reads it.
+    createdBy: text('created_by'),
     id: integer('id').primaryKey(),
     // The recipe itself (steps, quantities…). Never selected by list queries: it can be long.
     instructions: text('instructions').notNull().default(''),

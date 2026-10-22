@@ -11,12 +11,14 @@ import { createSyncApi, signIn, SyncError } from './sync-api';
 import { countPendingChanges, INITIAL_CURSORS, synchronize } from './sync-engine';
 
 // The sync server the phone is connected to, and how the last sync went. Without a server, the
-// recipes stay on the phone only. The address, email and sync progress are kept in expo-sqlite's
-// key-value store; the sign-in token (never the password) in expo-secure-store.
+// recipes stay on the phone only. The address, email, account id and sync progress are kept in
+// expo-sqlite's key-value store; the sign-in token (never the password) in expo-secure-store.
 
 export type SyncState = Readonly<{
-  // undefined: not connected (the phone's data only).
-  connection?: Readonly<{ email: string; serverUrl: string }>;
+  // undefined: not connected (the phone's data only). `accountId`: the account signed in to (the
+  // author of the recipes this phone adds), undefined until the first sync of a phone connected
+  // before it was kept.
+  connection?: Readonly<{ accountId?: string; email: string; serverUrl: string }>;
   // Why the last sync failed; undefined after a successful one.
   error?: SyncErrorKind;
   // The server has changes this app version doesn't know (it still syncs): an app update exists.
@@ -26,6 +28,7 @@ export type SyncState = Readonly<{
 }>;
 
 type StoredSync = Readonly<{
+  accountId?: string;
   cursors: SyncCursors;
   email: string;
   lastSyncedAt?: number;
@@ -62,12 +65,13 @@ export async function connect(
 ): Promise<void> {
   state.session += 1;
   const session = state.session;
-  const token = await signIn(options);
+  const { accountId, token } = await signIn(options);
   if (state.session !== session) {
     return;
   }
   setItem(TOKEN_KEY, token);
   write({
+    accountId,
     cursors: INITIAL_CURSORS,
     email: options.email.trim(),
     serverUrl: options.serverUrl,
@@ -134,6 +138,7 @@ function read(): StoredSync | undefined {
       return undefined;
     }
     return {
+      accountId: typeof parsed.accountId === 'string' ? parsed.accountId : undefined,
       cursors: {
         pulledUntil: readPulledUntil(parsed.cursors?.pulledUntil),
         pushedFrom: typeof parsed.cursors?.pushedFrom === 'number' ? parsed.cursors.pushedFrom : 0,
@@ -189,7 +194,7 @@ async function runSync(connection: DatabaseConnection): Promise<void> {
   try {
     // Renewed first, on every sync: the server treats a refused token as a guest, whose reads
     // come back empty instead of failing. Renewing it fails clearly (and keeps it valid a year).
-    const currentToken = await createSyncApi({
+    const { accountId, token: currentToken } = await createSyncApi({
       fetch: fetchInSession,
       serverUrl: stored.serverUrl,
       token,
@@ -198,6 +203,11 @@ async function runSync(connection: DatabaseConnection): Promise<void> {
       return;
     }
     setItem(TOKEN_KEY, currentToken);
+    if (accountId !== stored.accountId) {
+      // Connected before the account id was kept: the Mine filter can tell the phone's recipes now.
+      write({ ...stored, accountId });
+      publish();
+    }
     const api = createSyncApi({
       fetch: fetchInSession,
       serverUrl: stored.serverUrl,
@@ -217,7 +227,7 @@ async function runSync(connection: DatabaseConnection): Promise<void> {
     if (!isCurrent()) {
       return;
     }
-    write({ ...stored, cursors, lastSyncedAt: Date.now() });
+    write({ ...stored, accountId, cursors, lastSyncedAt: Date.now() });
     state.error = undefined;
   } catch (error) {
     if (!isCurrent()) {
@@ -252,7 +262,13 @@ function subscribe(listener: () => void) {
 
 function toState(stored: StoredSync | undefined): SyncState {
   return {
-    connection: stored ? { email: stored.email, serverUrl: stored.serverUrl } : undefined,
+    connection: stored
+      ? {
+          ...(stored.accountId !== undefined && { accountId: stored.accountId }),
+          email: stored.email,
+          serverUrl: stored.serverUrl,
+        }
+      : undefined,
     error: stored ? state.error : undefined,
     isAppUpdateAvailable: Boolean(stored) && state.isAppUpdateAvailable,
     isSyncing: state.isSyncing,

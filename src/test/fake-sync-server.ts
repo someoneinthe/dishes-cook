@@ -4,9 +4,13 @@ import { SERVER_MIGRATION_LIST, SYNC_VERSION } from '@/features/sync/server-vers
 // app makes, with the behaviours measured on a real server (see server/migrations):
 // - a refused or missing token is a guest: lists come back empty, creates get a 400, updates a 404;
 // - an update older than the stored row (`modified`) is refused with a 404 (the update rule);
-// - a create with an existing id gets a 400 `validation_not_unique`.
+// - a create with an existing id gets a 400 `validation_not_unique`;
+// - a recipe's `created_by` is the account that created it, whatever a request sends
+//   (server/hooks/recipe-author.pb.js).
 
 export type FakeSyncServer = Readonly<{
+  // The id of the server's account (the one the phones sign in with).
+  accountId: string;
   // Every row of a collection, as stored (tests read and edit them).
   collection: (name: string) => Map<string, StoredRow>;
   fetch: typeof fetch;
@@ -25,6 +29,8 @@ export type FakeSyncServer = Readonly<{
 type StoredRow = Record<string, unknown> & { id: string; modified: number; updated: string };
 
 const PER_PAGE_MAX = 500;
+
+const ACCOUNT_ID = 'a00000000000001';
 
 export function createFakeSyncServer(
   account: Readonly<{ email: string; password: string }>,
@@ -76,17 +82,20 @@ export function createFakeSyncServer(
     if (method === 'POST' && path === '/api/collections/users/auth-with-password') {
       const isAccount = body.identity === account.email && body.password === account.password;
       return isAccount
-        ? json(200, { record: { email: account.email }, token: newToken() })
+        ? json(200, { record: { email: account.email, id: ACCOUNT_ID }, token: newToken() })
         : json(400, { message: 'Failed to authenticate.' });
     }
     const isRefresh = method === 'POST' && path === '/api/collections/users/auth-refresh';
     if (!isRefresh) {
       return undefined;
     }
-    return isSignedIn ? json(200, { token: newToken() }) : json(401, { message: 'Unauthorized' });
+    return isSignedIn
+      ? json(200, { record: { email: account.email, id: ACCOUNT_ID }, token: newToken() })
+      : json(401, { message: 'Unauthorized' });
   };
 
-  const patchRecord = (rowMap: Map<string, StoredRow>, id: string, request: FakeRequest) => {
+  const patchRecord = (name: string, id: string, request: FakeRequest) => {
+    const rowMap = collection(name);
     const stored = rowMap.get(id);
     if (!stored || !request.isSignedIn || Number(request.body.modified) < stored.modified) {
       return json(404, { message: 'The requested resource was not found.' });
@@ -102,15 +111,20 @@ export function createFakeSyncServer(
       fileMap.set(name, request.file);
       body.photo = name;
     }
+    // A recipe's author never changes.
+    if (name === 'recipes') {
+      body.created_by = stored.created_by;
+    }
     const updated = { ...stored, ...body, id, updated: now() } as StoredRow;
     rowMap.set(id, updated);
     return json(200, updated);
   };
 
-  const createRecord = (rowMap: Map<string, StoredRow>, request: FakeRequest) => {
+  const createRecord = (name: string, request: FakeRequest) => {
     if (!request.isSignedIn) {
       return json(400, { data: {}, message: 'Failed to create record.' });
     }
+    const rowMap = collection(name);
     const id = String(request.body.id);
     if (rowMap.has(id)) {
       return json(400, { data: { id: { code: 'validation_not_unique' } } });
@@ -120,6 +134,7 @@ export function createFakeSyncServer(
       deleted: 0,
       modified: 0,
       ...request.body,
+      ...(name === 'recipes' && { created_by: ACCOUNT_ID }),
       created: time,
       id,
       updated: time,
@@ -162,15 +177,16 @@ export function createFakeSyncServer(
       return;
     }
     const [, name = '', id] = match;
-    const rowMap = collection(name);
     if (id) {
-      return request.method === 'PATCH' ? patchRecord(rowMap, id, request) : undefined;
+      return request.method === 'PATCH' ? patchRecord(name, id, request) : undefined;
     }
     if (request.method === 'GET') {
       beforeList?.(name);
-      return json(200, { items: request.isSignedIn ? listPage(rowMap, request.query) : [] });
+      return json(200, {
+        items: request.isSignedIn ? listPage(collection(name), request.query) : [],
+      });
     }
-    return request.method === 'POST' ? createRecord(rowMap, request) : undefined;
+    return request.method === 'POST' ? createRecord(name, request) : undefined;
   };
 
   const fakeFetch = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
@@ -195,6 +211,7 @@ export function createFakeSyncServer(
   }) as typeof fetch;
 
   return {
+    accountId: ACCOUNT_ID,
     collection,
     fetch: fakeFetch,
     fileMap,

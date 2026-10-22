@@ -13,6 +13,7 @@ import { screenScrollProps } from '@/components/screen-scroll-props';
 import { TextField } from '@/components/text-field';
 import { useFocusRing } from '@/components/use-focus-ring';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
+import { useSyncState } from '@/features/sync/sync-store';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import type { RecipeFilterValues } from './components/recipe-filters';
@@ -42,10 +43,16 @@ export function RecipesScreen({ kind = 'dish' }: RecipesScreenProps) {
   const t = useMessages();
   const texts = kindTexts(t, kind);
   const [search, setSearch] = useState('');
-  const [filterValues, setFilterValues] = useState<RecipeFilterValues>(NO_FILTERS);
+  const [chosenFilterValues, setFilterValues] = useState<RecipeFilterValues>(NO_FILTERS);
   // Only the title search shows at first; hidden filters stay applied.
   const [isFiltersShown, setIsFiltersShown] = useState(false);
-  const queryFilters = toQueryFilters(filterValues, search, kind);
+  // Mine or anyone's only with a sync server: without one, every recipe is the phone's.
+  const { connection } = useSyncState();
+  const isAuthorShown = connection !== undefined;
+  const filterValues: RecipeFilterValues = isAuthorShown
+    ? chosenFilterValues
+    : { ...chosenFilterValues, author: 'any' };
+  const queryFilters = toQueryFilters(filterValues, search, kind, connection);
   // Filtered in SQL, PAGE_SIZE rows at a time; counts in SQL too.
   const recipePages = useRecipePages(queryFilters);
   const matchCount = useRecipeCount(queryFilters);
@@ -90,7 +97,9 @@ export function RecipesScreen({ kind = 'dish' }: RecipesScreenProps) {
                   />
                 </View>
                 <Button
-                  accessibilityHint={isFiltersShown ? t.filters.hideHint : texts.showFiltersHint}
+                  accessibilityHint={
+                    isFiltersShown ? t.filters.hideHint : texts.showFiltersHint(isAuthorShown)
+                  }
                   // A funnel; with a check mark while filters are on.
                   icon={hasFilters(filterValues) ? 'filter-check' : 'filter'}
                   isExpanded={isFiltersShown}
@@ -103,7 +112,12 @@ export function RecipesScreen({ kind = 'dish' }: RecipesScreenProps) {
                 />
               </View>
               {isFiltersShown && (
-                <RecipeFilters kind={kind} onChange={setFilterValues} values={filterValues} />
+                <RecipeFilters
+                  isAuthorShown={isAuthorShown}
+                  kind={kind}
+                  onChange={setFilterValues}
+                  values={filterValues}
+                />
               )}
               {isFiltering && (
                 <Text accessibilityLiveRegion="polite" style={styles.matchCount}>

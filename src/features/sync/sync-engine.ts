@@ -67,6 +67,9 @@ export const INITIAL_CURSORS: SyncCursors = {
 // can't keep the phone syncing forever): the next sync carries on.
 const MAX_PULL_PAGES = 200;
 
+// A server account's id (a recipe's author): 15 characters of [0-9a-z].
+const ACCOUNT_ID = /^[\da-z]{15}$/;
+
 // A server time: "2026-10-14 18:03:59.794Z".
 const SERVER_TIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
@@ -333,6 +336,20 @@ function applyIngredients(database: AppDatabase, rowList: readonly ServerIngredi
   });
 }
 
+// A pulled recipe the phone has a newer (or the same) version of: its author is taken anyway. The
+// server sets it, and gives it to the recipes from before authors without changing their version.
+function applyKnownAuthor(
+  tx: AppDatabase,
+  local: Readonly<{ createdBy: null | string; id: number }> | undefined,
+  row: ServerRecipe,
+): void {
+  const author = pulledAuthor(row);
+  if (local && author && author !== local.createdBy) {
+    // Not a change of the phone's (`updated_at` stays): nothing to push.
+    tx.update(recipes).set({ createdBy: author }).where(eq(recipes.id, local.id)).run();
+  }
+}
+
 // Applies a pulled recipe (`onAdded` is called when it's new here); returns how many of its
 // ingredients aren't here (yet).
 function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): number {
@@ -343,6 +360,7 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
   }
   const local = tx
     .select({
+      createdBy: recipes.createdBy,
       id: recipes.id,
       photoPending: recipes.photoPending,
       photoSynced: recipes.photoSynced,
@@ -352,6 +370,7 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
     .where(eq(recipes.syncId, row.id))
     .get();
   if (!isNewerThan(row, local)) {
+    applyKnownAuthor(tx, local, row);
     applySameVersionPhoto(tx, local, row);
     return linkArrivedIngredients(tx, local, row);
   }
@@ -367,6 +386,7 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
   }
   const values = {
     course: toCourse(row.course),
+    createdBy: pulledAuthor(row),
     instructions: typeof row.instructions === 'string' ? row.instructions.trim() : '',
     kind: toRecipeKind(row.kind),
     ...pulledTimes(row),
@@ -722,6 +742,13 @@ async function pull<Table extends SyncedTable>(
     position = { after: last };
   }
   return pulledUntil;
+}
+
+// A pulled recipe's author: the account's id, or '' (none, or not a usable id).
+function pulledAuthor(row: ServerRecipe): string {
+  return typeof row.created_by === 'string' && ACCOUNT_ID.test(row.created_by)
+    ? row.created_by
+    : '';
 }
 
 // A pulled recipe's photo, compared with the phone's: none (the photo goes), the one the phone has,

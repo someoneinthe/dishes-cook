@@ -39,7 +39,10 @@ describe('synchronize', () => {
     phoneB = { cursors: INITIAL_CURSORS, db: createTestConnection().db };
   });
 
-  const signInPhone = () => signIn({ ...ACCOUNT, fetch: server.fetch, serverUrl: SERVER_URL });
+  const signInPhone = async () => {
+    const { token } = await signIn({ ...ACCOUNT, fetch: server.fetch, serverUrl: SERVER_URL });
+    return token;
+  };
   const sync = async (phone: Phone) => {
     const api = createSyncApi({
       fetch: server.fetch,
@@ -113,6 +116,33 @@ describe('synchronize', () => {
       { name: 'Leek', quantity: { amount: 3 } },
       { name: 'Salt', quantity: undefined },
     ]);
+  });
+
+  it('takes the author the server gives a recipe it already has, without pushing it back', async () => {
+    addRecipe(phoneA, 'Soup');
+    addRecipe(phoneA, 'Stew');
+    await sync(phoneA);
+    await sync(phoneB);
+    // As the server migration does for the recipes from before authors: another account, or none,
+    // with a new `updated` and the same `modified`.
+    const rowMap = server.collection('recipes');
+    const [soup, stew] = [...rowMap.values()];
+    const updated = '2026-01-02 00:00:00.000Z';
+    rowMap.set(soup!.id, { ...soup!, created_by: 'b00000000000002', updated });
+    rowMap.set(stew!.id, { ...stew!, created_by: '', updated });
+    const authorOf = (phone: Phone, title: string) =>
+      phone.db
+        .select({ createdBy: recipes.createdBy })
+        .from(recipes)
+        .where(eq(recipes.title, title))
+        .get()?.createdBy;
+
+    await sync(phoneB);
+
+    expect(authorOf(phoneB, 'soup')).toBe('b00000000000002');
+    // A server without an author never takes one away.
+    expect(authorOf(phoneB, 'stew')).toBe(server.accountId);
+    expect(countPendingChanges(phoneB.db, phoneB.cursors.pushedFrom)).toBe(0);
   });
 
   it('fails without changing anything when the server is unreachable', async () => {
@@ -393,7 +423,7 @@ describe('synchronize', () => {
       getServerInfo: () => Promise.resolve(undefined),
       listChanges,
       recipePhotoUrl: () => Promise.resolve(''),
-      refreshToken: () => Promise.resolve('token'),
+      refreshToken: () => Promise.resolve({ accountId: 'a00000000000001', token: 'token' }),
       sendDeletion: () => Promise.resolve('saved'),
       setRecipePhoto: () => Promise.resolve({ name: '' }),
       upsert: () => Promise.resolve('saved'),

@@ -1,7 +1,10 @@
 import { fireEvent, screen } from '@testing-library/react-native';
+import { eq } from 'drizzle-orm';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import type { Course, Season } from '@/db/schema';
 import type { DatabaseConnection } from '@/db/types';
+import type { SyncState } from '@/features/sync/sync-store';
+import { recipes } from '@/db/schema';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import { toDisplayName } from '@/lib/text';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
@@ -9,6 +12,19 @@ import { saveRecipe } from './db/recipe-queries';
 import { RecipesScreen } from './recipes-screen';
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn() }, useIsFocused: () => true }));
+
+// The sync server the phone is connected to (none by default).
+const mockSync: { connection: SyncState['connection'] } = { connection: undefined };
+jest.mock('../sync/sync-store', () => ({
+  ...jest.requireActual<object>('../sync/sync-store'),
+  useSyncState: () => ({
+    connection: mockSync.connection,
+    isAppUpdateAvailable: false,
+    isSyncing: false,
+  }),
+}));
+
+const MY_ACCOUNT_ID = 'a00000000000001';
 
 const feature = loadFeature('./recipe-list.feature', { loadRelativePath: true });
 
@@ -24,6 +40,7 @@ defineFeature(feature, (test) => {
 
   beforeEach(() => {
     connection = createTestConnection();
+    mockSync.connection = undefined;
   });
 
   const theseRecipes = (rowList: RecipeRow[]) => {
@@ -114,6 +131,58 @@ defineFeature(feature, (test) => {
     });
     and(/^the list shows "(.*)"$/, (titles: string) => {
       expect(listedTitles()).toBe(titles);
+    });
+  });
+
+  test('Synced with a server, "Added by: Me" keeps the recipes I added', ({
+    and,
+    given,
+    then,
+    when,
+  }) => {
+    given('these recipes:', theseRecipes);
+    given(
+      /^the phone syncs with a server where "(.*)" was added by someone else$/,
+      (title: string) => {
+        mockSync.connection = {
+          accountId: MY_ACCOUNT_ID,
+          email: 'me@example.org',
+          serverUrl: 'https://sync.example.org',
+        };
+        const setAuthor = (recipeTitle: string, createdBy: string) =>
+          connection.db
+            .update(recipes)
+            .set({ createdBy })
+            .where(eq(recipes.title, recipeTitle.toLowerCase()))
+            .run();
+        // Pumpkin soup stays as added here and not synced yet: mine too.
+        setAuthor('Tomato salad', MY_ACCOUNT_ID);
+        setAuthor(title, 'b00000000000002');
+      },
+    );
+    when('I open the recipe list', openTheRecipeList);
+    and('I show the filters', showTheFilters);
+    and(/^I choose "(.*)" for who added them$/, chooseTheOption);
+    then(/^I see that (\d+) recipes match$/, (count: string) => {
+      expect(screen.getByText(matchCountText(count))).toBeOnTheScreen();
+    });
+    and(/^the list shows "(.*)"$/, (titles: string) => {
+      expect(listedTitles()).toBe(titles);
+    });
+  });
+
+  test('Without a server, every recipe is mine: there is no "Added by" filter', ({
+    and,
+    given,
+    then,
+    when,
+  }) => {
+    given('these recipes:', theseRecipes);
+    when('I open the recipe list', openTheRecipeList);
+    and('I show the filters', showTheFilters);
+    then("I can't choose who added the recipes", () => {
+      expect(screen.getByRole('radio', { name: 'Winter' })).toBeOnTheScreen();
+      expect(screen.queryByRole('radio', { name: 'Me' })).not.toBeOnTheScreen();
     });
   });
 

@@ -1,5 +1,5 @@
 import type { SQL } from 'drizzle-orm';
-import { and, asc, count, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
 import type { Page, PageRequest } from '@/db/pagination';
 import type { Course, RecipeKind, Season } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
@@ -41,6 +41,9 @@ export type RecipeFilters = Readonly<{
   ingredientIdList: readonly number[];
   // Dishes or drinks: every list is one or the other.
   kind: RecipeKind;
+  // Only the phone's own recipes: added by this sync account (undefined: not known yet), or added
+  // here and not on the server yet. Undefined = anyone's.
+  mine?: Readonly<{ accountId: string | undefined }>;
   // Titles containing it, ignoring case and accents; undefined or blank = any title.
   search?: string;
   // A season also matches the recipes for both seasons; undefined = any season.
@@ -345,6 +348,14 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
   });
 }
 
+// The phone's own recipes: not on the server yet (no author), or added by its account.
+function authorWhere(accountId: string | undefined): SQL | undefined {
+  const notSyncedYet = isNull(recipes.createdBy);
+  return accountId === undefined
+    ? notSyncedYet
+    : or(notSyncedYet, eq(recipes.createdBy, accountId));
+}
+
 // Recipes in the season (or for both seasons), of the course, and made with ALL the ingredients. With
 // ingredients, the plan starts from the (ingredient_id, recipe_id) index, so only recipes
 // containing a selected ingredient are visited.
@@ -367,6 +378,11 @@ function filtersWhere(database: AppDatabase, filters: RecipeFilters): SQL | unde
   }
   if (filters.course) {
     conditionList.push(eq(recipes.course, filters.course));
+  }
+  // No index on the author, like season and course: a household's few authors.
+  const mineWhere = filters.mine && authorWhere(filters.mine.accountId);
+  if (mineWhere) {
+    conditionList.push(mineWhere);
   }
   if (ingredientIdList.length > 0) {
     // The primary key forbids duplicate links, so "all of them" = "as many links as ingredients".

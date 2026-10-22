@@ -50,6 +50,15 @@ export function addRecipe(phone: Phone, title: string, ingredientNameList: strin
   });
 }
 
+// Who added the recipe (recipes.createdBy): null while it isn't on the server.
+export function authorOf(phone: Phone, title: string) {
+  return phone.db
+    .select({ createdBy: recipes.createdBy })
+    .from(recipes)
+    .where(eq(recipes.title, title.toLowerCase()))
+    .get()?.createdBy;
+}
+
 // Every time the recipe was cooked on the phone, oldest first ([]: never, or no such recipe).
 export function cookedDatesOf(phone: Phone, title: string) {
   const recipe = recipeOf(phone, title);
@@ -107,7 +116,7 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
 
   const sync = async (phone: Phone) => {
     const { account, fetch, serverUrl } = server;
-    const token = await signIn({ ...account, fetch, serverUrl });
+    const { token } = await signIn({ ...account, fetch, serverUrl });
     const api = createSyncApi({ fetch, serverUrl, token });
     phone.cursors = await synchronize(phone.db, api, phone.cursors, {
       photos: phone.photos?.store,
@@ -162,6 +171,29 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
       season: 'winter',
     });
     expect(titlesOf(phoneB)).toStrictEqual(['Carrot soup']);
+  });
+
+  it('gives a recipe the account that added it as author, kept through edits on any phone', async () => {
+    addRecipe(phoneA, 'Soup');
+    // Not on the server yet: no author (the phone's own).
+    expect(authorOf(phoneA, 'Soup')).toBeNull();
+    await syncBoth();
+    const idOnB = recipeOf(phoneB, 'Soup')?.id;
+    saveRecipe(
+      phoneB.db,
+      { ingredientIdList: [], instructions: '', season: 'both', title: 'Leek soup' },
+      idOnB,
+    );
+
+    await sync(phoneB);
+    await sync(phoneA);
+
+    const { account, fetch, serverUrl } = server;
+    const { accountId } = await signIn({ ...account, fetch, serverUrl });
+    for (const phone of [phoneA, phoneB]) {
+      expect(authorOf(phone, 'Leek soup')).toBe(accountId);
+    }
+    await expect(server.rowsOf('recipes')).resolves.toMatchObject([{ created_by: accountId }]);
   });
 
   it('brings the quantities of a recipe to the other phone, and their changes', async () => {

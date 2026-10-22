@@ -108,7 +108,7 @@ defineFeature(feature, (test) => {
     and(/^the recipe "(.*)" on the server, from another phone$/, async (title: string) => {
       const otherPhone = createTestConnection();
       saveRecipe(otherPhone.db, { ingredientIdList: [], instructions: '', season: 'both', title });
-      const token = await signIn({ ...ACCOUNT, fetch: server.fetch, serverUrl: SERVER_URL });
+      const { token } = await signIn({ ...ACCOUNT, fetch: server.fetch, serverUrl: SERVER_URL });
       await synchronize(
         otherPhone.db,
         createSyncApi({ fetch: server.fetch, serverUrl: SERVER_URL, token }),
