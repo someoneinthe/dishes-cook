@@ -10,7 +10,7 @@ import { isTv } from '@/lib/device';
 
 // Opening the app lands on the meal choice.
 // eslint-disable-next-line @typescript-eslint/naming-convention, sonarjs/variable-name -- name required by Expo Router.
-export const unstable_settings = { initialRouteName: 'index' };
+export const unstable_settings = { anchor: 'index' };
 
 // The burger menu.
 export default function DrawerLayout() {

@@ -79,7 +79,7 @@ export function RecipesScreen({ kind = 'dish' }: RecipesScreenProps) {
               message={isTv ? texts.emptyMessageOnTv : texts.emptyMessage}
               title={texts.emptyTitle}
             />
-          ) : null
+          ) : undefined
         }
         ListHeaderComponent={
           // No search or filters before the first recipe: there's nothing to narrow yet.
@@ -125,7 +125,7 @@ export function RecipesScreen({ kind = 'dish' }: RecipesScreenProps) {
                 </Text>
               )}
             </View>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => <RecipeRow kind={kind} recipe={item} />}
         style={styles.list}

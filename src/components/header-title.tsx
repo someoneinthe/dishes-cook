@@ -10,7 +10,7 @@ import { useIconSize } from './use-icon-size';
 type HeaderTitleProps = Readonly<{
   children: string;
   // The screen's menu icon, in its menu color.
-  icon?: Readonly<{ color: ColorValue; name: IconName }>;
+  icon?: Readonly<{ color: string; name: IconName }>;
   tintColor?: ColorValue;
 }>;
 
@@ -43,7 +43,7 @@ export function HeaderTitle({ children, icon, tintColor }: HeaderTitleProps) {
 
 // `headerTitle` option: the title after the screen's menu icon. Built here, outside the screens,
 // so screens don't define a component while rendering (Sonar S6478).
-export function headerTitleWithIcon(name: IconName, color: ColorValue) {
+export function headerTitleWithIcon(name: IconName, color: string) {
   return function HeaderTitleWithIcon(props: Omit<HeaderTitleProps, 'icon'>) {
     return <HeaderTitle {...props} icon={{ color, name }} />;
   };

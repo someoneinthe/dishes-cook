@@ -1,6 +1,6 @@
 import type { DrawerContentComponentProps } from 'expo-router/drawer';
 import type { ReactNode, Ref } from 'react';
-import type { View as ViewType } from 'react-native';
+import type { ViewInstance } from 'react-native';
 import { DrawerContentScrollView } from 'expo-router/drawer';
 import { useCallback, useState } from 'react';
 import {
@@ -28,7 +28,7 @@ type TvMenuEntryProps = Readonly<{
   nextFocusDown?: number;
   nextFocusUp?: number;
   onPress: () => void;
-  ref?: Ref<ViewType>;
+  ref?: Ref<ViewInstance>;
 }>;
 
 // The menu widens with the font size, so its entries' words aren't cut; up to half again, beyond
@@ -75,8 +75,11 @@ function TvMenu({ descriptors, navigation, state }: Readonly<DrawerContentCompon
   // the screen, nearer than the gap between them.
   const [lastTopId, setLastTopId] = useState<number>();
   const [firstBottomId, setFirstBottomId] = useState<number>();
-  const lastTopRef = useCallback((view: null | ViewType) => setLastTopId(viewId(view)), []);
-  const firstBottomRef = useCallback((view: null | ViewType) => setFirstBottomId(viewId(view)), []);
+  const lastTopRef = useCallback((view: null | ViewInstance) => setLastTopId(viewId(view)), []);
+  const firstBottomRef = useCallback(
+    (view: null | ViewInstance) => setFirstBottomId(viewId(view)),
+    [],
+  );
   const entryList = (routeList: typeof state.routes, edge: 'first' | 'last') =>
     routeList.map((route, index) => {
       const options = descriptors[route.key]?.options;
@@ -174,7 +177,7 @@ function useMenuFocusReturn({ index, routes }: DrawerContentComponentProps['stat
 }
 
 // A view's Android id, for the `nextFocus…` props.
-function viewId(view: null | ViewType): number | undefined {
+function viewId(view: null | ViewInstance): number | undefined {
   return (view && findNodeHandle(view)) ?? undefined;
 }
 

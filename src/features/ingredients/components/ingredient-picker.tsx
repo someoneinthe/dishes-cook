@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { TextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
@@ -27,7 +27,7 @@ type IngredientPickerProps = Readonly<{
   onCreate?: (name: string) => Ingredient;
   // The search field gets the focus (e.g. to scroll it where its suggestions show above the
   // keyboard), with the field.
-  onSearchFocus?: (field: TextInput) => void;
+  onSearchFocus?: (field: TextInputInstance) => void;
   // Shows each selected ingredient (e.g. with its quantity) instead of a chip that removes it.
   renderSelected?: (ingredient: Ingredient, remove: () => void) => ReactNode;
   selectedList: readonly Ingredient[];
@@ -51,7 +51,7 @@ export function IngredientPicker({
   selectedList,
 }: IngredientPickerProps) {
   const t = useMessages();
-  const searchRef = useRef<TextInput>(null);
+  const searchRef = useRef<TextInputInstance>(null);
   const [search, setSearch] = useState('');
   const selectedIds = new Set(selectedList.map((ingredient) => ingredient.id));
   // Exact name first, then the most used: the likeliest picks before typing.

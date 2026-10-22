@@ -1,4 +1,3 @@
-import type { ColorValue } from 'react-native';
 import type { IconName } from './icon';
 import { drawerIcon } from './drawer-icon';
 import { headerTitleWithIcon } from './header-title';
@@ -16,7 +15,7 @@ export const MENU_ICONS = {
 
 // Options of a menu (drawer) entry: its icon, in its own color, in the menu and before the title
 // of its screen.
-export function menuEntryOptions(title: string, icon: IconName, color: ColorValue) {
+export function menuEntryOptions(title: string, icon: IconName, color: string) {
   return {
     drawerIcon: drawerIcon(icon, color),
     drawerLabel: title,

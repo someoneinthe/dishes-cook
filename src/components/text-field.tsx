@@ -1,5 +1,5 @@
 import type { ReactNode, Ref } from 'react';
-import type { TextInputProps } from 'react-native';
+import type { TextInputInstance, TextInputProps } from 'react-native';
 import { Text, TextInput, View } from 'react-native';
 import { StyleSheet, withUnistyles } from 'react-native-unistyles';
 import { isTv } from '@/lib/device';
@@ -44,7 +44,7 @@ type TextFieldProps = Readonly<
     // The field gets the focus (after its focus ring's own handling).
     onFocus?: () => void;
     // To move the focus to the field (e.g. the first invalid one on Save).
-    ref?: Ref<TextInput>;
+    ref?: Ref<TextInputInstance>;
   }
 >;
 

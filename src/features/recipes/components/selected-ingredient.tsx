@@ -1,4 +1,5 @@
 import type { ReactNode, Ref } from 'react';
+import type { TextInstance } from 'react-native';
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
@@ -9,7 +10,7 @@ type SelectedIngredientProps = Readonly<{
   // The row (name, quantity).
   children: ReactNode;
   // The question, to move the focus to it (when it's the first unanswered on Save).
-  choiceRef?: Ref<Text>;
+  choiceRef?: Ref<TextInstance>;
   // The new ingredient, as read from the photo.
   ingredient: Ingredient;
   // Save was pressed before choosing: the question turns into an error.

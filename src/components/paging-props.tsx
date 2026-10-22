@@ -16,7 +16,7 @@ type PagedList = Readonly<{
 // dropped earlier pages near the top, and keep the visible rows still while pages come and go.
 export function getPagingProps(pagedList: PagedList) {
   return {
-    ListFooterComponent: pagedList.isFetchingNextPage ? <LoadingMore /> : null,
+    ListFooterComponent: pagedList.isFetchingNextPage ? <LoadingMore /> : undefined,
     // At the very top, stay there: a row added at the top of the list (e.g. a new ingredient
     // sorted first) must show up, not be kept just above the screen.
     maintainVisibleContentPosition: { autoscrollToTopThreshold: 10, minIndexForVisible: 0 },

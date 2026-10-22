@@ -1,5 +1,5 @@
 import type { ReactNode, Ref } from 'react';
-import type { LayoutChangeEvent, View as ViewType } from 'react-native';
+import type { LayoutChangeEvent, ViewInstance } from 'react-native';
 import { useRef, useState } from 'react';
 import { Modal, Pressable, useWindowDimensions, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
@@ -121,7 +121,7 @@ function HeaderMenu({
   const { theme } = useUnistyles();
   const { width: windowWidth } = useWindowDimensions();
   const [anchor, setAnchor] = useState<Anchor>();
-  const menuButtonRef = useRef<ViewType>(null);
+  const menuButtonRef = useRef<ViewInstance>(null);
   const openMenu = () => {
     menuButtonRef.current?.measureInWindow((x, y, width, height) => {
       setAnchor({ right: windowWidth - x - width, top: y + height + theme.gap(1) });
@@ -161,7 +161,7 @@ function MenuButton({
   isLabelHidden = false,
   onPress,
   ref,
-}: Readonly<{ isLabelHidden?: boolean; onPress: () => void; ref?: Ref<ViewType> }>) {
+}: Readonly<{ isLabelHidden?: boolean; onPress: () => void; ref?: Ref<ViewInstance> }>) {
   const t = useMessages();
 
   return (

@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import type { TextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { RecipeKind } from '@/db/schema';
@@ -13,7 +13,7 @@ export type TimeDrafts = Readonly<{ cook: string; maturation: string; prep: stri
 type RecipeTimeFieldsProps = Readonly<{
   drafts: TimeDrafts;
   // The fields, to bring a wrong one into view on Save.
-  inputRefs?: Readonly<Record<keyof TimeDrafts, Ref<TextInput>>>;
+  inputRefs?: Readonly<Record<keyof TimeDrafts, Ref<TextInputInstance>>>;
   // The fields that aren't a usable time.
   invalidList: readonly (keyof TimeDrafts)[];
   // A dish's: preparation and cooking; a drink's: preparation and maturation.
