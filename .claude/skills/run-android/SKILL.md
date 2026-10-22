@@ -110,6 +110,7 @@ $ADB logcat -d -s ReactNativeJS | tail -50              # console.log/warn/error
 - **Font size restarts the app** (`settings put system font_scale 1.3|2.0`, back to `1.0`): after it, navigate back to the screen you were checking, and don't take it as a test of live configuration changes.
 - **Language**: Settings › Language (System / English / Français). For System following the phone: `$ADB shell cmd locale set-app-locales io.github.someoneinthe.dishescook --locales fr-FR` (restarts the app; `--locales ""` to reset).
 - **Server sync**: test against a throwaway PocketBase, never the user's real server: `adb reverse tcp:<port> tcp:<port>`, then connect to `http://localhost:<port>` in Settings › Data storage (plain HTTP works in debug builds only). Steps in `docs/sync.md` › Testing during development.
+- **Test data is removed once the check is done**: recipes, ingredients or meals added for a test (typed in the app or inserted with `sqlite3`, see step 7) never stay, on any device or emulator. Only on one that keeps its data on the device or syncs with a throwaway PocketBase (Settings › Data storage): never on a device synced with the user's real server (the maintainer's phone is), which would send them to every phone and TV. Keep the database copy from before the test and push it back afterwards (step 7's steps 1 and 3), then check the lists, and say in the report that the test data is gone.
 - **After a schema change**: restart Metro with `--clear` (it caches the inlined SQL) and reopen the app, which applies the new migration. Don't clear its data: check that the recipes from before the change are still there.
 
 Expected startup: native splash (the plate and cutlery on the icon's blue-grey, light and dark mode) → the loading screen, the same icon larger on the same blue-grey (~1.5 s) → home screen. It's short: take screenshots in a quick loop to catch it.
@@ -125,6 +126,7 @@ The same APK runs on Android TV, read-only (`isTv`), driven with the D-pad. Chec
   1. Stop the app, then copy the database **with its WAL**, which can hold committed changes: for each of `dishes-cook.db`, `dishes-cook.db-wal` and `dishes-cook.db-shm`, `adb exec-out run-as io.github.someoneinthe.dishescook cat files/SQLite/<file> > <file>`.
   2. Checkpoint the copy so the WAL's changes are in the `.db` file: `sqlite3 dishes-cook.db "PRAGMA wal_checkpoint(TRUNCATE)"`, then insert rows with `sqlite3`.
   3. Push `dishes-cook.db` back through `/data/local/tmp` (`run-as … sh -c 'cat /data/local/tmp/… > files/SQLite/dishes-cook.db'`) and delete the device's `-wal`/`-shm`: their changes are already in the pushed file, and a leftover WAL would be replayed over it.
+  4. Once the check is done, push the untouched copy from step 1 back the same way: the test rows go (see step 6, test data).
 - **Real TV** (32-bit ARM, Android 11; adb debugging over the network): `adb connect <tv-ip>:5555`, then build a standalone APK for its ABI only and install it:
 
   ```bash
