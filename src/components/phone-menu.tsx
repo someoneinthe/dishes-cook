@@ -88,12 +88,15 @@ function PhoneMenu(props: Readonly<DrawerContentComponentProps>) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create((theme) => ({
   // At least the menu's height, so the bottom entries reach its bottom.
   list: {
     flexGrow: 1,
+    // React Navigation's margin, without the navigation buttons' height: the root layout already
+    // keeps the menu above them.
+    paddingBottom: theme.gap(3),
   },
   top: {
     flexGrow: 1,
   },
-});
+}));

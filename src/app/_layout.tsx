@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import { preventAutoHideAsync } from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { KeyboardAvoidingView } from 'react-native';
+import { KeyboardAvoidingView, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { headerTitleWithIcon } from '@/components/header-title';
@@ -39,9 +39,14 @@ export default function RootLayout() {
           {/* Every screen ends above the keyboard: Android draws the app under it (edge to edge)
               and doesn't always shrink the screen itself (e.g. with SwiftKey), hiding the field
               being typed in. Where Android already does, this adds nothing. */}
-          <KeyboardAvoidingView behavior="padding" style={styles.root}>
-            <RootStack />
-          </KeyboardAvoidingView>
+          {/* Every screen ends above Android's navigation buttons (3-button bar or gesture area):
+              the app is drawn under them (edge to edge), so the end of a list or a page stayed
+              behind them. Outside the keyboard's view: the keyboard covers this space too. */}
+          <View style={styles.screens}>
+            <KeyboardAvoidingView behavior="padding" style={styles.root}>
+              <RootStack />
+            </KeyboardAvoidingView>
+          </View>
         </DatabaseProvider>
         <StatusBar style="auto" />
         {isLoadingScreenVisible && (
@@ -77,8 +82,14 @@ function RootStack() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create((theme, rt) => ({
   root: {
     flex: 1,
   },
-});
+  // Under the navigation buttons: the screens' background.
+  screens: {
+    backgroundColor: theme.colors.background,
+    flex: 1,
+    paddingBottom: rt.insets.bottom,
+  },
+}));

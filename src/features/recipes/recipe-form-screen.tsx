@@ -664,13 +664,10 @@ function withScannedDrafts(
   return next;
 }
 
-const styles = StyleSheet.create((theme, rt) => ({
+const styles = StyleSheet.create((theme) => ({
   content: {
     gap: theme.gap(5),
     padding: theme.gap(4),
-    // The page is drawn under Android's navigation buttons (edge to edge): its end stays above them,
-    // with the usual margin.
-    paddingBottom: theme.gap(4) + rt.insets.bottom,
   },
   screen: {
     backgroundColor: theme.colors.background,

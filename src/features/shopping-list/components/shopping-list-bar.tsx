@@ -1,7 +1,6 @@
 import { router } from 'expo-router';
 import { View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
@@ -12,15 +11,11 @@ import { usePicks } from '../meal-picks';
 export function ShoppingListBar() {
   const t = useMessages();
   const pickList = usePicks();
-  // Above the phone's navigation bar or gesture area (the app draws behind them).
-  const { bottom } = useSafeAreaInsets();
-  // A prop-computed padding: the theme is read here.
-  const { theme } = useUnistyles();
   if (isTv || pickList.length === 0) {
     return null;
   }
   return (
-    <View style={[styles.bar, { paddingBottom: theme.gap(3) + bottom }]}>
+    <View style={styles.bar}>
       <View style={styles.content}>
         <Button
           accessibilityHint={t.shoppingList.openHint}
@@ -41,7 +36,7 @@ const styles = StyleSheet.create((theme) => ({
     borderColor: theme.colors.border,
     borderTopWidth: theme.borderWidth,
     paddingHorizontal: theme.gap(4),
-    paddingTop: theme.gap(3),
+    paddingVertical: theme.gap(3),
   },
   content: {
     // Centered on wide screens, like the screen's content.
