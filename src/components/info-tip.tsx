@@ -48,11 +48,16 @@ export function InfoTip({ label, message }: InfoTipProps) {
         accessibilityHint={t.common.infoHint}
         accessibilityLabel={label}
         accessibilityRole="button"
-        // Up to the 48 dp touch target around the small icon.
-        hitSlop={Math.max(0, (theme.size.touchTarget - iconSize) / 2)}
         onPress={open}
         ref={buttonRef}
-        style={({ pressed }) => [pressed && styles.pressed, focusStyle]}
+        // A 48 dp touch target around the small icon (hitSlop can't reach past a short parent),
+        // pulled in by its extra width so the icon stays close to its text.
+        style={({ pressed }) => [
+          styles.target,
+          { marginHorizontal: Math.min(0, (iconSize - theme.size.touchTarget) / 2) },
+          pressed && styles.pressed,
+          focusStyle,
+        ]}
         {...focusProps}
       >
         <Icon color={theme.colors.textMuted} name="information-outline" size={iconSize} />
@@ -100,6 +105,12 @@ const styles = StyleSheet.create((theme) => ({
   },
   pressed: {
     opacity: theme.opacity.pressed,
+  },
+  target: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: theme.size.touchTarget,
+    minWidth: theme.size.touchTarget,
   },
   text: {
     ...theme.typography.body,
