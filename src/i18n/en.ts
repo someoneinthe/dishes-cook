@@ -211,6 +211,15 @@ export const en = {
     suggestRecipe: 'Suggest a recipe',
   },
   mealHistory: {
+    // The ⓘ next to when it was last cooked: what marking a recipe as cooked does. `skipDays`:
+    // Settings › Skip recent meals (0 = off); on a TV, the recipes are marked on a phone.
+    about: (skipDays: number, isOnTv: boolean): string => {
+      const skip = skipDays > 0 ? ` Meal choice then skips it for ${skipDays} days.` : '';
+      return isOnTv
+        ? `The last time this recipe was cooked, marked with “I cooked it” on a phone.${skip}`
+        : `Tap “I cooked it” once you’ve made this recipe: the date shows here.${skip || ' Meal choice can skip recent meals (Settings › Skip recent meals).'}`;
+    },
+    aboutLabel: 'About the meal history',
     cooked: 'I cooked it',
     cookedHint: 'Records that you cooked it today: the meal choice skips it for a while',
     // When the recipe was last cooked, from the number of calendar days since: "Cooked yesterday".

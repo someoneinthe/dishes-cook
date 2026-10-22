@@ -64,7 +64,10 @@ defineFeature(feature, (test) => {
       expect(screen.getByText('Simmer for 30 minutes.')).toBeOnTheScreen();
     });
     and("it can't be edited or deleted", () => {
-      expect(screen.queryByRole('button')).not.toBeOnTheScreen();
+      // Only the meal history's ⓘ, which explains it (the recipes are marked on a phone).
+      expect(
+        screen.queryAllByRole('button').map((button) => button.props.accessibilityLabel as string),
+      ).toStrictEqual(['About the meal history']);
     });
   });
 

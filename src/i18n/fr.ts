@@ -182,6 +182,14 @@ export const fr: Messages = {
     suggestRecipe: 'Suggérer une recette',
   },
   mealHistory: {
+    about: (skipDays, isOnTv) => {
+      const skip =
+        skipDays > 0 ? ` Le choix du repas l’évite ensuite pendant ${skipDays}\u{A0}jours.` : '';
+      return isOnTv
+        ? `La dernière fois que cette recette a été cuisinée, notée avec ${quote('Je l’ai cuisinée')} sur un téléphone.${skip}`
+        : `Appuyez sur ${quote('Je l’ai cuisinée')} une fois la recette faite${NARROW_SPACE}: la date s’affiche ici.${skip || ' Le choix du repas peut éviter les repas récents (Paramètres › Éviter les repas récents).'}`;
+    },
+    aboutLabel: 'À propos de l’historique des repas',
     cooked: 'Je l’ai cuisinée',
     cookedHint: `Note que vous l’avez cuisinée aujourd’hui${NARROW_SPACE}: le choix du repas l’évite pendant un temps`,
     lastCooked: (daysAgo, time) => {
