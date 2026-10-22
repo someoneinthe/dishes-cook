@@ -8,7 +8,7 @@ import {
   markCooked,
   removeCookedMeal,
 } from '@/features/meal-history/db/cooked-meal-queries';
-import { deleteRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
+import { deleteRecipe, getRecipeSyncId, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { toIngredientSyncId } from '@/lib/sync-id';
 import { toNameKey } from '@/lib/text';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
@@ -155,6 +155,34 @@ describe('synchronize', () => {
     await sync(phoneB);
 
     expect(authorOf(phoneB, 'beef stew')).toBe(server.accountId);
+  });
+
+  it('keeps a recipe added here as the phone’s own when a newer version comes without an author', async () => {
+    const id = addRecipe(phoneA, 'Soup');
+    // Written on the server meanwhile without an author (e.g. by the admin), and newer.
+    const syncId = getRecipeSyncId(phoneA.db, id)!;
+    server.collection('recipes').set(syncId, {
+      course: 'main',
+      deleted: 0,
+      id: syncId,
+      ingredients: [],
+      instructions: '',
+      modified: Date.now() + 60_000,
+      season: 'both',
+      title: 'pea soup',
+      updated: '2026-01-02 00:00:00.000Z',
+    });
+
+    await sync(phoneA);
+
+    const author = phoneA.db
+      .select({ createdBy: recipes.createdBy })
+      .from(recipes)
+      .where(eq(recipes.id, id))
+      .get()?.createdBy;
+
+    expect(recipeOf(phoneA, 'Pea soup')).toBeDefined();
+    expect(author).toBeNull();
   });
 
   it('fails without changing anything when the server is unreachable', async () => {

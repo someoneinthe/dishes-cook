@@ -745,12 +745,16 @@ async function pull<Table extends SyncedTable>(
   return pulledUntil;
 }
 
-// A pulled recipe's author: the account's id; without a usable one, the author already known here
-// (`local`), or '' (none).
-function pulledAuthor(row: ServerRecipe, local?: Readonly<{ createdBy: null | string }>): string {
-  return typeof row.created_by === 'string' && ACCOUNT_ID.test(row.created_by)
-    ? row.created_by
-    : (local?.createdBy ?? '');
+// A pulled recipe's author: the account's id; without a usable one, what the phone already has
+// (`local`: null for one added here, still the phone's own), or '' (none) for a new recipe.
+function pulledAuthor(
+  row: ServerRecipe,
+  local?: Readonly<{ createdBy: null | string }>,
+): null | string {
+  if (typeof row.created_by === 'string' && ACCOUNT_ID.test(row.created_by)) {
+    return row.created_by;
+  }
+  return local ? local.createdBy : '';
 }
 
 // A pulled recipe's photo, compared with the phone's: none (the photo goes), the one the phone has,
