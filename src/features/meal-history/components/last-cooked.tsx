@@ -78,14 +78,14 @@ function LastCookedStatus({ isEditable, text }: Readonly<{ isEditable: boolean; 
   const { recentMealDays } = usePreferences();
   return (
     <View style={[styles.status, isEditable && styles.centeredStatus]}>
-      {/* Smaller on the meal choice's card: a detail of the suggestion. */}
-      <Text style={[styles.text, !isEditable && styles.smallText]}>{text}</Text>
       {isEditable && (
         <InfoTip
           label={t.mealHistory.aboutLabel}
           message={t.mealHistory.about(recentMealDays, isTv)}
         />
       )}
+      {/* Smaller on the meal choice's card: a detail of the suggestion. */}
+      <Text style={[styles.text, !isEditable && styles.smallText]}>{text}</Text>
     </View>
   );
 }

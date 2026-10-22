@@ -2,7 +2,10 @@ import type { View as ViewType } from 'react-native';
 import { useRef, useState } from 'react';
 import { Modal, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
-import { Button } from './button';
+import { useMessages } from '@/i18n/i18n-provider';
+import { Icon } from './icon';
+import { useFocusRing } from './use-focus-ring';
+import { useIconSize } from './use-icon-size';
 
 // Where the bubble opens: above its button, in window coordinates.
 type Anchor = Readonly<{ bottom: number; left: number; maxWidth: number }>;
@@ -17,10 +20,14 @@ type InfoTipProps = Readonly<{
 // The widest the bubble gets, in dp: a few short lines.
 const MAX_BUBBLE_WIDTH = 320;
 
-// An ⓘ button that explains what's next to it in a small bubble, above it. A tap anywhere closes it,
-// Back too (a TV's remote, screen readers).
+// An ⓘ that explains what's next to it in a small bubble, above it. A tap anywhere closes it, Back
+// too (a TV's remote, screen readers). A bare icon, not a Button (the maintainer's choice: a
+// discreet hint, not an action), still a 48 dp touch target with the TV's focus ring.
 export function InfoTip({ label, message }: InfoTipProps) {
+  const t = useMessages();
   const { theme } = useUnistyles();
+  const iconSize = useIconSize('md');
+  const { focusProps, focusStyle } = useFocusRing();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const [anchor, setAnchor] = useState<Anchor>();
   const buttonRef = useRef<ViewType>(null);
@@ -40,14 +47,19 @@ export function InfoTip({ label, message }: InfoTipProps) {
 
   return (
     <>
-      <Button
-        icon="information-outline"
-        isIconOnly
-        label={label}
+      <Pressable
+        accessibilityHint={t.common.infoHint}
+        accessibilityLabel={label}
+        accessibilityRole="button"
+        // Up to the 48 dp touch target around the small icon.
+        hitSlop={Math.max(0, (theme.size.touchTarget - iconSize) / 2)}
         onPress={open}
         ref={buttonRef}
-        variant="secondary"
-      />
+        style={({ pressed }) => [pressed && styles.pressed, focusStyle]}
+        {...focusProps}
+      >
+        <Icon color={theme.colors.textMuted} name="information-outline" size={iconSize} />
+      </Pressable>
       {anchor && (
         <Modal animationType="fade" onRequestClose={close} statusBarTranslucent transparent visible>
           {/* A tap anywhere closes it, on the bubble too; screen readers use Back instead. */}
@@ -88,6 +100,9 @@ const styles = StyleSheet.create((theme) => ({
     ],
     padding: theme.gap(3),
     position: 'absolute',
+  },
+  pressed: {
+    opacity: theme.opacity.pressed,
   },
   text: {
     ...theme.typography.body,

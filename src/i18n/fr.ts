@@ -56,6 +56,7 @@ export const fr: Messages = {
     deleteHint: 'Demande d’abord une confirmation',
     deleteTitle: (name) => `Supprimer ${quote(name)}${NARROW_SPACE}?`,
     edit: 'Modifier',
+    infoHint: 'Affiche une explication',
     loadingMore: 'Chargement de la suite',
     loadingMoreHint: 'D’autres éléments s’affichent une fois chargés',
     more: 'Plus d’actions',

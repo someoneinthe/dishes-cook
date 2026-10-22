@@ -81,6 +81,8 @@ export const en = {
     deleteHint: 'Asks for confirmation first',
     deleteTitle: (name: string) => `Delete “${name}”?`,
     edit: 'Edit',
+    // An ⓘ next to something it explains (src/components/info-tip.tsx).
+    infoHint: 'Shows an explanation',
     loadingMore: 'Loading more',
     loadingMoreHint: 'More items appear when they are loaded',
     more: 'More actions',
