@@ -41,32 +41,45 @@ export function LastCooked({ isEditable = false, recipeId }: LastCookedProps) {
 
   return (
     <View style={styles.row}>
-      <Text style={styles.text}>{text}</Text>
-      {!isTv && isEditable && lastCooked && (
-        // With its text: the header's trash can deletes the recipe itself.
-        <Button
-          accessibilityHint={t.common.deleteHint}
-          accessibilityLabel={t.mealHistory.removeLabel}
-          icon="trash-can-outline"
-          label={t.mealHistory.remove}
-          onPress={askToRemove}
-          variant="danger"
-        />
-      )}
-      {!isTv && isEditable && daysAgo !== 0 && (
-        <Button
-          accessibilityHint={t.mealHistory.cookedHint}
-          icon="pot-steam-outline"
-          label={t.mealHistory.cooked}
-          onPress={() => markCooked(database, recipeId)}
-          variant="secondary"
-        />
-      )}
+      {/* Centered in the room the buttons leave (the recipe screen's bottom bar). */}
+      <Text style={[styles.text, isEditable && styles.centeredText]}>{text}</Text>
+      {/* On the right. */}
+      <View style={styles.buttons}>
+        {!isTv && isEditable && lastCooked && (
+          // With its text: the header's trash can deletes the recipe itself.
+          <Button
+            accessibilityHint={t.common.deleteHint}
+            accessibilityLabel={t.mealHistory.removeLabel}
+            icon="trash-can-outline"
+            label={t.mealHistory.remove}
+            onPress={askToRemove}
+            variant="danger"
+          />
+        )}
+        {!isTv && isEditable && daysAgo !== 0 && (
+          <Button
+            accessibilityHint={t.mealHistory.cookedHint}
+            icon="pot-steam-outline"
+            label={t.mealHistory.cooked}
+            onPress={() => markCooked(database, recipeId)}
+            variant="secondary"
+          />
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create((theme) => ({
+  buttons: {
+    columnGap: theme.gap(3),
+    flexDirection: 'row',
+    marginLeft: 'auto',
+  },
+  centeredText: {
+    flexGrow: 1,
+    textAlign: 'center',
+  },
   row: {
     alignItems: 'center',
     columnGap: theme.gap(3),

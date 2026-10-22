@@ -35,8 +35,9 @@ function describeAuthor(
 }
 
 const styles = StyleSheet.create((theme) => ({
+  // A secondary detail: small and light.
   text: {
-    ...theme.typography.body,
-    color: theme.colors.textMuted,
+    ...theme.typography.caption,
+    color: theme.colors.textSubtle,
   },
 }));

@@ -75,6 +75,9 @@ const lightColors = {
   surface: '#FAFAF9',
   text: '#1C1917',
   textMuted: '#57534E',
+  // Lighter than textMuted, for secondary details (who added a recipe); contrast with the
+  // background ≥ 4.5:1 (4.8:1 here).
+  textSubtle: '#78716C',
 };
 
 export type ColorToken = keyof typeof lightColors;
@@ -109,6 +112,8 @@ const darkColors: ThemeColors = {
   surface: '#1E1E1E',
   text: '#F5F5F4',
   textMuted: '#A8A29E',
+  // 5.4:1 with the background, 4.8:1 with surface.
+  textSubtle: '#8F8984',
 };
 
 export const lightTheme = { ...base, colors: lightColors satisfies ThemeColors };
