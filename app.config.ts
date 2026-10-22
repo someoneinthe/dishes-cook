@@ -68,6 +68,8 @@ export default function appConfig({ config }: ConfigContext): ExpoConfig {
       ],
       // ML Kit (text recognition) would report its usage to Google: the app sends nothing but the sync.
       './plugins/with-no-mlkit-reporting.js',
+      // R8 (release builds) would remove the ML Kit code it creates by name.
+      './plugins/with-mlkit-keep-rules.js',
       // Android TV: TV launcher entry with its banner (from assets/source/app-icon.jpg), landscape.
       ['./plugins/with-android-tv.js', { banner: './assets/images/tv-banner.png' }],
       [

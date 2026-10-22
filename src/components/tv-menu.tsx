@@ -60,7 +60,7 @@ function TvMenu({ descriptors, navigation, state }: Readonly<DrawerContentCompon
   const iconSize = useIconSize('lg');
   // Icon colors are props, not styles.
   const { theme } = useUnistyles();
-  const { focusReturnKey, openFromMenu } = useMenuFocusReturn(state);
+  const { focusReturnName, openFromMenu } = useMenuFocusReturn(state);
 
   const shownKey = state.routes[state.index]?.key;
   const { bottomList, topList } = toMenuSections(
@@ -93,15 +93,17 @@ function TvMenu({ descriptors, navigation, state }: Readonly<DrawerContentCompon
         <TvMenuEntry
           icon={options.drawerIcon?.({ color, focused: isActive, size: iconSize })}
           isActive={isActive}
-          isTvPreferredFocus={route.key === focusReturnKey}
-          key={route.key}
+          isTvPreferredFocus={route.name === focusReturnName}
+          // By name: a screen's route key changes the first time it's opened, which would remount
+          // its entry, and the remote's focus would leave it.
+          key={route.name}
           label={options.title}
           {...(isEdge &&
             (edge === 'last'
               ? { nextFocusDown: firstBottomId, ref: lastTopRef }
               : { nextFocusUp: lastTopId, ref: firstBottomRef }))}
           onPress={() => {
-            openFromMenu(route.key);
+            openFromMenu(route.name);
             navigation.navigate(route.name);
           }}
         />
@@ -159,21 +161,22 @@ function TvMenuEntry({
 // Back from a screen opened by a menu entry (Back always leads to the first screen, the meal
 // choice): the remote's focus returns to that entry, as it returns to what opened any other screen.
 function useMenuFocusReturn({ index, routes }: DrawerContentComponentProps['state']) {
-  const shownKey = routes[index]?.key;
-  const [lastShownKey, setLastShownKey] = useState(shownKey);
+  // By name: a screen's route key changes the first time it's opened.
+  const shownName = routes[index]?.name;
+  const [lastShownName, setLastShownName] = useState(shownName);
   // The entry just pressed, then the screen it opened while it's shown.
-  const [pressedKey, setPressedKey] = useState<string>();
-  const [openedKey, setOpenedKey] = useState<string>();
-  const [focusReturnKey, setFocusReturnKey] = useState<string>();
+  const [pressedName, setPressedName] = useState<string>();
+  const [openedName, setOpenedName] = useState<string>();
+  const [focusReturnName, setFocusReturnName] = useState<string>();
   // Another screen shown: worked out while rendering, so the entry asks for the focus at once.
-  if (shownKey !== lastShownKey) {
-    const isFromMenu = pressedKey === shownKey;
-    setLastShownKey(shownKey);
-    setPressedKey(undefined);
-    setOpenedKey(isFromMenu ? shownKey : undefined);
-    setFocusReturnKey(!isFromMenu && index === 0 ? openedKey : undefined);
+  if (shownName !== lastShownName) {
+    const isFromMenu = pressedName === shownName;
+    setLastShownName(shownName);
+    setPressedName(undefined);
+    setOpenedName(isFromMenu ? shownName : undefined);
+    setFocusReturnName(!isFromMenu && index === 0 ? openedName : undefined);
   }
-  return { focusReturnKey, openFromMenu: setPressedKey };
+  return { focusReturnName, openFromMenu: setPressedName };
 }
 
 // A view's Android id, for the `nextFocus…` props.

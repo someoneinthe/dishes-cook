@@ -10,17 +10,19 @@ jest.mock('expo-router/drawer', () => ({
 
 // The drawer navigator's props, for three screens in the app's order (the meal choice first, where
 // Back leads): the menu shows the ones with a title that aren't hidden. `shownIndex`: the screen
-// shown.
+// shown. Like Expo Router's, a screen's route key is its name until it's first opened.
 function menuProps(navigate: jest.Mock, shownIndex = 0) {
   const routeList = [
-    { key: 'index-key', name: 'index', options: { title: 'Meal choice' } },
-    { key: 'recipes-key', name: 'recipes', options: { title: 'Recipes' } },
+    { name: 'index', options: { title: 'Meal choice' } },
+    { name: 'recipes', options: { title: 'Recipes' } },
     {
-      key: 'ingredients-key',
       name: 'ingredients',
       options: { drawerItemStyle: { display: 'none' }, title: 'Ingredients' },
     },
-  ];
+  ].map((route, index) => ({
+    ...route,
+    key: index === 0 || index === shownIndex ? `${route.name}:0-${index}` : route.name,
+  }));
   return {
     descriptors: Object.fromEntries(routeList.map(({ key, options }) => [key, { options }])),
     navigation: { navigate },
@@ -52,13 +54,13 @@ describe('tvMenu', () => {
     const navigate = jest.fn();
     await render(tvMenu(menuProps(navigate)));
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Recipes' }));
+    const entry = screen.getByRole('button', { name: 'Recipes' });
+    await fireEvent.press(entry);
     await screen.rerender(tvMenu(menuProps(navigate, 1)));
 
-    expect(screen.getByRole('button', { name: 'Recipes' })).toHaveProp(
-      'hasTVPreferredFocus',
-      false,
-    );
+    // The same entry, though the screen's route got its key: a new one would lose the focus.
+    expect(screen.getByRole('button', { name: 'Recipes' })).toBe(entry);
+    expect(entry).toHaveProp('hasTVPreferredFocus', false);
 
     await screen.rerender(tvMenu(menuProps(navigate, 0)));
 
