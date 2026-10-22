@@ -43,7 +43,7 @@ export function RecipesScreen({ kind = 'dish' }: RecipesScreenProps) {
   const t = useMessages();
   const texts = kindTexts(t, kind);
   const [search, setSearch] = useState('');
-  const [chosenFilterValues, setFilterValues] = useState<RecipeFilterValues>(NO_FILTERS);
+  const [chosenFilterValues, setChosenFilterValues] = useState<RecipeFilterValues>(NO_FILTERS);
   // Only the title search shows at first; hidden filters stay applied.
   const [isFiltersShown, setIsFiltersShown] = useState(false);
   // Mine or anyone's only with a sync server: without one, every recipe is the phone's.
@@ -115,7 +115,7 @@ export function RecipesScreen({ kind = 'dish' }: RecipesScreenProps) {
                 <RecipeFilters
                   isAuthorShown={isAuthorShown}
                   kind={kind}
-                  onChange={setFilterValues}
+                  onChange={setChosenFilterValues}
                   values={filterValues}
                 />
               )}

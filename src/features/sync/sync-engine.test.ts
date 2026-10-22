@@ -143,6 +143,18 @@ describe('synchronize', () => {
     // A server without an author never takes one away.
     expect(authorOf(phoneB, 'stew')).toBe(server.accountId);
     expect(countPendingChanges(phoneB.db, phoneB.cursors.pushedFrom)).toBe(0);
+
+    // Nor does a newer version without one.
+    const storedStew = rowMap.get(stew!.id)!;
+    rowMap.set(stew!.id, {
+      ...storedStew,
+      modified: storedStew.modified + 1,
+      title: 'beef stew',
+      updated: '2026-01-03 00:00:00.000Z',
+    });
+    await sync(phoneB);
+
+    expect(authorOf(phoneB, 'beef stew')).toBe(server.accountId);
   });
 
   it('fails without changing anything when the server is unreachable', async () => {

@@ -386,7 +386,8 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
   }
   const values = {
     course: toCourse(row.course),
-    createdBy: pulledAuthor(row),
+    // A server without an author never takes one away (like applyKnownAuthor).
+    createdBy: pulledAuthor(row, local),
     instructions: typeof row.instructions === 'string' ? row.instructions.trim() : '',
     kind: toRecipeKind(row.kind),
     ...pulledTimes(row),
@@ -744,11 +745,12 @@ async function pull<Table extends SyncedTable>(
   return pulledUntil;
 }
 
-// A pulled recipe's author: the account's id, or '' (none, or not a usable id).
-function pulledAuthor(row: ServerRecipe): string {
+// A pulled recipe's author: the account's id; without a usable one, the author already known here
+// (`local`), or '' (none).
+function pulledAuthor(row: ServerRecipe, local?: Readonly<{ createdBy: null | string }>): string {
   return typeof row.created_by === 'string' && ACCOUNT_ID.test(row.created_by)
     ? row.created_by
-    : '';
+    : (local?.createdBy ?? '');
 }
 
 // A pulled recipe's photo, compared with the phone's: none (the photo goes), the one the phone has,
