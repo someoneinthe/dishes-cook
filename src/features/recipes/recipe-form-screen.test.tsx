@@ -48,6 +48,7 @@ describe('recipeFormScreen', () => {
     const [{ id: savedId } = { id: -1 }] = firstRecipePage(connection.db);
 
     expect(getRecipe(connection.db, savedId)).toStrictEqual({
+      addedBy: { accountId: null },
       // Main course unless chosen otherwise.
       course: 'main',
       id: savedId,

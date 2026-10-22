@@ -40,6 +40,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
     '725b78ea61a07c5a5bf15b4553fbfcdc988260f231a31dbb20daae9dc4773c29',
   ],
   [
+    'server/migrations/1792800000-account-names.js',
+    '0554a8f3f2d19e4930fd153d113e67fd83b7d65591885ecbe7ca3b0983e90d9f',
+  ],
+  [
     'src/db/migrations/0000_init.sql',
     '76cc3f90b737b4d4fc587e49f95b56a56dbffc1d15747624574ea1ef73c7a018',
   ],
@@ -78,6 +82,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
   [
     'src/db/migrations/0009_recipe-author.sql',
     '58f2d32dad7dba63c6404bf22661617fe4364ee068edbe66bffc518e667b883a',
+  ],
+  [
+    'src/db/migrations/0010_account-names.sql',
+    '2f2fe0558b055854add5757c40a27be6cd3f28d339ebb207882833b6e23b806e',
   ],
 ]);
 

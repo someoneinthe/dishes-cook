@@ -21,6 +21,9 @@ export type RowUpload<Table extends SyncedTable> = Omit<
   'created' | 'created_by' | 'id' | 'updated'
 >;
 
+// A server account: its id and name ('' = none), to show who added a recipe.
+export type ServerAccount = Readonly<{ id: string; name: string }>;
+
 // One time a recipe was cooked (the meal history).
 export type ServerCookedMeal = Readonly<{
   // When it was cooked, in ms.
@@ -84,6 +87,8 @@ export type SyncApi = Readonly<{
   // The server's migrations and the oldest app it accepts; undefined for a server without that
   // endpoint (installed before it existed): too old for this app.
   getServerInfo: () => Promise<ServerInfo | undefined>;
+  // Up to PAGE_SIZE accounts in id order, after `afterId` ('' = from the first).
+  listAccounts: (afterId: string) => Promise<unknown[]>;
   // Up to PAGE_SIZE rows written on the server from `position` on, oldest first.
   listChanges: <Table extends SyncedTable>(
     table: Table,
@@ -165,6 +170,24 @@ export function createSyncApi(
       const response = await send(apiUrl(options.serverUrl, 'dishes-cook', 'server'));
       // 404: a server installed before the endpoint existed.
       return response.status === 404 ? undefined : readServerInfo(response);
+    },
+    listAccounts: async (afterId) => {
+      const query = new URLSearchParams({
+        fields: 'id,name',
+        perPage: String(PAGE_SIZE),
+        skipTotal: '1',
+        sort: 'id',
+      });
+      if (afterId) {
+        // Quotes removed, like pullFilter: ids never contain any.
+        query.set('filter', ['id', '>', `'${afterId.replaceAll("'", '')}'`].join(' '));
+      }
+      const url = `${apiUrl(options.serverUrl, 'collections', 'users', 'records')}?${query.toString()}`;
+      const itemList: unknown = ((await readJson(await send(url))) as { items?: unknown }).items;
+      if (!Array.isArray(itemList)) {
+        throw new SyncError('failed', 'Unexpected list of accounts');
+      }
+      return itemList.slice(0, PAGE_SIZE) as unknown[];
     },
     listChanges: async (table, position) => {
       const query = new URLSearchParams({

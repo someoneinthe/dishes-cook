@@ -44,6 +44,8 @@ describe('recipe queries', () => {
     const id = saveRecipe(database, { ...soupInput, ingredientIdList: [leekId, carrotId, leekId] });
 
     expect(getRecipe(database, id)).toStrictEqual({
+      // Added here: no author until the sync server gives it one.
+      addedBy: { accountId: null },
       // A main course when none is given.
       course: 'main',
       id,

@@ -6,11 +6,14 @@ import { SERVER_MIGRATION_LIST, SYNC_VERSION } from '@/features/sync/server-vers
 // - an update older than the stored row (`modified`) is refused with a 404 (the update rule);
 // - a create with an existing id gets a 400 `validation_not_unique`;
 // - a recipe's `created_by` is the account that created it, whatever a request sends
-//   (server/hooks/recipe-author.pb.js).
+//   (server/hooks/recipe-author.pb.js);
+// - signed-in accounts list the accounts' ids and names (`users`, seeded with the phones' one).
 
 export type FakeSyncServer = Readonly<{
   // The id of the server's account (the one the phones sign in with).
   accountId: string;
+  // The accounts the server lists, by id (the phones' one included): tests add and name them.
+  accountMap: Map<string, Readonly<{ id: string; name: string }>>;
   // Every row of a collection, as stored (tests read and edit them).
   collection: (name: string) => Map<string, StoredRow>;
   fetch: typeof fetch;
@@ -47,6 +50,11 @@ export function createFakeSyncServer(
     migrations: [...SERVER_MIGRATION_LIST],
     minimumAppSyncVersion: SYNC_VERSION,
   };
+
+  // The accounts (`users`), by id: tests add others and name them.
+  const accountMap = new Map<string, Readonly<{ id: string; name: string }>>([
+    [ACCOUNT_ID, { id: ACCOUNT_ID, name: '' }],
+  ]);
 
   const collection = (name: string) => {
     let rowMap = collectionMap.get(name);
@@ -171,6 +179,20 @@ export function createFakeSyncServer(
     return serverInfo ? json(200, serverInfo) : json(404, { message: 'Not found' });
   };
 
+  // GET /api/collections/users/records?fields=id,name&sort=id[&filter=id > '<id>'].
+  const handleAccounts = ({ isSignedIn, method, path, query }: FakeRequest) => {
+    if (method !== 'GET' || path !== '/api/collections/users/records') {
+      return;
+    }
+    const afterId = /^id > '([^']*)'$/.exec(query.get('filter') ?? '')?.[1] ?? '';
+    const perPage = Math.min(Number(query.get('perPage') ?? 30), PER_PAGE_MAX);
+    const itemList = [...accountMap.values()]
+      .filter(({ id }) => id > afterId)
+      .toSorted((a, b) => a.id.localeCompare(b.id))
+      .slice(0, perPage);
+    return json(200, { items: isSignedIn ? itemList : [] });
+  };
+
   const handleRecords = (request: FakeRequest) => {
     const match = /^\/api\/collections\/(\w+)\/records(?:\/(\w+))?$/.exec(request.path);
     if (!match) {
@@ -205,6 +227,7 @@ export function createFakeSyncServer(
       handleAuth(request) ??
       handleFiles(request) ??
       handleServerInfo(request) ??
+      handleAccounts(request) ??
       handleRecords(request) ??
       json(404, { message: 'Not found' })
     );
@@ -212,6 +235,7 @@ export function createFakeSyncServer(
 
   return {
     accountId: ACCOUNT_ID,
+    accountMap,
     collection,
     fetch: fakeFetch,
     fileMap,

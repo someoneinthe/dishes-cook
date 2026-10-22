@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import type { Phone } from '@/test/sync-scenarios';
 import { PAGE_SIZE } from '@/db/pagination';
-import { cookedMeals, recipes } from '@/db/schema';
+import { accounts, cookedMeals, recipes } from '@/db/schema';
 import { findIngredientByName } from '@/features/ingredients/db/ingredient-queries';
 import {
   getLastCookedMeal,
@@ -183,6 +183,21 @@ describe('synchronize', () => {
 
     expect(recipeOf(phoneA, 'Pea soup')).toBeDefined();
     expect(author).toBeNull();
+  });
+
+  it('forgets an account the server no longer lists, and renames the others', async () => {
+    server.accountMap.set('b00000000000002', { id: 'b00000000000002', name: 'Alice' });
+    server.accountMap.set('c00000000000003', { id: 'c00000000000003', name: 'Bob' });
+    await sync(phoneA);
+    server.accountMap.delete('c00000000000003');
+    server.accountMap.set('b00000000000002', { id: 'b00000000000002', name: '  Alicia ' });
+
+    await sync(phoneA);
+
+    expect(phoneA.db.select().from(accounts).orderBy(asc(accounts.id)).all()).toStrictEqual([
+      { id: server.accountId, name: '' },
+      { id: 'b00000000000002', name: 'Alicia' },
+    ]);
   });
 
   it('fails without changing anything when the server is unreachable', async () => {
@@ -461,6 +476,7 @@ describe('synchronize', () => {
     });
     const apiListing = (listChanges: SyncApi['listChanges']): SyncApi => ({
       getServerInfo: () => Promise.resolve(undefined),
+      listAccounts: () => Promise.resolve([]),
       listChanges,
       recipePhotoUrl: () => Promise.resolve(''),
       refreshToken: () => Promise.resolve({ accountId: 'a00000000000001', token: 'token' }),
@@ -513,6 +529,11 @@ describe('synchronize', () => {
       const fakeServer = createFakeSyncServer(ACCOUNT);
       return Promise.resolve({
         account: ACCOUNT,
+        addAccount: (name: string) => {
+          const id = `b${String(fakeServer.accountMap.size).padStart(14, '0')}`;
+          fakeServer.accountMap.set(id, { id, name });
+          return Promise.resolve(id);
+        },
         fetch: fakeServer.fetch,
         rowsOf: (table) => Promise.resolve([...fakeServer.collection(table).values()]),
         serverUrl: SERVER_URL,

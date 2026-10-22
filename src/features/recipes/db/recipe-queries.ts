@@ -6,7 +6,14 @@ import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import type { Quantity } from '@/lib/units';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
-import { ingredients, NOW_MS, recipeIngredients, recipes, syncDeletions } from '@/db/schema';
+import {
+  accounts,
+  ingredients,
+  NOW_MS,
+  recipeIngredients,
+  recipes,
+  syncDeletions,
+} from '@/db/schema';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import {
   LAST_COOKED_AT,
@@ -18,6 +25,9 @@ import { toMinutes } from '../minutes';
 import { toMonths } from '../months';
 
 export type Recipe = Readonly<{
+  // Who added it, with a sync server: the account's id (null = added here, not on the server yet)
+  // and its name when the server gives one. Left out without an author (pulled without one).
+  addedBy?: Readonly<{ accountId: null | string; name?: string }>;
   // Cooking time in minutes; left out when not given (like prepMinutes).
   cookMinutes?: number;
   course: Course;
@@ -135,8 +145,10 @@ export function deleteRecipe(database: AppDatabase, id: number): void {
 export function getRecipe(database: AppDatabase, id: number): Recipe | undefined {
   const recipe = database
     .select({
+      authorName: accounts.name,
       cookMinutes: recipes.cookMinutes,
       course: recipes.course,
+      createdBy: recipes.createdBy,
       id: recipes.id,
       instructions: recipes.instructions,
       kind: recipes.kind,
@@ -147,12 +159,21 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
       title: recipes.title,
     })
     .from(recipes)
+    .leftJoin(accounts, eq(accounts.id, recipes.createdBy))
     .where(eq(recipes.id, id))
     .get();
   if (!recipe) {
     return undefined;
   }
-  const { cookMinutes, maturationMonths, photoFile, prepMinutes, ...fields } = recipe;
+  const {
+    authorName,
+    cookMinutes,
+    createdBy,
+    maturationMonths,
+    photoFile,
+    prepMinutes,
+    ...fields
+  } = recipe;
   const linkList = database
     .select({
       amount: recipeIngredients.amount,
@@ -177,6 +198,9 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
     ...fields,
     ingredientList,
     title: toDisplayName(recipe.title),
+    ...(createdBy !== '' && {
+      addedBy: authorName ? { accountId: createdBy, name: authorName } : { accountId: createdBy },
+    }),
     // Left out when not given: a recipe without them reads as before.
     ...(toMinutes(cookMinutes) !== undefined && { cookMinutes: toMinutes(cookMinutes) }),
     ...(toMonths(maturationMonths) !== undefined && {

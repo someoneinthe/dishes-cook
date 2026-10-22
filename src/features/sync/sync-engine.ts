@@ -17,6 +17,7 @@ import type { AppDatabase } from '@/db/types';
 import type { Quantity } from '@/lib/units';
 import { PAGE_SIZE } from '@/db/pagination';
 import {
+  accounts,
   cookedMeals,
   COURSE_LIST,
   ingredients,
@@ -34,6 +35,7 @@ import { toQuantity, toStored } from '@/lib/units';
 import type {
   PhotoUpload,
   PullPosition,
+  ServerAccount,
   ServerCookedMeal,
   ServerIngredient,
   ServerRecipe,
@@ -45,7 +47,7 @@ import { SyncError } from './sync-api';
 
 // Two-way sync between the phone's database and the sync server (see docs/sync.md):
 // 1. pull the rows written on the server since the last pull, and apply the newer ones (ingredients,
-//    then recipes, then the meal history: each links to the previous);
+//    then recipes, then the meal history: each links to the previous), and the accounts' names;
 // 2. push the deletions, then the rows changed here since the last push.
 // The newest change of a row wins (`updated_at` here, `modified` there). Applying a pulled row
 // keeps its `modified` as `updated_at`, so it isn't pushed back.
@@ -203,6 +205,7 @@ export async function synchronize(
       cookedMealsPulledUntil = latest(cookedMealsPulledUntil, await pullCookedMeals(''));
     }
   }
+  await pullAccounts(database, api, holdChanges);
   if (photos) {
     await downloadPhotos(database, api, photos, holdChanges);
   }
@@ -605,6 +608,15 @@ function isNewerThan(row: ServerRow, local: Readonly<{ updatedAt: number }> | un
   return local === undefined || row.modified > local.updatedAt;
 }
 
+// An account as the server lists it: a usable id (its name is checked by toAccount).
+function isServerAccount(item: unknown): item is Readonly<{ id: string; name?: unknown }> {
+  return (
+    typeof item === 'object' &&
+    item !== null &&
+    ACCOUNT_ID.test(String((item as { id?: unknown }).id))
+  );
+}
+
 // Whether the server's photo of a recipe is the one the phone shows (uploaded or downloaded), or
 // one it hasn't downloaded yet: then a push of the recipe leaves it.
 function isServerPhotoKept(
@@ -743,6 +755,34 @@ async function pull<Table extends SyncedTable>(
     position = { after: last };
   }
   return pulledUntil;
+}
+
+// The server's accounts, all of them (a household's few), in place of the ones kept here: who added
+// a recipe is shown by name. Kept as they were when the server doesn't list them all.
+async function pullAccounts(
+  database: AppDatabase,
+  api: SyncApi,
+  holdChanges: (write: () => void) => void,
+): Promise<void> {
+  const accountList: ServerAccount[] = [];
+  for (let page = 0; page < MAX_PULL_PAGES; page++) {
+    // eslint-disable-next-line no-await-in-loop -- pages one after another: each starts after the previous one's last id
+    const itemList = await api.listAccounts(accountList.at(-1)?.id ?? '');
+    accountList.push(
+      ...itemList.filter((item) => isServerAccount(item)).map((item) => toAccount(item)),
+    );
+    if (itemList.length < PAGE_SIZE) {
+      holdChanges(() => {
+        database.transaction((tx) => {
+          tx.delete(accounts).run();
+          if (accountList.length > 0) {
+            tx.insert(accounts).values(accountList).onConflictDoNothing().run();
+          }
+        });
+      });
+      return;
+    }
+  }
 }
 
 // A pulled recipe's author: the account's id; without a usable one, what the phone already has
@@ -1085,6 +1125,11 @@ function throwFirstFailure(resultList: readonly PromiseSettledResult<unknown>[])
       throw result.reason;
     }
   }
+}
+
+// At most 100 characters of a name, trimmed; '' for none.
+function toAccount(item: Readonly<{ id: string; name?: unknown }>): ServerAccount {
+  return { id: item.id, name: typeof item.name === 'string' ? item.name.trim().slice(0, 100) : '' };
 }
 
 function toCourse(value: string): Course {

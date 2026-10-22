@@ -193,6 +193,15 @@ export const cookedMeals = sqliteTable(
   ],
 );
 
+// The sync server's accounts, to name who added a recipe (recipes.createdBy). Replaced by each sync
+// (see docs/sync.md); empty without a server. Never pushed.
+export const accounts = sqliteTable('accounts', {
+  // The account's id on the server.
+  id: text('id').primaryKey(),
+  // As set on the server; '' = none.
+  name: text('name').notNull().default(''),
+});
+
 // Rows deleted on this phone, until the sync server is told (see docs/sync.md). Written by the
 // delete queries in the same transaction as the delete; never read by the screens.
 export const syncDeletions = sqliteTable(

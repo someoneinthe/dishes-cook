@@ -66,8 +66,8 @@ export const en = {
     othersTitle: 'Nothing for anyone else',
     serverList: [
       'Off by default. In Settings › Data storage, you can sync with a PocketBase server that you install and run yourself, to share your recipes between your devices.',
-      'Only that server receives your data: your recipes and drinks (title, dish or drink, course, season, preparation and cooking times, a drink’s maturation time, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. The server also records which of its accounts added each recipe (for the “Added by” filter). Settings stay on each device.',
-      'The device keeps the server’s address, your email, your account’s id on the server and an encrypted sign-in token, never your password. The connection is encrypted (HTTPS).',
+      'Only that server receives your data: your recipes and drinks (title, dish or drink, course, season, preparation and cooking times, a drink’s maturation time, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. The server also records which of its accounts added each recipe (shown on the recipe, and for the “Added by” filter), and every account on it can see the others’ names, not their emails. Settings stay on each device.',
+      'The device keeps the server’s address, your email, your account’s id on the server, the names of the server’s accounts and an encrypted sign-in token, never your password. The connection is encrypted (HTTPS).',
       'The server is yours: no one else runs it, and the app’s developers can’t see it.',
     ],
     serverTitle: 'On your own server, if you choose',
@@ -257,6 +257,10 @@ export const en = {
     unitOptionHint: 'Uses this unit for the quantity',
   },
   recipes: {
+    // Who added a recipe or a drink, with a sync server: the account's name as set on the server.
+    addedBy: (name: string) => `Added by ${name}`,
+    addedBySomeoneElse: 'Added by someone else',
+    addedByYou: 'Added by you',
     addPhoto: 'Add a photo',
     addPhotoHint: 'Takes a photo or picks one from your gallery',
     // A recipe screen that failed to show (src/features/recipes/recipe-error-boundary.tsx).

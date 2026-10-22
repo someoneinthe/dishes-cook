@@ -2,7 +2,7 @@ import { asc, eq } from 'drizzle-orm';
 import type { SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { PhotoStore, SyncCursors } from '@/features/sync/sync-engine';
-import { cookedMeals, ingredients, recipes, syncDeletions } from '@/db/schema';
+import { accounts, cookedMeals, ingredients, recipes, syncDeletions } from '@/db/schema';
 import {
   deleteIngredient,
   findIngredientByName,
@@ -35,6 +35,8 @@ export type StoredRow = Record<string, unknown> & { id: string; updated: string 
 // PocketBase (sync-engine.pocketbase.test.ts), empty at the start of each scenario.
 export type SyncTestServer = Readonly<{
   account: Readonly<{ email: string; password: string }>;
+  // Adds another account with this name (as the admin does); resolves with its id.
+  addAccount: (name: string) => Promise<string>;
   fetch: typeof fetch;
   // The rows stored in a collection, deleted ones included.
   rowsOf: (table: SyncedTable) => Promise<StoredRow[]>;
@@ -194,6 +196,23 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
       expect(authorOf(phone, 'Leek soup')).toBe(accountId);
     }
     await expect(server.rowsOf('recipes')).resolves.toMatchObject([{ created_by: accountId }]);
+  });
+
+  it('names who added a recipe with the names of the server’s accounts', async () => {
+    const aliceId = await server.addAccount('Alice');
+    addRecipe(phoneA, 'Soup');
+
+    await syncBoth();
+
+    const { account, fetch, serverUrl } = server;
+    const { accountId } = await signIn({ ...account, fetch, serverUrl });
+    expect(phoneB.db.select().from(accounts).orderBy(asc(accounts.id)).all()).toStrictEqual(
+      [
+        { id: accountId, name: '' },
+        { id: aliceId, name: 'Alice' },
+      ].toSorted((a, b) => a.id.localeCompare(b.id)),
+    );
+    expect(recipeOf(phoneB, 'Soup')?.addedBy).toStrictEqual({ accountId });
   });
 
   it('brings the quantities of a recipe to the other phone, and their changes', async () => {

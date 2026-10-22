@@ -148,6 +148,19 @@ describe('synchronize with PocketBase', () => {
       ]);
     });
 
+    it('lists the accounts’ names to a signed-in account, not their emails (server/migrations)', async () => {
+      const aliceId = await server.addAccount('Alice');
+
+      const listed = await call('collections/users/records?sort=-name', { token });
+      const asGuest = await call('collections/users/records');
+
+      const { items: itemList } = (await listed.json()) as { items: Record<string, unknown>[] };
+
+      expect(itemList).toMatchObject([{ id: aliceId, name: 'Alice' }, { id: accountId }]);
+      expect(itemList[0]).not.toHaveProperty('email');
+      await expect(asGuest.json()).resolves.toMatchObject({ items: [] });
+    });
+
     it('sets `updated` in a format that sorts as text in time order (the pull cursor)', async () => {
       await createRecipe('aaaaaaaaaaaaaaa');
 

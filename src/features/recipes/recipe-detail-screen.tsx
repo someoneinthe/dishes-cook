@@ -12,6 +12,7 @@ import { LastCooked } from '@/features/meal-history/components/last-cooked';
 import { ShoppingListToggle } from '@/features/shopping-list/components/shopping-list-toggle';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
+import { AddedBy } from './components/added-by';
 import { RecipeDetails } from './components/recipe-details';
 import { ShareRecipeButton } from './components/share-recipe-button';
 import { deleteRecipe } from './db/recipe-queries';
@@ -94,6 +95,7 @@ export function RecipeDetailScreen() {
         }}
       />
       <RecipeDetails recipe={recipe}>
+        <AddedBy addedBy={recipe.addedBy} />
         {/* Drinks have no meal history. */}
         {recipe.kind === 'dish' && <LastCooked isEditable recipeId={recipe.id} />}
       </RecipeDetails>

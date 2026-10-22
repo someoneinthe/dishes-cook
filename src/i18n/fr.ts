@@ -41,8 +41,8 @@ export const fr: Messages = {
     othersTitle: 'Rien pour personne d’autre',
     serverList: [
       'Désactivée par défaut. Dans Paramètres › Stockage des données, vous pouvez synchroniser avec un serveur PocketBase que vous installez et gérez vous-même, pour partager vos recettes entre vos appareils.',
-      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes et boissons (titre, plat ou boisson, type de plat, saison, temps de préparation et de cuisson, temps de maturation d’une boisson, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Le serveur note aussi lequel de ses comptes a ajouté chaque recette (pour le filtre ${quote('Ajoutée par')}). Les paramètres restent sur chaque appareil.`,
-      'L’appareil garde l’adresse du serveur, votre e-mail, l’identifiant de votre compte sur le serveur et un jeton de connexion chiffré, jamais votre mot de passe. La connexion est chiffrée (HTTPS).',
+      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes et boissons (titre, plat ou boisson, type de plat, saison, temps de préparation et de cuisson, temps de maturation d’une boisson, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Le serveur note aussi lequel de ses comptes a ajouté chaque recette (affiché sur la recette et pour le filtre ${quote('Ajoutée par')}), et chaque compte peut y voir le nom des autres, pas leur e-mail. Les paramètres restent sur chaque appareil.`,
+      'L’appareil garde l’adresse du serveur, votre e-mail, l’identifiant de votre compte sur le serveur, le nom des comptes du serveur et un jeton de connexion chiffré, jamais votre mot de passe. La connexion est chiffrée (HTTPS).',
       `Le serveur est à vous${NARROW_SPACE}: personne d’autre ne le gère, et les développeurs de l’application ne peuvent pas le voir.`,
     ],
     serverTitle: 'Sur votre propre serveur, si vous le souhaitez',
@@ -227,6 +227,9 @@ export const fr: Messages = {
     unitOptionHint: 'Utilise cette unité pour la quantité',
   },
   recipes: {
+    addedBy: (name) => `Ajoutée par ${name}`,
+    addedBySomeoneElse: 'Ajoutée par quelqu’un d’autre',
+    addedByYou: 'Ajoutée par vous',
     addPhoto: 'Ajouter une photo',
     addPhotoHint: 'Prend une photo ou en choisit une dans votre galerie',
     cantShowMessage:
