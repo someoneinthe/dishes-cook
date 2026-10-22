@@ -17,9 +17,6 @@ type InfoTipProps = Readonly<{
   message: string;
 }>;
 
-// The widest the bubble gets, in dp: a few short lines.
-const MAX_BUBBLE_WIDTH = 320;
-
 // An ⓘ that explains what's next to it in a small bubble, above it. A tap anywhere closes it, Back
 // too (a TV's remote, screen readers). A bare icon, not a Button (the maintainer's choice: a
 // discreet hint, not an action), still a 48 dp touch target with the TV's focus ring.
@@ -35,11 +32,11 @@ export function InfoTip({ label, message }: InfoTipProps) {
     buttonRef.current?.measureInWindow((x, y) => {
       const margin = theme.gap(4);
       // From the button's left, kept on screen.
-      const left = Math.max(margin, Math.min(x, windowWidth - margin - MAX_BUBBLE_WIDTH));
+      const left = Math.max(margin, Math.min(x, windowWidth - margin - theme.size.bubbleMaxWidth));
       setAnchor({
         bottom: windowHeight - y + theme.gap(1),
         left,
-        maxWidth: Math.min(MAX_BUBBLE_WIDTH, windowWidth - left - margin),
+        maxWidth: Math.min(theme.size.bubbleMaxWidth, windowWidth - left - margin),
       });
     });
   };

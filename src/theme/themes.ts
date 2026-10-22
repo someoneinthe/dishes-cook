@@ -14,6 +14,8 @@ const base = {
   // minText: width under which a row's text gives its line to the row's buttons.
   // maxContent: width of a screen's content on wide screens (TV), centered, so lines stay readable.
   size: {
+    // The widest an ⓘ's explanation bubble gets (src/components/info-tip.tsx): a few short lines.
+    bubbleMaxWidth: 320,
     // A chip's outline; its touch area is a touch target, the rest being transparent.
     chip: 36,
     maxContent: 720,
