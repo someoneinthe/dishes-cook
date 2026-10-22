@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useMessages } from '@/i18n/i18n-provider';
-import type { PhotoSource } from '../hooks/use-recipe-scan';
+import type { PhotoSource } from '../recipe-photos';
 import { pickRecipePhoto, recipePhotoFile } from '../recipe-photos';
 import { RecipePhoto } from './recipe-photo';
 

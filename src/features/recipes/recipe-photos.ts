@@ -9,7 +9,6 @@ import {
 import type { AppDatabase } from '@/db/types';
 import type { PhotoStore } from '@/features/sync/sync-engine';
 import { recipes } from '@/db/schema';
-import type { PhotoSource } from './hooks/use-recipe-scan';
 
 // Recipes' photos: JPEG files in the app's documents (kept with the app's data), one per recipe,
 // named at random. The database keeps the file's name (recipes.photo_file).
@@ -81,6 +80,9 @@ export const recipePhotoStore: PhotoStore = {
     return photo.exists ? photo : undefined;
   },
 };
+
+// Where a recipe's photo comes from: the camera, or the phone's photos.
+export type PhotoSource = 'camera' | 'library';
 
 // Takes a photo or picks one, cropped by the picker, then saves it resized as a recipe photo.
 export async function pickRecipePhoto(source: PhotoSource): Promise<PickResult> {

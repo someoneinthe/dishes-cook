@@ -65,6 +65,9 @@ const TITLE_LOOKUP_LINES = 5;
 // A title is at least this much larger than the ingredients' heading, or, without a heading, than
 // most of the text (a slanted photo makes some words look a third larger).
 const TITLE_HEADING_RATIO = 1.25;
+// On a page that isn't slanted (a PDF's, a document's), being the largest line is enough: a 30 pt
+// title measures only about 15 % more than a 20 pt heading with tall and hanging letters.
+const LEVEL_TITLE_HEADING_RATIO = 1.1;
 const TITLE_TEXT_RATIO = 1.5;
 
 // Units as written in recipes, compared without case nor accents. An alias only matches a whole
@@ -251,14 +254,19 @@ export function readIngredientLine(text: string): ScannedIngredient | undefined 
 }
 
 // The recipe read from a page's blocks of text; a field is empty when nothing was found for it.
-export function readRecipeText(blockList: readonly ScannedBlock[]): ScannedRecipe {
+// `isLevel`: the page isn't slanted (a PDF's or a document's, not a photo's).
+export function readRecipeText(blockList: readonly ScannedBlock[], isLevel = false): ScannedRecipe {
   const lineList = toReadingOrder(attachQuantities(blockList)).flatMap((block, blockIndex) =>
     block.lineList
       .map((line) => ({ ...line, blockIndex, row: block.row, text: cleanName(line.text) }))
       .filter((line) => line.text !== ''),
   );
   const ingredientHeadingIndex = lineList.findIndex((line) => isIngredientHeading(line.text));
-  const titleIndex = findTitleIndex(lineList, ingredientHeadingIndex);
+  const titleIndex = findTitleIndex(
+    lineList,
+    ingredientHeadingIndex,
+    isLevel ? LEVEL_TITLE_HEADING_RATIO : TITLE_HEADING_RATIO,
+  );
   const kindList = toLineKinds(lineList, ingredientHeadingIndex, titleIndex);
   const linesOf = (kind: LineKind) => lineList.filter((_, index) => kindList[index] === kind);
   return {
@@ -301,11 +309,15 @@ function attachQuantities(blockList: readonly ScannedBlock[]): ScannedBlock[] {
 
 // The largest line before the ingredients (or among the first lines), the first one on a tie; it
 // must be clearly larger than the ingredients' heading (or than most of the text).
-function findTitleIndex(lineList: readonly Line[], ingredientHeadingIndex: number): number {
+function findTitleIndex(
+  lineList: readonly Line[],
+  ingredientHeadingIndex: number,
+  headingRatio: number,
+): number {
   const heading = lineList[ingredientHeadingIndex];
   const end = heading ? ingredientHeadingIndex : TITLE_LOOKUP_LINES;
   const minHeight = heading
-    ? heading.height * TITLE_HEADING_RATIO
+    ? heading.height * headingRatio
     : medianHeight(lineList) * TITLE_TEXT_RATIO;
   const candidateList = lineList.slice(0, end);
   let titleIndex = -1;

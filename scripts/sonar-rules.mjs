@@ -42,6 +42,8 @@ const EXCEPTION_MAP = new Map([
 // ESLint options of Sonar rules with parameters, from the profile's values.
 const OPTION_MAP = new Map([
   ['S107', (parameterMap) => [Number(parameterMap.get('maximumFunctionParameters'))]],
+  // Sonar also flags a variable shadowing one declared later in the outer scope.
+  ['S1117', () => [{ hoist: 'all' }]],
   ['S4622', (parameterMap) => [{ threshold: Number(parameterMap.get('threshold')) }]],
 ]);
 

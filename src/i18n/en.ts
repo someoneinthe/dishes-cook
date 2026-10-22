@@ -57,7 +57,7 @@ export const en = {
     intro:
       'Dishes Cook keeps your recipes on your device. Here is where your data goes, and where it doesn’t.',
     othersList: [
-      'Reading a recipe from a photo happens on your phone, with Google’s ML Kit text recognition built into the app. The app deletes its copy of that photo as soon as the text is read: it isn’t kept and never leaves your phone. A recipe’s own photo, added in the form, is kept with the recipe.',
+      'Reading a recipe from a photo or a file (a PDF, a Word, OpenDocument or text document) happens on your phone: photos and PDF pages with Google’s ML Kit text recognition built into the app, the other documents by the app itself. The app deletes its copies of the photo or file (and of the PDF’s pages) as soon as it’s read: nothing is kept and nothing leaves your phone. A recipe’s own photo, added in the form, is kept with the recipe.',
       'ML Kit would report how it’s used to Google: the app blocks this.',
       'Sharing a shopping list sends its text only to the app you pick (notes, messages…). The list isn’t saved: it’s forgotten when the app closes.',
       'Sharing a recipe makes a PDF on your phone and sends it only to the app you pick. The app deletes its copy as soon as you come back from sharing.',
@@ -299,7 +299,7 @@ export const en = {
     monthsPlaceholder: 'e.g. 0.5',
     // Label of the add-recipe buttons, shown with Settings › Show button labels.
     new: 'New',
-    newHint: 'Asks whether to write it or to read it from a photo',
+    newHint: 'Asks whether to write it, or to read it from a file or a photo',
     newRecipe: 'New recipe',
     noIngredients: 'No ingredients listed.',
     noInstructions: 'No instructions written yet.',
@@ -357,23 +357,34 @@ export const en = {
   },
   recipeScan: {
     cameraDenied:
-      'Allow the camera in the phone’s settings to take a photo, or choose an existing one.',
+      'Allow the camera in the phone’s settings to take a photo, or choose a file instead.',
     choiceRequired: (existing: string) =>
       `You already have “${existing}”: choose one to save the recipe.`,
+    // A photo or a document (PDF, Word, OpenDocument, text) to read a recipe from.
+    chooseFile: 'Choose a file',
+    // A recipe's own photo (its photo field), from the phone's photos.
     choosePhoto: 'Choose a photo',
     chooseTitle: 'Read a recipe from a photo',
     keepNew: 'Keep the new one',
     keepNewHint: 'Creates this ingredient when the recipe is saved',
     keepNewLabel: (name: string) => `Keep “${name}” as a new ingredient`,
-    nothingFoundMessage: 'No text could be read. Try a sharp, well-lit photo of the page.',
+    nothingFoundMessage:
+      'No text could be read. For a photo, try a sharp, well-lit one of the page.',
     nothingFoundTitle: 'No recipe found',
-    readFailed: 'The photo couldn’t be read. If it happens again, close the app and open it again.',
-    // Shown while the text of the photo is recognized.
-    reading: 'Reading the photo…',
+    pagesCutMessage: (maxPages: number) =>
+      `Only its first ${maxPages} pages were read: check the end of the recipe.`,
+    pagesCutTitle: 'A long PDF',
+    readFailed:
+      'The file couldn’t be read (damaged, or protected by a password?). If it happens again with others, close the app and open it again.',
+    // Shown while the photo or the file is read.
+    reading: 'Reading the recipe…',
     similarMessage: (existing: string) => `You already have “${existing}”. Use it instead?`,
     startMessage:
-      'Write it yourself, or fill it in from a photo of a recipe page: the text is read on your phone and the photo isn’t kept.',
+      'Write it yourself, or fill it in from a file (a photo, a PDF, a Word, OpenDocument or text document) or a photo of a recipe page: it’s read on your phone and isn’t kept.',
     takePhoto: 'Take a photo',
+    unsupportedMessage:
+      'Choose a photo, a PDF, a Word (.docx), OpenDocument (.odt) or text (.txt) file. Old Word files (.doc) can’t be read: save them as .docx first.',
+    unsupportedTitle: 'This file can’t be read',
     useSimilar: (existing: string) => `Use “${existing}”`,
     useSimilarHint: 'Uses your existing ingredient instead of creating a new one',
     write: 'Write it',

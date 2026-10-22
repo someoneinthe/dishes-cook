@@ -1,37 +1,27 @@
-import type { Rect, Text, TextLine } from '@infinitered/react-native-mlkit-text-recognition';
-import { recognizeText } from '@infinitered/react-native-mlkit-text-recognition';
+import { getDocumentAsync } from 'expo-document-picker';
 import { Directory, Paths } from 'expo-file-system';
-import {
-  launchCameraAsync,
-  launchImageLibraryAsync,
-  requestCameraPermissionsAsync,
-} from 'expo-image-picker';
+import { launchCameraAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { useMessages } from '@/i18n/i18n-provider';
-import type { ScannedBlock, ScannedRecipe } from '../recipe-from-text';
+import type { DocumentKind } from '../recipe-documents';
+import type { ScannedRecipe } from '../recipe-from-text';
+import { deleteFolder, MAX_PDF_PAGES, readDocument } from '../read-document';
+import { DOCUMENT_TYPE_LIST, toDocumentKind } from '../recipe-documents';
 import { readRecipeText } from '../recipe-from-text';
 
-// The photo picker copies the taken or chosen photo, and its crop, to this folder of the app's
-// cache, and leaves them there.
-const PICKED_PHOTO_FOLDER = 'ImagePicker';
+// The pickers copy the photo taken (and its crop) or the file chosen to these folders of the app's
+// cache, and leave them there.
+const PICKER_FOLDER_LIST = ['ImagePicker', 'DocumentPicker'];
 
-// Where the photo comes from: the camera, or the phone's photos.
-export type PhotoSource = 'camera' | 'library';
+// Where the recipe comes from: a photo taken now, or a file chosen on the phone (a photo, a PDF,
+// a Word, OpenDocument or text document).
+export type ScanSource = 'camera' | 'file';
 
-// The text recognition's result as the recipe reader takes it: blocks of lines, where they are on
-// the page, and the height of their letters: the middle height of their words (a slanted photo
-// makes a long line's box taller than its letters).
-export function toScannedBlocks(text: Text): ScannedBlock[] {
-  return text.blocks.map((block) => ({
-    frame: block.frame,
-    lineList: block.lines.map((line) => ({ height: letterHeight(line), text: line.text })),
-  }));
-}
-
-// A recipe read from a photo, taken or chosen by the user: the text is recognized on the phone
-// (ML Kit, no network) and the photo isn't kept: the picker's copies are deleted once read, or
-// when the reading failed or was cancelled. `onRead` gets the recipe when some text was found.
+// A recipe read from a photo taken or a file chosen by the user, all on the phone (ML Kit's text
+// recognition for photos and PDF pages, no network); the photo or file isn't kept: the pickers'
+// copies are deleted once read, or when the reading failed or was cancelled. `onRead` gets the
+// recipe when some text was found.
 export function useRecipeScan(onRead: (recipe: ScannedRecipe) => void) {
   const t = useMessages();
   const [isReading, setIsReading] = useState(false);
@@ -40,73 +30,70 @@ export function useRecipeScan(onRead: (recipe: ScannedRecipe) => void) {
     Alert.alert(title, message, [{ text: t.common.ok }]);
   };
 
-  const read = async (source: PhotoSource) => {
+  // The photo taken or the file chosen, and what it is; undefined when the user cancelled, was
+  // told why it can't be read, or refused the camera.
+  const pick = async (
+    source: ScanSource,
+  ): Promise<Readonly<{ kind: DocumentKind; uri: string }> | undefined> => {
     if (source === 'camera') {
       const { granted: isGranted } = await requestCameraPermissionsAsync();
       if (!isGranted) {
         showMessage(t.recipeScan.chooseTitle, t.recipeScan.cameraDenied);
-        return;
+        return undefined;
       }
+      // Cropping to the recipe leaves out the rest of the page (another recipe, a second column).
+      const photo = await launchCameraAsync({ allowsEditing: true, mediaTypes: 'images' });
+      const uri = photo.canceled ? undefined : photo.assets[0]?.uri;
+      return uri === undefined ? undefined : { kind: 'image', uri };
     }
-    // Cropping to the recipe leaves out the rest of the page (another recipe, a second column).
-    const options = { allowsEditing: true, mediaTypes: 'images' as const };
+    const result = await getDocumentAsync({ type: [...DOCUMENT_TYPE_LIST] });
+    const file = result.canceled ? undefined : result.assets[0];
+    const kind = file && toDocumentKind(file);
+    if (file && !kind) {
+      showMessage(t.recipeScan.unsupportedTitle, t.recipeScan.unsupportedMessage);
+    }
+    return file && kind && { kind, uri: file.uri };
+  };
+
+  const read = async (source: ScanSource) => {
     try {
-      const result = await (source === 'camera'
-        ? launchCameraAsync(options)
-        : launchImageLibraryAsync(options));
-      const uri = result.canceled ? undefined : result.assets[0]?.uri;
-      if (uri === undefined) {
+      const picked = await pick(source);
+      if (!picked) {
         return;
       }
       setIsReading(true);
-      const recipe = readRecipeText(toScannedBlocks(await recognizeText(uri)));
+      const { blockList, isCut, isLevel } = await readDocument(picked.uri, picked.kind);
+      const recipe = readRecipeText(blockList, isLevel);
       if (recipe.title || recipe.instructions || recipe.ingredientList.length > 0) {
         onRead(recipe);
+        if (isCut) {
+          showMessage(t.recipeScan.pagesCutTitle, t.recipeScan.pagesCutMessage(MAX_PDF_PAGES));
+        }
       } else {
         showMessage(t.recipeScan.nothingFoundTitle, t.recipeScan.nothingFoundMessage);
       }
     } finally {
-      deletePickedPhotos();
+      for (const folder of PICKER_FOLDER_LIST) {
+        deleteFolder(new Directory(Paths.cache, folder));
+      }
       setIsReading(false);
     }
   };
 
-  const readFrom = async (source: PhotoSource) => {
+  const readFrom = async (source: ScanSource) => {
     try {
       await read(source);
     } catch {
-      // Also when Android recreated the app's screen (e.g. a font size change): the photo picker
-      // then fails until the app is reopened (https://github.com/expo/expo/issues/50386).
+      // A damaged or password-protected file; also when Android recreated the app's screen (e.g. a
+      // font size change): the camera then fails until the app is reopened
+      // (https://github.com/expo/expo/issues/50386).
       showMessage(t.recipeScan.readFailed);
     }
   };
 
   return {
     isReading,
-    // Reads a photo from this source, without asking (the user already chose it).
+    // Reads a photo taken now or a chosen file, without asking (the user already chose).
     readFrom,
   };
-}
-
-// Deletes the photo picker's copies (the user's own photos are elsewhere, untouched). A copy that
-// can't be deleted stays in the cache, which Android clears when it needs room.
-function deletePickedPhotos() {
-  try {
-    const folder = new Directory(Paths.cache, PICKED_PHOTO_FOLDER);
-    if (folder.exists) {
-      folder.delete();
-    }
-  } catch {
-    // Nothing the user can do about it: the recipe was read all the same.
-  }
-}
-
-function frameHeight({ bottom, top }: Rect): number {
-  return bottom - top;
-}
-
-function letterHeight(line: TextLine): number {
-  const heightList = line.elements.map(({ frame }) => frameHeight(frame));
-  const sortedList = [...heightList].sort((first, second) => first - second);
-  return sortedList[Math.floor(sortedList.length / 2)] ?? frameHeight(line.frame);
 }

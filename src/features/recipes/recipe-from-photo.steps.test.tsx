@@ -1,9 +1,10 @@
 import type { Text } from '@infinitered/react-native-mlkit-text-recognition';
-import type { ImagePickerResult } from 'expo-image-picker';
+import type { DocumentPickerResult } from 'expo-document-picker';
 import { recognizeText } from '@infinitered/react-native-mlkit-text-recognition';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { Directory, Paths } from 'expo-file-system';
-import { launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
+import { getDocumentAsync } from 'expo-document-picker';
+import { Directory } from 'expo-file-system';
+import { requestCameraPermissionsAsync } from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import type { DatabaseConnection } from '@/db/types';
@@ -31,8 +32,16 @@ jest.mock('expo-router', () => ({
 const feature = loadFeature('./recipe-from-photo.feature', { loadRelativePath: true });
 const PHOTO_OF = /^I fill in a new recipe from a photo of "(.*)" listing "(.*)"$/;
 const PHOTO_STEPS = 'Simmer for 30 minutes.';
-const CHOSEN_PHOTO: ImagePickerResult = {
-  assets: [{ height: 1600, uri: 'file:///recipe-page.jpg', width: 1200 }],
+// A photo chosen with Choose a file: the picker's copy in the app's cache.
+const CHOSEN_PHOTO: DocumentPickerResult = {
+  assets: [
+    {
+      lastModified: 0,
+      mimeType: 'image/jpeg',
+      name: 'recipe-page.jpg',
+      uri: 'file:///data/cache/DocumentPicker/recipe-page.jpg',
+    },
+  ],
   canceled: false,
 };
 
@@ -65,7 +74,7 @@ defineFeature(feature, (test) => {
     connection = createTestConnection();
     updatePreferences({ units: 'metric' });
     alert = spyOnAlert();
-    jest.mocked(launchImageLibraryAsync).mockResolvedValue(CHOSEN_PHOTO);
+    jest.mocked(getDocumentAsync).mockResolvedValue(CHOSEN_PHOTO);
     jest.mocked(Directory).mockClear();
   });
 
@@ -81,7 +90,7 @@ defineFeature(feature, (test) => {
   };
   const choosePhoto = async (page: Text) => {
     jest.mocked(recognizeText).mockResolvedValue(page);
-    await alert.press('Choose a photo');
+    await alert.press('Choose a file');
     await waitFor(() => expect(recognizeText).toHaveBeenCalledWith(CHOSEN_PHOTO.assets?.[0]?.uri));
   };
   // The form the read photo opens (router.push), with its parameters.
@@ -118,23 +127,27 @@ defineFeature(feature, (test) => {
     lineList: lines.split(', ').map((line) => `• ${line}`),
     title,
   });
-  // How the photo picker's folder in the app's cache, where it leaves its copies of the photo, was
-  // deleted (its `delete` mock), once the photo was read.
+  // How the file picker's folder in the app's cache, where it leaves its copy of the file, was
+  // deleted (its `delete` mock), once the file was read.
   const pickedPhotoFolderDeletion = async () => {
-    await waitFor(() => expect(Directory).toHaveBeenLastCalledWith(Paths.cache, 'ImagePicker'));
-    const [folder] = jest.mocked(Directory).mock.results;
-    return (folder?.value as undefined | { delete: jest.Mock })?.delete;
+    const folderOf = () =>
+      jest
+        .mocked(Directory)
+        .mock.results.map(({ value }) => value as { delete: jest.Mock; name: string })
+        .find(({ name }) => name === 'DocumentPicker');
+    await waitFor(() => expect(folderOf()).toBeDefined());
+    return folderOf()?.delete;
   };
   const ingredientNames = () => firstIngredientPage(connection.db).map(({ name }) => name);
 
   test('Adding a recipe asks how to start', ({ then, when }) => {
     when('I add a recipe from the recipe list', startNewRecipe);
-    then('I am asked whether to write it, choose a photo or take one', () => {
+    then('I am asked whether to write it, choose a file or take a photo', () => {
       const buttonList = alert.spy.mock.lastCall?.[2] ?? [];
 
       expect(buttonList.map(({ text }) => text)).toStrictEqual([
         'Write it',
-        'Choose a photo',
+        'Choose a file',
         'Take a photo',
       ]);
     });
@@ -239,11 +252,11 @@ defineFeature(feature, (test) => {
       await startNewRecipe();
       await alert.press('Take a photo');
     });
-    then('I am told to allow the camera or to choose an existing photo', async () => {
+    then('I am told to allow the camera or to choose a file', async () => {
       await waitFor(() =>
         expect(alert.spy).toHaveBeenLastCalledWith(
           'Read a recipe from a photo',
-          'Allow the camera in the phone’s settings to take a photo, or choose an existing one.',
+          'Allow the camera in the phone’s settings to take a photo, or choose a file instead.',
           expect.anything(),
         ),
       );
@@ -277,12 +290,12 @@ defineFeature(feature, (test) => {
     when("the photo I choose for a new recipe can't be read", async () => {
       jest.mocked(recognizeText).mockRejectedValueOnce(new Error('No text recognizer'));
       await startNewRecipe();
-      await alert.press('Choose a photo');
+      await alert.press('Choose a file');
     });
     then("I am told that the photo couldn't be read", async () => {
       await waitFor(() =>
         expect(alert.spy).toHaveBeenLastCalledWith(
-          expect.stringContaining('The photo couldn’t be read'),
+          expect.stringContaining('The file couldn’t be read'),
           undefined,
           expect.anything(),
         ),
