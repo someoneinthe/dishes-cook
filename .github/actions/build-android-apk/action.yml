@@ -43,6 +43,39 @@ runs:
       shell: bash
       run: npx expo prebuild --platform android --no-install --clean
 
+    # Gradle downloads the NDK and CMake when a module first needs them, once per run (the Gradle
+    # cache doesn't keep the Android SDK), and gives up on a truncated download: twice in two days
+    # the build failed on "Archive is not a ZIP archive" (NDK on #113, CMake on #114). Installed
+    # here first, a failed download is retried.
+    - name: Install the NDK and CMake
+      shell: bash
+      env:
+        # The Android Gradle plugin's default, used by every native module that doesn't ask for
+        # one (all of them today). A module asking for another version still gets it from Gradle.
+        CMAKE_VERSION: 3.22.1
+      run: |
+        ndk_version="$(sed -n 's/^ndkVersion = "\(.*\)"$/\1/p' node_modules/react-native/gradle/libs.versions.toml)"
+        if [ -z "$ndk_version" ]; then
+          echo "::error::No ndkVersion in React Native's libs.versions.toml"
+          exit 1
+        fi
+        sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+        for package in "ndk;$ndk_version" "cmake;$CMAKE_VERSION"; do
+          folder="$ANDROID_HOME/${package/;//}"
+          for attempt in 1 2 3; do
+            if [ -f "$folder/source.properties" ]; then
+              break
+            fi
+            # A failed download can leave a partial folder, which would look installed.
+            rm -rf "$folder"
+            "$sdkmanager" --install "$package" > /dev/null || echo "::warning::$package: try $attempt failed"
+          done
+          if [ ! -f "$folder/source.properties" ]; then
+            echo "::error::$package couldn't be installed"
+            exit 1
+          fi
+        done
+
     - name: Assemble ${{ inputs.variant }} APK
       shell: bash
       working-directory: android
