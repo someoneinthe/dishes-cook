@@ -94,7 +94,7 @@ export async function disconnect(): Promise<void> {
 // How many changes wait on the phone for the next sync; 0 when not connected.
 export function getPendingChangeCount(database: AppDatabase): number {
   const stored = read();
-  return stored ? countPendingChanges(database, stored.cursors.pushedFrom) : 0;
+  return stored ? countPendingChanges(database, stored.cursors) : 0;
 }
 
 export function getSyncState(): SyncState {
@@ -142,6 +142,7 @@ function read(): StoredSync | undefined {
       cursors: {
         pulledUntil: readPulledUntil(parsed.cursors?.pulledUntil),
         pushedFrom: typeof parsed.cursors?.pushedFrom === 'number' ? parsed.cursors.pushedFrom : 0,
+        serverVersions: readServerVersions(parsed.cursors?.serverVersions),
       },
       email: parsed.email,
       lastSyncedAt: typeof parsed.lastSyncedAt === 'number' ? parsed.lastSyncedAt : undefined,
@@ -169,6 +170,11 @@ function readPulledUntil(value: unknown): SyncCursors['pulledUntil'] {
     ingredients: cursorOf('ingredients'),
     recipes: cursorOf('recipes'),
   };
+}
+
+// Saved by an app from before server versions: none ('legacy'), set by the next sync.
+function readServerVersions(value: unknown): SyncCursors['serverVersions'] {
+  return value === 'kept' || value === 'reset' ? value : 'legacy';
 }
 
 async function runSync(connection: DatabaseConnection): Promise<void> {

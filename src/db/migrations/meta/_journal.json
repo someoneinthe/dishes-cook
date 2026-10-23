@@ -78,6 +78,13 @@
       "when": 1792677070086,
       "tag": "0010_account-names",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1792771648629,
+      "tag": "0011_sync-server-versions",
+      "breakpoints": true
     }
   ]
 }

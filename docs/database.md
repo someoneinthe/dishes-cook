@@ -18,14 +18,20 @@ erDiagram
     integer recipe_id FK
     integer cooked_at
     integer created_at
+    integer server_version "nullable"
     text sync_id UK
     integer updated_at
+  }
+  ingredient_aliases {
+    integer ingredient_id FK
+    text sync_id PK
   }
   ingredients {
     integer id PK
     integer created_at
     text name
     text name_key UK
+    integer server_version "nullable"
     text sort_key
     text sync_id UK
     integer updated_at
@@ -50,6 +56,7 @@ erDiagram
     text photo_synced "nullable"
     integer prep_minutes "nullable"
     text season "winter / summer / both"
+    integer server_version "nullable"
     text sort_key
     text sync_id UK
     text title
@@ -61,6 +68,7 @@ erDiagram
     integer deleted_at
   }
   recipes ||--o{ cooked_meals : "recipe_id, on delete cascade"
+  ingredients ||--o{ ingredient_aliases : "ingredient_id, on delete cascade"
   ingredients ||--o{ recipe_ingredients : "ingredient_id, on delete restrict"
   recipes ||--o{ recipe_ingredients : "recipe_id, on delete cascade"
 ```
@@ -70,16 +78,17 @@ Integer primary keys are SQLite rowids.
 | Table                | Index                                      | Columns                      | Unique |
 | -------------------- | ------------------------------------------ | ---------------------------- | ------ |
 | `cooked_meals`       | `cooked_meals_sync_id_unique`              | `sync_id`                    | yes    |
-| `cooked_meals`       | `cooked_meals_updated_at_id_idx`           | `updated_at`, `id`           |        |
+| `cooked_meals`       | `cooked_meals_to_push_idx`                 | `updated_at`, `id`           |        |
 | `cooked_meals`       | `cooked_meals_recipe_cooked_at_idx`        | `recipe_id`, `cooked_at`     |        |
+| `ingredient_aliases` | `ingredient_aliases_ingredient_idx`        | `ingredient_id`              |        |
 | `ingredients`        | `ingredients_sync_id_unique`               | `sync_id`                    | yes    |
-| `ingredients`        | `ingredients_updated_at_id_idx`            | `updated_at`, `id`           |        |
+| `ingredients`        | `ingredients_to_push_idx`                  | `updated_at`, `id`           |        |
 | `ingredients`        | `ingredients_name_key_unique`              | `name_key`                   | yes    |
 | `ingredients`        | `ingredients_sort_key_id_idx`              | `sort_key`, `id`             |        |
 | `recipe_ingredients` | primary key                                | `recipe_id`, `ingredient_id` | yes    |
 | `recipe_ingredients` | `recipe_ingredients_ingredient_recipe_idx` | `ingredient_id`, `recipe_id` |        |
 | `recipes`            | `recipes_sync_id_unique`                   | `sync_id`                    | yes    |
-| `recipes`            | `recipes_updated_at_id_idx`                | `updated_at`, `id`           |        |
+| `recipes`            | `recipes_to_push_idx`                      | `updated_at`, `id`           |        |
 | `recipes`            | `recipes_kind_sort_key_id_idx`             | `kind`, `sort_key`, `id`     |        |
 | `sync_deletions`     | primary key                                | `table_name`, `sync_id`      | yes    |
 

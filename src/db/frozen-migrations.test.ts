@@ -87,6 +87,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
     'src/db/migrations/0010_account-names.sql',
     '2f2fe0558b055854add5757c40a27be6cd3f28d339ebb207882833b6e23b806e',
   ],
+  [
+    'src/db/migrations/0011_sync-server-versions.sql',
+    '3e0a8829735bc86fdc787bdfda4f0ab353a200318ae307df1faf15c2fc623683',
+  ],
 ]);
 
 const ROOT = path.join(__dirname, '../..');

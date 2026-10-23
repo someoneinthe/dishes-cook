@@ -70,18 +70,25 @@ export const ingredients = sqliteTable(
     // Uniqueness key computed by `toNameKey` (trimmed, single spaces, lower case). SQLite's
     // NOCASE only folds ASCII, so "Œuf" and "œuf" are folded in JS instead.
     nameKey: text('name_key').notNull(),
+    // The version (`updated_at`) the sync server has of this row: set by a pull, and by a push the
+    // server saved; null = not on the server (or not known to be). A sync pushes the rows whose
+    // `updated_at` differs from it, never one it just pulled (see docs/sync.md).
+    serverVersion: integer('server_version'),
     // Sort and search key computed by `toSortKey` (no case, no accents: "Échalote" -> "echalote").
     // Lists are sorted and paginated by it in SQL, which can't strip accents itself.
     sortKey: text('sort_key').notNull(),
     syncId: text('sync_id').notNull().default(RANDOM_SYNC_ID),
-    // Last change, here or pulled from the server: newer rows are pushed, and the newest wins.
+    // Last change, here or pulled from the server: the newest wins.
     updatedAt: integer('updated_at').notNull().default(NOW_MS),
   },
   (table) => [
     check('ingredients_name_not_blank', sql`length(trim(${table.name})) > 0`),
     uniqueIndex('ingredients_sync_id_unique').on(table.syncId),
-    // Rows changed since the last push (sync), in pages of PAGE_SIZE.
-    index('ingredients_updated_at_id_idx').on(table.updatedAt, table.id),
+    // The rows to push (the server doesn't have them in this version), in pages of PAGE_SIZE: only
+    // those rows are in the index, so a sync and the count of changes waiting read nothing else.
+    index('ingredients_to_push_idx')
+      .on(table.updatedAt, table.id)
+      .where(sql`${table.serverVersion} is not ${table.updatedAt}`),
     // Enforces "one ingredient per name" and serves lookups by name.
     uniqueIndex('ingredients_name_key_unique').on(table.nameKey),
     // Pages of the alphabetical list: `(sort_key, id) > (last one)` then LIMIT, read in index order.
@@ -121,6 +128,10 @@ export const recipes = sqliteTable(
     // Preparation time in minutes; null = not given (checked like cookMinutes).
     prepMinutes: integer('prep_minutes'),
     season: text('season', { enum: SEASON_LIST }).notNull().default('both'),
+    // The version (`updated_at`) the sync server has of this row: set by a pull, and by a push the
+    // server saved; null = not on the server (or not known to be). A sync pushes the rows whose
+    // `updated_at` differs from it, never one it just pulled (see docs/sync.md).
+    serverVersion: integer('server_version'),
     // Sort and search key of the title, see ingredients.sortKey.
     sortKey: text('sort_key').notNull(),
     syncId: text('sync_id').notNull().default(RANDOM_SYNC_ID),
@@ -131,14 +142,33 @@ export const recipes = sqliteTable(
   (table) => [
     check('recipes_title_not_blank', sql`length(trim(${table.title})) > 0`),
     uniqueIndex('recipes_sync_id_unique').on(table.syncId),
-    // Rows changed since the last push (sync), in pages of PAGE_SIZE.
-    index('recipes_updated_at_id_idx').on(table.updatedAt, table.id),
+    // The rows to push (the server doesn't have them in this version), in pages of PAGE_SIZE: only
+    // those rows are in the index, so a sync and the count of changes waiting read nothing else.
+    index('recipes_to_push_idx')
+      .on(table.updatedAt, table.id)
+      .where(sql`${table.serverVersion} is not ${table.updatedAt}`),
     check('recipes_season_valid', sql`${table.season} in (${sql.raw(SEASON_SQL_LIST)})`),
     check('recipes_course_valid', sql`${table.course} in (${sql.raw(COURSE_SQL_LIST)})`),
     // No index on season or course: 3 values each, so an index can't beat a scan of the (small) table.
     // Pages of the alphabetical list of dishes or of drinks, see ingredients_sort_key_id_idx.
     index('recipes_kind_sort_key_id_idx').on(table.kind, table.sortKey, table.id),
   ],
+);
+
+// Another phone's id for an ingredient this phone has under the same name (see docs/sync.md): when
+// the pull meets an ingredient named like one here with another sync id, it keeps this phone's and
+// records the other id here, so the recipes pulled with that id still link the ingredient.
+export const ingredientAliases = sqliteTable(
+  'ingredient_aliases',
+  {
+    ingredientId: integer('ingredient_id')
+      .notNull()
+      .references(() => ingredients.id, { onDelete: 'cascade' }),
+    // The other phone's (and the server's) sync id of the ingredient.
+    syncId: text('sync_id').primaryKey(),
+  },
+  // The aliases of an ingredient (its deletion cascades to them).
+  (table) => [index('ingredient_aliases_ingredient_idx').on(table.ingredientId)],
 );
 
 // Many-to-many link: a recipe uses many ingredients, an ingredient is used by many recipes.
@@ -181,13 +211,20 @@ export const cookedMeals = sqliteTable(
     recipeId: integer('recipe_id')
       .notNull()
       .references(() => recipes.id, { onDelete: 'cascade' }),
+    // The version (`updated_at`) the sync server has of this row: set by a pull, and by a push the
+    // server saved; null = not on the server (or not known to be). A sync pushes the rows whose
+    // `updated_at` differs from it, never one it just pulled (see docs/sync.md).
+    serverVersion: integer('server_version'),
     syncId: text('sync_id').notNull().default(RANDOM_SYNC_ID),
     updatedAt: integer('updated_at').notNull().default(NOW_MS),
   },
   (table) => [
     uniqueIndex('cooked_meals_sync_id_unique').on(table.syncId),
-    // Rows changed since the last push (sync), in pages of PAGE_SIZE.
-    index('cooked_meals_updated_at_id_idx').on(table.updatedAt, table.id),
+    // The rows to push (the server doesn't have them in this version), in pages of PAGE_SIZE: only
+    // those rows are in the index, so a sync and the count of changes waiting read nothing else.
+    index('cooked_meals_to_push_idx')
+      .on(table.updatedAt, table.id)
+      .where(sql`${table.serverVersion} is not ${table.updatedAt}`),
     // A recipe's last time cooked (its latest row), and "cooked since" for the meal choice.
     index('cooked_meals_recipe_cooked_at_idx').on(table.recipeId, table.cookedAt),
   ],

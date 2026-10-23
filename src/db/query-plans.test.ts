@@ -280,7 +280,7 @@ describe('query plans', () => {
   });
 
   it.each(['ingredients', 'recipes', 'cooked_meals'])(
-    'finds the %s to push with their (updated_at, id) index, in its order',
+    'finds the %s to push in their partial index of rows to push, in its order',
     async (table) => {
       // A server with nothing new, that accepts everything.
       const api: SyncApi = {
@@ -293,15 +293,16 @@ describe('query plans', () => {
         setRecipePhoto: () => Promise.resolve({ name: '' }),
         upsert: () => Promise.resolve('saved'),
       };
-      await synchronize(database, api, { ...INITIAL_CURSORS, pushedFrom: Date.now() - 1000 });
+      await synchronize(database, api, INITIAL_CURSORS);
       const pushQuery = queryList.find(({ query }) =>
-        query.includes(`from "${table}" where "${table}"."updated_at" >=`),
+        query.includes(
+          `from "${table}" where "${table}"."server_version" is not "${table}"."updated_at" order by`,
+        ),
       );
       const planList = planOf(pushQuery);
 
-      expect(planList[0]).toMatch(
-        new RegExp(`^SEARCH ${table} USING INDEX ${table}_updated_at_id_idx`),
-      );
+      // Only the rows to push are in that index: reading all of it reads nothing else.
+      expect(planList[0]).toMatch(new RegExp(`^SCAN ${table} USING INDEX ${table}_to_push_idx`));
       expect(planList.join('\n')).not.toContain('TEMP B-TREE');
     },
   );
@@ -328,11 +329,11 @@ describe('query plans', () => {
     };
     await synchronize(database, api, INITIAL_CURSORS);
     const nextPageQuery = queryList.find(({ query }) =>
-      query.includes('from "recipes" where ("recipes"."updated_at", "recipes"."id") >'),
+      query.includes('and ("recipes"."updated_at", "recipes"."id") >'),
     );
 
     expect(planOf(nextPageQuery)).toStrictEqual([
-      expect.stringMatching(/^SEARCH recipes USING INDEX recipes_updated_at_id_idx \(/),
+      expect.stringMatching(/^SEARCH recipes USING INDEX recipes_to_push_idx \(/),
     ]);
   });
 });
