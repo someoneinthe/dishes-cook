@@ -112,3 +112,21 @@ jobs:
             docs/features.md \
             dist/server-files.tar.gz.sha256 dist/server-files.tar.gz.sigstore.json \
             dist/server-files.tar.gz --clobber
+
+  publish:
+    # The repository's releases are immutable: once published, a release's files and tag can never
+    # change (nor be added to). release-please creates it as a draft, with its tag
+    # (force-tag-creation), the jobs above attach its files, and only then is it published. Until
+    # then, neither users nor servers (releases/latest) see it; if a job failed, it stays a draft.
+    name: Publish the release
+    needs: [release-please, android-apk, database-diagram]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
