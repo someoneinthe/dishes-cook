@@ -2,7 +2,10 @@ import { asc, eq } from 'drizzle-orm';
 import type { Phone } from '@/test/sync-scenarios';
 import { PAGE_SIZE } from '@/db/pagination';
 import { accounts, cookedMeals, recipes } from '@/db/schema';
-import { findIngredientByName } from '@/features/ingredients/db/ingredient-queries';
+import {
+  deleteIngredient,
+  findIngredientByName,
+} from '@/features/ingredients/db/ingredient-queries';
 import {
   getLastCookedMeal,
   markCooked,
@@ -463,6 +466,42 @@ describe('synchronize', () => {
 
       expect(write).toHaveBeenCalledTimes(1);
       expect(lastCookedAtOf(phoneA, 'Pesto')).toBe(1_700_000_000_000);
+    });
+
+    it('deletes an ingredient whose last recipe is deleted in the recipes pulled again', async () => {
+      const omeletteId = addRecipe(phoneA, 'Omelette', ['Œufs']);
+      await sync(phoneA);
+      await sync(phoneB);
+      const omeletteSyncId = getRecipeSyncId(phoneA.db, omeletteId)!;
+      const omelette = server.collection('recipes').get(omeletteSyncId)!;
+      deleteRecipe(phoneA.db, omeletteId);
+      deleteIngredient(phoneA.db, findIngredientByName(phoneA.db, 'Œufs')!.id);
+      await sync(phoneA);
+      const deletedOmelette = server.collection('recipes').get(omeletteSyncId)!;
+      // B pulls the ingredient's deletion, but the omelette's comes only with the recipes pulled
+      // again for a meal of a recipe it doesn't have.
+      server.collection('recipes').set(omeletteSyncId, omelette);
+      const write = jest.fn(() => {
+        server.collection('recipes').set(omeletteSyncId, { ...deletedOmelette, updated: LATER });
+        server.collection('cooked_meals').set('defdefdefdefdef', {
+          cooked_at: 1000,
+          deleted: 0,
+          id: 'defdefdefdefdef',
+          modified: 1,
+          recipe: 'abcabcabcabcabc',
+          updated: LATER_STILL,
+        });
+      });
+      beforeList('cooked_meals', 1, write);
+
+      await sync(phoneB);
+
+      const eggsSyncId = toIngredientSyncId(toNameKey('Œufs'));
+
+      expect(write).toHaveBeenCalledTimes(1);
+      expect(titlesOf(phoneB)).toStrictEqual([]);
+      expect(findIngredientByName(phoneB.db, 'Œufs')).toBeUndefined();
+      expect(server.collection('ingredients').get(eggsSyncId)?.deleted).toBeGreaterThan(0);
     });
 
     it('gets every row of a long pull when one of them changes meanwhile', async () => {

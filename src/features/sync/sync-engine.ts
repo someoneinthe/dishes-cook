@@ -195,9 +195,6 @@ export async function synchronize(
     return pulledUntil;
   };
   let recipesPulledUntil = await pullRecipes(cursors.pulledUntil.recipes);
-  holdChanges(() => {
-    settleDeletedIngredients(database, usedDeletedIdList);
-  });
   // A recipe added here that the server had before the last pull of meals: one deleted here and
   // brought back by a newer edit on another phone, whose meals went with it (ON DELETE CASCADE),
   // and that pull is past them. Every meal is pulled again then: only the missing ones are written.
@@ -228,6 +225,10 @@ export async function synchronize(
       cookedMealsPulledUntil = latest(cookedMealsPulledUntil, await pullCookedMeals(''));
     }
   }
+  // Once every recipe is pulled, those pulled again for meals included.
+  holdChanges(() => {
+    settleDeletedIngredients(database, usedDeletedIdList);
+  });
   await pullAccounts(database, api, holdChanges);
   if (photos) {
     await downloadPhotos(database, api, photos, holdChanges);
