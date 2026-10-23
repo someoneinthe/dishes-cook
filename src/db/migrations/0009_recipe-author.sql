@@ -1,0 +1,1 @@
+ALTER TABLE `recipes` ADD `created_by` text;

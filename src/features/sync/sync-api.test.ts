@@ -59,12 +59,10 @@ describe('syncApi', () => {
       server = createFakeSyncServer(ACCOUNT);
     });
 
-    const signedInApi = async () =>
-      createSyncApi({
-        fetch: server.fetch,
-        serverUrl: SERVER_URL,
-        token: await signIn({ ...ACCOUNT, fetch: server.fetch, serverUrl: SERVER_URL }),
-      });
+    const signedInApi = async () => {
+      const { token } = await signIn({ ...ACCOUNT, fetch: server.fetch, serverUrl: SERVER_URL });
+      return createSyncApi({ fetch: server.fetch, serverUrl: SERVER_URL, token });
+    };
 
     it("reads the server's versions, or nothing from a server without them", async () => {
       const api = await signedInApi();

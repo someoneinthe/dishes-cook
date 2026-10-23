@@ -54,11 +54,31 @@ describe('sync store', () => {
         serverUrl: SERVER_URL,
       }),
     );
-    setItem('sync-token', await signIn({ ...ACCOUNT, fetch: server.fetch, serverUrl: SERVER_URL }));
+    const { token } = await signIn({ ...ACCOUNT, fetch: server.fetch, serverUrl: SERVER_URL });
+    setItem('sync-token', token);
 
     await syncNow(otherPhone);
 
     expect(titlesOf({ cursors: INITIAL_CURSORS, db: otherPhone.db })).toStrictEqual(['Soup']);
+  });
+
+  it('keeps the account signed in to, and learns it on the next sync when connected before', async () => {
+    await connect(connection, { ...ACCOUNT, serverUrl: SERVER_URL });
+
+    expect(getSyncState().connection).toStrictEqual({
+      accountId: server.accountId,
+      email: ACCOUNT.email,
+      serverUrl: SERVER_URL,
+    });
+
+    // Stored by an older version: no account id.
+    Storage.setItemSync(
+      'sync',
+      JSON.stringify({ cursors: INITIAL_CURSORS, email: ACCOUNT.email, serverUrl: SERVER_URL }),
+    );
+    await syncNow(connection);
+
+    expect(getSyncState().connection).toMatchObject({ accountId: server.accountId });
   });
 
   it('refreshes the screens once per sync, however many pages it pulls', async () => {

@@ -1,12 +1,19 @@
 import type { SQL } from 'drizzle-orm';
-import { and, asc, count, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
 import type { Page, PageRequest } from '@/db/pagination';
 import type { Course, RecipeKind, Season } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import type { Quantity } from '@/lib/units';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
-import { ingredients, NOW_MS, recipeIngredients, recipes, syncDeletions } from '@/db/schema';
+import {
+  accounts,
+  ingredients,
+  NOW_MS,
+  recipeIngredients,
+  recipes,
+  syncDeletions,
+} from '@/db/schema';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import {
   LAST_COOKED_AT,
@@ -18,6 +25,9 @@ import { toMinutes } from '../minutes';
 import { toMonths } from '../months';
 
 export type Recipe = Readonly<{
+  // Who added it, with a sync server: the account's id (null = added here, not on the server yet)
+  // and its name when the server gives one. Left out without an author (pulled without one).
+  addedBy?: Readonly<{ accountId: null | string; name?: string }>;
   // Cooking time in minutes; left out when not given (like prepMinutes).
   cookMinutes?: number;
   course: Course;
@@ -41,6 +51,9 @@ export type RecipeFilters = Readonly<{
   ingredientIdList: readonly number[];
   // Dishes or drinks: every list is one or the other.
   kind: RecipeKind;
+  // Only the phone's own recipes: added by this sync account (undefined: not known yet), or added
+  // here and not on the server yet. Undefined = anyone's.
+  mine?: Readonly<{ accountId: string | undefined }>;
   // Titles containing it, ignoring case and accents; undefined or blank = any title.
   search?: string;
   // A season also matches the recipes for both seasons; undefined = any season.
@@ -132,8 +145,10 @@ export function deleteRecipe(database: AppDatabase, id: number): void {
 export function getRecipe(database: AppDatabase, id: number): Recipe | undefined {
   const recipe = database
     .select({
+      authorName: accounts.name,
       cookMinutes: recipes.cookMinutes,
       course: recipes.course,
+      createdBy: recipes.createdBy,
       id: recipes.id,
       instructions: recipes.instructions,
       kind: recipes.kind,
@@ -144,12 +159,21 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
       title: recipes.title,
     })
     .from(recipes)
+    .leftJoin(accounts, eq(accounts.id, recipes.createdBy))
     .where(eq(recipes.id, id))
     .get();
   if (!recipe) {
     return undefined;
   }
-  const { cookMinutes, maturationMonths, photoFile, prepMinutes, ...fields } = recipe;
+  const {
+    authorName,
+    cookMinutes,
+    createdBy,
+    maturationMonths,
+    photoFile,
+    prepMinutes,
+    ...fields
+  } = recipe;
   const linkList = database
     .select({
       amount: recipeIngredients.amount,
@@ -174,6 +198,9 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
     ...fields,
     ingredientList,
     title: toDisplayName(recipe.title),
+    ...(createdBy !== '' && {
+      addedBy: authorName ? { accountId: createdBy, name: authorName } : { accountId: createdBy },
+    }),
     // Left out when not given: a recipe without them reads as before.
     ...(toMinutes(cookMinutes) !== undefined && { cookMinutes: toMinutes(cookMinutes) }),
     ...(toMonths(maturationMonths) !== undefined && {
@@ -345,6 +372,14 @@ export function saveRecipe(database: AppDatabase, input: RecipeInput, id?: numbe
   });
 }
 
+// The phone's own recipes: not on the server yet (no author), or added by its account.
+function authorWhere(accountId: string | undefined): SQL | undefined {
+  const notSyncedYet = isNull(recipes.createdBy);
+  return accountId === undefined
+    ? notSyncedYet
+    : or(notSyncedYet, eq(recipes.createdBy, accountId));
+}
+
 // Recipes in the season (or for both seasons), of the course, and made with ALL the ingredients. With
 // ingredients, the plan starts from the (ingredient_id, recipe_id) index, so only recipes
 // containing a selected ingredient are visited.
@@ -367,6 +402,11 @@ function filtersWhere(database: AppDatabase, filters: RecipeFilters): SQL | unde
   }
   if (filters.course) {
     conditionList.push(eq(recipes.course, filters.course));
+  }
+  // No index on the author, like season and course: a household's few authors.
+  const mineWhere = filters.mine && authorWhere(filters.mine.accountId);
+  if (mineWhere) {
+    conditionList.push(mineWhere);
   }
   if (ingredientIdList.length > 0) {
     // The primary key forbids duplicate links, so "all of them" = "as many links as ingredients".

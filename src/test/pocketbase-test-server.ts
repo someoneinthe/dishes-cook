@@ -34,6 +34,18 @@ export async function createPocketBaseServer(serverUrl: string): Promise<SyncTes
 
   return {
     account: ACCOUNT,
+    addAccount: async (name) => {
+      const created = (await call('collections/users/records', {
+        body: JSON.stringify({
+          email: `${name.toLowerCase()}@example.org`,
+          name,
+          password: ACCOUNT.password,
+          passwordConfirm: ACCOUNT.password,
+        }),
+        method: 'POST',
+      })) as { id: string };
+      return created.id;
+    },
     fetch: nodeFetch,
     rowsOf: async (table) => {
       const rowList: StoredRow[] = [];

@@ -66,8 +66,8 @@ export const en = {
     othersTitle: 'Nothing for anyone else',
     serverList: [
       'Off by default. In Settings › Data storage, you can sync with a PocketBase server that you install and run yourself, to share your recipes between your devices.',
-      'Only that server receives your data: your recipes and drinks (title, dish or drink, course, season, preparation and cooking times, a drink’s maturation time, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. Settings stay on each device.',
-      'The device keeps the server’s address, your email and an encrypted sign-in token, never your password. The connection is encrypted (HTTPS).',
+      'Only that server receives your data: your recipes and drinks (title, dish or drink, course, season, preparation and cooking times, a drink’s maturation time, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. The server also records which of its accounts added each recipe (shown on the recipe, and for the “Added by” filter), and every account on it can see the others’ names, not their emails. Settings stay on each device.',
+      'The device keeps the server’s address, your email, your account’s id on the server, the names of the server’s accounts and an encrypted sign-in token, never your password. The connection is encrypted (HTTPS).',
       'The server is yours: no one else runs it, and the app’s developers can’t see it.',
     ],
     serverTitle: 'On your own server, if you choose',
@@ -81,6 +81,8 @@ export const en = {
     deleteHint: 'Asks for confirmation first',
     deleteTitle: (name: string) => `Delete “${name}”?`,
     edit: 'Edit',
+    // An ⓘ next to something it explains (src/components/info-tip.tsx).
+    infoHint: 'Shows an explanation',
     loadingMore: 'Loading more',
     loadingMoreHint: 'More items appear when they are loaded',
     more: 'More actions',
@@ -121,13 +123,18 @@ export const en = {
     saveHint: 'Saves the drink and shows it',
     saveRecipe: 'Save drink',
     search: 'Search drinks',
-    showFiltersHint: 'Shows the ingredient filter',
+    showFiltersHint: (isAuthorShown: boolean): string =>
+      isAuthorShown ? 'Shows the author and ingredient filters' : 'Shows the ingredient filter',
     titlePlaceholder: 'e.g. Mojito',
     titleRequired: 'Give the drink a name.',
   },
   filters: {
+    // Who added the recipe (only with a sync server): anyone, or this phone's account.
+    addedBy: 'Added by',
     any: 'Any',
+    anyone: 'Anyone',
     hideHint: 'Hides the filters; they stay applied',
+    me: 'Me',
     noUsedIngredient: 'No ingredient is used by a recipe yet.',
     // The show / hide button, with how many filters are on: "Filters (2)".
     toggle: (activeCount: number) => (activeCount > 0 ? `Filters (${activeCount})` : 'Filters'),
@@ -206,6 +213,15 @@ export const en = {
     suggestRecipe: 'Suggest a recipe',
   },
   mealHistory: {
+    // The ⓘ next to when it was last cooked: what marking a recipe as cooked does. `skipDays`:
+    // Settings › Skip recent meals (0 = off); on a TV, the recipes are marked on a phone.
+    about: (skipDays: number, isOnTv: boolean): string => {
+      const skip = skipDays > 0 ? ` Meal choice then skips it for ${skipDays} days.` : '';
+      return isOnTv
+        ? `The last time this recipe was cooked, marked with “I cooked it” on a phone.${skip}`
+        : `Tap “I cooked it” once you’ve made this recipe: the date shows here.${skip || ' Meal choice can skip recent meals (Settings › Skip recent meals).'}`;
+    },
+    aboutLabel: 'About the meal history',
     cooked: 'I cooked it',
     cookedHint: 'Records that you cooked it today: the meal choice skips it for a while',
     // When the recipe was last cooked, from the number of calendar days since: "Cooked yesterday".
@@ -252,6 +268,10 @@ export const en = {
     unitOptionHint: 'Uses this unit for the quantity',
   },
   recipes: {
+    // Who added a recipe or a drink, with a sync server: the account's name as set on the server.
+    addedBy: (name: string) => `Added by ${name}`,
+    addedBySomeoneElse: 'Added by someone else',
+    addedByYou: 'Added by you',
     addPhoto: 'Add a photo',
     addPhotoHint: 'Takes a photo or picks one from your gallery',
     // A recipe screen that failed to show (src/features/recipes/recipe-error-boundary.tsx).
@@ -336,7 +356,11 @@ export const en = {
     shareFailedTitle: 'The PDF couldn’t be made',
     shareHint: 'Sends the recipe as a PDF to another app: messages, email, a drive…',
     // The Filters button of the recipe list (a drink's: drinks.showFiltersHint).
-    showFiltersHint: 'Shows the season, course and ingredient filters',
+    // With the author filter when synced with a server.
+    showFiltersHint: (isAuthorShown: boolean): string =>
+      isAuthorShown
+        ? 'Shows the author, season, course and ingredient filters'
+        : 'Shows the season, course and ingredient filters',
     // "Preparation 15 min · Cooking 30 min · 45 min in all": the times a recipe gives.
     // "Preparation 15 min · Maturation 2 months" for a drink: the waiting isn't in the total.
     times: (

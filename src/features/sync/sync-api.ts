@@ -18,8 +18,11 @@ export type PullPosition = Readonly<
 // What a push sends: the row's fields, without what the server sets.
 export type RowUpload<Table extends SyncedTable> = Omit<
   ServerRowOf<Table>,
-  'created' | 'id' | 'updated'
+  'created' | 'created_by' | 'id' | 'updated'
 >;
+
+// A server account: its id and name ('' = none), to show who added a recipe.
+export type ServerAccount = Readonly<{ id: string; name: string }>;
 
 // One time a recipe was cooked (the meal history).
 export type ServerCookedMeal = Readonly<{
@@ -36,6 +39,9 @@ export type ServerRecipe = Readonly<{
   // Minutes; 0 (or missing, from an older server) = not given. Like prep_minutes.
   cook_minutes?: unknown;
   course: string;
+  // The id of the account that created it, set by the server (server/hooks/recipe-author.pb.js);
+  // '' (or missing, from an older server) = none.
+  created_by?: unknown;
   // Sync ids of its ingredients.
   ingredients: unknown;
   instructions: string;
@@ -73,10 +79,16 @@ export type ServerRowOf<Table extends SyncedTable> = Table extends 'ingredients'
     ? ServerRecipe
     : ServerCookedMeal;
 
+// A sign-in: the token, and the id of the account it signs in to (the author of the recipes it
+// creates).
+export type SignedIn = Readonly<{ accountId: string; token: string }>;
+
 export type SyncApi = Readonly<{
   // The server's migrations and the oldest app it accepts; undefined for a server without that
   // endpoint (installed before it existed): too old for this app.
   getServerInfo: () => Promise<ServerInfo | undefined>;
+  // Up to PAGE_SIZE accounts in id order, after `afterId` ('' = from the first).
+  listAccounts: (afterId: string) => Promise<unknown[]>;
   // Up to PAGE_SIZE rows written on the server from `position` on, oldest first.
   listChanges: <Table extends SyncedTable>(
     table: Table,
@@ -85,7 +97,7 @@ export type SyncApi = Readonly<{
   // Where to download a recipe's photo (a protected file): its URL with a short-lived file token.
   recipePhotoUrl: (id: string, name: string) => Promise<string>;
   // A new sign-in token for the same account (tokens expire after a year).
-  refreshToken: () => Promise<string>;
+  refreshToken: () => Promise<SignedIn>;
   // Marks a row deleted; 'kept-newer' when it's missing or changed later.
   sendDeletion: (table: SyncedTable, id: string, deletedAt: number) => Promise<UpsertResult>;
   // Uploads a recipe's photo, or clears it (null), with the recipe's `modified`. Resolves with the
@@ -159,6 +171,24 @@ export function createSyncApi(
       // 404: a server installed before the endpoint existed.
       return response.status === 404 ? undefined : readServerInfo(response);
     },
+    listAccounts: async (afterId) => {
+      const query = new URLSearchParams({
+        fields: 'id,name',
+        perPage: String(PAGE_SIZE),
+        skipTotal: '1',
+        sort: 'id',
+      });
+      if (afterId) {
+        // Quotes removed, like pullFilter: ids never contain any.
+        query.set('filter', ['id', '>', `'${afterId.replaceAll("'", '')}'`].join(' '));
+      }
+      const url = `${apiUrl(options.serverUrl, 'collections', 'users', 'records')}?${query.toString()}`;
+      const itemList: unknown = ((await readJson(await send(url))) as { items?: unknown }).items;
+      if (!Array.isArray(itemList)) {
+        throw new SyncError('failed', 'Unexpected list of accounts');
+      }
+      return itemList.slice(0, PAGE_SIZE) as unknown[];
+    },
     listChanges: async (table, position) => {
       const query = new URLSearchParams({
         perPage: String(PAGE_SIZE),
@@ -194,7 +224,7 @@ export function createSyncApi(
     },
     refreshToken: async () => {
       const url = apiUrl(options.serverUrl, 'collections', 'users', 'auth-refresh');
-      return readToken(await readJson(await send(url, { method: 'POST' })));
+      return readSignedIn(await readJson(await send(url, { method: 'POST' })));
     },
     sendDeletion: async (table, id, deletedAt) =>
       (await patch(table, id, { deleted: deletedAt, modified: deletedAt })) === 'saved'
@@ -268,10 +298,10 @@ export function serverHost(serverUrl: string): string {
   return slash === -1 ? afterScheme : afterScheme.slice(0, slash);
 }
 
-// Signs in with an account of the server's "users" collection; returns its token.
+// Signs in with an account of the server's "users" collection.
 export async function signIn(
   options: Readonly<{ email: string; fetch?: Fetch; password: string; serverUrl: string }>,
-): Promise<string> {
+): Promise<SignedIn> {
   const response = await request(
     options.fetch ?? fetch,
     apiUrl(options.serverUrl, 'collections', 'users', 'auth-with-password'),
@@ -284,7 +314,7 @@ export async function signIn(
   if (response.status === 400) {
     throw new SyncError('unauthorized', 'Wrong email or password');
   }
-  return readToken(await readJson(response));
+  return readSignedIn(await readJson(response));
 }
 
 // serverUrl/api/…segments
@@ -347,6 +377,16 @@ async function readServerInfo(response: Response): Promise<ServerInfo> {
     migrations: migrations.filter((file): file is string => typeof file === 'string'),
     minimumAppSyncVersion,
   };
+}
+
+// A sign-in or a token renewal's answer: the token and the account (`record`).
+function readSignedIn(body: unknown): SignedIn {
+  const { record } = body as { record?: { id?: unknown } };
+  const accountId = record?.id;
+  if (typeof accountId !== 'string' || !accountId) {
+    throw new SyncError('failed', 'The server sent no account');
+  }
+  return { accountId, token: readToken(body) };
 }
 
 function readToken(body: unknown): string {

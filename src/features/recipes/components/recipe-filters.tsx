@@ -11,9 +11,12 @@ import type { RecipeFilters as RecipeQueryFilters } from '../db/recipe-queries';
 import { courseOptionList } from '../course';
 import { SEASON_ICONS } from '../season';
 
+// Anyone's recipes, or only mine (with a sync server, see RecipeQueryFilters['mine']).
+export type AuthorFilter = 'any' | 'mine';
 export type CourseFilter = 'any' | NonNullable<RecipeQueryFilters['course']>;
 // What the filters show: the picked ingredients keep their names for the chips.
 export type RecipeFilterValues = Readonly<{
+  author: AuthorFilter;
   course: CourseFilter;
   ingredientList: readonly Ingredient[];
   season: SeasonFilter;
@@ -21,9 +24,16 @@ export type RecipeFilterValues = Readonly<{
 
 export type SeasonFilter = 'any' | NonNullable<RecipeQueryFilters['season']>;
 
-export const NO_FILTERS: RecipeFilterValues = { course: 'any', ingredientList: [], season: 'any' };
+export const NO_FILTERS: RecipeFilterValues = {
+  author: 'any',
+  course: 'any',
+  ingredientList: [],
+  season: 'any',
+};
 
 type RecipeFiltersProps = Readonly<{
+  // Anyone's or mine: only with a sync server (without one, every recipe is the phone's).
+  isAuthorShown?: boolean;
   // Season and course only (the meal choice).
   isIngredientPickerHidden?: boolean;
   // A drink's: ingredients only (drinks have no season nor course).
@@ -35,6 +45,7 @@ type RecipeFiltersProps = Readonly<{
 // How many filters are on (each selected ingredient counts).
 export function countFilters(values: RecipeFilterValues): number {
   return (
+    (values.author === 'any' ? 0 : 1) +
     (values.season === 'any' ? 0 : 1) +
     (values.course === 'any' ? 0 : 1) +
     values.ingredientList.length
@@ -45,9 +56,10 @@ export function hasFilters(values: RecipeFilterValues): boolean {
   return countFilters(values) > 0;
 }
 
-// Season, course and ingredients the recipes must have. The list is narrowed in SQL
+// Author, season, course and ingredients the recipes must have. The list is narrowed in SQL
 // (toQueryFilters).
 export function RecipeFilters({
+  isAuthorShown = false,
   isIngredientPickerHidden = false,
   kind = 'dish',
   onChange,
@@ -57,6 +69,14 @@ export function RecipeFilters({
 
   return (
     <View style={styles.container}>
+      {isAuthorShown && (
+        <SegmentedControl
+          label={t.filters.addedBy}
+          onChange={(author) => onChange({ ...values, author })}
+          optionList={authorFilterOptionList(t)}
+          value={values.author}
+        />
+      )}
       {kind === 'dish' && (
         <>
           <SegmentedControl
@@ -87,18 +107,29 @@ export function RecipeFilters({
 }
 
 // The filters as the recipe queries take them, for the dishes or the drinks (no season nor course).
+// `account`: the sync server's account the phone is signed in to (its id unknown until the first
+// sync); mine only with one.
 export function toQueryFilters(
   values: RecipeFilterValues,
   search: string,
   kind: RecipeKind,
+  account?: Readonly<{ accountId?: string }>,
 ): RecipeQueryFilters {
   return {
     course: kind === 'drink' || values.course === 'any' ? undefined : values.course,
     ingredientIdList: values.ingredientList.map((ingredient) => ingredient.id),
     kind,
+    mine: account && values.author === 'mine' ? { accountId: account.accountId } : undefined,
     search,
     season: kind === 'drink' || values.season === 'any' ? undefined : values.season,
   };
+}
+
+function authorFilterOptionList(t: Messages): readonly SegmentedOption<AuthorFilter>[] {
+  return [
+    { label: t.filters.anyone, value: 'any' },
+    { label: t.filters.me, value: 'mine' },
+  ];
 }
 
 function courseFilterOptionList(t: Messages): readonly SegmentedOption<CourseFilter>[] {

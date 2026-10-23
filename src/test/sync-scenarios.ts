@@ -2,7 +2,7 @@ import { asc, eq } from 'drizzle-orm';
 import type { SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { PhotoStore, SyncCursors } from '@/features/sync/sync-engine';
-import { cookedMeals, ingredients, recipes, syncDeletions } from '@/db/schema';
+import { accounts, cookedMeals, ingredients, recipes, syncDeletions } from '@/db/schema';
 import {
   deleteIngredient,
   findIngredientByName,
@@ -35,6 +35,8 @@ export type StoredRow = Record<string, unknown> & { id: string; updated: string 
 // PocketBase (sync-engine.pocketbase.test.ts), empty at the start of each scenario.
 export type SyncTestServer = Readonly<{
   account: Readonly<{ email: string; password: string }>;
+  // Adds another account with this name (as the admin does); resolves with its id.
+  addAccount: (name: string) => Promise<string>;
   fetch: typeof fetch;
   // The rows stored in a collection, deleted ones included.
   rowsOf: (table: SyncedTable) => Promise<StoredRow[]>;
@@ -48,6 +50,15 @@ export function addRecipe(phone: Phone, title: string, ingredientNameList: strin
     season: 'both',
     title,
   });
+}
+
+// Who added the recipe (recipes.createdBy): null while it isn't on the server.
+export function authorOf(phone: Phone, title: string) {
+  return phone.db
+    .select({ createdBy: recipes.createdBy })
+    .from(recipes)
+    .where(eq(recipes.title, title.toLowerCase()))
+    .get()?.createdBy;
 }
 
 // Every time the recipe was cooked on the phone, oldest first ([]: never, or no such recipe).
@@ -107,7 +118,7 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
 
   const sync = async (phone: Phone) => {
     const { account, fetch, serverUrl } = server;
-    const token = await signIn({ ...account, fetch, serverUrl });
+    const { token } = await signIn({ ...account, fetch, serverUrl });
     const api = createSyncApi({ fetch, serverUrl, token });
     phone.cursors = await synchronize(phone.db, api, phone.cursors, {
       photos: phone.photos?.store,
@@ -162,6 +173,46 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
       season: 'winter',
     });
     expect(titlesOf(phoneB)).toStrictEqual(['Carrot soup']);
+  });
+
+  it('gives a recipe the account that added it as author, kept through edits on any phone', async () => {
+    addRecipe(phoneA, 'Soup');
+    // Not on the server yet: no author (the phone's own).
+    expect(authorOf(phoneA, 'Soup')).toBeNull();
+    await syncBoth();
+    const idOnB = recipeOf(phoneB, 'Soup')?.id;
+    saveRecipe(
+      phoneB.db,
+      { ingredientIdList: [], instructions: '', season: 'both', title: 'Leek soup' },
+      idOnB,
+    );
+
+    await sync(phoneB);
+    await sync(phoneA);
+
+    const { account, fetch, serverUrl } = server;
+    const { accountId } = await signIn({ ...account, fetch, serverUrl });
+    for (const phone of [phoneA, phoneB]) {
+      expect(authorOf(phone, 'Leek soup')).toBe(accountId);
+    }
+    await expect(server.rowsOf('recipes')).resolves.toMatchObject([{ created_by: accountId }]);
+  });
+
+  it('names who added a recipe with the names of the server’s accounts', async () => {
+    const aliceId = await server.addAccount('Alice');
+    addRecipe(phoneA, 'Soup');
+
+    await syncBoth();
+
+    const { account, fetch, serverUrl } = server;
+    const { accountId } = await signIn({ ...account, fetch, serverUrl });
+    expect(phoneB.db.select().from(accounts).orderBy(asc(accounts.id)).all()).toStrictEqual(
+      [
+        { id: accountId, name: '' },
+        { id: aliceId, name: 'Alice' },
+      ].toSorted((a, b) => a.id.localeCompare(b.id)),
+    );
+    expect(recipeOf(phoneB, 'Soup')?.addedBy).toStrictEqual({ accountId });
   });
 
   it('brings the quantities of a recipe to the other phone, and their changes', async () => {

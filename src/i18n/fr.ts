@@ -41,8 +41,8 @@ export const fr: Messages = {
     othersTitle: 'Rien pour personne d’autre',
     serverList: [
       'Désactivée par défaut. Dans Paramètres › Stockage des données, vous pouvez synchroniser avec un serveur PocketBase que vous installez et gérez vous-même, pour partager vos recettes entre vos appareils.',
-      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes et boissons (titre, plat ou boisson, type de plat, saison, temps de préparation et de cuisson, temps de maturation d’une boisson, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Les paramètres restent sur chaque appareil.`,
-      'L’appareil garde l’adresse du serveur, votre e-mail et un jeton de connexion chiffré, jamais votre mot de passe. La connexion est chiffrée (HTTPS).',
+      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes et boissons (titre, plat ou boisson, type de plat, saison, temps de préparation et de cuisson, temps de maturation d’une boisson, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Le serveur note aussi lequel de ses comptes a ajouté chaque recette (affiché sur la recette et pour le filtre ${quote('Ajoutée par')}), et chaque compte peut y voir le nom des autres, pas leur e-mail. Les paramètres restent sur chaque appareil.`,
+      'L’appareil garde l’adresse du serveur, votre e-mail, l’identifiant de votre compte sur le serveur, le nom des comptes du serveur et un jeton de connexion chiffré, jamais votre mot de passe. La connexion est chiffrée (HTTPS).',
       `Le serveur est à vous${NARROW_SPACE}: personne d’autre ne le gère, et les développeurs de l’application ne peuvent pas le voir.`,
     ],
     serverTitle: 'Sur votre propre serveur, si vous le souhaitez',
@@ -56,6 +56,7 @@ export const fr: Messages = {
     deleteHint: 'Demande d’abord une confirmation',
     deleteTitle: (name) => `Supprimer ${quote(name)}${NARROW_SPACE}?`,
     edit: 'Modifier',
+    infoHint: 'Affiche une explication',
     loadingMore: 'Chargement de la suite',
     loadingMoreHint: 'D’autres éléments s’affichent une fois chargés',
     more: 'Plus d’actions',
@@ -93,13 +94,19 @@ export const fr: Messages = {
     saveHint: 'Enregistre la boisson et l’affiche',
     saveRecipe: 'Enregistrer la boisson',
     search: 'Rechercher des boissons',
-    showFiltersHint: 'Affiche le filtre d’ingrédients',
+    showFiltersHint: (isAuthorShown) =>
+      isAuthorShown
+        ? 'Affiche les filtres d’auteur et d’ingrédients'
+        : 'Affiche le filtre d’ingrédients',
     titlePlaceholder: `Ex.${NARROW_SPACE}: mojito`,
     titleRequired: 'Donnez un nom à la boisson.',
   },
   filters: {
+    addedBy: 'Ajoutée par',
     any: 'Indifférent',
+    anyone: 'Tout le monde',
     hideHint: 'Masque les filtres, qui restent appliqués',
+    me: 'Moi',
     noUsedIngredient: 'Aucun ingrédient n’est encore utilisé dans une recette.',
     toggle: (activeCount) => (activeCount > 0 ? `Filtres (${activeCount})` : 'Filtres'),
     withIngredients: 'Avec les ingrédients',
@@ -176,6 +183,14 @@ export const fr: Messages = {
     suggestRecipe: 'Suggérer une recette',
   },
   mealHistory: {
+    about: (skipDays, isOnTv) => {
+      const skip =
+        skipDays > 0 ? ` Le choix du repas l’évite ensuite pendant ${skipDays}\u{A0}jours.` : '';
+      return isOnTv
+        ? `La dernière fois que cette recette a été cuisinée, notée avec ${quote('Je l’ai cuisinée')} sur un téléphone.${skip}`
+        : `Appuyez sur ${quote('Je l’ai cuisinée')} une fois la recette faite${NARROW_SPACE}: la date s’affiche ici.${skip || ' Le choix du repas peut éviter les repas récents (Paramètres › Éviter les repas récents).'}`;
+    },
+    aboutLabel: 'À propos de l’historique des repas',
     cooked: 'Je l’ai cuisinée',
     cookedHint: `Note que vous l’avez cuisinée aujourd’hui${NARROW_SPACE}: le choix du repas l’évite pendant un temps`,
     lastCooked: (daysAgo, time) => {
@@ -221,6 +236,9 @@ export const fr: Messages = {
     unitOptionHint: 'Utilise cette unité pour la quantité',
   },
   recipes: {
+    addedBy: (name) => `Ajoutée par ${name}`,
+    addedBySomeoneElse: 'Ajoutée par quelqu’un d’autre',
+    addedByYou: 'Ajoutée par vous',
     addPhoto: 'Ajouter une photo',
     addPhotoHint: 'Prend une photo ou en choisit une dans votre galerie',
     cantShowMessage:
@@ -294,7 +312,10 @@ export const fr: Messages = {
     shareFailedMessage: 'Réessayez. Si cela se reproduit, fermez l’application et rouvrez-la.',
     shareFailedTitle: 'Le PDF n’a pas pu être créé',
     shareHint: `Envoie la recette en PDF à une autre application${NARROW_SPACE}: messages, e-mail, un drive…`,
-    showFiltersHint: 'Affiche les filtres de saison, de type de plat et d’ingrédients',
+    showFiltersHint: (isAuthorShown) =>
+      isAuthorShown
+        ? 'Affiche les filtres d’auteur, de saison, de type de plat et d’ingrédients'
+        : 'Affiche les filtres de saison, de type de plat et d’ingrédients',
     times: (times) =>
       [
         times.prep && `Préparation ${times.prep}`,

@@ -1,14 +1,14 @@
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import type { Phone } from '@/test/sync-scenarios';
 import { PAGE_SIZE } from '@/db/pagination';
-import { cookedMeals, recipes } from '@/db/schema';
+import { accounts, cookedMeals, recipes } from '@/db/schema';
 import { findIngredientByName } from '@/features/ingredients/db/ingredient-queries';
 import {
   getLastCookedMeal,
   markCooked,
   removeCookedMeal,
 } from '@/features/meal-history/db/cooked-meal-queries';
-import { deleteRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
+import { deleteRecipe, getRecipeSyncId, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { toIngredientSyncId } from '@/lib/sync-id';
 import { toNameKey } from '@/lib/text';
 import { createFakeSyncServer } from '@/test/fake-sync-server';
@@ -39,7 +39,10 @@ describe('synchronize', () => {
     phoneB = { cursors: INITIAL_CURSORS, db: createTestConnection().db };
   });
 
-  const signInPhone = () => signIn({ ...ACCOUNT, fetch: server.fetch, serverUrl: SERVER_URL });
+  const signInPhone = async () => {
+    const { token } = await signIn({ ...ACCOUNT, fetch: server.fetch, serverUrl: SERVER_URL });
+    return token;
+  };
   const sync = async (phone: Phone) => {
     const api = createSyncApi({
       fetch: server.fetch,
@@ -112,6 +115,88 @@ describe('synchronize', () => {
       { name: 'Carrot', quantity: undefined },
       { name: 'Leek', quantity: { amount: 3 } },
       { name: 'Salt', quantity: undefined },
+    ]);
+  });
+
+  it('takes the author the server gives a recipe it already has, without pushing it back', async () => {
+    addRecipe(phoneA, 'Soup');
+    addRecipe(phoneA, 'Stew');
+    await sync(phoneA);
+    await sync(phoneB);
+    // As the server migration does for the recipes from before authors: another account, or none,
+    // with a new `updated` and the same `modified`.
+    const rowMap = server.collection('recipes');
+    const [soup, stew] = [...rowMap.values()];
+    const updated = '2026-01-02 00:00:00.000Z';
+    rowMap.set(soup!.id, { ...soup!, created_by: 'b00000000000002', updated });
+    rowMap.set(stew!.id, { ...stew!, created_by: '', updated });
+    const authorOf = (phone: Phone, title: string) =>
+      phone.db
+        .select({ createdBy: recipes.createdBy })
+        .from(recipes)
+        .where(eq(recipes.title, title))
+        .get()?.createdBy;
+
+    await sync(phoneB);
+
+    expect(authorOf(phoneB, 'soup')).toBe('b00000000000002');
+    // A server without an author never takes one away.
+    expect(authorOf(phoneB, 'stew')).toBe(server.accountId);
+    expect(countPendingChanges(phoneB.db, phoneB.cursors.pushedFrom)).toBe(0);
+
+    // Nor does a newer version without one.
+    const storedStew = rowMap.get(stew!.id)!;
+    rowMap.set(stew!.id, {
+      ...storedStew,
+      modified: storedStew.modified + 1,
+      title: 'beef stew',
+      updated: '2026-01-03 00:00:00.000Z',
+    });
+    await sync(phoneB);
+
+    expect(authorOf(phoneB, 'beef stew')).toBe(server.accountId);
+  });
+
+  it('keeps a recipe added here as the phone’s own when a newer version comes without an author', async () => {
+    const id = addRecipe(phoneA, 'Soup');
+    // Written on the server meanwhile without an author (e.g. by the admin), and newer.
+    const syncId = getRecipeSyncId(phoneA.db, id)!;
+    server.collection('recipes').set(syncId, {
+      course: 'main',
+      deleted: 0,
+      id: syncId,
+      ingredients: [],
+      instructions: '',
+      modified: Date.now() + 60_000,
+      season: 'both',
+      title: 'pea soup',
+      updated: '2026-01-02 00:00:00.000Z',
+    });
+
+    await sync(phoneA);
+
+    const author = phoneA.db
+      .select({ createdBy: recipes.createdBy })
+      .from(recipes)
+      .where(eq(recipes.id, id))
+      .get()?.createdBy;
+
+    expect(recipeOf(phoneA, 'Pea soup')).toBeDefined();
+    expect(author).toBeNull();
+  });
+
+  it('forgets an account the server no longer lists, and renames the others', async () => {
+    server.accountMap.set('b00000000000002', { id: 'b00000000000002', name: 'Alice' });
+    server.accountMap.set('c00000000000003', { id: 'c00000000000003', name: 'Bob' });
+    await sync(phoneA);
+    server.accountMap.delete('c00000000000003');
+    server.accountMap.set('b00000000000002', { id: 'b00000000000002', name: '  Alicia ' });
+
+    await sync(phoneA);
+
+    expect(phoneA.db.select().from(accounts).orderBy(asc(accounts.id)).all()).toStrictEqual([
+      { id: server.accountId, name: '' },
+      { id: 'b00000000000002', name: 'Alicia' },
     ]);
   });
 
@@ -391,9 +476,10 @@ describe('synchronize', () => {
     });
     const apiListing = (listChanges: SyncApi['listChanges']): SyncApi => ({
       getServerInfo: () => Promise.resolve(undefined),
+      listAccounts: () => Promise.resolve([]),
       listChanges,
       recipePhotoUrl: () => Promise.resolve(''),
-      refreshToken: () => Promise.resolve('token'),
+      refreshToken: () => Promise.resolve({ accountId: 'a00000000000001', token: 'token' }),
       sendDeletion: () => Promise.resolve('saved'),
       setRecipePhoto: () => Promise.resolve({ name: '' }),
       upsert: () => Promise.resolve('saved'),
@@ -443,6 +529,11 @@ describe('synchronize', () => {
       const fakeServer = createFakeSyncServer(ACCOUNT);
       return Promise.resolve({
         account: ACCOUNT,
+        addAccount: (name: string) => {
+          const id = `b${String(fakeServer.accountMap.size).padStart(14, '0')}`;
+          fakeServer.accountMap.set(id, { id, name });
+          return Promise.resolve(id);
+        },
         fetch: fakeServer.fetch,
         rowsOf: (table) => Promise.resolve([...fakeServer.collection(table).values()]),
         serverUrl: SERVER_URL,

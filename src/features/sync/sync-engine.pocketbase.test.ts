@@ -23,11 +23,16 @@ describe('synchronize with PocketBase', () => {
 
   describe('server behaviour the app relies on', () => {
     let server: SyncTestServer;
+    let accountId: string;
     let token: string;
 
     beforeEach(async () => {
       server = await createPocketBaseServer(POCKETBASE_URL ?? '');
-      token = await signIn({ ...server.account, fetch: nodeFetch, serverUrl: server.serverUrl });
+      ({ accountId, token } = await signIn({
+        ...server.account,
+        fetch: nodeFetch,
+        serverUrl: server.serverUrl,
+      }));
     });
 
     const call = (path: string, init: RequestInit & { token?: string } = {}) =>
@@ -121,6 +126,39 @@ describe('synchronize with PocketBase', () => {
         data: { id: { code: 'validation_not_unique' } },
       });
       await expect(server.rowsOf('recipes')).resolves.toMatchObject([{ title: 'Soup' }]);
+    });
+
+    it('gives a recipe the account that creates it as author, which no request changes (server/hooks)', async () => {
+      // An author sent by a request is replaced, on a create as on an update.
+      const created = await call('collections/recipes/records', {
+        body: JSON.stringify({ ...ROW, created_by: 'zzzzzzzzzzzzzzz', id: 'aaaaaaaaaaaaaaa' }),
+        method: 'POST',
+        token,
+      });
+      const updated = await call('collections/recipes/records/aaaaaaaaaaaaaaa', {
+        body: JSON.stringify({ ...ROW, created_by: '', modified: 2000, title: 'Stew' }),
+        method: 'PATCH',
+        token,
+      });
+
+      expect(created.status).toBe(200);
+      expect(updated.status).toBe(200);
+      await expect(server.rowsOf('recipes')).resolves.toMatchObject([
+        { created_by: accountId, title: 'Stew' },
+      ]);
+    });
+
+    it('lists the accounts’ names to a signed-in account, not their emails (server/migrations)', async () => {
+      const aliceId = await server.addAccount('Alice');
+
+      const listed = await call('collections/users/records?sort=-name', { token });
+      const asGuest = await call('collections/users/records');
+
+      const { items: itemList } = (await listed.json()) as { items: Record<string, unknown>[] };
+
+      expect(itemList).toMatchObject([{ id: aliceId, name: 'Alice' }, { id: accountId }]);
+      expect(itemList[0]).not.toHaveProperty('email');
+      await expect(asGuest.json()).resolves.toMatchObject({ items: [] });
     });
 
     it('sets `updated` in a format that sorts as text in time order (the pull cursor)', async () => {

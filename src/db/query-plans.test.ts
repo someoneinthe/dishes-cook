@@ -285,9 +285,10 @@ describe('query plans', () => {
       // A server with nothing new, that accepts everything.
       const api: SyncApi = {
         getServerInfo: () => Promise.resolve(undefined),
+        listAccounts: () => Promise.resolve([]),
         listChanges: () => Promise.resolve([]),
         recipePhotoUrl: () => Promise.resolve(''),
-        refreshToken: () => Promise.resolve('token'),
+        refreshToken: () => Promise.resolve({ accountId: 'a00000000000001', token: 'token' }),
         sendDeletion: () => Promise.resolve('saved'),
         setRecipePhoto: () => Promise.resolve({ name: '' }),
         upsert: () => Promise.resolve('saved'),
@@ -317,9 +318,10 @@ describe('query plans', () => {
     }
     const api: SyncApi = {
       getServerInfo: () => Promise.resolve(undefined),
+      listAccounts: () => Promise.resolve([]),
       listChanges: () => Promise.resolve([]),
       recipePhotoUrl: () => Promise.resolve(''),
-      refreshToken: () => Promise.resolve('token'),
+      refreshToken: () => Promise.resolve({ accountId: 'a00000000000001', token: 'token' }),
       sendDeletion: () => Promise.resolve('saved'),
       setRecipePhoto: () => Promise.resolve({ name: '' }),
       upsert: () => Promise.resolve('saved'),

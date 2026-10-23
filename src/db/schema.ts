@@ -99,6 +99,10 @@ export const recipes = sqliteTable(
     // Unused for a drink (left at its default).
     course: text('course', { enum: COURSE_LIST }).notNull().default('main'),
     createdAt: integer('created_at').notNull().default(NOW_MS),
+    // Who added it: the id of the sync server's account that created it, set by the server and
+    // pulled (see docs/sync.md); null = added on this phone and not on the server yet (so the
+    // phone's own); '' = pulled without one. The Mine filter reads it.
+    createdBy: text('created_by'),
     id: integer('id').primaryKey(),
     // The recipe itself (steps, quantities…). Never selected by list queries: it can be long.
     instructions: text('instructions').notNull().default(''),
@@ -188,6 +192,15 @@ export const cookedMeals = sqliteTable(
     index('cooked_meals_recipe_cooked_at_idx').on(table.recipeId, table.cookedAt),
   ],
 );
+
+// The sync server's accounts, to name who added a recipe (recipes.createdBy). Replaced by each sync
+// (see docs/sync.md); empty without a server. Never pushed.
+export const accounts = sqliteTable('accounts', {
+  // The account's id on the server.
+  id: text('id').primaryKey(),
+  // As set on the server; '' = none.
+  name: text('name').notNull().default(''),
+});
 
 // Rows deleted on this phone, until the sync server is told (see docs/sync.md). Written by the
 // delete queries in the same transaction as the delete; never read by the screens.

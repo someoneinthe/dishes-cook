@@ -15,7 +15,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Meal choice](#meal-choice): 6 scenarios
 - [Meal history](#meal-history): 8 scenarios
 - [On a TV](#on-a-tv): 4 scenarios
-- [Recipe list](#recipe-list): 9 scenarios
+- [Recipe list](#recipe-list): 11 scenarios
 - [Recipes](#recipes): 3 scenarios
 - [Server sync](#server-sync): 10 scenarios
 - [Sharing a recipe](#sharing-a-recipe): 2 scenarios
@@ -492,7 +492,7 @@ On an Android TV, driven with the remote, the app is read-only: it proposes and 
 
 ## Recipe list
 
-The saved recipes in alphabetical order, narrowed down by a search on the title, by season, by course and by the ingredients the recipe must contain.
+The saved recipes in alphabetical order, narrowed down by a search on the title, by season, by course and by the ingredients the recipe must contain. Synced with a server shared by several people, also by who added them.
 
 **For every scenario:**
 
@@ -533,6 +533,21 @@ The saved recipes in alphabetical order, narrowed down by a search on the title,
 - **And** I select the ingredient "cream"
 - **Then** I see that 1 recipe matches
 - **And** the list shows "Pumpkin soup"
+
+### Synced with a server, "Added by: Me" keeps the recipes I added
+
+- **Given** the phone syncs with a server where "Omelette" was added by someone else
+- **When** I open the recipe list
+- **And** I show the filters
+- **And** I choose "Me" for who added them
+- **Then** I see that 2 recipes match
+- **And** the list shows "Pumpkin soup, Tomato salad"
+
+### Without a server, every recipe is mine: there is no "Added by" filter
+
+- **When** I open the recipe list
+- **And** I show the filters
+- **Then** I can't choose who added the recipes
 
 ### The title search ignores case and accents
 

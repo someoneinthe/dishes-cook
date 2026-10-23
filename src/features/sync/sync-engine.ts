@@ -17,6 +17,7 @@ import type { AppDatabase } from '@/db/types';
 import type { Quantity } from '@/lib/units';
 import { PAGE_SIZE } from '@/db/pagination';
 import {
+  accounts,
   cookedMeals,
   COURSE_LIST,
   ingredients,
@@ -34,6 +35,7 @@ import { toQuantity, toStored } from '@/lib/units';
 import type {
   PhotoUpload,
   PullPosition,
+  ServerAccount,
   ServerCookedMeal,
   ServerIngredient,
   ServerRecipe,
@@ -45,7 +47,7 @@ import { SyncError } from './sync-api';
 
 // Two-way sync between the phone's database and the sync server (see docs/sync.md):
 // 1. pull the rows written on the server since the last pull, and apply the newer ones (ingredients,
-//    then recipes, then the meal history: each links to the previous);
+//    then recipes, then the meal history: each links to the previous), and the accounts' names;
 // 2. push the deletions, then the rows changed here since the last push.
 // The newest change of a row wins (`updated_at` here, `modified` there). Applying a pulled row
 // keeps its `modified` as `updated_at`, so it isn't pushed back.
@@ -66,6 +68,9 @@ export const INITIAL_CURSORS: SyncCursors = {
 // At most this many pages pulled per table and per sync (a server that never stops sending rows
 // can't keep the phone syncing forever): the next sync carries on.
 const MAX_PULL_PAGES = 200;
+
+// A server account's id (a recipe's author): 15 characters of [0-9a-z].
+const ACCOUNT_ID = /^[\da-z]{15}$/;
 
 // A server time: "2026-10-14 18:03:59.794Z".
 const SERVER_TIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/;
@@ -200,6 +205,7 @@ export async function synchronize(
       cookedMealsPulledUntil = latest(cookedMealsPulledUntil, await pullCookedMeals(''));
     }
   }
+  await pullAccounts(database, api, holdChanges);
   if (photos) {
     await downloadPhotos(database, api, photos, holdChanges);
   }
@@ -333,6 +339,20 @@ function applyIngredients(database: AppDatabase, rowList: readonly ServerIngredi
   });
 }
 
+// A pulled recipe the phone has a newer (or the same) version of: its author is taken anyway. The
+// server sets it, and gives it to the recipes from before authors without changing their version.
+function applyKnownAuthor(
+  tx: AppDatabase,
+  local: Readonly<{ createdBy: null | string; id: number }> | undefined,
+  row: ServerRecipe,
+): void {
+  const author = pulledAuthor(row);
+  if (local && author && author !== local.createdBy) {
+    // Not a change of the phone's (`updated_at` stays): nothing to push.
+    tx.update(recipes).set({ createdBy: author }).where(eq(recipes.id, local.id)).run();
+  }
+}
+
 // Applies a pulled recipe (`onAdded` is called when it's new here); returns how many of its
 // ingredients aren't here (yet).
 function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): number {
@@ -343,6 +363,7 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
   }
   const local = tx
     .select({
+      createdBy: recipes.createdBy,
       id: recipes.id,
       photoPending: recipes.photoPending,
       photoSynced: recipes.photoSynced,
@@ -352,6 +373,7 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
     .where(eq(recipes.syncId, row.id))
     .get();
   if (!isNewerThan(row, local)) {
+    applyKnownAuthor(tx, local, row);
     applySameVersionPhoto(tx, local, row);
     return linkArrivedIngredients(tx, local, row);
   }
@@ -367,6 +389,8 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
   }
   const values = {
     course: toCourse(row.course),
+    // A server without an author never takes one away (like applyKnownAuthor).
+    createdBy: pulledAuthor(row, local),
     instructions: typeof row.instructions === 'string' ? row.instructions.trim() : '',
     kind: toRecipeKind(row.kind),
     ...pulledTimes(row),
@@ -584,6 +608,15 @@ function isNewerThan(row: ServerRow, local: Readonly<{ updatedAt: number }> | un
   return local === undefined || row.modified > local.updatedAt;
 }
 
+// An account as the server lists it: a usable id (its name is checked by toAccount).
+function isServerAccount(item: unknown): item is Readonly<{ id: string; name?: unknown }> {
+  return (
+    typeof item === 'object' &&
+    item !== null &&
+    ACCOUNT_ID.test(String((item as { id?: unknown }).id))
+  );
+}
+
 // Whether the server's photo of a recipe is the one the phone shows (uploaded or downloaded), or
 // one it hasn't downloaded yet: then a push of the recipe leaves it.
 function isServerPhotoKept(
@@ -722,6 +755,46 @@ async function pull<Table extends SyncedTable>(
     position = { after: last };
   }
   return pulledUntil;
+}
+
+// The server's accounts, all of them (a household's few), in place of the ones kept here: who added
+// a recipe is shown by name. Kept as they were when the server doesn't list them all.
+async function pullAccounts(
+  database: AppDatabase,
+  api: SyncApi,
+  holdChanges: (write: () => void) => void,
+): Promise<void> {
+  const accountList: ServerAccount[] = [];
+  for (let page = 0; page < MAX_PULL_PAGES; page++) {
+    // eslint-disable-next-line no-await-in-loop -- pages one after another: each starts after the previous one's last id
+    const itemList = await api.listAccounts(accountList.at(-1)?.id ?? '');
+    accountList.push(
+      ...itemList.filter((item) => isServerAccount(item)).map((item) => toAccount(item)),
+    );
+    if (itemList.length < PAGE_SIZE) {
+      holdChanges(() => {
+        database.transaction((tx) => {
+          tx.delete(accounts).run();
+          if (accountList.length > 0) {
+            tx.insert(accounts).values(accountList).onConflictDoNothing().run();
+          }
+        });
+      });
+      return;
+    }
+  }
+}
+
+// A pulled recipe's author: the account's id; without a usable one, what the phone already has
+// (`local`: null for one added here, still the phone's own), or '' (none) for a new recipe.
+function pulledAuthor(
+  row: ServerRecipe,
+  local?: Readonly<{ createdBy: null | string }>,
+): null | string {
+  if (typeof row.created_by === 'string' && ACCOUNT_ID.test(row.created_by)) {
+    return row.created_by;
+  }
+  return local ? local.createdBy : '';
 }
 
 // A pulled recipe's photo, compared with the phone's: none (the photo goes), the one the phone has,
@@ -1052,6 +1125,11 @@ function throwFirstFailure(resultList: readonly PromiseSettledResult<unknown>[])
       throw result.reason;
     }
   }
+}
+
+// At most 100 characters of a name, trimmed; '' for none.
+function toAccount(item: Readonly<{ id: string; name?: unknown }>): ServerAccount {
+  return { id: item.id, name: typeof item.name === 'string' ? item.name.trim().slice(0, 100) : '' };
 }
 
 function toCourse(value: string): Course {

@@ -14,10 +14,12 @@ type RecipeDetailsProps = Readonly<{
   // Shown under the season and course (e.g. when it was last cooked).
   children?: ReactNode;
   recipe: Recipe;
+  // Shown right under the title (e.g. who added it).
+  subtitle?: ReactNode;
 }>;
 
 // The content of a recipe, shared by the recipe screen and the meal choice suggestion.
-export function RecipeDetails({ children, recipe }: RecipeDetailsProps) {
+export function RecipeDetails({ children, recipe, subtitle }: RecipeDetailsProps) {
   const t = useMessages();
   // Quantities in the reader's units (Settings › Units).
   const { units } = usePreferences();
@@ -30,6 +32,7 @@ export function RecipeDetails({ children, recipe }: RecipeDetailsProps) {
       <Text accessibilityRole="header" style={styles.title}>
         {recipe.title}
       </Text>
+      {subtitle}
       {/* A drink has no season nor course. */}
       {recipe.kind === 'dish' && (
         <View style={styles.labels}>

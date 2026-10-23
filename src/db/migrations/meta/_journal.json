@@ -64,6 +64,20 @@
       "when": 1792583912738,
       "tag": "0008_drink-maturation",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792669901234,
+      "tag": "0009_recipe-author",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1792677070086,
+      "tag": "0010_account-names",
+      "breakpoints": true
     }
   ]
 }

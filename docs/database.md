@@ -9,6 +9,10 @@ Local SQLite (`expo-sqlite`) accessed through Drizzle ORM: the phone's data, opt
 
 ```mermaid
 erDiagram
+  accounts {
+    text id PK
+    text name
+  }
   cooked_meals {
     integer id PK
     integer recipe_id FK
@@ -37,6 +41,7 @@ erDiagram
     integer cook_minutes "nullable"
     text course "starter / main / dessert"
     integer created_at
+    text created_by "nullable"
     text instructions
     text kind "dish / drink"
     real maturation_months "nullable"

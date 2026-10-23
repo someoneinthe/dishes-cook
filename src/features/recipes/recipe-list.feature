@@ -1,6 +1,7 @@
 Feature: Recipe list
   The saved recipes in alphabetical order, narrowed down by a search on the
   title, by season, by course and by the ingredients the recipe must contain.
+  Synced with a server shared by several people, also by who added them.
 
   Background:
     Given these recipes:
@@ -34,6 +35,19 @@ Feature: Recipe list
     And I select the ingredient "cream"
     Then I see that 1 recipe matches
     And the list shows "Pumpkin soup"
+
+  Scenario: Synced with a server, "Added by: Me" keeps the recipes I added
+    Given the phone syncs with a server where "Omelette" was added by someone else
+    When I open the recipe list
+    And I show the filters
+    And I choose "Me" for who added them
+    Then I see that 2 recipes match
+    And the list shows "Pumpkin soup, Tomato salad"
+
+  Scenario: Without a server, every recipe is mine: there is no "Added by" filter
+    When I open the recipe list
+    And I show the filters
+    Then I can't choose who added the recipes
 
   Scenario: The title search ignores case and accents
     When I open the recipe list

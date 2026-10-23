@@ -44,6 +44,8 @@ describe('recipe queries', () => {
     const id = saveRecipe(database, { ...soupInput, ingredientIdList: [leekId, carrotId, leekId] });
 
     expect(getRecipe(database, id)).toStrictEqual({
+      // Added here: no author until the sync server gives it one.
+      addedBy: { accountId: null },
       // A main course when none is given.
       course: 'main',
       id,
@@ -328,6 +330,26 @@ describe('recipe queries', () => {
         summerSaladId,
         allYearStewId,
       ]);
+    });
+
+    it("keeps mine: my account's and those not on the server yet", () => {
+      const setAuthor = (id: number, createdBy: string) =>
+        database.update(recipes).set({ createdBy }).where(eq(recipes.id, id)).run();
+      setAuthor(winterSoupId, 'a00000000000001');
+      // Another account's, and one pulled without an author.
+      setAuthor(summerSaladId, 'b00000000000002');
+      const pulledWithoutAuthorId = saveRecipe(database, soupInput);
+      setAuthor(pulledWithoutAuthorId, '');
+      const mineOf = (accountId: string | undefined): RecipeFilters => ({
+        ingredientIdList: [],
+        kind: 'dish',
+        mine: { accountId },
+      });
+
+      expect(findSortedIds(mineOf('a00000000000001'))).toStrictEqual([winterSoupId, allYearStewId]);
+      expect(countRecipes(database, mineOf('a00000000000001'))).toBe(2);
+      // The account not known yet (connected before it was kept): only the phone's own.
+      expect(findSortedIds(mineOf(undefined))).toStrictEqual([allYearStewId]);
     });
 
     it('includes the recipes for both seasons in a season', () => {

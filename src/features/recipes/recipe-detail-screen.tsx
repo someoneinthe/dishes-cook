@@ -8,10 +8,11 @@ import { headerMenu } from '@/components/header-actions';
 import { screenScrollProps } from '@/components/screen-scroll-props';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useDatabase } from '@/db/database-context';
-import { LastCooked } from '@/features/meal-history/components/last-cooked';
+import { LastCookedBar } from '@/features/meal-history/components/last-cooked-bar';
 import { ShoppingListToggle } from '@/features/shopping-list/components/shopping-list-toggle';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
+import { AddedBy } from './components/added-by';
 import { RecipeDetails } from './components/recipe-details';
 import { ShareRecipeButton } from './components/share-recipe-button';
 import { deleteRecipe } from './db/recipe-queries';
@@ -84,7 +85,7 @@ export function RecipeDetailScreen() {
   );
 
   return (
-    <ScrollView contentContainerStyle={styles.content} style={styles.screen} {...screenScrollProps}>
+    <View style={styles.screen}>
       <Stack.Screen
         options={{
           // Read-only on a TV: recipes are edited on the phone.
@@ -93,11 +94,12 @@ export function RecipeDetailScreen() {
           ...kindHeaderOptions,
         }}
       />
-      <RecipeDetails recipe={recipe}>
-        {/* Drinks have no meal history. */}
-        {recipe.kind === 'dish' && <LastCooked isEditable recipeId={recipe.id} />}
-      </RecipeDetails>
-    </ScrollView>
+      <ScrollView contentContainerStyle={styles.content} {...screenScrollProps}>
+        <RecipeDetails recipe={recipe} subtitle={<AddedBy addedBy={recipe.addedBy} />} />
+      </ScrollView>
+      {/* Drinks have no meal history. */}
+      {recipe.kind === 'dish' && <LastCookedBar recipeId={recipe.id} />}
+    </View>
   );
 }
 

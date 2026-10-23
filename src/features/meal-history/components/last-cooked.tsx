@@ -1,8 +1,10 @@
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
+import { InfoTip } from '@/components/info-tip';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useDatabase } from '@/db/database-context';
+import { usePreferences } from '@/features/settings/preferences';
 import { useMessages } from '@/i18n/i18n-provider';
 import { calendarDaysAgo } from '@/lib/dates';
 import { isTv } from '@/lib/device';
@@ -41,32 +43,63 @@ export function LastCooked({ isEditable = false, recipeId }: LastCookedProps) {
 
   return (
     <View style={styles.row}>
-      <Text style={styles.text}>{text}</Text>
-      {!isTv && isEditable && lastCooked && (
-        // With its text: the header's trash can deletes the recipe itself.
-        <Button
-          accessibilityHint={t.common.deleteHint}
-          accessibilityLabel={t.mealHistory.removeLabel}
-          icon="trash-can-outline"
-          label={t.mealHistory.remove}
-          onPress={askToRemove}
-          variant="danger"
+      <LastCookedStatus isEditable={isEditable} text={text} />
+      {/* On the right. */}
+      <View style={styles.buttons}>
+        {!isTv && isEditable && lastCooked && (
+          // With its text: the header's trash can deletes the recipe itself.
+          <Button
+            accessibilityHint={t.common.deleteHint}
+            accessibilityLabel={t.mealHistory.removeLabel}
+            icon="trash-can-outline"
+            label={t.mealHistory.remove}
+            onPress={askToRemove}
+            variant="danger"
+          />
+        )}
+        {!isTv && isEditable && daysAgo !== 0 && (
+          <Button
+            accessibilityHint={t.mealHistory.cookedHint}
+            icon="pot-steam-outline"
+            label={t.mealHistory.cooked}
+            onPress={() => markCooked(database, recipeId)}
+            variant="secondary"
+          />
+        )}
+      </View>
+    </View>
+  );
+}
+
+// When it was last cooked. On the recipe screen's bottom bar, centered in the room the buttons
+// leave, with an ⓘ telling what marking it does (Settings › Skip recent meals).
+function LastCookedStatus({ isEditable, text }: Readonly<{ isEditable: boolean; text: string }>) {
+  const t = useMessages();
+  const { recentMealDays } = usePreferences();
+  return (
+    <View style={[styles.status, isEditable && styles.centeredStatus]}>
+      {isEditable && (
+        <InfoTip
+          label={t.mealHistory.aboutLabel}
+          message={t.mealHistory.about(recentMealDays, isTv)}
         />
       )}
-      {!isTv && isEditable && daysAgo !== 0 && (
-        <Button
-          accessibilityHint={t.mealHistory.cookedHint}
-          icon="pot-steam-outline"
-          label={t.mealHistory.cooked}
-          onPress={() => markCooked(database, recipeId)}
-          variant="secondary"
-        />
-      )}
+      {/* Smaller on the meal choice's card: a detail of the suggestion. */}
+      <Text style={[styles.text, !isEditable && styles.smallText]}>{text}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create((theme) => ({
+  buttons: {
+    columnGap: theme.gap(3),
+    flexDirection: 'row',
+    marginLeft: 'auto',
+  },
+  centeredStatus: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   row: {
     alignItems: 'center',
     columnGap: theme.gap(3),
@@ -74,7 +107,15 @@ const styles = StyleSheet.create((theme) => ({
     flexWrap: 'wrap',
     rowGap: theme.gap(2),
   },
+  smallText: theme.typography.caption,
+  status: {
+    alignItems: 'center',
+    columnGap: theme.gap(2),
+    flexDirection: 'row',
+    flexShrink: 1,
+  },
   text: {
+    flexShrink: 1,
     ...theme.typography.body,
     color: theme.colors.textMuted,
   },
