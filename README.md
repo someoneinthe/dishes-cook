@@ -6,15 +6,18 @@
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=someoneinthe_dishes-cook&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=someoneinthe_dishes-cook)
 [![CI](https://github.com/someoneinthe/dishes-cook/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/someoneinthe/dishes-cook/actions/workflows/ci.yml)
 
-> [!WARNING]
-> **Draft project — not usable yet.** Only the project foundations (tooling, CI, release pipeline) exist; the app has no features so far.
-
 > [!NOTE]
 > **Built with AI.** This repository is created and maintained with AI: code, configuration, CI and documentation are written by [Claude Code](https://claude.com/claude-code) (Anthropic), under the direction and review of the repository owner. Eligible pull requests (not drafts or bot PRs) are also reviewed automatically by [CodeRabbit](https://www.coderabbit.ai/).
 
 Mobile app that helps you decide what to eat, picking from the recipes you've saved.
 
 Android first (iOS later, same codebase); the same app runs on Android TV, read-only, to pick and show recipes on the big screen. Built with Expo + React Native + TypeScript. Data lives on the device; it can optionally be synced with your own self-hosted [PocketBase](https://pocketbase.io) server to share recipes between phones ([how](docs/sync.md)).
+
+What it does, screen by screen: [Features](docs/features.md).
+
+## Install
+
+On your Android phone (or TV), download `dishes-cook-vX.Y.Z.apk` from the [latest release](https://github.com/someoneinthe/dishes-cook/releases/latest) and open it: Android asks once to let your browser install apps. A new version installs the same way, over the previous one, keeping your recipes.
 
 ## Getting started
 

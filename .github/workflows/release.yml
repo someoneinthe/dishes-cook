@@ -75,8 +75,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      # Uploading the images to the release (only the last step gets the token).
+      # Uploading the images to the release (only the last two steps get the token).
       contents: write
+      # Attesting the server files: the updater installs only files this workflow built from main.
+      id-token: write
+      attestations: write
     env:
       TAG: ${{ needs.release-please.outputs.tag_name }}
     steps:
@@ -90,12 +93,22 @@ jobs:
           node-version-file: .nvmrc
       - run: scripts/render-database-diagram.sh dist/database-diagram
       - run: scripts/pack-server-files.sh dist/server-files.tar.gz
+      # Signed proof (Sigstore, public log) that this workflow built the archive on main: the
+      # server's updater checks it before installing anything (server/deploy/update-server.sh).
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        id: attest
+        with:
+          subject-path: dist/server-files.tar.gz
       - name: Upload the diagram, the features page and the server files to the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
         run: |
+          cp "$BUNDLE" dist/server-files.tar.gz.sigstore.json
+          # The archive last: servers look for it, then for its checksum and attestation.
           gh release upload "$TAG" \
             dist/database-diagram/database-diagram.png \
             dist/database-diagram/database-diagram.svg \
             docs/features.md \
-            dist/server-files.tar.gz dist/server-files.tar.gz.sha256 --clobber
+            dist/server-files.tar.gz.sha256 dist/server-files.tar.gz.sigstore.json \
+            dist/server-files.tar.gz --clobber
