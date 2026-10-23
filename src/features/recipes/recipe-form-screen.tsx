@@ -1,5 +1,10 @@
 import type { RefObject } from 'react';
-import type { Text, TextInput } from 'react-native';
+import type {
+  ScrollViewInstance,
+  TextInputInstance,
+  TextInstance,
+  ViewInstance,
+} from 'react-native';
 import { Redirect, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Alert, Keyboard, ScrollView, View } from 'react-native';
@@ -117,16 +122,16 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
   // Set once saved: a second tap on Save, before the screen closes, saves nothing more.
   const isSavedRef = useRef(false);
   // The fields Save can find wrong, to bring the first one into view.
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   // ScrollView's `innerViewRef` is typed as never empty, which a ref is before mounting.
-  const contentRef = useRef<View>(null) as RefObject<View>;
-  const titleRef = useRef<TextInput>(null);
-  const prepRef = useRef<TextInput>(null);
-  const cookRef = useRef<TextInput>(null);
-  const maturationRef = useRef<TextInput>(null);
+  const contentRef = useRef<ViewInstance>(null) as RefObject<ViewInstance>;
+  const titleRef = useRef<TextInputInstance>(null);
+  const prepRef = useRef<TextInputInstance>(null);
+  const cookRef = useRef<TextInputInstance>(null);
+  const maturationRef = useRef<TextInputInstance>(null);
   const keepAtTop = useKeepAtTop(scrollViewRef, contentRef);
-  const amountRefMap = useRef(new Map<number, TextInput>());
-  const choiceRefMap = useRef(new Map<number, Text>());
+  const amountRefMap = useRef(new Map<number, TextInputInstance>());
+  const choiceRefMap = useRef(new Map<number, TextInstance>());
   const chooseSimilar = (ingredient: Ingredient, similar: Ingredient) => {
     newIngredients.chooseSimilar(ingredient.id);
     setSelectedIngredientList((previous) => swapIngredient(previous, ingredient.id, similar));
@@ -397,17 +402,17 @@ const SCROLL_MARGIN = 48;
 const TIME_FIELD_ORDER: readonly (keyof TimeDrafts)[] = ['prep', 'cook', 'maturation'];
 
 // A field Save found wrong: a text field, or a question to answer.
-type InvalidField = Readonly<{ input: TextInput } | { question: Text }>;
+type InvalidField = Readonly<{ input: TextInputInstance } | { question: TextInstance }>;
 
 type InvalidFieldSearch = Readonly<{
-  amountRefMap: ReadonlyMap<number, TextInput>;
-  choiceRefMap: ReadonlyMap<number, Text>;
+  amountRefMap: ReadonlyMap<number, TextInputInstance>;
+  choiceRefMap: ReadonlyMap<number, TextInstance>;
   invalidIdList: readonly number[];
   selectedList: readonly Ingredient[];
   // The first wrong time's field, if any.
-  timeInput: null | TextInput | undefined;
+  timeInput: null | TextInputInstance | undefined;
   // The title's field when it's empty.
-  titleInput: null | TextInput | undefined;
+  titleInput: null | TextInputInstance | undefined;
   undecidedIdList: readonly number[];
 }>;
 
@@ -456,8 +461,8 @@ function firstInvalidField({
 // The field of the first wrong time, in the order shown: preparation, then cooking or maturation.
 function firstWrongTime(
   invalidList: readonly (keyof TimeDrafts)[],
-  inputs: Readonly<Record<keyof TimeDrafts, null | TextInput>>,
-): null | TextInput | undefined {
+  inputs: Readonly<Record<keyof TimeDrafts, null | TextInputInstance>>,
+): null | TextInputInstance | undefined {
   const field = TIME_FIELD_ORDER.find((name) => invalidList.includes(name));
   return field === undefined ? undefined : inputs[field];
 }
@@ -565,9 +570,9 @@ function savedQuantities(
 
 // Scrolls the page so the element sits near its top.
 function scrollToTop(
-  element: Text | TextInput,
-  scrollView: null | ScrollView,
-  content: null | View,
+  element: TextInputInstance | TextInstance,
+  scrollView: null | ScrollViewInstance,
+  content: null | ViewInstance,
 ) {
   if (scrollView && content) {
     element.measureLayout(content, (_x, y) => {
@@ -578,7 +583,11 @@ function scrollToTop(
 
 // Scrolls a wrong field into view and gives it the focus: the keyboard's for a text field, the
 // screen reader's for a question.
-function showField(field: InvalidField, scrollView: null | ScrollView, content: null | View) {
+function showField(
+  field: InvalidField,
+  scrollView: null | ScrollViewInstance,
+  content: null | ViewInstance,
+) {
   scrollToTop('input' in field ? field.input : field.question, scrollView, content);
   if ('input' in field) {
     field.input.focus();
@@ -626,8 +635,11 @@ function toSaved(quantity: Quantity, t: Messages, units: UnitSystem): SavedQuant
 // Keeps a focused field near the top of the page: the field's own content (an ingredient search's
 // suggestions) shows under it, above the keyboard. Scrolled again once the keyboard is open: the
 // page, shorter, can then scroll further.
-function useKeepAtTop(scrollViewRef: RefObject<null | ScrollView>, contentRef: RefObject<View>) {
-  const fieldRef = useRef<null | TextInput>(null);
+function useKeepAtTop(
+  scrollViewRef: RefObject<null | ScrollViewInstance>,
+  contentRef: RefObject<ViewInstance>,
+) {
+  const fieldRef = useRef<null | TextInputInstance>(null);
   useEffect(() => {
     const subscription = Keyboard.addListener('keyboardDidShow', () => {
       const field = fieldRef.current;
@@ -637,7 +649,7 @@ function useKeepAtTop(scrollViewRef: RefObject<null | ScrollView>, contentRef: R
     });
     return () => subscription.remove();
   }, [contentRef, scrollViewRef]);
-  return (field: TextInput) => {
+  return (field: TextInputInstance) => {
     fieldRef.current = field;
     scrollToTop(field, scrollViewRef.current, contentRef.current);
   };

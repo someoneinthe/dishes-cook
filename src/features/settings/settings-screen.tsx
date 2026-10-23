@@ -1,3 +1,4 @@
+import type { ScrollViewInstance } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
@@ -21,7 +22,7 @@ export function SettingsScreen() {
   const { colorScheme, isShowingButtonLabels, language, recentMealDays, units } = usePreferences();
   // Switch colors are props, not styles.
   const { theme } = useUnistyles();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const { focusProps, focusStyle } = useFocusRing();
   // Opened from the header's sync status: scrolled to Data storage, which tells more.
   const { section } = useLocalSearchParams<{ section?: 'sync' }>();

@@ -228,6 +228,7 @@ describe('recipeFormScreen', () => {
   });
 
   it('gives the screen reader the unanswered question about a similar ingredient on Save', async () => {
+    const sendEvent = jest.spyOn(AccessibilityInfo, 'sendAccessibilityEvent');
     findOrCreateIngredient(connection.db, 'carrot');
     const scanned = { ingredientList: [{ name: 'carrots' }], instructions: '', title: 'Soup' };
     jest.mocked(useLocalSearchParams).mockReturnValue({ scanned: JSON.stringify(scanned) });
@@ -235,16 +236,11 @@ describe('recipeFormScreen', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
 
-    await waitFor(() =>
-      expect(AccessibilityInfo.sendAccessibilityEvent).toHaveBeenCalledWith(
-        expect.anything(),
-        'focus',
-      ),
-    );
+    await waitFor(() => expect(sendEvent).toHaveBeenCalledWith(expect.anything(), 'focus'));
 
     // The question, turned into an error: the screen reader reads it there.
     // Jest's Text is a component instance with the props it was given.
-    const question = jest.mocked(AccessibilityInfo.sendAccessibilityEvent).mock.calls[0]?.[0] as
+    const question = sendEvent.mock.calls[0]?.[0] as
       Readonly<{ props: Readonly<{ children: string }> }> | undefined;
 
     expect(question?.props.children).toMatch(/^You already have “carrot”: choose one/i);

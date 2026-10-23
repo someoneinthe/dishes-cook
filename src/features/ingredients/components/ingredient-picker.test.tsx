@@ -56,22 +56,19 @@ describe('ingredientPicker on a TV', () => {
   });
 
   it('tells screen readers what the search found once typing pauses', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
     await renderWithDatabase(<Picker />, connection);
     const search = screen.getByLabelText('Search ingredients');
 
     await fireEvent.changeText(search, 'le');
     await act(() => jest.runAllTimers());
 
-    expect(AccessibilityInfo.announceForAccessibility).toHaveBeenLastCalledWith(
-      '1 ingredient found.',
-    );
+    expect(announce).toHaveBeenLastCalledWith('1 ingredient found.');
 
     await fireEvent.changeText(search, 'lex');
     await act(() => jest.runAllTimers());
 
-    expect(AccessibilityInfo.announceForAccessibility).toHaveBeenLastCalledWith(
-      'No matching ingredient.',
-    );
+    expect(announce).toHaveBeenLastCalledWith('No matching ingredient.');
   });
 
   it('reads a chosen ingredient as a button that removes it, not as selected', async () => {

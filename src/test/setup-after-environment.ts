@@ -32,6 +32,13 @@ jest.mock('expo-localization', () => {
   return { getLocales: jest.fn(() => localeList), useLocales: jest.fn(() => localeList) };
 });
 
+// jest-expo 58.0.11 mocks `react-native/asset-registry`, but expo-asset 58.0.16 reads React
+// Native 0.88's `AssetRegistry` export, where no icon font is registered ("Module "1" is missing
+// from the asset registry"): the same mock for both.
+jest.mock('react-native/src/private/assets/AssetRegistry', () => ({
+  AssetRegistry: jest.requireMock<object>('react-native/asset-registry'),
+}));
+
 // The library's own mock: insets of 0, without the SafeAreaProvider the app's root gives.
 jest.mock(
   'react-native-safe-area-context',

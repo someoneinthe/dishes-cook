@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import type { TextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
@@ -18,7 +18,7 @@ export type QuantityDraft = Readonly<{ amountText: string; unit?: Unit }>;
 
 type IngredientQuantityRowProps = Readonly<{
   // To move the focus to the amount (when it's the first invalid field on Save).
-  amountRef?: Ref<TextInput>;
+  amountRef?: Ref<TextInputInstance>;
   draft: QuantityDraft;
   error?: string;
   ingredient: Ingredient;

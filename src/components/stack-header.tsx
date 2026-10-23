@@ -1,7 +1,7 @@
 import type { NativeStackHeaderProps } from 'expo-router';
 import type { HeaderBackButtonProps } from 'expo-router/react-navigation';
 import { getHeaderTitle, Header, HeaderBackButton } from 'expo-router/react-navigation';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { headerTitleOptions } from './header-title';
 import { useFocusRing } from './use-focus-ring';
@@ -25,6 +25,12 @@ export function stackHeader(backLabel: string) {
           options.headerLeft ?? (back ? backButton(navigation.goBack, backLabel) : undefined)
         }
         headerTitle={options.headerTitle ?? headerTitleOptions.headerTitle}
+        // Since SDK 58, the stack's option can be set per platform; this header takes a boolean.
+        headerTransparent={
+          typeof options.headerTransparent === 'object'
+            ? Platform.select(options.headerTransparent)
+            : options.headerTransparent
+        }
         title={getHeaderTitle(options, route.name)}
       />
     );

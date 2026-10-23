@@ -50,7 +50,9 @@ defineFeature(feature, (test) => {
     connection = createTestConnection();
     idByTitle.clear();
     clearPicks();
-    shareSpy = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
+    shareSpy = jest
+      .spyOn(Share, 'share')
+      .mockResolvedValue({ action: Share.sharedAction, activityType: undefined });
   });
 
   afterEach(() => {

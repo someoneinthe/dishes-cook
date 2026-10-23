@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import type { View } from 'react-native';
+import type { ViewInstance } from 'react-native';
 import { use } from 'react';
 import { Pressable, Text } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
@@ -33,7 +33,7 @@ type ButtonProps = Readonly<
     label: string;
     onPress: () => void;
     // To give it the screen reader's focus (e.g. back on Rename once a rename ends).
-    ref?: Ref<View>;
+    ref?: Ref<ViewInstance>;
   } & (
     | {
         // Deletions always show an icon (e.g. `trash-can-outline`).
