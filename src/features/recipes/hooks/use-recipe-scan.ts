@@ -87,7 +87,7 @@ export function useRecipeScan(onRead: (recipe: ScannedRecipe) => void) {
       // A damaged or password-protected file; also when Android recreated the app's screen (e.g. a
       // font size change): the camera then fails until the app is reopened
       // (https://github.com/expo/expo/issues/50386).
-      showMessage(t.recipeScan.readFailed);
+      showMessage(t.recipeScan.readFailedTitle, t.recipeScan.readFailedMessage);
     }
   };
 
