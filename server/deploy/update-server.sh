@@ -2,8 +2,9 @@
 # Runs on the sync server, as root: installs the server files of a dishes-cook version (PocketBase
 # migrations and hooks), see docs/sync.md › Updating the server.
 #
-#   update-server.sh                     the latest GitHub release's server-files.tar.gz, checked
-#                                        against its .sha256 (what the hourly timer runs)
+#   update-server.sh                     the latest GitHub release's server-files.tar.gz, installed
+#                                        only if its attestation proves the repo's release workflow
+#                                        built it on main (what the hourly timer runs)
 #   update-server.sh --archive <file>    a given archive (`npm run server:deploy`)
 #
 # Nothing happens when the server already has these files, or newer ones (an archive is never
@@ -25,8 +26,42 @@ lock_file="${UPDATE_LOCK:-/run/lock/dishes-cook-update-server.lock}"
 backup_dir="$pb_dir/backups-before-update"
 version_file="$pb_dir/server-files.version"
 backups_kept=5
+# What signs a release's server files: the repo's release workflow, run on main by GitHub Actions.
+signer="https://github.com/$repo/.github/workflows/release.yml@refs/heads/main"
+signer_issuer="https://token.actions.githubusercontent.com"
+# cosign checks that signature (Sigstore). This version, from its GitHub release, checked against
+# the checksums of its release (cosign_checksums.txt).
+cosign_version=3.1.3
+declare -A cosign_sha256=(
+  [amd64]=4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71
+  [arm64]=c5d324e091826b0d7a78eb16fef316450b4eb9aaec045611c08ba06f5e73220a
+)
+cosign="/usr/local/lib/dishes-cook-update/cosign-$cosign_version"
 
 log() { echo "update-server: $*"; }
+
+# Installs this script's cosign once, refusing a download that doesn't match its checksum.
+install_cosign() {
+  if [[ -x "$cosign" ]]; then
+    return
+  fi
+  local arch
+  case "$(uname -m)" in
+    x86_64) arch=amd64 ;;
+    aarch64 | arm64) arch=arm64 ;;
+    *)
+      log "no cosign for this processor ($(uname -m)): can't check the release's attestation"
+      exit 1
+      ;;
+  esac
+  curl -fsSL -o "$work/cosign" \
+    "https://github.com/sigstore/cosign/releases/download/v$cosign_version/cosign-linux-$arch"
+  if ! echo "${cosign_sha256[$arch]}  $work/cosign" | sha256sum --check --quiet; then
+    log "refusing cosign $cosign_version: its checksum doesn't match"
+    exit 1
+  fi
+  install -D -m 755 "$work/cosign" "$cosign"
+}
 
 # One update at a time: the timer and a manual deploy can start together.
 exec 9> "$lock_file"
@@ -48,6 +83,22 @@ else
   fi
   curl -fsSL -o "$work/server-files.tar.gz.sha256" "$release/server-files.tar.gz.sha256"
   (cd "$work" && sha256sum --check --quiet server-files.tar.gz.sha256)
+  # Anyone able to publish a release could put files there: only the release workflow, run on
+  # main, can sign their attestation (release.yml).
+  if ! curl -fsSL -o "$work/server-files.tar.gz.sigstore.json" \
+    "$release/server-files.tar.gz.sigstore.json"; then
+    log "refusing the latest release's server files: they have no attestation"
+    exit 1
+  fi
+  install_cosign
+  if ! "$cosign" verify-blob-attestation --type slsaprovenance1 \
+    --bundle "$work/server-files.tar.gz.sigstore.json" \
+    --certificate-identity "$signer" --certificate-oidc-issuer "$signer_issuer" \
+    "$work/server-files.tar.gz" > "$work/cosign.log" 2>&1; then
+    log "refusing the latest release's server files: their attestation doesn't check out"
+    cat "$work/cosign.log"
+    exit 1
+  fi
   archive="$work/server-files.tar.gz"
 fi
 # Only plain files under migrations/ and hooks/, and VERSION: no links (cmp and install, as root,
