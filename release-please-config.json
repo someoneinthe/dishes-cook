@@ -4,6 +4,9 @@
     ".": {
       "release-type": "node",
       "package-name": "dishes-cook",
+      "release-as": "1.0.1",
+      "draft": true,
+      "force-tag-creation": true,
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": false,
       "include-component-in-tag": false,
