@@ -1,7 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 import type { Phone } from '@/test/sync-scenarios';
 import { PAGE_SIZE } from '@/db/pagination';
-import { accounts, cookedMeals, recipes } from '@/db/schema';
+import { accounts, cookedMeals, ingredients, recipes } from '@/db/schema';
 import {
   deleteIngredient,
   findIngredientByName,
@@ -86,6 +86,42 @@ describe('synchronize', () => {
 
     expect(server.collection('recipes').size).toBe(1);
     expect(server.collection('ingredients').size).toBe(1);
+  });
+
+  it('keeps our same-name ingredient in a recipe pulled with the deletion of the one it lists', async () => {
+    // B's own eggs, under another sync id than A's.
+    phoneB.db
+      .insert(ingredients)
+      .values({ name: 'œufs', nameKey: 'œufs', sortKey: 'oeufs', syncId: 'b0000000000000e' })
+      .run();
+    addRecipe(phoneA, 'Quiche', ['Œufs']);
+    await sync(phoneA);
+    await sync(phoneB);
+    phoneA.db
+      .update(recipes)
+      .set({ instructions: 'Bake.', updatedAt: Date.now() + 1000 })
+      .run();
+    await sync(phoneA);
+    // A's eggs deleted on the server, while the newer quiche still lists them.
+    const eggsSyncId = toIngredientSyncId(toNameKey('Œufs'));
+    const eggs = server.collection('ingredients').get(eggsSyncId)!;
+    server.collection('ingredients').set(eggsSyncId, {
+      ...eggs,
+      deleted: Date.now(),
+      modified: Date.now(),
+      updated: '2026-06-01 00:00:00.000Z',
+    });
+
+    await sync(phoneB);
+
+    const [quiche] = [...server.collection('recipes').values()];
+
+    expect(recipeOf(phoneB, 'Quiche')).toMatchObject({
+      ingredientList: [{ name: 'Œufs' }],
+      instructions: 'Bake.',
+    });
+    // Sent back with B's eggs.
+    expect(quiche?.ingredients).toStrictEqual(['b0000000000000e']);
   });
 
   it('skips rows of the server it cannot use', async () => {

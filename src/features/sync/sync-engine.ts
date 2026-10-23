@@ -96,6 +96,11 @@ export type PhotoStore = Readonly<{
   toUpload: (file: string) => PhotoUpload | undefined;
 }>;
 
+// Ingredients deleted on the server, left to settleDeletedIngredients: ids of ours a recipe here
+// uses, and sync ids of other phones' ingredients of a name we have (aliases). Sets: the same rows
+// may be pulled twice (pullRecipes pulls the ingredients again).
+type PulledDeletions = Readonly<{ aliasSyncIds: Set<string>; usedIds: Set<number> }>;
+
 type PullKey = Readonly<{ id: string; updated: string }>;
 
 type PushCursor = Readonly<{ id: number; updatedAt: number }>;
@@ -159,13 +164,13 @@ export async function synchronize(
   holdChanges(() => {
     prepareServerVersions(database, cursors);
   });
-  // Ingredients deleted on another phone that a recipe here still uses: decided once the recipes
-  // are pulled too (their deletions may come with them).
-  const usedDeletedIdList: number[] = [];
+  // Ingredients deleted on another phone that a recipe here still uses, or whose recipes link ours
+  // of the same name: decided once the recipes are pulled too (their deletions may come with them).
+  const deletions: PulledDeletions = { aliasSyncIds: new Set(), usedIds: new Set() };
   const pullIngredients = (since: string) =>
     pull(api, 'ingredients', since, (rowList) => {
       holdChanges(() => {
-        usedDeletedIdList.push(...applyIngredients(database, rowList));
+        applyIngredients(database, rowList, deletions);
       });
     });
   // Ingredients first: pulled recipes link to them.
@@ -227,7 +232,7 @@ export async function synchronize(
   }
   // Once every recipe is pulled, those pulled again for meals included.
   holdChanges(() => {
-    settleDeletedIngredients(database, usedDeletedIdList);
+    settleDeletedIngredients(database, deletions);
   });
   await pullAccounts(database, api, holdChanges);
   if (photos) {
@@ -328,12 +333,10 @@ function applyCookedMeals(
   return unmatchedList;
 }
 
-// Applies a pulled ingredient; returns its id here when it was deleted on the server but a recipe
-// here uses it (decided by settleDeletedIngredients once the recipes are pulled).
-function applyIngredient(tx: AppDatabase, row: ServerIngredient): number | undefined {
+function applyIngredient(tx: AppDatabase, row: ServerIngredient, deletions: PulledDeletions): void {
   const name = cleanName(typeof row.name === 'string' ? row.name : '');
   if (!name || !isValidRow(row)) {
-    return undefined;
+    return;
   }
   const local = tx
     .select({
@@ -346,14 +349,14 @@ function applyIngredient(tx: AppDatabase, row: ServerIngredient): number | undef
     .get();
   if (!isNewerThan(row, local)) {
     markOnServer(tx, ingredients, local, row);
-    return undefined;
+    return;
   }
   if (row.deleted > 0) {
-    forgetAlias(tx, row.id);
-    return local && deletePulledIngredient(tx, local.id);
+    applyIngredientDeletion(tx, row.id, local?.id, deletions);
+    return;
   }
   if (isDeletedHereLater(tx, 'ingredients', row)) {
-    return undefined;
+    return;
   }
   const nameKey = toNameKey(name);
   const sameNameId = otherIngredientNamed(tx, nameKey, local?.id);
@@ -366,7 +369,7 @@ function applyIngredient(tx: AppDatabase, row: ServerIngredient): number | undef
         .onConflictDoUpdate({ set: { ingredientId: sameNameId }, target: ingredientAliases.syncId })
         .run();
     }
-    return undefined;
+    return;
   }
   // Saved in lowercase, whatever the other phone or the server had (shown with toDisplayName).
   const values = {
@@ -385,24 +388,38 @@ function applyIngredient(tx: AppDatabase, row: ServerIngredient): number | undef
     forgetAlias(tx, row.id);
     forgetDeletion(tx, 'ingredients', row.id);
   }
-  return undefined;
 }
 
-// Applies pulled ingredients; returns those deleted on the server that a recipe here uses.
+// Deleted on another phone: deleted here too, unless a recipe here uses it, or it was another
+// phone's ingredient of a name we have (recipes pulled later may still list it): decided once the
+// recipes are pulled (settleDeletedIngredients).
+function applyIngredientDeletion(
+  tx: AppDatabase,
+  syncId: string,
+  localId: number | undefined,
+  deletions: PulledDeletions,
+): void {
+  if (localId === undefined) {
+    if (hasAlias(tx, syncId)) {
+      deletions.aliasSyncIds.add(syncId);
+    }
+  } else if (isIngredientUsed(tx, localId)) {
+    deletions.usedIds.add(localId);
+  } else {
+    tx.delete(ingredients).where(eq(ingredients.id, localId)).run();
+  }
+}
+
 function applyIngredients(
   database: AppDatabase,
   rowList: readonly ServerIngredient[],
-): readonly number[] {
-  const usedDeletedIdList: number[] = [];
+  deletions: PulledDeletions,
+): void {
   database.transaction((tx) => {
     for (const row of rowList) {
-      const usedDeletedId = applyIngredient(tx, row);
-      if (usedDeletedId !== undefined) {
-        usedDeletedIdList.push(usedDeletedId);
-      }
+      applyIngredient(tx, row, deletions);
     }
   });
-  return usedDeletedIdList;
 }
 
 // A pulled recipe the phone has a newer (or the same) version of: its author is taken anyway. The
@@ -531,16 +548,6 @@ function applySameVersionPhoto(
   }
 }
 
-// Deleted on another phone: deleted here too, unless a recipe here uses it; then its id, decided
-// once the recipes are pulled (settleDeletedIngredients).
-function deletePulledIngredient(tx: AppDatabase, id: number): number | undefined {
-  if (isIngredientUsed(tx, id)) {
-    return id;
-  }
-  tx.delete(ingredients).where(eq(ingredients.id, id)).run();
-  return undefined;
-}
-
 // Downloads a recipe's photo; resolves with its file, or undefined when this photo failed (tried
 // again next time). Fails when it isn't this photo's fault (no server, no sign-in).
 async function downloadPhoto(
@@ -616,6 +623,16 @@ function forgetDeletion(tx: AppDatabase, tableName: SyncedTable, syncId: string)
   tx.delete(syncDeletions)
     .where(and(eq(syncDeletions.tableName, tableName), eq(syncDeletions.syncId, syncId)))
     .run();
+}
+
+function hasAlias(tx: AppDatabase, syncId: string): boolean {
+  return (
+    tx
+      .select({ syncId: ingredientAliases.syncId })
+      .from(ingredientAliases)
+      .where(eq(ingredientAliases.syncId, syncId))
+      .get() !== undefined
+  );
 }
 
 // The sync ids of a pulled recipe's ingredients, once each.
@@ -1260,16 +1277,41 @@ async function settleAll(promiseList: readonly Promise<unknown>[]): Promise<void
   throwFirstFailure(await Promise.allSettled(promiseList));
 }
 
-// Ingredients deleted on another phone that a recipe here used when they were pulled: deleted now
-// that no recipe here uses them (their recipes' deletions came with this sync), or kept and pushed
-// again when one still does (added here since).
-function settleDeletedIngredients(database: AppDatabase, idList: readonly number[]): void {
-  if (idList.length === 0) {
+// Another phone's ingredient of a name we have, deleted on the server: its alias goes, and the
+// recipes linking ours are pushed again, as the server's may still list it. Later than the version
+// pulled, which may come from a phone whose clock is ahead.
+function settleDeletedAlias(tx: AppDatabase, syncId: string): void {
+  const alias = tx
+    .select({ ingredientId: ingredientAliases.ingredientId })
+    .from(ingredientAliases)
+    .where(eq(ingredientAliases.syncId, syncId))
+    .get();
+  if (!alias) {
     return;
   }
-  const uniqueIdList = [...new Set(idList)];
+  const linkedRecipeIds = tx
+    .select({ id: recipeIngredients.recipeId })
+    .from(recipeIngredients)
+    .where(eq(recipeIngredients.ingredientId, alias.ingredientId));
+  tx.update(recipes)
+    .set({ updatedAt: sql`max(${NOW_MS}, ${recipes.updatedAt} + 1)` })
+    .where(inArray(recipes.id, linkedRecipeIds))
+    .run();
+  forgetAlias(tx, syncId);
+}
+
+// Ingredients deleted on another phone that a recipe here used when they were pulled: deleted now
+// that no recipe here uses them (their recipes' deletions came with this sync), or kept and pushed
+// again when one still does (added here since). Aliases: see settleDeletedAlias.
+function settleDeletedIngredients(database: AppDatabase, deletions: PulledDeletions): void {
+  if (deletions.aliasSyncIds.size === 0 && deletions.usedIds.size === 0) {
+    return;
+  }
   database.transaction((tx) => {
-    for (const id of uniqueIdList) {
+    for (const syncId of deletions.aliasSyncIds) {
+      settleDeletedAlias(tx, syncId);
+    }
+    for (const id of deletions.usedIds) {
       if (isIngredientUsed(tx, id)) {
         tx.update(ingredients).set({ updatedAt: NOW_MS }).where(eq(ingredients.id, id)).run();
       } else {
