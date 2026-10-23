@@ -3,12 +3,13 @@ import {
   asc,
   count,
   eq,
+  gte,
   inArray,
   isNotNull,
   isNull,
+  lt,
   lte,
   ne,
-  notExists,
   or,
   sql,
 } from 'drizzle-orm';
@@ -20,6 +21,7 @@ import {
   accounts,
   cookedMeals,
   COURSE_LIST,
+  ingredientAliases,
   ingredients,
   NOW_MS,
   recipeIngredients,
@@ -42,27 +44,35 @@ import type {
   ServerRow,
   ServerRowOf,
   SyncApi,
+  UpsertResult,
 } from './sync-api';
 import { SyncError } from './sync-api';
 
 // Two-way sync between the phone's database and the sync server (see docs/sync.md):
 // 1. pull the rows written on the server since the last pull, and apply the newer ones (ingredients,
 //    then recipes, then the meal history: each links to the previous), and the accounts' names;
-// 2. push the deletions, then the rows changed here since the last push.
-// The newest change of a row wins (`updated_at` here, `modified` there). Applying a pulled row
-// keeps its `modified` as `updated_at`, so it isn't pushed back.
+// 2. push the deletions, then the rows the server doesn't have in this version.
+// The newest change of a row wins (`updated_at` here, `modified` there). Each row also keeps the
+// version the server has (`server_version`): a pulled row gets it, as does a pushed row the server
+// saved, so a sync never sends back what it just pulled.
 
 export type SyncCursors = Readonly<{
   // Server time of the last row pulled, per table ('' = never pulled: everything). One per table:
   // a recipe pulled later than an ingredient written meanwhile mustn't move the ingredients past it.
   pulledUntil: Readonly<Record<SyncedTable, string>>;
-  // Rows changed here at or after this time (ms) are pushed (0 = everything: the first sync merges).
+  // Before server versions, what was pushed: the rows changed here before this time (ms). Read
+  // once, to set the server versions of a phone that synced with an older app ('legacy').
   pushedFrom: number;
+  // Whether the rows' `server_version` describe this server: 'kept' once they do; 'reset' when
+  // connecting (another server, or the same one again: everything is pushed once, and merged);
+  // 'legacy' for a phone that synced before server versions.
+  serverVersions: 'kept' | 'legacy' | 'reset';
 }>;
 
 export const INITIAL_CURSORS: SyncCursors = {
   pulledUntil: { cooked_meals: '', ingredients: '', recipes: '' },
   pushedFrom: 0,
+  serverVersions: 'reset',
 };
 
 // At most this many pages pulled per table and per sync (a server that never stops sending rows
@@ -101,21 +111,24 @@ const PHOTO_TO_PUSH = or(
   and(isNull(recipes.photoFile), isNotNull(recipes.photoSynced)),
 );
 
-// How many changes wait for the next sync: the deletions, and the rows changed since the last push,
-// counted in SQL. Rows dated after `now` aren't this phone's changes (its own are dated by its
-// clock): they were pulled from a phone whose clock is ahead, and counting them would show changes
-// waiting after a sync that worked. The next sync pushes them back anyway, harmlessly.
+// How many changes wait for the next sync: the deletions, and the rows the server doesn't have in
+// this version, counted in SQL. Before the first sync with server versions ('legacy'), the rows
+// changed since the last push, but those dated after `now`: they were pulled from a phone whose
+// clock is ahead, not changed here.
 export function countPendingChanges(
   database: AppDatabase,
-  pushedFrom: number,
+  cursors: Pick<SyncCursors, 'pushedFrom' | 'serverVersions'>,
   now: number = Date.now(),
 ): number {
+  // After connecting, every row is pushed.
+  const changedWhere = (table: SyncedTableSchema) => {
+    if (cursors.serverVersions === 'legacy') {
+      return and(gte(table.updatedAt, cursors.pushedFrom), lte(table.updatedAt, now));
+    }
+    return cursors.serverVersions === 'reset' ? undefined : notOnServer(table);
+  };
   const countChanged = (table: SyncedTableSchema) =>
-    database
-      .select({ count: count() })
-      .from(table)
-      .where(and(changedSince(table, pushedFrom, undefined), lte(table.updatedAt, now)))
-      .get()?.count ?? 0;
+    database.select({ count: count() }).from(table).where(changedWhere(table)).get()?.count ?? 0;
   const deletionCount = database.select({ count: count() }).from(syncDeletions).get()?.count ?? 0;
   const photoCount =
     database.select({ count: count() }).from(recipes).where(PHOTO_TO_PUSH).get()?.count ?? 0;
@@ -142,11 +155,18 @@ export async function synchronize(
   }> = {},
 ): Promise<SyncCursors> {
   const { holdChanges = (write: () => void) => write(), now = Date.now, photos } = options;
-  // Changes made from now on, even during this sync, are pushed next time.
   const startedAt = now();
+  holdChanges(() => {
+    prepareServerVersions(database, cursors);
+  });
+  // Ingredients deleted on another phone that a recipe here still uses: decided once the recipes
+  // are pulled too (their deletions may come with them).
+  const usedDeletedIdList: number[] = [];
   const pullIngredients = (since: string) =>
     pull(api, 'ingredients', since, (rowList) => {
-      holdChanges(() => applyIngredients(database, rowList));
+      holdChanges(() => {
+        usedDeletedIdList.push(...applyIngredients(database, rowList));
+      });
     });
   // Ingredients first: pulled recipes link to them.
   let ingredientsPulledUntil = await pullIngredients(cursors.pulledUntil.ingredients);
@@ -175,6 +195,9 @@ export async function synchronize(
     return pulledUntil;
   };
   let recipesPulledUntil = await pullRecipes(cursors.pulledUntil.recipes);
+  holdChanges(() => {
+    settleDeletedIngredients(database, usedDeletedIdList);
+  });
   // A recipe added here that the server had before the last pull of meals: one deleted here and
   // brought back by a newer edit on another phone, whose meals went with it (ON DELETE CASCADE),
   // and that pull is past them. Every meal is pulled again then: only the missing ones are written.
@@ -210,20 +233,22 @@ export async function synchronize(
     await downloadPhotos(database, api, photos, holdChanges);
   }
   await pushDeletions(database, api, holdChanges);
-  await pushIngredients(database, api, cursors.pushedFrom);
-  await pushRecipes(database, api, cursors.pushedFrom);
+  await pushIngredients(database, api, holdChanges);
+  await pushRecipes(database, api, holdChanges);
   if (photos) {
     // After their recipes: the server has them (a photo is uploaded onto its recipe).
     await pushPhotos(database, api, photos, holdChanges);
   }
-  await pushCookedMeals(database, api, cursors.pushedFrom);
+  await pushCookedMeals(database, api, holdChanges);
   return {
     pulledUntil: {
       cooked_meals: cookedMealsPulledUntil,
       ingredients: ingredientsPulledUntil,
       recipes: recipesPulledUntil,
     },
+    // Still kept for an older app, should the phone go back to one.
     pushedFrom: startedAt,
+    serverVersions: 'kept',
   };
 }
 
@@ -239,11 +264,16 @@ function applyCookedMeal(tx: AppDatabase, row: ServerCookedMeal): 'done' | 'reci
     return 'done';
   }
   const local = tx
-    .select({ id: cookedMeals.id, updatedAt: cookedMeals.updatedAt })
+    .select({
+      id: cookedMeals.id,
+      serverVersion: cookedMeals.serverVersion,
+      updatedAt: cookedMeals.updatedAt,
+    })
     .from(cookedMeals)
     .where(eq(cookedMeals.syncId, row.id))
     .get();
   if (!isNewerThan(row, local)) {
+    markOnServer(tx, cookedMeals, local, row);
     return 'done';
   }
   if (row.deleted > 0) {
@@ -264,7 +294,12 @@ function applyCookedMeal(tx: AppDatabase, row: ServerCookedMeal): 'done' | 'reci
   if (!recipe) {
     return 'recipe-missing';
   }
-  const values = { cookedAt: cookedAt as number, recipeId: recipe.id, updatedAt: row.modified };
+  const values = {
+    cookedAt: cookedAt as number,
+    recipeId: recipe.id,
+    serverVersion: row.modified,
+    updatedAt: row.modified,
+  };
   if (local) {
     tx.update(cookedMeals).set(values).where(eq(cookedMeals.id, local.id)).run();
   } else {
@@ -292,51 +327,81 @@ function applyCookedMeals(
   return unmatchedList;
 }
 
-function applyIngredient(tx: AppDatabase, row: ServerIngredient): void {
+// Applies a pulled ingredient; returns its id here when it was deleted on the server but a recipe
+// here uses it (decided by settleDeletedIngredients once the recipes are pulled).
+function applyIngredient(tx: AppDatabase, row: ServerIngredient): number | undefined {
   const name = cleanName(typeof row.name === 'string' ? row.name : '');
   if (!name || !isValidRow(row)) {
-    return;
+    return undefined;
   }
   const local = tx
-    .select({ id: ingredients.id, updatedAt: ingredients.updatedAt })
+    .select({
+      id: ingredients.id,
+      serverVersion: ingredients.serverVersion,
+      updatedAt: ingredients.updatedAt,
+    })
     .from(ingredients)
     .where(eq(ingredients.syncId, row.id))
     .get();
   if (!isNewerThan(row, local)) {
-    return;
+    markOnServer(tx, ingredients, local, row);
+    return undefined;
   }
   if (row.deleted > 0) {
-    if (local) {
-      deletePulledIngredient(tx, local.id);
-    }
-    return;
+    forgetAlias(tx, row.id);
+    return local && deletePulledIngredient(tx, local.id);
+  }
+  if (isDeletedHereLater(tx, 'ingredients', row)) {
+    return undefined;
   }
   const nameKey = toNameKey(name);
-  // Another ingredient here already has this name (renamed on another phone): ours is kept.
-  if (
-    isDeletedHereLater(tx, 'ingredients', row) ||
-    hasOtherIngredientNamed(tx, nameKey, local?.id)
-  ) {
-    return;
+  const sameNameId = otherIngredientNamed(tx, nameKey, local?.id);
+  if (sameNameId !== undefined) {
+    // Renamed on another phone to a name an ingredient here has: ours is kept. Another phone's
+    // ingredient of the same name, with another sync id: ours too, and its recipes link ours.
+    if (!local) {
+      tx.insert(ingredientAliases)
+        .values({ ingredientId: sameNameId, syncId: row.id })
+        .onConflictDoUpdate({ set: { ingredientId: sameNameId }, target: ingredientAliases.syncId })
+        .run();
+    }
+    return undefined;
   }
   // Saved in lowercase, whatever the other phone or the server had (shown with toDisplayName).
-  const values = { name: nameKey, nameKey, sortKey: toSortKey(name), updatedAt: row.modified };
+  const values = {
+    name: nameKey,
+    nameKey,
+    serverVersion: row.modified,
+    sortKey: toSortKey(name),
+    updatedAt: row.modified,
+  };
   if (local) {
     tx.update(ingredients).set(values).where(eq(ingredients.id, local.id)).run();
   } else {
     tx.insert(ingredients)
       .values({ ...values, syncId: row.id })
       .run();
+    forgetAlias(tx, row.id);
     forgetDeletion(tx, 'ingredients', row.id);
   }
+  return undefined;
 }
 
-function applyIngredients(database: AppDatabase, rowList: readonly ServerIngredient[]): void {
+// Applies pulled ingredients; returns those deleted on the server that a recipe here uses.
+function applyIngredients(
+  database: AppDatabase,
+  rowList: readonly ServerIngredient[],
+): readonly number[] {
+  const usedDeletedIdList: number[] = [];
   database.transaction((tx) => {
     for (const row of rowList) {
-      applyIngredient(tx, row);
+      const usedDeletedId = applyIngredient(tx, row);
+      if (usedDeletedId !== undefined) {
+        usedDeletedIdList.push(usedDeletedId);
+      }
     }
   });
+  return usedDeletedIdList;
 }
 
 // A pulled recipe the phone has a newer (or the same) version of: its author is taken anyway. The
@@ -367,12 +432,14 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
       id: recipes.id,
       photoPending: recipes.photoPending,
       photoSynced: recipes.photoSynced,
+      serverVersion: recipes.serverVersion,
       updatedAt: recipes.updatedAt,
     })
     .from(recipes)
     .where(eq(recipes.syncId, row.id))
     .get();
   if (!isNewerThan(row, local)) {
+    markOnServer(tx, recipes, local, row);
     applyKnownAuthor(tx, local, row);
     applySameVersionPhoto(tx, local, row);
     return linkArrivedIngredients(tx, local, row);
@@ -395,6 +462,7 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
     kind: toRecipeKind(row.kind),
     ...pulledTimes(row),
     season: toSeason(row.season),
+    serverVersion: row.modified,
     sortKey: toSortKey(title),
     title,
     updatedAt: row.modified,
@@ -462,32 +530,14 @@ function applySameVersionPhoto(
   }
 }
 
-// Rows changed at or after `pushedFrom`, after the keyset cursor (the last row of the previous
-// page), in (updated_at, id) order: the order of the *_updated_at_id_idx indexes. After a cursor
-// (itself changed at or after `pushedFrom`), a row value: the index is read from the cursor on.
-function changedSince(
-  table: SyncedTableSchema,
-  pushedFrom: number,
-  cursor: PushCursor | undefined,
-) {
-  return cursor
-    ? sql`(${table.updatedAt}, ${table.id}) > (${cursor.updatedAt}, ${cursor.id})`
-    : sql`${table.updatedAt} >= ${pushedFrom}`;
-}
-
-// Deleted on another phone. Still used by a recipe here (added since): kept, and pushed again.
-function deletePulledIngredient(tx: AppDatabase, id: number): void {
-  const link = tx
-    .select({ recipeId: recipeIngredients.recipeId })
-    .from(recipeIngredients)
-    .where(eq(recipeIngredients.ingredientId, id))
-    .limit(1)
-    .get();
-  if (link) {
-    tx.update(ingredients).set({ updatedAt: NOW_MS }).where(eq(ingredients.id, id)).run();
-  } else {
-    tx.delete(ingredients).where(eq(ingredients.id, id)).run();
+// Deleted on another phone: deleted here too, unless a recipe here uses it; then its id, decided
+// once the recipes are pulled (settleDeletedIngredients).
+function deletePulledIngredient(tx: AppDatabase, id: number): number | undefined {
+  if (isIngredientUsed(tx, id)) {
+    return id;
   }
+  tx.delete(ingredients).where(eq(ingredients.id, id)).run();
+  return undefined;
 }
 
 // Downloads a recipe's photo; resolves with its file, or undefined when this photo failed (tried
@@ -557,23 +607,14 @@ function earliest(time: string, other: string): string {
   return time === '' || (other !== '' && other.localeCompare(time) < 0) ? other : time;
 }
 
+function forgetAlias(tx: AppDatabase, syncId: string) {
+  tx.delete(ingredientAliases).where(eq(ingredientAliases.syncId, syncId)).run();
+}
+
 function forgetDeletion(tx: AppDatabase, tableName: SyncedTable, syncId: string) {
   tx.delete(syncDeletions)
     .where(and(eq(syncDeletions.tableName, tableName), eq(syncDeletions.syncId, syncId)))
     .run();
-}
-
-function hasOtherIngredientNamed(tx: AppDatabase, nameKey: string, id: number | undefined) {
-  const sameName = tx
-    .select({ id: ingredients.id })
-    .from(ingredients)
-    .where(
-      id === undefined
-        ? eq(ingredients.nameKey, nameKey)
-        : and(eq(ingredients.nameKey, nameKey), ne(ingredients.id, id)),
-    )
-    .get();
-  return sameName !== undefined;
 }
 
 // The sync ids of a pulled recipe's ingredients, once each.
@@ -601,6 +642,16 @@ function isDeletedHereLater(tx: AppDatabase, tableName: SyncedTable, row: Server
     .where(and(eq(syncDeletions.tableName, tableName), eq(syncDeletions.syncId, row.id)))
     .get();
   return deletion !== undefined && deletion.deletedAt >= row.modified;
+}
+
+function isIngredientUsed(tx: AppDatabase, id: number): boolean {
+  const link = tx
+    .select({ recipeId: recipeIngredients.recipeId })
+    .from(recipeIngredients)
+    .where(eq(recipeIngredients.ingredientId, id))
+    .limit(1)
+    .get();
+  return link !== undefined;
 }
 
 // No row here, or an older one. Equal times are the same change (pulled before, or pushed by us).
@@ -652,8 +703,7 @@ function latest(time: string, other: unknown): string {
 
 // A recipe pulled again, not newer than the phone's: when it's the same version, links its
 // ingredients that weren't here when it was first pulled, if any arrived since (it writes nothing
-// otherwise). Returns how many are still missing (e.g. an ingredient this phone has under another
-// name, see docs/sync.md).
+// otherwise). Returns how many are still missing.
 function linkArrivedIngredients(
   tx: AppDatabase,
   local: Readonly<{ id: number; updatedAt: number }> | undefined,
@@ -663,36 +713,24 @@ function linkArrivedIngredients(
   if (local?.updatedAt !== row.modified || row.deleted > 0 || syncIdList.length === 0) {
     return 0;
   }
-  const recipeId = local.id;
-  const linked = tx
-    .select({ recipeId: recipeIngredients.recipeId })
-    .from(recipeIngredients)
-    .where(
-      and(
-        eq(recipeIngredients.recipeId, recipeId),
-        eq(recipeIngredients.ingredientId, ingredients.id),
-      ),
-    );
-  const arrived = tx
-    .select({ id: ingredients.id })
-    .from(ingredients)
-    .where(and(inArray(ingredients.syncId, syncIdList), notExists(linked)))
-    .limit(1)
-    .get();
-  if (arrived) {
-    return linkIngredients(tx, recipeId, row);
-  }
-  const hereCount =
+  const localIdMap = localIngredientIds(tx, syncIdList);
+  const linkedIdSet = new Set(
     tx
-      .select({ count: count() })
-      .from(ingredients)
-      .where(inArray(ingredients.syncId, syncIdList))
-      .get()?.count ?? 0;
-  return syncIdList.length - hereCount;
+      .select({ ingredientId: recipeIngredients.ingredientId })
+      .from(recipeIngredients)
+      .where(eq(recipeIngredients.recipeId, local.id))
+      .all()
+      .map(({ ingredientId }) => ingredientId),
+  );
+  return [...localIdMap.values()].some((id) => !linkedIdSet.has(id))
+    ? linkIngredients(tx, local.id, row)
+    : syncIdList.length - localIdMap.size;
 }
 
 // Replaces the recipe's ingredients (and their quantities) with the pulled ones; those not here
-// (yet) are left out, and so are quantities that aren't usable. Returns how many were left out.
+// (yet) are left out, and so are quantities that aren't usable. An ingredient this phone has under
+// another sync id (same name, see ingredientAliases) is linked as its own. Returns how many were
+// left out.
 function linkIngredients(
   tx: AppDatabase,
   recipeId: number,
@@ -703,27 +741,126 @@ function linkIngredients(
   if (syncIdList.length === 0) {
     return 0;
   }
-  const ingredientList = tx
-    .select({ id: ingredients.id, syncId: ingredients.syncId })
-    .from(ingredients)
-    .where(inArray(ingredients.syncId, syncIdList))
-    .all();
-  if (ingredientList.length > 0) {
+  const localIdMap = localIngredientIds(tx, syncIdList);
+  // One link per ingredient here, with the quantity of the first sync id naming it.
+  const linkMap = new Map<number, Quantity | undefined>();
+  for (const syncId of syncIdList) {
+    const ingredientId = localIdMap.get(syncId);
+    if (ingredientId !== undefined && !linkMap.has(ingredientId)) {
+      linkMap.set(ingredientId, pulledQuantity(row.quantities, syncId));
+    }
+  }
+  if (linkMap.size > 0) {
     tx.insert(recipeIngredients)
       .values(
-        ingredientList.map((ingredient) => {
-          const quantity = pulledQuantity(row.quantities, ingredient.syncId);
-          return {
-            amount: quantity?.amount ?? null,
-            ingredientId: ingredient.id,
-            recipeId,
-            unit: quantity?.unit ?? null,
-          };
-        }),
+        [...linkMap].map(([ingredientId, quantity]) => ({
+          amount: quantity?.amount ?? null,
+          ingredientId,
+          recipeId,
+          unit: quantity?.unit ?? null,
+        })),
       )
       .run();
   }
-  return syncIdList.length - ingredientList.length;
+  return syncIdList.length - localIdMap.size;
+}
+
+// This phone's ingredients for these sync ids: its own, or the one an alias names.
+function localIngredientIds(tx: AppDatabase, syncIdList: readonly string[]): Map<string, number> {
+  const aliasList = tx
+    .select({ id: ingredientAliases.ingredientId, syncId: ingredientAliases.syncId })
+    .from(ingredientAliases)
+    .where(inArray(ingredientAliases.syncId, [...syncIdList]))
+    .all();
+  const ownList = tx
+    .select({ id: ingredients.id, syncId: ingredients.syncId })
+    .from(ingredients)
+    .where(inArray(ingredients.syncId, [...syncIdList]))
+    .all();
+  return new Map([...aliasList, ...ownList].map(({ id, syncId }) => [syncId, id]));
+}
+
+// A pulled row of the same version as the phone's: the server has it (pulled before, or pushed by
+// an older app, which didn't keep the version), so it isn't pushed.
+function markOnServer(
+  tx: AppDatabase,
+  table: SyncedTableSchema,
+  local: Readonly<{ id: number; serverVersion: null | number; updatedAt: number }> | undefined,
+  row: ServerRow,
+): void {
+  if (local?.updatedAt === row.modified && local.serverVersion !== row.modified) {
+    tx.update(table).set({ serverVersion: row.modified }).where(eq(table.id, local.id)).run();
+  }
+}
+
+// Keeps the version of each row the server saved: not pushed again, unless changed meanwhile (a
+// newer version). Then fails with the first error, if any.
+function markPushed(
+  database: AppDatabase,
+  holdChanges: (write: () => void) => void,
+  table: SyncedTableSchema,
+  pushedList: readonly Readonly<{ id: number; updatedAt: number }>[],
+  resultList: readonly PromiseSettledResult<UpsertResult>[],
+): void {
+  holdChanges(() => {
+    database.transaction((tx) => {
+      for (const [index, row] of pushedList.entries()) {
+        const result = resultList[index];
+        if (result?.status === 'fulfilled' && result.value === 'saved') {
+          tx.update(table)
+            .set({ serverVersion: row.updatedAt })
+            .where(and(eq(table.id, row.id), eq(table.updatedAt, row.updatedAt)))
+            .run();
+        }
+      }
+    });
+  });
+  throwFirstFailure(resultList);
+}
+
+// The rows the server doesn't have in this version: in the *_to_push_idx indexes.
+function notOnServer(table: SyncedTableSchema) {
+  return sql`${table.serverVersion} is not ${table.updatedAt}`;
+}
+
+// The other ingredient here with this name (not `id`), if any.
+function otherIngredientNamed(
+  tx: AppDatabase,
+  nameKey: string,
+  id: number | undefined,
+): number | undefined {
+  return tx
+    .select({ id: ingredients.id })
+    .from(ingredients)
+    .where(
+      id === undefined
+        ? eq(ingredients.nameKey, nameKey)
+        : and(eq(ingredients.nameKey, nameKey), ne(ingredients.id, id)),
+    )
+    .get()?.id;
+}
+
+// Before pulling: rows of a phone that synced with an older app (before server versions) are on
+// the server if changed before the last push; after connecting, none is known to be (another server).
+function prepareServerVersions(
+  database: AppDatabase,
+  cursors: Pick<SyncCursors, 'pushedFrom' | 'serverVersions'>,
+): void {
+  if (cursors.serverVersions === 'kept') {
+    return;
+  }
+  database.transaction((tx) => {
+    for (const table of [ingredients, recipes, cookedMeals]) {
+      if (cursors.serverVersions === 'reset') {
+        tx.update(table).set({ serverVersion: null }).where(isNotNull(table.serverVersion)).run();
+      } else {
+        tx.update(table)
+          .set({ serverVersion: sql`${table.updatedAt}` })
+          .where(lt(table.updatedAt, cursors.pushedFrom))
+          .run();
+      }
+    }
+  });
 }
 
 // Pages through the rows written on the server since `since`, applying each page; returns the
@@ -839,7 +976,7 @@ function pulledTimes(row: ServerRecipe) {
 async function pushCookedMeals(
   database: AppDatabase,
   api: SyncApi,
-  pushedFrom: number,
+  holdChanges: (write: () => void) => void,
 ): Promise<void> {
   let cursor: PushCursor | undefined;
   for (;;) {
@@ -852,7 +989,7 @@ async function pushCookedMeals(
         updatedAt: cookedMeals.updatedAt,
       })
       .from(cookedMeals)
-      .where(changedSince(cookedMeals, pushedFrom, cursor))
+      .where(toPush(cookedMeals, cursor))
       .orderBy(asc(cookedMeals.updatedAt), asc(cookedMeals.id))
       .limit(PAGE_SIZE)
       .all();
@@ -867,23 +1004,20 @@ async function pushCookedMeals(
             .where(inArray(recipes.id, recipeIdList))
             .all();
     const recipeSyncIdMap = new Map(recipeList.map(({ id, syncId }) => [id, syncId]));
+    // Always found: a meal goes with its recipe (ON DELETE CASCADE).
+    const pushedList = rowList.filter(({ recipeId }) => recipeSyncIdMap.has(recipeId));
     // eslint-disable-next-line no-await-in-loop -- pages one after another: each starts at the previous one's cursor
-    await settleAll(
-      rowList.flatMap((row) => {
-        const recipeSyncId = recipeSyncIdMap.get(row.recipeId);
-        // Always found: a meal goes with its recipe (ON DELETE CASCADE).
-        return recipeSyncId === undefined
-          ? []
-          : [
-              api.upsert('cooked_meals', row.syncId, {
-                cooked_at: row.cookedAt,
-                deleted: 0,
-                modified: row.updatedAt,
-                recipe: recipeSyncId,
-              }),
-            ];
-      }),
+    const resultList = await Promise.allSettled(
+      pushedList.map((row) =>
+        api.upsert('cooked_meals', row.syncId, {
+          cooked_at: row.cookedAt,
+          deleted: 0,
+          modified: row.updatedAt,
+          recipe: recipeSyncIdMap.get(row.recipeId) ?? '',
+        }),
+      ),
     );
+    markPushed(database, holdChanges, cookedMeals, pushedList, resultList);
     cursor = rowList.at(-1);
     if (rowList.length < PAGE_SIZE) {
       return;
@@ -931,7 +1065,7 @@ async function pushDeletions(
 async function pushIngredients(
   database: AppDatabase,
   api: SyncApi,
-  pushedFrom: number,
+  holdChanges: (write: () => void) => void,
 ): Promise<void> {
   let cursor: PushCursor | undefined;
   for (;;) {
@@ -943,12 +1077,12 @@ async function pushIngredients(
         updatedAt: ingredients.updatedAt,
       })
       .from(ingredients)
-      .where(changedSince(ingredients, pushedFrom, cursor))
+      .where(toPush(ingredients, cursor))
       .orderBy(asc(ingredients.updatedAt), asc(ingredients.id))
       .limit(PAGE_SIZE)
       .all();
     // eslint-disable-next-line no-await-in-loop -- pages one after another: each starts at the previous one's cursor
-    await settleAll(
+    const resultList = await Promise.allSettled(
       rowList.map((row) =>
         api.upsert('ingredients', row.syncId, {
           deleted: 0,
@@ -957,6 +1091,7 @@ async function pushIngredients(
         }),
       ),
     );
+    markPushed(database, holdChanges, ingredients, rowList, resultList);
     cursor = rowList.at(-1);
     if (rowList.length < PAGE_SIZE) {
       return;
@@ -1021,7 +1156,11 @@ async function pushPhotos(
   );
 }
 
-async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: number): Promise<void> {
+async function pushRecipes(
+  database: AppDatabase,
+  api: SyncApi,
+  holdChanges: (write: () => void) => void,
+): Promise<void> {
   let cursor: PushCursor | undefined;
   for (;;) {
     const rowList = database
@@ -1042,7 +1181,7 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
         updatedAt: recipes.updatedAt,
       })
       .from(recipes)
-      .where(changedSince(recipes, pushedFrom, cursor))
+      .where(toPush(recipes, cursor))
       .orderBy(asc(recipes.updatedAt), asc(recipes.id))
       .limit(PAGE_SIZE)
       .all();
@@ -1082,7 +1221,7 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
       quantitiesByRecipe.set(link.recipeId, quantities);
     }
     // eslint-disable-next-line no-await-in-loop -- pages one after another: each starts at the previous one's cursor
-    await settleAll(
+    const resultList = await Promise.allSettled(
       rowList.map((row) =>
         api.upsert('recipes', row.syncId, {
           // 0 = not given (a number field can't be empty).
@@ -1106,6 +1245,7 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
         }),
       ),
     );
+    markPushed(database, holdChanges, recipes, rowList, resultList);
     cursor = rowList.at(-1);
     if (rowList.length < PAGE_SIZE) {
       return;
@@ -1117,6 +1257,25 @@ async function pushRecipes(database: AppDatabase, api: SyncApi, pushedFrom: numb
 // running once the sync has ended (the next one could overlap it).
 async function settleAll(promiseList: readonly Promise<unknown>[]): Promise<void> {
   throwFirstFailure(await Promise.allSettled(promiseList));
+}
+
+// Ingredients deleted on another phone that a recipe here used when they were pulled: deleted now
+// that no recipe here uses them (their recipes' deletions came with this sync), or kept and pushed
+// again when one still does (added here since).
+function settleDeletedIngredients(database: AppDatabase, idList: readonly number[]): void {
+  if (idList.length === 0) {
+    return;
+  }
+  const uniqueIdList = [...new Set(idList)];
+  database.transaction((tx) => {
+    for (const id of uniqueIdList) {
+      if (isIngredientUsed(tx, id)) {
+        tx.update(ingredients).set({ updatedAt: NOW_MS }).where(eq(ingredients.id, id)).run();
+      } else {
+        tx.delete(ingredients).where(eq(ingredients.id, id)).run();
+      }
+    }
+  });
 }
 
 function throwFirstFailure(resultList: readonly PromiseSettledResult<unknown>[]): void {
@@ -1146,6 +1305,17 @@ function toPullKey(item: unknown): PullKey | undefined {
   return typeof updated === 'string' && SERVER_TIME.test(updated) && isSyncId(id)
     ? { id, updated }
     : undefined;
+}
+
+// The rows to push after the keyset cursor (the last row of the previous page), in (updated_at, id)
+// order: read from the *_to_push_idx indexes, from the cursor on.
+function toPush(table: SyncedTableSchema, cursor: PushCursor | undefined) {
+  return cursor
+    ? and(
+        notOnServer(table),
+        sql`(${table.updatedAt}, ${table.id}) > (${cursor.updatedAt}, ${cursor.id})`,
+      )
+    : notOnServer(table);
 }
 
 // A pulled recipe's kind: a dish unless it says drink (empty on a server from before drinks).

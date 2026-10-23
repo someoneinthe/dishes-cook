@@ -16,7 +16,8 @@ import {
 import { deleteRecipe, getRecipe, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { createSyncApi, signIn } from '@/features/sync/sync-api';
 import { INITIAL_CURSORS, synchronize } from '@/features/sync/sync-engine';
-import { toDisplayName } from '@/lib/text';
+import { toIngredientSyncId } from '@/lib/sync-id';
+import { toDisplayName, toNameKey, toSortKey } from '@/lib/text';
 import { createTestConnection } from './test-database';
 
 // A phone; `photos` keeps its recipe photos' files when the scenario syncs them.
@@ -146,6 +147,63 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     }
 
     await expect(server.rowsOf('ingredients')).resolves.toHaveLength(3);
+  });
+
+  // A phone with an ingredient of the same name under another sync id (added with an older app, or
+  // written straight into its database): it keeps its own, and the recipes it pulls link it.
+  it('keeps an ingredient a phone has under another id in the recipes it pulls, without sending them back', async () => {
+    phoneB.db
+      .insert(ingredients)
+      .values({
+        name: 'œufs',
+        nameKey: 'œufs',
+        sortKey: toSortKey('œufs'),
+        syncId: 'b0000000000000e',
+      })
+      .run();
+    addRecipe(phoneA, 'Quiche', ['Œufs', 'Lait']);
+    await sync(phoneA);
+
+    await sync(phoneB);
+
+    expect(
+      recipeOf(phoneB, 'Quiche')?.ingredientList.map(({ name }) => name.toLowerCase()),
+    ).toStrictEqual(['lait', 'œufs']);
+    // The server's recipe still has phone A's eggs: phone B sent nothing back.
+    const [quiche] = await server.rowsOf('recipes');
+    expect(quiche?.ingredients).toContain(toIngredientSyncId(toNameKey('œufs')));
+
+    await sync(phoneA);
+
+    expect(recipeOf(phoneA, 'Quiche')?.ingredientList).toHaveLength(2);
+  });
+
+  it('never sends back a row it just pulled', async () => {
+    addRecipe(phoneA, 'Soup', ['Leek']);
+    await sync(phoneA);
+    const beforeList = await server.rowsOf('recipes');
+
+    await sync(phoneB);
+    await sync(phoneB);
+
+    await expect(server.rowsOf('recipes')).resolves.toStrictEqual(beforeList);
+  });
+
+  it('deletes an ingredient deleted with the recipes using it, rather than sending it back', async () => {
+    const omeletteId = addRecipe(phoneA, 'Omelette', ['Œufs']);
+    await syncBoth();
+    deleteRecipe(phoneA.db, omeletteId);
+    deleteIngredient(phoneA.db, findIngredientByName(phoneA.db, 'Œufs')!.id);
+    await sync(phoneA);
+
+    // Phone B pulls the ingredient's deletion while its omelette, deleted by the same sync, still
+    // uses it.
+    await sync(phoneB);
+
+    expect(titlesOf(phoneB)).toStrictEqual([]);
+    expect(ingredientNamesOf(phoneB)).toStrictEqual([]);
+    const [eggs] = await server.rowsOf('ingredients');
+    expect(eggs?.deleted).toBeGreaterThan(0);
   });
 
   it('brings a change made on one phone to the other', async () => {
