@@ -1,4 +1,4 @@
-import type { View as ViewType } from 'react-native';
+import type { ViewInstance } from 'react-native';
 import { useRef, useState } from 'react';
 import { Modal, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
@@ -27,7 +27,7 @@ export function InfoTip({ label, message }: InfoTipProps) {
   const { focusProps, focusStyle } = useFocusRing();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const [anchor, setAnchor] = useState<Anchor>();
-  const buttonRef = useRef<ViewType>(null);
+  const buttonRef = useRef<ViewInstance>(null);
   const open = () => {
     buttonRef.current?.measureInWindow((x, y) => {
       const margin = theme.gap(4);
