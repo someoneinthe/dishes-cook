@@ -295,8 +295,9 @@ defineFeature(feature, (test) => {
     then("I am told that the photo couldn't be read", async () => {
       await waitFor(() =>
         expect(alert.spy).toHaveBeenLastCalledWith(
-          expect.stringContaining('The file couldn’t be read'),
-          undefined,
+          // A short title (a long one is cut on Android), the details below it.
+          'The file couldn’t be read',
+          expect.stringContaining('protected by a password'),
           expect.anything(),
         ),
       );

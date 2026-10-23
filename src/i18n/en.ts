@@ -398,8 +398,9 @@ export const en = {
     pagesCutMessage: (maxPages: number) =>
       `Only its first ${maxPages} pages were read: check the end of the recipe.`,
     pagesCutTitle: 'A long PDF',
-    readFailed:
-      'The file couldn’t be read (damaged, or protected by a password?). If it happens again with others, close the app and open it again.',
+    readFailedMessage:
+      'It may be damaged or protected by a password. If it happens again with other files, close the app and open it again.',
+    readFailedTitle: 'The file couldn’t be read',
     // Shown while the photo or the file is read.
     reading: 'Reading the recipe…',
     similarMessage: (existing: string) => `You already have “${existing}”. Use it instead?`,

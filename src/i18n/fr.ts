@@ -347,7 +347,9 @@ export const fr: Messages = {
     pagesCutMessage: (maxPages) =>
       `Seules ses ${maxPages} premières pages ont été lues${NARROW_SPACE}: vérifiez la fin de la recette.`,
     pagesCutTitle: 'Un long PDF',
-    readFailed: `Impossible de lire le fichier (abîmé, ou protégé par un mot de passe${NARROW_SPACE}?). Si cela se reproduit avec d’autres, fermez l’application et rouvrez-la.`,
+    readFailedMessage:
+      'Il est peut-être abîmé ou protégé par un mot de passe. Si cela se reproduit avec d’autres fichiers, fermez l’application et rouvrez-la.',
+    readFailedTitle: 'Impossible de lire le fichier',
     reading: 'Lecture de la recette…',
     similarMessage: (existing) =>
       `Vous avez déjà ${quote(existing)}. L’utiliser à la place${NARROW_SPACE}?`,
