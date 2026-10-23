@@ -60,17 +60,20 @@ runs:
           exit 1
         fi
         sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-        for package in "ndk;$ndk_version" "cmake;$CMAKE_VERSION"; do
+        # Each package with the tool its install must contain: a folder alone can be a partial one.
+        for entry in "ndk;$ndk_version:ndk-build" "cmake;$CMAKE_VERSION:bin/cmake"; do
+          package="${entry%%:*}"
           folder="$ANDROID_HOME/${package/;//}"
+          tool="$folder/${entry#*:}"
           for attempt in 1 2 3; do
-            if [ -f "$folder/source.properties" ]; then
+            if [ -f "$folder/source.properties" ] && [ -x "$tool" ]; then
               break
             fi
             # A failed download can leave a partial folder, which would look installed.
             rm -rf "$folder"
             "$sdkmanager" --install "$package" > /dev/null || echo "::warning::$package: try $attempt failed"
           done
-          if [ ! -f "$folder/source.properties" ]; then
+          if [ ! -f "$folder/source.properties" ] || [ ! -x "$tool" ]; then
             echo "::error::$package couldn't be installed"
             exit 1
           fi
