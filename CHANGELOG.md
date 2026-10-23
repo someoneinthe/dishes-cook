@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/someoneinthe/dishes-cook/compare/v1.0.0...v1.0.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* a file that can't be read shows a short title and the details below it ([#122](https://github.com/someoneinthe/dishes-cook/issues/122)) ([a451132](https://github.com/someoneinthe/dishes-cook/commit/a451132d1c14773717247fa063bb4ced061914c9))
+
 ## [1.0.0](https://github.com/someoneinthe/dishes-cook/compare/v0.1.0...v1.0.0) (2026-10-23)
 
 
