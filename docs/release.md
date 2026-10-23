@@ -12,7 +12,7 @@ Releases are automated with [release-please](https://github.com/googleapis/relea
 
 `versionCode` is derived from the version (`1.2.3` → `1002003`), so every release installs over the previous one.
 
-To force a specific version, add a commit to `main` with the footer `Release-As: 1.0.0`.
+To force a specific version, set `"release-as": "1.0.0"` on the package in `release-please-config.json`, and remove it once that release is out (otherwise the next release PR proposes the same version again). A `Release-As: 1.0.0` footer in a squash-merged PR's description also works, but only while it stays the last paragraph of the commit message: CodeRabbit appends its summary to the description, after it, and the footer was ignored for 1.0.0 (#118).
 
 ## One-time setup
 
