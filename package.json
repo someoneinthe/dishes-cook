@@ -8,30 +8,30 @@
     "@tanstack/react-query": "^5.104.2",
     "drizzle-orm": "^0.45.4",
     "eslint": "^10",
-    "expo": "~58.0.10",
-    "expo-asset": "~58.0.15",
+    "expo": "~58.0.11",
+    "expo-asset": "~58.0.16",
     "expo-constants": "~58.0.12",
     "expo-document-picker": "~58.0.4",
     "expo-file-system": "~58.0.9",
     "expo-font": "~58.0.8",
-    "expo-image": "~58.0.14",
+    "expo-image": "~58.0.15",
     "expo-image-manipulator": "~58.0.14",
     "expo-image-picker": "~58.0.10",
     "expo-linking": "~58.0.13",
     "expo-localization": "~58.0.4",
     "expo-print": "~58.0.6",
-    "expo-router": "~58.0.19",
+    "expo-router": "~58.0.21",
     "expo-secure-store": "~58.0.2",
     "expo-sharing": "~58.0.18",
     "expo-splash-screen": "~58.0.9",
     "expo-sqlite": "~58.0.13",
     "expo-status-bar": "~58.0.3",
-    "expo-system-ui": "~58.0.5",
+    "expo-system-ui": "~58.0.6",
     "fflate": "^0.8.3",
     "marked": "^18.1.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "react-native": "0.88.0-rc.4",
+    "react-native": "0.88.0",
     "react-native-gesture-handler": "~3.3.0",
     "react-native-nitro-modules": "0.37.1",
     "react-native-reanimated": "4.7.1",
@@ -44,14 +44,14 @@
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
     "@eslint/compat": "^2.1.1",
-    "@react-native/eslint-plugin": "0.88.0-rc.4",
+    "@react-native/eslint-plugin": "0.88.0",
     "@tanstack/eslint-plugin-query": "^5.104.2",
     "@testing-library/react-native": "^14.1.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.3.0",
     "babel-plugin-inline-import": "^3.0.0",
-    "babel-preset-expo": "~58.0.14",
+    "babel-preset-expo": "~58.0.16",
     "better-sqlite3": "^13.0.3",
     "drizzle-kit": "^0.31.11",
     "eslint": "^10.12.0",
@@ -71,7 +71,7 @@
     "husky": "^9.1.7",
     "jest": "^30.5.2",
     "jest-cucumber": "^4.5.0",
-    "jest-expo": "~58.0.10",
+    "jest-expo": "~58.0.11",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.10",
     "typescript": "~6.0.3",
@@ -123,19 +123,7 @@
     "@esbuild-kit/core-utils": {
       "esbuild": "^0.25.12"
     },
-    "uuid": "^11.1.1",
-    "@testing-library/react-native": {
-      "react-native": "$react-native"
-    },
-    "react-native-reanimated": {
-      "react-native": "$react-native"
-    },
-    "react-native-unistyles": {
-      "react-native": "$react-native"
-    },
-    "react-native-worklets": {
-      "react-native": "$react-native"
-    }
+    "uuid": "^11.1.1"
   },
   "license": "MIT"
 }
