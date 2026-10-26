@@ -254,7 +254,11 @@ install -d -o "$pb_user" -g "$pb_user" -m 755 "$pb_dir/pb_migrations" "$pb_dir/p
 # Backups hold the users' data (accounts included): readable by root only.
 install -d -m 700 "$backup_dir"
 backup="$backup_dir/pb_data-$(date +%Y%m%d-%H%M%S).tar.gz"
-(umask 077 && tar -czf "$backup" -C "$pb_dir" pb_data)
+# Written to a new private file, then renamed: a link already at that name (moved from an earlier
+# updater's folder) is replaced, never written through.
+backup_part="$(mktemp "$backup_dir/.pb_data.XXXXXX")"
+tar -czf "$backup_part" -C "$pb_dir" pb_data
+mv -fT "$backup_part" "$backup"
 cp -a "$pb_dir/pb_hooks" "$work/previous_hooks"
 
 # A file is replaced, never written through: removed first, in case it's a link.
