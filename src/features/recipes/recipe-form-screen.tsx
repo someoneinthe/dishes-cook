@@ -6,13 +6,11 @@ import type {
   ViewInstance,
 } from 'react-native';
 import { Redirect, router, Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Alert, Keyboard, ScrollView, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Alert, ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { Course, RecipeKind, Season } from '@/db/schema';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
-import type { Messages } from '@/i18n/en';
-import type { Quantity, UnitSystem } from '@/lib/units';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
@@ -24,8 +22,6 @@ import { usePreferences } from '@/features/settings/preferences';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import { cleanName } from '@/lib/text';
-import { formatAmount, parseAmount, toDisplay, toStored } from '@/lib/units';
-import type { QuantityDraft } from './components/ingredient-quantity-row';
 import type { TimeDrafts } from './components/recipe-time-fields';
 import type { Recipe } from './db/recipe-queries';
 import type { ScannedRecipe } from './scanned-recipe';
@@ -36,10 +32,26 @@ import { RecipeTimeFields } from './components/recipe-time-fields';
 import { SelectedIngredient } from './components/selected-ingredient';
 import { courseOptionList } from './course';
 import { getRecipe, isRecipeSaved, saveRecipe } from './db/recipe-queries';
+import { useKeepAtTop } from './hooks/use-keep-at-top';
 import { useNewIngredients } from './hooks/use-new-ingredients';
 import { kindTexts, useKindHeaderOptions } from './kind';
-import { parseMinutes } from './minutes';
-import { formatTypedMonths, parseMonths } from './months';
+import { formatTypedMonths } from './months';
+import {
+  firstInvalidField,
+  firstWrongTime,
+  keepRef,
+  readTimes,
+  showField,
+} from './recipe-form-fields';
+import {
+  EMPTY_DRAFT,
+  moveDraft,
+  readQuantities,
+  savedQuantities,
+  swapIngredient,
+  withoutId,
+  withScannedDrafts,
+} from './recipe-form-quantities';
 import { deleteRecipePhoto } from './recipe-photos';
 import { parseScannedRecipe } from './scanned-recipe';
 import { seasonOptionList } from './season';
@@ -62,6 +74,21 @@ export function RecipeFormScreen() {
     return <Redirect href="/" />;
   }
   return <RecipeFormRoute />;
+}
+
+// The photo a saved edit replaced or removed: no recipe has it any more.
+function deleteReplacedPhoto(savedFile: string | undefined, currentFile: string | undefined) {
+  if (savedFile !== undefined && savedFile !== currentFile) {
+    deleteRecipePhoto(savedFile);
+  }
+}
+
+// The recipe's new photo, or null to remove it; nothing when unchanged (not uploaded again).
+function photoInput(currentFile: string | undefined, savedFile: string | undefined) {
+  if (currentFile === savedFile) {
+    return {};
+  }
+  return { photo: currentFile === undefined ? null : { file: currentFile } };
 }
 
 function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeFormProps) {
@@ -394,208 +421,6 @@ function RecipeFormRoute() {
   );
 }
 
-const EMPTY_DRAFT: QuantityDraft = { amountText: '' };
-
-// Space kept above a field brought into view, so its label shows too.
-const SCROLL_MARGIN = 48;
-// The time fields, in the order shown (a dish's cooking and a drink's maturation share a place).
-const TIME_FIELD_ORDER: readonly (keyof TimeDrafts)[] = ['prep', 'cook', 'maturation'];
-
-// A field Save found wrong: a text field, or a question to answer.
-type InvalidField = Readonly<{ input: TextInputInstance } | { question: TextInstance }>;
-
-type InvalidFieldSearch = Readonly<{
-  amountRefMap: ReadonlyMap<number, TextInputInstance>;
-  choiceRefMap: ReadonlyMap<number, TextInstance>;
-  invalidIdList: readonly number[];
-  selectedList: readonly Ingredient[];
-  // The first wrong time's field, if any.
-  timeInput: null | TextInputInstance | undefined;
-  // The title's field when it's empty.
-  titleInput: null | TextInputInstance | undefined;
-  undecidedIdList: readonly number[];
-}>;
-
-// A row of the form, read when saving.
-type RowReading = Readonly<{ isInvalid: boolean; quantity?: Quantity }>;
-
-type SavedQuantity = Readonly<{ draft: QuantityDraft; stored: Quantity }>;
-
-// The photo a saved edit replaced or removed: no recipe has it any more.
-function deleteReplacedPhoto(savedFile: string | undefined, currentFile: string | undefined) {
-  if (savedFile !== undefined && savedFile !== currentFile) {
-    deleteRecipePhoto(savedFile);
-  }
-}
-
-// The first wrong field from the top: the title, then the ingredients in order (their amount, or
-// the question whether a new one is an existing one).
-function firstInvalidField({
-  amountRefMap,
-  choiceRefMap,
-  invalidIdList,
-  selectedList,
-  timeInput,
-  titleInput,
-  undecidedIdList,
-}: InvalidFieldSearch): InvalidField | undefined {
-  // In the order shown: the title, the times, then the ingredients.
-  const fieldInput = titleInput ?? timeInput;
-  if (fieldInput) {
-    return { input: fieldInput };
-  }
-  const wrong = selectedList.find(
-    ({ id }) => invalidIdList.includes(id) || undecidedIdList.includes(id),
-  );
-  if (!wrong) {
-    return undefined;
-  }
-  const input = invalidIdList.includes(wrong.id) ? amountRefMap.get(wrong.id) : undefined;
-  if (input) {
-    return { input };
-  }
-  const question = choiceRefMap.get(wrong.id);
-  return question ? { question } : undefined;
-}
-
-// The field of the first wrong time, in the order shown: preparation, then cooking or maturation.
-function firstWrongTime(
-  invalidList: readonly (keyof TimeDrafts)[],
-  inputs: Readonly<Record<keyof TimeDrafts, null | TextInputInstance>>,
-): null | TextInputInstance | undefined {
-  const field = TIME_FIELD_ORDER.find((name) => invalidList.includes(name));
-  return field === undefined ? undefined : inputs[field];
-}
-
-// Keeps a row's element by ingredient id while it's on screen.
-function keepRef<T>(refMap: Map<number, T>, id: number, element: null | T) {
-  if (element) {
-    refMap.set(id, element);
-  } else {
-    refMap.delete(id);
-  }
-}
-
-// The typed quantity follows the ingredient it was typed for, unless the other one has its own.
-function moveDraft(
-  draftMap: ReadonlyMap<number, QuantityDraft>,
-  fromId: number,
-  toId: number,
-): Map<number, QuantityDraft> {
-  const next = new Map(draftMap);
-  const draft = draftMap.get(fromId);
-  if (draft && !draftMap.get(toId)?.amountText) {
-    next.set(toId, draft);
-  }
-  next.delete(fromId);
-  return next;
-}
-
-// The recipe's new photo, or null to remove it; nothing when unchanged (not uploaded again).
-function photoInput(currentFile: string | undefined, savedFile: string | undefined) {
-  if (currentFile === savedFile) {
-    return {};
-  }
-  return { photo: currentFile === undefined ? null : { file: currentFile } };
-}
-
-// The quantities of the selected ingredients; an empty amount = no quantity.
-function readQuantities(
-  selectedList: readonly Ingredient[],
-  draftMap: ReadonlyMap<number, QuantityDraft>,
-  savedMap: ReadonlyMap<number, SavedQuantity>,
-): Readonly<{ invalidIdList: number[]; quantities: Map<number, Quantity> }> {
-  const invalidIdList: number[] = [];
-  const quantities = new Map<number, Quantity>();
-  for (const { id } of selectedList) {
-    const { isInvalid, quantity } = readRow(draftMap.get(id) ?? EMPTY_DRAFT, savedMap.get(id));
-    if (isInvalid) {
-      invalidIdList.push(id);
-    }
-    if (quantity) {
-      quantities.set(id, quantity);
-    }
-  }
-  return { invalidIdList, quantities };
-}
-
-// One row: left as shown, its stored quantity; edited, as typed; nothing when empty.
-function readRow(draft: QuantityDraft, saved: SavedQuantity | undefined): RowReading {
-  if (draft.amountText === saved?.draft.amountText && draft.unit === saved.draft.unit) {
-    return { isInvalid: false, quantity: saved.stored };
-  }
-  const amount = parseAmount(draft.amountText);
-  if (amount === undefined) {
-    return { isInvalid: draft.amountText.trim() !== '' };
-  }
-  return {
-    isInvalid: false,
-    quantity: draft.unit === undefined ? { amount } : { amount, unit: draft.unit },
-  };
-}
-
-// The typed times as minutes, and a drink's maturation as months (null: none), and the fields
-// that aren't a usable time. A drink has no cooking time, a dish no maturation.
-function readTimes(drafts: TimeDrafts, kind: RecipeKind) {
-  const timeMap = {
-    cook: kind === 'dish' ? parseMinutes(drafts.cook) : null,
-    maturation: kind === 'drink' ? parseMonths(drafts.maturation) : null,
-    prep: parseMinutes(drafts.prep),
-  };
-  return {
-    cookMinutes: timeMap.cook,
-    invalidList: TIME_FIELD_ORDER.filter((field) => timeMap[field] === undefined),
-    maturationMonths: timeMap.maturation,
-    prepMinutes: timeMap.prep,
-  };
-}
-
-// The saved quantities: as the form shows them (in the reader's units, "1,5" in French), and as
-// stored, kept for the rows the user doesn't touch (a display rounds: 226.8 g shows as 227 g).
-function savedQuantities(
-  recipe: Recipe | undefined,
-  t: Messages,
-  units: UnitSystem,
-): Map<number, SavedQuantity> {
-  const savedMap = new Map<number, SavedQuantity>();
-  const ingredientList = recipe?.ingredientList ?? [];
-  for (const { id, quantity } of ingredientList) {
-    const saved = quantity && toSaved(quantity, t, units);
-    if (saved) {
-      savedMap.set(id, saved);
-    }
-  }
-  return savedMap;
-}
-
-// Scrolls the page so the element sits near its top.
-function scrollToTop(
-  element: TextInputInstance | TextInstance,
-  scrollView: null | ScrollViewInstance,
-  content: null | ViewInstance,
-) {
-  if (scrollView && content) {
-    element.measureLayout(content, (_x, y) => {
-      scrollView.scrollTo({ y: Math.max(0, y - SCROLL_MARGIN) });
-    });
-  }
-}
-
-// Scrolls a wrong field into view and gives it the focus: the keyboard's for a text field, the
-// screen reader's for a question.
-function showField(
-  field: InvalidField,
-  scrollView: null | ScrollViewInstance,
-  content: null | ViewInstance,
-) {
-  scrollToTop('input' in field ? field.input : field.question, scrollView, content);
-  if ('input' in field) {
-    field.input.focus();
-  } else {
-    AccessibilityInfo.sendAccessibilityEvent(field.question, 'focus');
-  }
-}
-
 // The title or the instructions the form starts with: the saved recipe's, or the photo's.
 function startingText(
   recipe: Recipe | undefined,
@@ -603,77 +428,6 @@ function startingText(
   field: 'instructions' | 'title',
 ): string {
   return recipe?.[field] ?? scanned?.[field] ?? '';
-}
-
-// The existing ingredient takes the new one's place, or the new one goes when it's already there.
-function swapIngredient(
-  selectedList: readonly Ingredient[],
-  fromId: number,
-  to: Ingredient,
-): Ingredient[] {
-  const isSelected = selectedList.some((ingredient) => ingredient.id === to.id);
-  return selectedList.flatMap((ingredient) => {
-    if (ingredient.id !== fromId) {
-      return [ingredient];
-    }
-    return isSelected ? [] : [to];
-  });
-}
-
-// A stored quantity, and how the form shows it.
-function toSaved(quantity: Quantity, t: Messages, units: UnitSystem): SavedQuantity {
-  const shown = toDisplay(quantity, units);
-  return {
-    draft: {
-      amountText: formatAmount(shown.amount, t.quantities.decimalSeparator),
-      unit: shown.unit,
-    },
-    stored: quantity,
-  };
-}
-
-// Keeps a focused field near the top of the page: the field's own content (an ingredient search's
-// suggestions) shows under it, above the keyboard. Scrolled again once the keyboard is open: the
-// page, shorter, can then scroll further.
-function useKeepAtTop(
-  scrollViewRef: RefObject<null | ScrollViewInstance>,
-  contentRef: RefObject<ViewInstance>,
-) {
-  const fieldRef = useRef<null | TextInputInstance>(null);
-  useEffect(() => {
-    const subscription = Keyboard.addListener('keyboardDidShow', () => {
-      const field = fieldRef.current;
-      if (field?.isFocused()) {
-        scrollToTop(field, scrollViewRef.current, contentRef.current);
-      }
-    });
-    return () => subscription.remove();
-  }, [contentRef, scrollViewRef]);
-  return (field: TextInputInstance) => {
-    fieldRef.current = field;
-    scrollToTop(field, scrollViewRef.current, contentRef.current);
-  };
-}
-
-function withoutId(idSet: ReadonlySet<number>, id: number): ReadonlySet<number> {
-  const next = new Set(idSet);
-  next.delete(id);
-  return next;
-}
-
-// The quantities read from a photo, in the reader's units ("2 cups" shows as 473 ml in European
-// units).
-function withScannedDrafts(
-  draftMap: ReadonlyMap<number, QuantityDraft>,
-  quantityList: readonly (readonly [number, Quantity])[],
-  t: Messages,
-  units: UnitSystem,
-): Map<number, QuantityDraft> {
-  const next = new Map(draftMap);
-  for (const [id, quantity] of quantityList) {
-    next.set(id, toSaved(toStored(quantity), t, units).draft);
-  }
-  return next;
 }
 
 const styles = StyleSheet.create((theme) => ({
