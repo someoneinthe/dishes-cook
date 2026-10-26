@@ -6,6 +6,8 @@ import { SERVER_MIGRATION_LIST, SYNC_VERSION } from '@/features/sync/server-vers
 // - an update older than the stored row (`modified`) is refused with a 404 (the update rule), and so
 //   is one of the same version that changes anything but a recipe's photo;
 // - a create with an existing id gets a 400 `validation_not_unique`;
+// - a `modified` more than a day ahead of the clock is refused with a 400
+//   (server/hooks/modified-limit.pb.js);
 // - a recipe's `created_by` is the account that created it, whatever a request sends
 //   (server/hooks/recipe-author.pb.js);
 // - signed-in accounts list the accounts' ids and names (`users`, seeded with the phones' one).
@@ -43,6 +45,12 @@ function isContentChanged(stored: StoredRow, body: Record<string, unknown>): boo
 }
 
 const PER_PAGE_MAX = 500;
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+function isTooFarAhead(modified: unknown): boolean {
+  return Number(modified) > Date.now() + ONE_DAY_MS;
+}
 
 const ACCOUNT_ID = 'a00000000000001';
 
@@ -124,6 +132,9 @@ export function createFakeSyncServer(
     ) {
       return json(404, { message: 'The requested resource was not found.' });
     }
+    if (isTooFarAhead(request.body.modified)) {
+      return json(400, { message: 'modified is more than a day ahead of the server clock' });
+    }
     const body: Record<string, unknown> = {
       ...request.body,
       modified: Number(request.body.modified),
@@ -147,6 +158,9 @@ export function createFakeSyncServer(
   const createRecord = (name: string, request: FakeRequest) => {
     if (!request.isSignedIn) {
       return json(400, { data: {}, message: 'Failed to create record.' });
+    }
+    if (isTooFarAhead(request.body.modified)) {
+      return json(400, { message: 'modified is more than a day ahead of the server clock' });
     }
     const rowMap = collection(name);
     const id = String(request.body.id);

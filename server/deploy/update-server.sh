@@ -97,7 +97,11 @@ if [[ ! -e "$version_file" && -e "$legacy_version_file" ]]; then
   if [[ "${old_time:-}" =~ ^[0-9]+$ && "${old_commit:-}" =~ ^[0-9a-f]+$ ]]; then
     echo "$old_time $old_commit" > "$version_file"
   fi
-  rm -f "$legacy_version_file"
+  if [[ -f "$legacy_version_file" || -L "$legacy_version_file" ]]; then
+    rm -f "$legacy_version_file"
+  else
+    log "ignoring $legacy_version_file: not a file"
+  fi
 fi
 if [[ ! -e "$backup_dir" && -d "$pb_dir/backups-before-update" && ! -L "$pb_dir/backups-before-update" ]]; then
   mv "$pb_dir/backups-before-update" "$backup_dir"
@@ -157,6 +161,10 @@ if [[ ! "${archive_time:-}" =~ ^[0-9]+$ || ! "${archive_commit:-}" =~ ^[0-9a-f]+
 fi
 installed_time=0
 installed_commit=none
+if [[ -L "$version_file" || (-e "$version_file" && ! -f "$version_file") ]]; then
+  log "refusing to update: $version_file isn't a file"
+  exit 1
+fi
 if [[ -f "$version_file" ]]; then
   read -r installed_time installed_commit < "$version_file" || true
   # Checked before any use: bash would run a command written in an arithmetic expression.
@@ -246,7 +254,9 @@ systemctl stop "$pb_service"
 for name in pb_data pb_migrations pb_hooks; do
   if [[ -L "$pb_dir/$name" || (-e "$pb_dir/$name" && ! -d "$pb_dir/$name") ]]; then
     log "refusing to update: $pb_dir/$name isn't a folder"
-    systemctl start "$pb_service"
+    if ! systemctl start "$pb_service" || ! is_healthy; then
+      log "PocketBase didn't come back healthy: check \`journalctl -u $pb_service\`"
+    fi
     exit 1
   fi
 done
