@@ -5,13 +5,13 @@ import type { IconName } from './icon';
 import { Icon } from './icon';
 import { useIconSize } from './use-icon-size';
 
+type IconLabelProps = Readonly<{ iconList: readonly LabelIcon[]; label: string }>;
+
 type LabelIcon = Readonly<{
   icon: IconName;
   // Muted like the text by default.
   iconColor?: ColorToken;
 }>;
-
-type IconLabelProps = Readonly<{ iconList: readonly LabelIcon[]; label: string }>;
 
 // A short muted detail (season, course…) after its icons.
 export function IconLabel({ iconList, label }: IconLabelProps) {

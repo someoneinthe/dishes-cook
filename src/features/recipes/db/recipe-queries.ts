@@ -6,13 +6,7 @@ import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import type { Quantity } from '@/lib/units';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
-import {
-  accounts,
-  ingredients,
-  NOW_MS,
-  recipeIngredients,
-  recipes,
-} from '@/db/schema';
+import { accounts, ingredients, NOW_MS, recipeIngredients, recipes } from '@/db/schema';
 import { recordDeletion } from '@/db/sync-deletions';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import {

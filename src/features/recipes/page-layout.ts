@@ -5,10 +5,10 @@ import type { ScannedBlock, ScannedFrame } from './scanned-recipe';
 // from top to bottom, each row from left to right. A row gathers the blocks whose middle is beside
 // the row's first block: side-by-side columns and grid cards ("100 g / de beurre", "poivre"…).
 
+type Framed = Readonly<{ block: ScannedBlock; frame: ScannedFrame }>;
+
 // A block in reading order, and its row (blocks side by side share one).
 type OrderedBlock = Readonly<{ row: number }> & ScannedBlock;
-
-type Framed = Readonly<{ block: ScannedBlock; frame: ScannedFrame }>;
 
 // Two one-line blocks on a row closer than this many letter heights are one line ("bouquet" and
 // "garni" read apart).

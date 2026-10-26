@@ -15,12 +15,6 @@ export type PullPosition = Readonly<
   { after: Readonly<{ id: string; updated: string }> } | { since: string }
 >;
 
-// What a push sends: the row's fields, without what the server sets.
-type RowUpload<Table extends SyncedTable> = Omit<
-  ServerRowOf<Table>,
-  'created' | 'created_by' | 'id' | 'updated'
->;
-
 // A server account: its id and name ('' = none), to show who added a recipe.
 export type ServerAccount = Readonly<{ id: string; name: string }>;
 
@@ -79,10 +73,6 @@ export type ServerRowOf<Table extends SyncedTable> = Table extends 'ingredients'
     ? ServerRecipe
     : ServerCookedMeal;
 
-// A sign-in: the token, and the id of the account it signs in to (the author of the recipes it
-// creates).
-type SignedIn = Readonly<{ accountId: string; token: string }>;
-
 export type SyncApi = Readonly<{
   // The server's migrations and the oldest app it accepts; undefined for a server without that
   // endpoint (installed before it existed): too old for this app.
@@ -127,6 +117,16 @@ export type SyncErrorKind =
 export type UpsertResult = 'kept-newer' | 'saved';
 
 type Fetch = typeof fetch;
+
+// What a push sends: the row's fields, without what the server sets.
+type RowUpload<Table extends SyncedTable> = Omit<
+  ServerRowOf<Table>,
+  'created' | 'created_by' | 'id' | 'updated'
+>;
+
+// A sign-in: the token, and the id of the account it signs in to (the author of the recipes it
+// creates).
+type SignedIn = Readonly<{ accountId: string; token: string }>;
 
 export class SyncError extends Error {
   readonly kind: SyncErrorKind;

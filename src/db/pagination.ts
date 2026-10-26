@@ -7,9 +7,6 @@ export const PAGE_SIZE = 50;
 // Pages kept in memory while scrolling: scrolling back reloads the ones dropped.
 export const MAX_PAGES = 2;
 
-// Position of a row in a list sorted by (sort_key, id): pages start right after/before it.
-type Cursor = Readonly<{ id: number; sortKey: string }>;
-
 export type Page<T> = Readonly<{
   itemList: T[];
   nextCursor?: Cursor;
@@ -18,6 +15,9 @@ export type Page<T> = Readonly<{
 
 // `null`: first page.
 export type PageRequest = null | Readonly<{ after: Cursor } | { before: Cursor }>;
+
+// Position of a row in a list sorted by (sort_key, id): pages start right after/before it.
+type Cursor = Readonly<{ id: number; sortKey: string }>;
 
 type KeysetColumns = Readonly<{ id: SQLiteColumn; sortKey: SQLiteColumn }>;
 

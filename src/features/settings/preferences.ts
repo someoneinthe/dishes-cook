@@ -15,6 +15,8 @@ export type ColorSchemePreference = (typeof COLOR_SCHEME_LIST)[number];
 
 // How many days the meal choice skips the recipes cooked recently; 0 = it doesn't.
 export const RECENT_MEAL_DAYS_LIST = [0, 7, 14, 30] as const;
+export type RecentMealDays = (typeof RECENT_MEAL_DAYS_LIST)[number];
+
 type Preferences = Readonly<{
   colorScheme: ColorSchemePreference;
   // Show the text of icon-only buttons too.
@@ -26,8 +28,6 @@ type Preferences = Readonly<{
   // Units of ingredient quantities: European (metric, the default) or US.
   units: UnitSystem;
 }>;
-
-export type RecentMealDays = (typeof RECENT_MEAL_DAYS_LIST)[number];
 
 const STORAGE_KEY = 'preferences';
 const DEFAULT_PREFERENCES: Preferences = {

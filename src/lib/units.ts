@@ -75,10 +75,6 @@ export function formatAmount(amount: number, decimalSeparator: string): string {
   return String(rounded).split('.').join(decimalSeparator);
 }
 
-function isUnit(value: unknown): value is Unit {
-  return UNIT_LIST.includes(value as Unit);
-}
-
 export function isUnitSystem(value: unknown): value is UnitSystem {
   return UNIT_SYSTEM_LIST.includes(value as UnitSystem);
 }
@@ -156,6 +152,10 @@ function closestUnit(kind: UnitInfo['kind'], base: number, system: UnitSystem): 
   }
   // A quarter of a cup and more in cups, less in fluid ounces.
   return base >= CUP_IN_ML / 4 ? 'cup' : 'fl_oz';
+}
+
+function isUnit(value: unknown): value is Unit {
+  return UNIT_LIST.includes(value as Unit);
 }
 
 // Grams and millilitres to the unit (to 0.1 below 10), kilos and litres to 0.01, ounces to 0.1,

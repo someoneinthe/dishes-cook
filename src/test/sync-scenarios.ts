@@ -77,35 +77,6 @@ export function cookedDatesOf(phone: Phone, title: string) {
     : [];
 }
 
-function createTestPhotos(fetchFunction: typeof fetch): TestPhotos {
-  const files = new Map<string, string>();
-  let downloadCount = 0;
-  return {
-    files,
-    store: {
-      delete: (file) => {
-        files.delete(file);
-      },
-      download: async (url) => {
-        const response = await fetchFunction(url);
-        if (!response.ok) {
-          throw new Error(`Download failed: ${response.status}`);
-        }
-        downloadCount += 1;
-        const file = ['downloaded-', String(downloadCount), '.jpg'].join('');
-        files.set(file, Buffer.from(await response.arrayBuffer()).toString('base64'));
-        return file;
-      },
-      toUpload: (file) => {
-        const content = files.get(file);
-        return content === undefined
-          ? undefined
-          : new Blob([Buffer.from(content, 'base64')], { type: 'image/jpeg' });
-      },
-    },
-  };
-}
-
 // Two phones syncing with the same server: what the sync must do whatever the server is.
 export function describeSyncScenarios(createServer: () => Promise<SyncTestServer>) {
   let server: SyncTestServer;
@@ -709,6 +680,35 @@ export function titlesOf(phone: Phone) {
       // As shown: titles are saved in lowercase.
       .map(({ title }) => toDisplayName(title))
   );
+}
+
+function createTestPhotos(fetchFunction: typeof fetch): TestPhotos {
+  const files = new Map<string, string>();
+  let downloadCount = 0;
+  return {
+    files,
+    store: {
+      delete: (file) => {
+        files.delete(file);
+      },
+      download: async (url) => {
+        const response = await fetchFunction(url);
+        if (!response.ok) {
+          throw new Error(`Download failed: ${response.status}`);
+        }
+        downloadCount += 1;
+        const file = ['downloaded-', String(downloadCount), '.jpg'].join('');
+        files.set(file, Buffer.from(await response.arrayBuffer()).toString('base64'));
+        return file;
+      },
+      toUpload: (file) => {
+        const content = files.get(file);
+        return content === undefined
+          ? undefined
+          : new Blob([Buffer.from(content, 'base64')], { type: 'image/jpeg' });
+      },
+    },
+  };
 }
 
 function ingredientNamesOf(phone: Phone) {
