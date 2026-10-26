@@ -76,7 +76,11 @@ fi
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-install -d -m 700 "$state_dir"
+if [[ -L "$state_dir" ]]; then
+  log "refusing to update: $state_dir is a link"
+  exit 1
+fi
+install -d -o root -g root -m 700 "$state_dir"
 # Updaters before this one kept these files in $pb_dir: moved once. The version is kept only if
 # PocketBase's user can't have written it (a plain file of root's, writable by root only: they
 # wrote it so) and it reads right; otherwise there's none, and the archive is installed. A forged
