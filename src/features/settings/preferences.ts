@@ -5,6 +5,7 @@ import { UnistylesRuntime } from 'react-native-unistyles';
 import type { LanguagePreference } from '@/i18n/languages';
 import type { UnitSystem } from '@/lib/units';
 import { LANGUAGE_PREFERENCE_LIST } from '@/i18n/languages';
+import { createListeners } from '@/lib/listeners';
 import { isUnitSystem } from '@/lib/units';
 
 // User preferences, kept in expo-sqlite's key-value store (synchronous reads: applied before the
@@ -40,7 +41,7 @@ const DEFAULT_PREFERENCES: Preferences = {
 
 // Read once from storage, then kept in memory.
 const state: { current?: Preferences } = {};
-const listenerSet = new Set<() => void>();
+const listeners = createListeners();
 
 // Following the phone: listening to Appearance while the preference is 'system'.
 const appearance: { subscription?: Readonly<{ remove: () => void }> } = {};
@@ -78,13 +79,11 @@ export function updatePreferences(changes: Partial<Preferences>): void {
   if (changes.colorScheme) {
     applyColorScheme(next.colorScheme);
   }
-  for (const listener of listenerSet) {
-    listener();
-  }
+  listeners.notify();
 }
 
 export function usePreferences(): Preferences {
-  return useSyncExternalStore(subscribe, getPreferences);
+  return useSyncExternalStore(listeners.subscribe, getPreferences);
 }
 
 // The phone's light/dark setting; light when it has none.
@@ -115,11 +114,4 @@ function parse(stored: null | string): Preferences {
     // Unreadable (e.g. written by a future version): start from the defaults.
     return DEFAULT_PREFERENCES;
   }
-}
-
-function subscribe(listener: () => void) {
-  listenerSet.add(listener);
-  return () => {
-    listenerSet.delete(listener);
-  };
 }

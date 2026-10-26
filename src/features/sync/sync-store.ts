@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react';
 import type { SyncedTable } from '@/db/schema';
 import type { AppDatabase, DatabaseConnection } from '@/db/types';
 import { recipePhotoStore } from '@/features/recipes/recipe-photos';
+import { createListeners } from '@/lib/listeners';
 import type { SyncErrorKind } from './sync-api';
 import type { SyncCursors } from './sync-engine';
 import { checkServerVersion } from './server-version';
@@ -51,7 +52,7 @@ const state: {
   isSyncing: false,
   session: 0,
 };
-const listenerSet = new Set<() => void>();
+const listeners = createListeners();
 // The sync running now, and the session it belongs to: callers wait for it instead of starting
 // another, unless its session is over.
 const running: { promise?: Promise<void>; session?: number } = {};
@@ -117,14 +118,12 @@ export async function syncNow(connection: DatabaseConnection): Promise<void> {
 }
 
 export function useSyncState(): SyncState {
-  return useSyncExternalStore(subscribe, getSyncState);
+  return useSyncExternalStore(listeners.subscribe, getSyncState);
 }
 
 function publish(): void {
   state.current = toState(read());
-  for (const listener of listenerSet) {
-    listener();
-  }
+  listeners.notify();
 }
 
 function read(): StoredSync | undefined {
@@ -257,13 +256,6 @@ async function runSyncOnce(connection: DatabaseConnection): Promise<void> {
   } finally {
     running.promise = undefined;
   }
-}
-
-function subscribe(listener: () => void) {
-  listenerSet.add(listener);
-  return () => {
-    listenerSet.delete(listener);
-  };
 }
 
 function toState(stored: StoredSync | undefined): SyncState {

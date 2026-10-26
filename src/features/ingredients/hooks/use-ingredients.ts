@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
 import { useDatabase } from '@/db/database-context';
+import { useLocalQuery } from '@/db/use-local-query';
 import { usePagedQuery } from '@/db/use-paged-query';
 import { listIngredientPage, suggestIngredients } from '../db/ingredient-queries';
 
@@ -18,10 +18,8 @@ export function useIngredientSuggestions(options: SuggestionOptions) {
   const database = useDatabase();
   const { excludeIdList, isUsedOnly, limit, search } = options;
   const suggest = () => suggestIngredients(database, { excludeIdList, isUsedOnly, limit, search });
-  const { data: suggestionList } = useQuery({
-    initialData: suggest,
-    queryFn: suggest,
-    queryKey: ['ingredients', 'suggestions', { excludeIdList, isUsedOnly, limit, search }],
-  });
-  return suggestionList;
+  return useLocalQuery(
+    ['ingredients', 'suggestions', { excludeIdList, isUsedOnly, limit, search }],
+    suggest,
+  );
 }

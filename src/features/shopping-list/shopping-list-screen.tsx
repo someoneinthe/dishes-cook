@@ -1,4 +1,3 @@
-import { Redirect } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import { useState } from 'react';
 import { ScrollView, Share, Text, View } from 'react-native';
@@ -6,13 +5,13 @@ import { StyleSheet } from 'react-native-unistyles';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
+import { PhoneOnly } from '@/components/phone-only';
 import { screenScrollProps } from '@/components/screen-scroll-props';
 import { useDatabase } from '@/db/database-context';
 import { markAllCooked } from '@/features/meal-history/db/cooked-meal-queries';
 import { usePreferences } from '@/features/settings/preferences';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
-import { isTv } from '@/lib/device';
 import { MAX_LINES } from './db/shopping-queries';
 import { usePickedMeals, useShoppingLines } from './hooks/use-shopping-list';
 import { clearPicks, removePick, usePicks } from './meal-picks';
@@ -20,12 +19,11 @@ import { formatShoppingItem, toShoppingItems, toShoppingText } from './shopping-
 
 // Not on a TV: it's read-only and can't share a list. A link to it leads to the meal choice.
 export function ShoppingListScreen() {
-  // Sonar (S100) only sees a component when it returns a JSX element, not a ternary.
-  // eslint-disable-next-line unicorn/prefer-ternary
-  if (isTv) {
-    return <Redirect href="/" />;
-  }
-  return <ShoppingList />;
+  return (
+    <PhoneOnly>
+      <ShoppingList />
+    </PhoneOnly>
+  );
 }
 
 // The meals picked (on the meal choice or a recipe) and their ingredients, added up, ready to share.
