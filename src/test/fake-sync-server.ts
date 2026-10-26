@@ -3,7 +3,8 @@ import { SERVER_MIGRATION_LIST, SYNC_VERSION } from '@/features/sync/server-vers
 // An in-memory stand-in for the sync server's HTTP API (PocketBase), for sync tests: the calls the
 // app makes, with the behaviours measured on a real server (see server/migrations):
 // - a refused or missing token is a guest: lists come back empty, creates get a 400, updates a 404;
-// - an update older than the stored row (`modified`) is refused with a 404 (the update rule);
+// - an update older than the stored row (`modified`) is refused with a 404 (the update rule), and so
+//   is one of the same version that changes anything but a recipe's photo;
 // - a create with an existing id gets a 400 `validation_not_unique`;
 // - a recipe's `created_by` is the account that created it, whatever a request sends
 //   (server/hooks/recipe-author.pb.js);
@@ -30,6 +31,16 @@ export type FakeSyncServer = Readonly<{
 }>;
 
 type StoredRow = Record<string, unknown> & { id: string; modified: number; updated: string };
+
+// Whether an update sends another value than the stored one for a field the phones send, but the
+// recipe's photo (uploaded onto the version just pushed): server/migrations/*-same-version-unchanged.js.
+function isContentChanged(stored: StoredRow, body: Record<string, unknown>): boolean {
+  return Object.entries(body).some(
+    ([field, value]) =>
+      !['created_by', 'modified', 'photo'].includes(field) &&
+      JSON.stringify(value) !== JSON.stringify(stored[field]),
+  );
+}
 
 const PER_PAGE_MAX = 500;
 
@@ -105,7 +116,12 @@ export function createFakeSyncServer(
   const patchRecord = (name: string, id: string, request: FakeRequest) => {
     const rowMap = collection(name);
     const stored = rowMap.get(id);
-    if (!stored || !request.isSignedIn || Number(request.body.modified) < stored.modified) {
+    if (
+      !stored ||
+      !request.isSignedIn ||
+      Number(request.body.modified) < stored.modified ||
+      (Number(request.body.modified) === stored.modified && isContentChanged(stored, request.body))
+    ) {
       return json(404, { message: 'The requested resource was not found.' });
     }
     const body: Record<string, unknown> = {

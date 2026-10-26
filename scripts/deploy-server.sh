@@ -24,8 +24,13 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 scripts/pack-server-files.sh "$work/server-files.tar.gz"
 
-remote="/tmp/dishes-cook-deploy"
-ssh "$SYNC_SERVER_SSH" "rm -rf $remote && mkdir -p $remote"
+# A new private folder on the server: a fixed path in /tmp could be prepared by another account
+# there, to swap the files sudo installs.
+remote="$(ssh "$SYNC_SERVER_SSH" mktemp -d)"
+if [[ ! "$remote" =~ ^/[[:alnum:]/._-]+$ ]]; then
+  echo "deploy-server: unexpected folder from mktemp on the server: $remote" >&2
+  exit 1
+fi
 scp -q "$work/server-files.tar.gz" server/deploy/update-server.sh \
   server/deploy/dishes-cook-server-update.service server/deploy/dishes-cook-server-update.timer \
   "$SYNC_SERVER_SSH:$remote/"
