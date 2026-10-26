@@ -74,7 +74,9 @@ if ! flock -w 900 9; then
 fi
 
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+# A backup still being written (backup_part below) goes too when the update stops halfway.
+backup_part=''
+trap 'rm -rf "$work"; [[ -z "$backup_part" ]] || rm -f -- "$backup_part"' EXIT
 
 if [[ -L "$state_dir" ]]; then
   log "refusing to update: $state_dir is a link"
@@ -259,6 +261,7 @@ backup="$backup_dir/pb_data-$(date +%Y%m%d-%H%M%S).tar.gz"
 backup_part="$(mktemp "$backup_dir/.pb_data.XXXXXX")"
 tar -czf "$backup_part" -C "$pb_dir" pb_data
 mv -fT "$backup_part" "$backup"
+backup_part=''
 cp -a "$pb_dir/pb_hooks" "$work/previous_hooks"
 
 # A file is replaced, never written through: removed first, in case it's a link.
