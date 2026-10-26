@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/someoneinthe/dishes-cook/compare/v1.0.1...v1.0.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* a sync never sends back what it pulled, and keeps same-name ingredients in pulled recipes ([#125](https://github.com/someoneinthe/dishes-cook/issues/125)) ([d7262f9](https://github.com/someoneinthe/dishes-cook/commit/d7262f9928fb9fd91e8ca464918b3ccc4cd17e25))
+
 ## [1.0.1](https://github.com/someoneinthe/dishes-cook/compare/v1.0.0...v1.0.1) (2026-10-23)
 
 
