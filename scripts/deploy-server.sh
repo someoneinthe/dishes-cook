@@ -31,6 +31,9 @@ if [[ ! "$remote" =~ ^/[[:alnum:]/._-]+$ ]]; then
   echo "deploy-server: unexpected folder from mktemp on the server: $remote" >&2
   exit 1
 fi
+# Removed however the deployment ends (a failed copy, install or update included).
+# shellcheck disable=SC2029 # $remote is expanded here on purpose.
+trap 'rm -rf "$work"; ssh "$SYNC_SERVER_SSH" "rm -rf $remote" || true' EXIT
 scp -q "$work/server-files.tar.gz" server/deploy/update-server.sh \
   server/deploy/dishes-cook-server-update.service server/deploy/dishes-cook-server-update.timer \
   "$SYNC_SERVER_SSH:$remote/"
@@ -40,5 +43,4 @@ ssh "$SYNC_SERVER_SSH" "set -e
   sudo install -m 644 $remote/dishes-cook-server-update.service $remote/dishes-cook-server-update.timer /etc/systemd/system/
   sudo systemctl daemon-reload
   sudo systemctl enable --now --quiet dishes-cook-server-update.timer
-  sudo /usr/local/sbin/dishes-cook-update-server --archive $remote/server-files.tar.gz
-  rm -rf $remote"
+  sudo /usr/local/sbin/dishes-cook-update-server --archive $remote/server-files.tar.gz"

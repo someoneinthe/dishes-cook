@@ -77,14 +77,21 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 install -d -m 700 "$state_dir"
-# Updaters before this one kept these files in $pb_dir: moved once (the version only if it reads
-# right; a wrong one means none, and the archive is installed).
-if [[ ! -e "$version_file" && -f "$pb_dir/server-files.version" && ! -L "$pb_dir/server-files.version" ]]; then
-  read -r old_time old_commit < "$pb_dir/server-files.version" || true
+# Updaters before this one kept these files in $pb_dir: moved once. The version is kept only if
+# PocketBase's user can't have written it (a plain file of root's, writable by root only: they
+# wrote it so) and it reads right; otherwise there's none, and the archive is installed. A forged
+# future version would make the updater skip every release.
+legacy_version_file="$pb_dir/server-files.version"
+if [[ ! -e "$version_file" && -e "$legacy_version_file" ]]; then
+  old_time=''
+  old_commit=''
+  if [[ -n "$(find "$legacy_version_file" -maxdepth 0 -type f -user root ! -perm /022)" ]]; then
+    read -r old_time old_commit < "$legacy_version_file" || true
+  fi
   if [[ "${old_time:-}" =~ ^[0-9]+$ && "${old_commit:-}" =~ ^[0-9a-f]+$ ]]; then
     echo "$old_time $old_commit" > "$version_file"
   fi
-  rm -f "$pb_dir/server-files.version"
+  rm -f "$legacy_version_file"
 fi
 if [[ ! -e "$backup_dir" && -d "$pb_dir/backups-before-update" && ! -L "$pb_dir/backups-before-update" ]]; then
   mv "$pb_dir/backups-before-update" "$backup_dir"
