@@ -54,7 +54,7 @@ Integer ids stay on the phone. A row's identity across devices is its `sync_id`:
 
 ## Server setup
 
-Any PocketBase 0.34+ (the update rule uses `@request.body.<field>:changed`, added in 0.34.0); the version in `server/pocketbase-version` is the one the tests run against (see [Upgrading PocketBase](#upgrading-pocketbase)):
+The PocketBase version in `server/pocketbase-version`, the one the tests run against (never older than 0.34.0: the update rule uses `@request.body.<field>:changed`); a newer one goes through [Upgrading PocketBase](#upgrading-pocketbase) first:
 
 1. Install the server files: `server/migrations/*.js` into `pb_migrations/` and `server/hooks/*.js` into `pb_hooks/`, next to the PocketBase executable, then restart it (`pocketbase serve` applies the migrations). The migrations create the `ingredients`, `recipes` and `cooked_meals` collections with their API rules, close sign-up on `users`, make sign-in tokens last a year (each sync renews it), and limit sign-ins to 5 a minute per account collection (the app's accounts on one side, the admin's on the other; passwords, and one-time codes or OAuth2 if ever enabled; renewing a token and syncing aren't limited); the hooks tell the app the server's version (see [Versions](#versions)), give each recipe its author and refuse versions more than a day ahead. `npm run server:deploy` does all this, and installs the updater that keeps them up to date (see [Updating the server](#updating-the-server)).
 2. In the admin UI (`/_/`), create an account in **users** for each person, with their name (shown on the recipes they add), for their phones to sign in with: everyone sees and edits every recipe, and the _Added by_ filter shows each person theirs.
@@ -104,7 +104,7 @@ Logs: `journalctl -u dishes-cook-server-update`. Phones show "the server needs a
 Measured on a real server, and mirrored by the test server (`src/test/fake-sync-server.ts`):
 
 - A refused or expired token is treated as a guest: lists come back **empty** (not 401), creates get a 400, updates a 404. That's why every sync starts by renewing the token (`auth-refresh`), which does fail with a 401.
-- An update refused by the update rule (an older change, or the same version with other content) gets a 404; the app then tries a create, which gets a 400 `validation_not_unique` for an existing id: the server's row is newer, and the next pull brings it.
+- An update refused by the update rule (an older change, or the same version with other content) gets a 404; the app then tries a create, which gets a 400 `validation_not_unique` for an existing id: the server keeps its row. An older change is replaced by the server's newer row at the next pull; a same-version conflict isn't (a pull replaces only with a newer version): the phone keeps its content until either side saves a newer version.
 - `updated` (`2026-10-14 18:03:59.794Z`) sorts as text in time order: it's the pull cursor.
 
 ## Upgrading PocketBase

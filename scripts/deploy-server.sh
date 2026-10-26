@@ -20,20 +20,28 @@ if [[ "${FORCE:-}" != 1 ]]; then
   fi
 fi
 
-work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
-scripts/pack-server-files.sh "$work/server-files.tar.gz"
-
 # A new private folder on the server: a fixed path in /tmp could be prepared by another account
 # there, to swap the files sudo installs.
+remote=''
+is_remote_valid() { [[ "$remote" =~ ^/[[:alnum:]/._-]+$ ]]; }
+# Both folders are removed however the deployment ends (a failed copy, install or update included);
+# the server's only once it's a path mktemp could have given.
+cleanup() {
+  rm -rf "$work"
+  if is_remote_valid; then
+    # shellcheck disable=SC2029 # $remote is expanded here on purpose.
+    ssh "$SYNC_SERVER_SSH" "rm -rf $remote" || true
+  fi
+}
+work="$(mktemp -d)"
+trap cleanup EXIT
+scripts/pack-server-files.sh "$work/server-files.tar.gz"
+
 remote="$(ssh "$SYNC_SERVER_SSH" mktemp -d)"
-if [[ ! "$remote" =~ ^/[[:alnum:]/._-]+$ ]]; then
+if ! is_remote_valid; then
   echo "deploy-server: unexpected folder from mktemp on the server: $remote" >&2
   exit 1
 fi
-# Removed however the deployment ends (a failed copy, install or update included).
-# shellcheck disable=SC2029 # $remote is expanded here on purpose.
-trap 'rm -rf "$work"; ssh "$SYNC_SERVER_SSH" "rm -rf $remote" || true' EXIT
 scp -q "$work/server-files.tar.gz" server/deploy/update-server.sh \
   server/deploy/dishes-cook-server-update.service server/deploy/dishes-cook-server-update.timer \
   "$SYNC_SERVER_SSH:$remote/"
