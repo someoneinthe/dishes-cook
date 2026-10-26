@@ -10,8 +10,7 @@ export function iconColorIn(element: Parameters<typeof within>[0]): string | und
   const icon = within(element)
     .queryAllByText(/./)
     .find(
-      (text) =>
-        (StyleSheet.flatten(text.props.style) as IconStyle)?.fontFamily === 'material-community',
+      (text) => (StyleSheet.flatten(text.props.style) as IconStyle)?.fontFamily === 'app-icons',
     );
   return icon ? (StyleSheet.flatten(icon.props.style) as IconStyle)?.color : undefined;
 }
@@ -31,7 +30,7 @@ export function renderedIconColorList(): string[] {
       }
       const style = StyleSheet.flatten(node.props.style) as
         Readonly<{ color?: string; fontFamily?: string }> | undefined;
-      if (style?.fontFamily === 'material-community' && style.color) {
+      if (style?.fontFamily === 'app-icons' && style.color) {
         colorList.push(style.color);
       }
       visit(node.children ?? []);

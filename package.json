@@ -73,6 +73,7 @@
     "jest-expo": "~58.0.11",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.10",
+    "subset-font": "^2.9.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.2"
   },
@@ -97,9 +98,10 @@
     "postdb:generate": "npm run db:diagram",
     "db:diagram": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/database-diagram.mjs",
     "docs:features": "node scripts/features-document.mjs",
-    "docs:check": "npm run db:diagram -- --check && npm run docs:features -- --check",
+    "docs:check": "npm run db:diagram -- --check && npm run docs:features -- --check && npm run icons -- --check",
     "coverage:new": "node scripts/new-code-coverage.mjs",
-    "lint:sonar-rules": "node scripts/sonar-rules.mjs"
+    "lint:sonar-rules": "node scripts/sonar-rules.mjs",
+    "icons": "node scripts/icon-font.mjs"
   },
   "private": true,
   "engines": {
