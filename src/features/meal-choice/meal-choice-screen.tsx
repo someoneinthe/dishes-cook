@@ -16,7 +16,7 @@ import {
 } from '@/features/recipes/components/recipe-filters';
 import { getRecipeSyncId, pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
 import { useNewRecipe } from '@/features/recipes/hooks/use-new-recipe';
-import { useRecipe, useRecipeCount, useRecipeSyncId } from '@/features/recipes/hooks/use-recipes';
+import { useRecipeCard, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
 import { usePreferences } from '@/features/settings/preferences';
 import { ShoppingListBar } from '@/features/shopping-list/components/shopping-list-bar';
 import { ShoppingListHelp } from '@/features/shopping-list/components/shopping-list-help';
@@ -52,10 +52,9 @@ export function MealChoiceScreen() {
   const recipeCount = useRecipeCount({ ingredientIdList: [], kind: 'dish' });
   const matchCount = useRecipeCount(toQueryFilters(filterValues, '', 'dish'));
   // Undefined once the suggested recipe is deleted.
-  const suggestion = useRecipe(suggestedId);
+  const suggestion = useRecipeCard(suggestedId);
   // The suggestion added to the shopping list on its own screen: another one is proposed.
-  const suggestedSyncId = useRecipeSyncId(suggestedId);
-  if (suggestedSyncId !== undefined && pickList.includes(suggestedSyncId)) {
+  if (suggestion !== undefined && pickList.includes(suggestion.syncId)) {
     setSuggestedId(pick(filterValues, suggestedId));
   }
 

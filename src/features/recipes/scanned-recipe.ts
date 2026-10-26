@@ -1,9 +1,9 @@
 import type { Quantity } from '@/lib/units';
 import { cleanName } from '@/lib/text';
-import { toQuantity } from '@/lib/units';
 
 // A recipe read from a photo or a file (recipe-from-text.ts), as the recipe form receives it: the
-// blocks of recognized text it's read from, and the draft (title, ingredients, instructions).
+// blocks of recognized text it's read from, and the draft (title, ingredients, instructions) handed
+// to the form in memory.
 
 // A block of text (a paragraph, a list, a card) as the text recognition reads it, and where it is
 // on the page (any unit; without it, the blocks are taken in the given order).
@@ -25,53 +25,40 @@ export type ScannedRecipe = Readonly<{
 // More lines are likely not ingredients (a misread page): the user adds the rest.
 export const MAX_INGREDIENTS = 40;
 
-// Longest texts a recipe passed as text keeps, as the sync server accepts them (server/migrations).
-const MAX_PASSED_NAME_LENGTH = 200;
+// Longest texts a draft keeps, as the sync server accepts them (server/migrations).
+const MAX_DRAFT_NAME_LENGTH = 200;
 
-const MAX_PASSED_TITLE_LENGTH = 500;
+const MAX_DRAFT_TITLE_LENGTH = 500;
 
-const MAX_PASSED_INSTRUCTIONS_LENGTH = 100_000;
+const MAX_DRAFT_INSTRUCTIONS_LENGTH = 100_000;
 
-// A recipe passed as text (the new-recipe form's `scanned` parameter, from useNewRecipe), checked
-// field by field; undefined when it isn't one. Any app can open the form with one (a
-// dishescook:// link): no more ingredients than a photo gives, nor longer texts than a sync keeps.
-export function parseScannedRecipe(json: string | undefined): ScannedRecipe | undefined {
-  try {
-    const value: unknown = json === undefined ? undefined : JSON.parse(json);
-    if (!isRecord(value) || !Array.isArray(value.ingredientList)) {
-      return undefined;
-    }
-    return {
-      ingredientList: value.ingredientList
-        .slice(0, MAX_INGREDIENTS)
-        .flatMap((item: unknown) => toScannedIngredient(item)),
-      instructions:
-        typeof value.instructions === 'string'
-          ? value.instructions.slice(0, MAX_PASSED_INSTRUCTIONS_LENGTH)
-          : '',
-      title: typeof value.title === 'string' ? value.title.slice(0, MAX_PASSED_TITLE_LENGTH) : '',
-    };
-  } catch {
-    return undefined;
-  }
+// The recipes read, waiting for the form that opens with them (its `draft` parameter), by id. Kept
+// in memory, never in the link: no other app can open the form filled in. A few at most: each goes
+// when its form closes.
+const draftMap = new Map<string, ScannedRecipe>();
+const draftCounter = { lastId: 0 };
+
+// Forgets a draft once its form is gone (saved or left).
+export function forgetScannedDraft(id: string): void {
+  draftMap.delete(id);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+export function getScannedDraft(id: string | undefined): ScannedRecipe | undefined {
+  return id === undefined ? undefined : draftMap.get(id);
 }
 
-// An ingredient of a parsed recipe: kept when it has a name, its quantity when usable.
-function toScannedIngredient(value: unknown): ScannedIngredient[] {
-  if (
-    !isRecord(value) ||
-    typeof value.name !== 'string' ||
-    !cleanName(value.name) ||
-    value.name.length > MAX_PASSED_NAME_LENGTH
-  ) {
-    return [];
-  }
-  const quantity = isRecord(value.quantity)
-    ? toQuantity(value.quantity.amount, value.quantity.unit)
-    : undefined;
-  return [quantity ? { name: value.name, quantity } : { name: value.name }];
+// Keeps a recipe read from a photo or a file for the form; returns the id the form reads it by. A
+// misread page or a long document is cut down to what a recipe can hold: no more ingredients than
+// a photo gives (unnamed ones dropped), nor longer texts than a sync keeps.
+export function putScannedDraft(recipe: ScannedRecipe): string {
+  draftCounter.lastId += 1;
+  const id = String(draftCounter.lastId);
+  draftMap.set(id, {
+    ingredientList: recipe.ingredientList
+      .slice(0, MAX_INGREDIENTS)
+      .filter(({ name }) => cleanName(name) && name.length <= MAX_DRAFT_NAME_LENGTH),
+    instructions: recipe.instructions.slice(0, MAX_DRAFT_INSTRUCTIONS_LENGTH),
+    title: recipe.title.slice(0, MAX_DRAFT_TITLE_LENGTH),
+  });
+  return id;
 }
