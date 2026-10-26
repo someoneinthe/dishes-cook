@@ -134,6 +134,11 @@ export const recipes = sqliteTable(
     serverVersion: integer('server_version'),
     // Sort and search key of the title, see ingredients.sortKey.
     sortKey: text('sort_key').notNull(),
+    // The recipe as the server has it in `server_version` (JSON, SyncedContent in
+    // src/features/sync/recipe-merge.ts): what both sides started from when the phone and another
+    // one changed it between syncs, for the pull to merge their changes field by field (see
+    // docs/sync.md); null = not known (the newest change then wins, whole).
+    syncedContent: text('synced_content'),
     syncId: text('sync_id').notNull().default(RANDOM_SYNC_ID),
     title: text('title').notNull(),
     // Last change (its ingredients included), here or pulled from the server.

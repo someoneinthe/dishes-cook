@@ -4,6 +4,7 @@ import type { Quantity } from '@/lib/units';
 import { PAGE_SIZE } from '@/db/pagination';
 import { cookedMeals, ingredients, recipeIngredients, recipes, syncDeletions } from '@/db/schema';
 import { toQuantity } from '@/lib/units';
+import type { SyncedContent } from './recipe-merge';
 import type { SyncApi, UpsertResult } from './sync-api';
 import type { SyncedTableSchema } from './sync-shared';
 import { isServerPhotoKept } from './sync-photos';
@@ -229,7 +230,25 @@ export async function pushRecipes(
         }),
       ),
     );
-    markPushed(database, holdChanges, recipes, rowList, resultList);
+    // What the server now has of each recipe saved: what a later merge starts from.
+    markPushed(database, holdChanges, recipes, rowList, resultList, (row) => ({
+      syncedContent: JSON.stringify({
+        cookMinutes: row.cookMinutes,
+        course: row.course,
+        ingredients: Object.fromEntries(
+          (ingredientSyncIdsByRecipe.get(row.id) ?? []).map((syncId) => [
+            syncId,
+            quantitiesByRecipe.get(row.id)?.[syncId] ?? null,
+          ]),
+        ),
+        instructions: row.instructions,
+        kind: row.kind,
+        maturationMonths: row.maturationMonths,
+        prepMinutes: row.prepMinutes,
+        season: row.season,
+        title: row.title,
+      } satisfies SyncedContent),
+    }));
     cursor = rowList.at(-1);
     if (rowList.length < PAGE_SIZE) {
       return;
@@ -239,12 +258,14 @@ export async function pushRecipes(
 
 // Keeps the version of each row the server saved: not pushed again, unless changed meanwhile (a
 // newer version). Then fails with the first error, if any.
-function markPushed(
+function markPushed<Row extends Readonly<{ id: number; updatedAt: number }>>(
   database: AppDatabase,
   holdChanges: (write: () => void) => void,
   table: SyncedTableSchema,
-  pushedList: readonly Readonly<{ id: number; updatedAt: number }>[],
+  pushedList: readonly Row[],
   resultList: readonly PromiseSettledResult<UpsertResult>[],
+  // More to keep with the version (a recipe's content).
+  valuesOf: (row: Row) => Readonly<{ syncedContent?: string }> = () => ({}),
 ): void {
   holdChanges(() => {
     database.transaction((tx) => {
@@ -252,7 +273,7 @@ function markPushed(
         const result = resultList[index];
         if (result?.status === 'fulfilled' && result.value === 'saved') {
           tx.update(table)
-            .set({ serverVersion: row.updatedAt })
+            .set({ serverVersion: row.updatedAt, ...valuesOf(row) })
             .where(and(eq(table.id, row.id), eq(table.updatedAt, row.updatedAt)))
             .run();
         }
