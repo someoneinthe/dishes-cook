@@ -7,7 +7,7 @@ import { useMessages } from '@/i18n/i18n-provider';
 import { loadingScreenImage } from '@/lib/assets';
 
 // The app icon's background (app.config.ts: adaptiveIcon and splash), over the whole screen.
-export const ICON_BACKGROUND = '#C0CBCF';
+const ICON_BACKGROUND = '#C0CBCF';
 
 // How long the icon stays fully visible once it's displayed.
 export const MIN_DISPLAY_MS = 1500;

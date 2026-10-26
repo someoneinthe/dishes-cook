@@ -1,11 +1,12 @@
 import type { SQL } from 'drizzle-orm';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { AppDatabase } from '@/db/types';
-import { cookedMeals, NOW_MS, recipes, syncDeletions } from '@/db/schema';
+import { cookedMeals, NOW_MS, recipes } from '@/db/schema';
+import { recordDeletion } from '@/db/sync-deletions';
 
 // The meal history (see docs/database.md): one row each time a recipe is cooked.
 
-export type CookedMeal = Readonly<{ cookedAt: number; id: number }>;
+type CookedMeal = Readonly<{ cookedAt: number; id: number }>;
 
 // The last time the recipe was cooked; undefined if it never was. Reads one entry of the
 // (recipe_id, cooked_at) index, from its end.
@@ -69,13 +70,7 @@ export function removeCookedMeal(database: AppDatabase, id: number): void {
       .returning({ syncId: cookedMeals.syncId })
       .get();
     if (deleted) {
-      tx.insert(syncDeletions)
-        .values({ syncId: deleted.syncId, tableName: 'cooked_meals' })
-        .onConflictDoUpdate({
-          set: { deletedAt: NOW_MS },
-          target: [syncDeletions.tableName, syncDeletions.syncId],
-        })
-        .run();
+      recordDeletion(tx, 'cooked_meals', deleted.syncId);
     }
   });
 }

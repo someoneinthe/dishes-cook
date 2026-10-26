@@ -12,7 +12,7 @@ import type { Ingredient } from '../db/ingredient-queries';
 import { useIngredientSuggestions } from '../hooks/use-ingredients';
 
 // Enough to pick from at a glance without rendering hundreds of chips.
-export const MAX_SUGGESTIONS = 12;
+const MAX_SUGGESTIONS = 12;
 
 // How long typing pauses before screen readers hear what the search found.
 const ANNOUNCE_DELAY_MS = 1000;

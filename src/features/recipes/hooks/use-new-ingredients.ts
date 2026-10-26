@@ -11,7 +11,7 @@ import { toDisplayName, toNameKey } from '@/lib/text';
 import type { ScannedIngredient } from '../scanned-recipe';
 
 // The ingredients a recipe read from a photo starts with, and the quantities read, by id.
-export type ScanResult = Readonly<{
+type ScanResult = Readonly<{
   addedList: Ingredient[];
   quantityList: [number, Quantity][];
 }>;

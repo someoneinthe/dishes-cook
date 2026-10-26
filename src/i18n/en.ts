@@ -21,7 +21,7 @@ function plural(count: number, one: string, other: string): string {
 }
 
 // Units written the same in every language; the others are words, translated in each dictionary.
-export const UNIT_SYMBOLS = {
+const UNIT_SYMBOLS = {
   cl: 'cl',
   fl_oz: 'fl oz',
   g: 'g',

@@ -6,7 +6,7 @@ import type { ScannedBlock, ScannedFrame } from './scanned-recipe';
 // the row's first block: side-by-side columns and grid cards ("100 g / de beurre", "poivre"…).
 
 // A block in reading order, and its row (blocks side by side share one).
-export type OrderedBlock = Readonly<{ row: number }> & ScannedBlock;
+type OrderedBlock = Readonly<{ row: number }> & ScannedBlock;
 
 type Framed = Readonly<{ block: ScannedBlock; frame: ScannedFrame }>;
 

@@ -1,7 +1,7 @@
 import { requireOptionalNativeModule } from 'expo';
 
 // A PDF's first pages as images (modules/pdf-pages: Android's PDF renderer, in the app).
-export type PdfPages = Readonly<{
+type PdfPages = Readonly<{
   // The cache folder holding the images: delete it once they're read.
   folderUri: string;
   pageCount: number;

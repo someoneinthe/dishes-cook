@@ -6,7 +6,7 @@ import { MAX_LINES } from './db/shopping-queries';
 
 // An ingredient of the shopping list with its quantities, one per unit ("leek: 3 + 300 g"); none
 // when no meal gives one ("salt").
-export type ShoppingItem = Readonly<{
+type ShoppingItem = Readonly<{
   ingredientId: number;
   name: string;
   quantityList: readonly Quantity[];

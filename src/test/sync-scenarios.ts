@@ -25,10 +25,10 @@ import { createTestConnection } from './test-database';
 export type Phone = { cursors: SyncCursors; db: AppDatabase; photos?: TestPhotos };
 
 // A phone's photo files, in memory (base64 contents by file name), as the sync reads and writes them.
-export type TestPhotos = Readonly<{ files: Map<string, string>; store: PhotoStore }>;
+type TestPhotos = Readonly<{ files: Map<string, string>; store: PhotoStore }>;
 
 // A tiny JPEG (its first bytes are what PocketBase checks): a photo's content in the scenarios.
-export const TEST_JPEG =
+const TEST_JPEG =
   '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
 
 export type StoredRow = Record<string, unknown> & { id: string; updated: string };
@@ -77,7 +77,7 @@ export function cookedDatesOf(phone: Phone, title: string) {
     : [];
 }
 
-export function createTestPhotos(fetchFunction: typeof fetch): TestPhotos {
+function createTestPhotos(fetchFunction: typeof fetch): TestPhotos {
   const files = new Map<string, string>();
   let downloadCount = 0;
   return {

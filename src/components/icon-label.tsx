@@ -5,7 +5,7 @@ import type { IconName } from './icon';
 import { Icon } from './icon';
 import { useIconSize } from './use-icon-size';
 
-export type LabelIcon = Readonly<{
+type LabelIcon = Readonly<{
   icon: IconName;
   // Muted like the text by default.
   iconColor?: ColorToken;

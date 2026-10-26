@@ -16,7 +16,7 @@ const PICKER_FOLDER_LIST = ['ImagePicker', 'DocumentPicker'];
 
 // Where the recipe comes from: a photo taken now, or a file chosen on the phone (a photo, a PDF,
 // a Word, OpenDocument or text document).
-export type ScanSource = 'camera' | 'file';
+type ScanSource = 'camera' | 'file';
 
 // A recipe read from a photo taken or a file chosen by the user, all on the phone (ML Kit's text
 // recognition for photos and PDF pages, no network); the photo or file isn't kept: the pickers'

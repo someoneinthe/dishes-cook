@@ -3,7 +3,8 @@ import { and, asc, desc, eq, exists, inArray, ne, notInArray, sql } from 'drizzl
 import type { Page, PageRequest } from '@/db/pagination';
 import type { AppDatabase } from '@/db/types';
 import { isBackward, keysetWhere, PAGE_SIZE, toPage } from '@/db/pagination';
-import { ingredients, NOW_MS, recipeIngredients, syncDeletions } from '@/db/schema';
+import { ingredients, NOW_MS, recipeIngredients } from '@/db/schema';
+import { recordDeletion } from '@/db/sync-deletions';
 import { toIngredientSyncId } from '@/lib/sync-id';
 import {
   cleanName,
@@ -14,13 +15,13 @@ import {
   toWordForms,
 } from '@/lib/text';
 
-export type DeleteResult = 'deleted' | 'in-use';
-
 export type Ingredient = Readonly<{ id: number; name: string }>;
 
 export type IngredientListItem = Ingredient & Readonly<{ recipeCount: number; sortKey: string }>;
 
-export type RenameResult = 'blank' | 'duplicate' | 'renamed';
+type DeleteResult = 'deleted' | 'in-use';
+
+type RenameResult = 'blank' | 'duplicate' | 'renamed';
 
 // Separators between words of a name, for whole-word comparisons ("Sel, poivre" = "sel poivre");
 // apostrophes stay, all written ' ("d’agneau" = "d'agneau").
@@ -55,13 +56,7 @@ export function deleteIngredient(database: AppDatabase, id: number): DeleteResul
       .returning({ syncId: ingredients.syncId })
       .get();
     if (deleted) {
-      tx.insert(syncDeletions)
-        .values({ syncId: deleted.syncId, tableName: 'ingredients' })
-        .onConflictDoUpdate({
-          set: { deletedAt: NOW_MS },
-          target: [syncDeletions.tableName, syncDeletions.syncId],
-        })
-        .run();
+      recordDeletion(tx, 'ingredients', deleted.syncId);
     }
     return 'deleted';
   });

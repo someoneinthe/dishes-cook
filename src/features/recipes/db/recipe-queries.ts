@@ -12,8 +12,8 @@ import {
   NOW_MS,
   recipeIngredients,
   recipes,
-  syncDeletions,
 } from '@/db/schema';
+import { recordDeletion } from '@/db/sync-deletions';
 import { findOrCreateIngredient } from '@/features/ingredients/db/ingredient-queries';
 import {
   LAST_COOKED_AT,
@@ -60,9 +60,6 @@ export type RecipeFilters = Readonly<{
   season?: Exclude<Season, 'both'>;
 }>;
 
-// An ingredient of a recipe, with how much of it the recipe needs (none: "salt").
-export type RecipeIngredient = Ingredient & Readonly<{ quantity?: Quantity }>;
-
 export type RecipeInput = Readonly<{
   // Minutes (positive, at most MAX_MINUTES); null or left out = none.
   cookMinutes?: null | number;
@@ -98,11 +95,14 @@ export type RecipeListItem = Readonly<{
   title: string;
 }>;
 
+// An ingredient of a recipe, with how much of it the recipe needs (none: "salt").
+type RecipeIngredient = Ingredient & Readonly<{ quantity?: Quantity }>;
+
 // Number of ingredients of the recipe, read from the (recipe_id, ingredient_id) primary key.
 // Written out qualified: Drizzle renders `${recipes.id}` as a bare "id" inside a select.
 const INGREDIENT_COUNT = sql<number>`(select count(*) from "recipe_ingredients" where "recipe_ingredients"."recipe_id" = "recipes"."id")`;
 
-export type PickOptions = Readonly<{
+type PickOptions = Readonly<{
   // The current suggestion: another one is picked when possible (asking again must change it).
   excludedId?: number;
   // Never picked, by sync id (the meals already in the shopping list): at most MAX_PICKS.
@@ -131,13 +131,7 @@ export function deleteRecipe(database: AppDatabase, id: number): void {
       .returning({ syncId: recipes.syncId })
       .get();
     if (deleted) {
-      tx.insert(syncDeletions)
-        .values({ syncId: deleted.syncId, tableName: 'recipes' })
-        .onConflictDoUpdate({
-          set: { deletedAt: NOW_MS },
-          target: [syncDeletions.tableName, syncDeletions.syncId],
-        })
-        .run();
+      recordDeletion(tx, 'recipes', deleted.syncId);
     }
   });
 }

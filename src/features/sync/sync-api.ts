@@ -16,7 +16,7 @@ export type PullPosition = Readonly<
 >;
 
 // What a push sends: the row's fields, without what the server sets.
-export type RowUpload<Table extends SyncedTable> = Omit<
+type RowUpload<Table extends SyncedTable> = Omit<
   ServerRowOf<Table>,
   'created' | 'created_by' | 'id' | 'updated'
 >;
@@ -81,7 +81,7 @@ export type ServerRowOf<Table extends SyncedTable> = Table extends 'ingredients'
 
 // A sign-in: the token, and the id of the account it signs in to (the author of the recipes it
 // creates).
-export type SignedIn = Readonly<{ accountId: string; token: string }>;
+type SignedIn = Readonly<{ accountId: string; token: string }>;
 
 export type SyncApi = Readonly<{
   // The server's migrations and the oldest app it accepts; undefined for a server without that

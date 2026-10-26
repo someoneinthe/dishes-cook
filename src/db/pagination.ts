@@ -8,7 +8,7 @@ export const PAGE_SIZE = 50;
 export const MAX_PAGES = 2;
 
 // Position of a row in a list sorted by (sort_key, id): pages start right after/before it.
-export type Cursor = Readonly<{ id: number; sortKey: string }>;
+type Cursor = Readonly<{ id: number; sortKey: string }>;
 
 export type Page<T> = Readonly<{
   itemList: T[];

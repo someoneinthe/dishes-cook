@@ -8,7 +8,7 @@ export type { Unit } from '@/db/schema';
 // system, Settings › Units: 1000 g shows as 1 kg, or 2.25 lb in US units (`toDisplay`). Spoons and
 // counted units (pinch, clove…) exist in both systems and stay as written.
 
-export const UNIT_SYSTEM_LIST = ['metric', 'us'] as const;
+const UNIT_SYSTEM_LIST = ['metric', 'us'] as const;
 // An amount of an ingredient; without a unit, it's a number of pieces ("3 leeks").
 export type Quantity = Readonly<{ amount: number; unit?: Unit }>;
 
@@ -75,7 +75,7 @@ export function formatAmount(amount: number, decimalSeparator: string): string {
   return String(rounded).split('.').join(decimalSeparator);
 }
 
-export function isUnit(value: unknown): value is Unit {
+function isUnit(value: unknown): value is Unit {
   return UNIT_LIST.includes(value as Unit);
 }
 

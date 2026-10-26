@@ -12,8 +12,8 @@ import { courseOptionList } from '../course';
 import { SEASON_ICONS } from '../season';
 
 // Anyone's recipes, or only mine (with a sync server, see RecipeQueryFilters['mine']).
-export type AuthorFilter = 'any' | 'mine';
-export type CourseFilter = 'any' | NonNullable<RecipeQueryFilters['course']>;
+type AuthorFilter = 'any' | 'mine';
+type CourseFilter = 'any' | NonNullable<RecipeQueryFilters['course']>;
 // What the filters show: the picked ingredients keep their names for the chips.
 export type RecipeFilterValues = Readonly<{
   author: AuthorFilter;
@@ -22,7 +22,7 @@ export type RecipeFilterValues = Readonly<{
   season: SeasonFilter;
 }>;
 
-export type SeasonFilter = 'any' | NonNullable<RecipeQueryFilters['season']>;
+type SeasonFilter = 'any' | NonNullable<RecipeQueryFilters['season']>;
 
 export const NO_FILTERS: RecipeFilterValues = {
   author: 'any',
