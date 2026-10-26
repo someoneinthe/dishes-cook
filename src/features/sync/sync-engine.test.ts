@@ -1,8 +1,11 @@
 import { asc, eq } from 'drizzle-orm';
 import type { Phone } from '@/test/sync-scenarios';
 import { PAGE_SIZE } from '@/db/pagination';
-import { accounts, cookedMeals, recipes } from '@/db/schema';
-import { findIngredientByName } from '@/features/ingredients/db/ingredient-queries';
+import { accounts, cookedMeals, ingredients, recipes } from '@/db/schema';
+import {
+  deleteIngredient,
+  findIngredientByName,
+} from '@/features/ingredients/db/ingredient-queries';
 import {
   getLastCookedMeal,
   markCooked,
@@ -51,6 +54,75 @@ describe('synchronize', () => {
     });
     phone.cursors = await synchronize(phone.db, api, phone.cursors);
   };
+
+  it('takes the rows changed before the last push of an older app as on the server', async () => {
+    addRecipe(phoneA, 'Soup', ['Leek']);
+    await sync(phoneA);
+    const beforeList = [...server.collection('recipes').values()];
+    // As an app from before server versions left it: none kept, and the time of its last push.
+    phoneA.db.update(recipes).set({ serverVersion: null }).run();
+    phoneA.cursors = {
+      ...phoneA.cursors,
+      pushedFrom: Date.now() + 1,
+      serverVersions: 'legacy',
+    };
+
+    expect(countPendingChanges(phoneA.db, phoneA.cursors)).toBe(0);
+
+    await sync(phoneA);
+
+    expect([...server.collection('recipes').values()]).toStrictEqual(beforeList);
+    expect(phoneA.cursors.serverVersions).toBe('kept');
+    expect(countPendingChanges(phoneA.db, phoneA.cursors)).toBe(0);
+  });
+
+  it('sends everything to a server it connects to, even rows another server has', async () => {
+    addRecipe(phoneA, 'Soup', ['Leek']);
+    await sync(phoneA);
+    server = createFakeSyncServer(ACCOUNT);
+    phoneA.cursors = INITIAL_CURSORS;
+
+    await sync(phoneA);
+
+    expect(server.collection('recipes').size).toBe(1);
+    expect(server.collection('ingredients').size).toBe(1);
+  });
+
+  it('keeps our same-name ingredient in a recipe pulled with the deletion of the one it lists', async () => {
+    // B's own eggs, under another sync id than A's.
+    phoneB.db
+      .insert(ingredients)
+      .values({ name: 'œufs', nameKey: 'œufs', sortKey: 'oeufs', syncId: 'b0000000000000e' })
+      .run();
+    addRecipe(phoneA, 'Quiche', ['Œufs']);
+    await sync(phoneA);
+    await sync(phoneB);
+    phoneA.db
+      .update(recipes)
+      .set({ instructions: 'Bake.', updatedAt: Date.now() + 1000 })
+      .run();
+    await sync(phoneA);
+    // A's eggs deleted on the server, while the newer quiche still lists them.
+    const eggsSyncId = toIngredientSyncId(toNameKey('Œufs'));
+    const eggs = server.collection('ingredients').get(eggsSyncId)!;
+    server.collection('ingredients').set(eggsSyncId, {
+      ...eggs,
+      deleted: Date.now(),
+      modified: Date.now(),
+      updated: '2026-06-01 00:00:00.000Z',
+    });
+
+    await sync(phoneB);
+
+    const [quiche] = [...server.collection('recipes').values()];
+
+    expect(recipeOf(phoneB, 'Quiche')).toMatchObject({
+      ingredientList: [{ name: 'Œufs' }],
+      instructions: 'Bake.',
+    });
+    // Sent back with B's eggs.
+    expect(quiche?.ingredients).toStrictEqual(['b0000000000000e']);
+  });
 
   it('skips rows of the server it cannot use', async () => {
     addRecipe(phoneA, 'Soup');
@@ -142,7 +214,7 @@ describe('synchronize', () => {
     expect(authorOf(phoneB, 'soup')).toBe('b00000000000002');
     // A server without an author never takes one away.
     expect(authorOf(phoneB, 'stew')).toBe(server.accountId);
-    expect(countPendingChanges(phoneB.db, phoneB.cursors.pushedFrom)).toBe(0);
+    expect(countPendingChanges(phoneB.db, phoneB.cursors)).toBe(0);
 
     // Nor does a newer version without one.
     const storedStew = rowMap.get(stew!.id)!;
@@ -216,38 +288,27 @@ describe('synchronize', () => {
   });
 
   it('counts the changes the next sync sends', async () => {
-    const pendingCount = (phone: Phone) => countPendingChanges(phone.db, phone.cursors.pushedFrom);
-    // Syncs started a millisecond later: a change made in the same millisecond as a sync's start is
-    // pushed again by the next one, so it would still count.
-    const syncLater = async (phone: Phone) => {
-      const api = createSyncApi({
-        fetch: server.fetch,
-        serverUrl: SERVER_URL,
-        token: await signInPhone(),
-      });
-      phone.cursors = await synchronize(phone.db, api, phone.cursors, {
-        now: () => Date.now() + 1,
-      });
-    };
+    const pendingCount = (phone: Phone) => countPendingChanges(phone.db, phone.cursors);
     const id = addRecipe(phoneA, 'Soup', ['Leek']);
 
     // The recipe and its new ingredient.
     expect(pendingCount(phoneA)).toBe(2);
 
-    await syncLater(phoneA);
-    await syncLater(phoneB);
+    await sync(phoneA);
+    await sync(phoneB);
 
     expect(pendingCount(phoneA)).toBe(0);
     // Pulled from the server: nothing to send back.
     expect(pendingCount(phoneB)).toBe(0);
 
-    // Pulled from a phone whose clock is a minute ahead: not a change of this one.
+    // Edited there: a change to send.
     phoneB.db
       .update(recipes)
-      .set({ updatedAt: Date.now() + 60_000 })
+      .set({ title: 'leek soup', updatedAt: Date.now() + 1 })
+      .where(eq(recipes.title, 'soup'))
       .run();
 
-    expect(pendingCount(phoneB)).toBe(0);
+    expect(pendingCount(phoneB)).toBe(1);
 
     deleteRecipe(phoneA.db, id);
 
@@ -291,9 +352,8 @@ describe('synchronize', () => {
     });
     // Synced without photos: the recipe is pushed, its photo isn't.
     await sync(phoneA);
-    const pushedFrom = Date.now() + 1;
 
-    expect(countPendingChanges(phoneA.db, pushedFrom, pushedFrom)).toBe(1);
+    expect(countPendingChanges(phoneA.db, phoneA.cursors)).toBe(1);
 
     phoneA.db
       .update(recipes)
@@ -301,26 +361,24 @@ describe('synchronize', () => {
       .where(eq(recipes.id, soupId))
       .run();
 
-    expect(countPendingChanges(phoneA.db, pushedFrom, pushedFrom)).toBe(0);
+    expect(countPendingChanges(phoneA.db, phoneA.cursors)).toBe(0);
 
     phoneA.db.update(recipes).set({ photoFile: null }).where(eq(recipes.id, soupId)).run();
 
-    expect(countPendingChanges(phoneA.db, pushedFrom, pushedFrom)).toBe(1);
+    expect(countPendingChanges(phoneA.db, phoneA.cursors)).toBe(1);
   });
 
   it('counts a meal cooked or removed as a change waiting for the sync', async () => {
     const soupId = addRecipe(phoneA, 'Soup');
     await sync(phoneA);
-    const pushedFrom = Date.now() + 1;
 
     const mealId = markCooked(phoneA.db, soupId, 1000);
-    phoneA.db.update(cookedMeals).set({ updatedAt: pushedFrom }).run();
 
-    expect(countPendingChanges(phoneA.db, pushedFrom, pushedFrom)).toBe(1);
+    expect(countPendingChanges(phoneA.db, phoneA.cursors)).toBe(1);
 
     removeCookedMeal(phoneA.db, mealId);
 
-    expect(countPendingChanges(phoneA.db, pushedFrom, pushedFrom)).toBe(1);
+    expect(countPendingChanges(phoneA.db, phoneA.cursors)).toBe(1);
   });
 
   describe('while another phone writes during the pull', () => {
@@ -444,6 +502,42 @@ describe('synchronize', () => {
 
       expect(write).toHaveBeenCalledTimes(1);
       expect(lastCookedAtOf(phoneA, 'Pesto')).toBe(1_700_000_000_000);
+    });
+
+    it('deletes an ingredient whose last recipe is deleted in the recipes pulled again', async () => {
+      const omeletteId = addRecipe(phoneA, 'Omelette', ['Œufs']);
+      await sync(phoneA);
+      await sync(phoneB);
+      const omeletteSyncId = getRecipeSyncId(phoneA.db, omeletteId)!;
+      const omelette = server.collection('recipes').get(omeletteSyncId)!;
+      deleteRecipe(phoneA.db, omeletteId);
+      deleteIngredient(phoneA.db, findIngredientByName(phoneA.db, 'Œufs')!.id);
+      await sync(phoneA);
+      const deletedOmelette = server.collection('recipes').get(omeletteSyncId)!;
+      // B pulls the ingredient's deletion, but the omelette's comes only with the recipes pulled
+      // again for a meal of a recipe it doesn't have.
+      server.collection('recipes').set(omeletteSyncId, omelette);
+      const write = jest.fn(() => {
+        server.collection('recipes').set(omeletteSyncId, { ...deletedOmelette, updated: LATER });
+        server.collection('cooked_meals').set('defdefdefdefdef', {
+          cooked_at: 1000,
+          deleted: 0,
+          id: 'defdefdefdefdef',
+          modified: 1,
+          recipe: 'abcabcabcabcabc',
+          updated: LATER_STILL,
+        });
+      });
+      beforeList('cooked_meals', 1, write);
+
+      await sync(phoneB);
+
+      const eggsSyncId = toIngredientSyncId(toNameKey('Œufs'));
+
+      expect(write).toHaveBeenCalledTimes(1);
+      expect(titlesOf(phoneB)).toStrictEqual([]);
+      expect(findIngredientByName(phoneB.db, 'Œufs')).toBeUndefined();
+      expect(server.collection('ingredients').get(eggsSyncId)?.deleted).toBeGreaterThan(0);
     });
 
     it('gets every row of a long pull when one of them changes meanwhile', async () => {
