@@ -8,7 +8,7 @@ import {
   findSimilarIngredient,
 } from '@/features/ingredients/db/ingredient-queries';
 import { toDisplayName, toNameKey } from '@/lib/text';
-import type { ScannedIngredient } from '../recipe-from-text';
+import type { ScannedIngredient } from '../scanned-recipe';
 
 // The ingredients a recipe read from a photo starts with, and the quantities read, by id.
 export type ScanResult = Readonly<{

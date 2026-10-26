@@ -1,4 +1,4 @@
-import type { ScannedBlock, ScannedFrame } from './recipe-from-text';
+import type { ScannedBlock, ScannedFrame } from './scanned-recipe';
 
 // Text recognition doesn't give its blocks in reading order (on a recipe website, a step may come
 // before the menu). This puts them back in reading order from where they are on the page: rows

@@ -3,7 +3,7 @@ import { recognizeText } from '@infinitered/react-native-mlkit-text-recognition'
 import { Directory, File } from 'expo-file-system';
 import { renderPdfPages } from '@/lib/pdf-pages';
 import type { DocumentKind } from './recipe-documents';
-import type { ScannedBlock } from './recipe-from-text';
+import type { ScannedBlock } from './scanned-recipe';
 import { joinPages, readDocx, readOdt, readPlainText } from './recipe-documents';
 
 // Pages of a PDF read: a recipe often runs onto a second page; more would be a cookbook.

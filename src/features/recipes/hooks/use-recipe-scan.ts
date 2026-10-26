@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Alert } from 'react-native';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { DocumentKind } from '../recipe-documents';
-import type { ScannedRecipe } from '../recipe-from-text';
+import type { ScannedRecipe } from '../scanned-recipe';
 import { deleteFolder, MAX_PDF_PAGES, readDocument } from '../read-document';
 import { DOCUMENT_TYPE_LIST, toDocumentKind } from '../recipe-documents';
 import { readRecipeText } from '../recipe-from-text';

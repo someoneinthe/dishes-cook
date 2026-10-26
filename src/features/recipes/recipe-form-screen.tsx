@@ -28,7 +28,7 @@ import { formatAmount, parseAmount, toDisplay, toStored } from '@/lib/units';
 import type { QuantityDraft } from './components/ingredient-quantity-row';
 import type { TimeDrafts } from './components/recipe-time-fields';
 import type { Recipe } from './db/recipe-queries';
-import type { ScannedRecipe } from './recipe-from-text';
+import type { ScannedRecipe } from './scanned-recipe';
 import { IngredientQuantityRow } from './components/ingredient-quantity-row';
 import { InstructionsField } from './components/instructions-field';
 import { RecipePhotoField } from './components/recipe-photo-field';
@@ -40,8 +40,8 @@ import { useNewIngredients } from './hooks/use-new-ingredients';
 import { kindTexts, useKindHeaderOptions } from './kind';
 import { parseMinutes } from './minutes';
 import { formatTypedMonths, parseMonths } from './months';
-import { parseScannedRecipe } from './recipe-from-text';
 import { deleteRecipePhoto } from './recipe-photos';
+import { parseScannedRecipe } from './scanned-recipe';
 import { seasonOptionList } from './season';
 
 type RecipeFormProps = Readonly<{

@@ -1,5 +1,5 @@
 import { strFromU8, unzipSync } from 'fflate';
-import type { ScannedBlock, ScannedFrame } from './recipe-from-text';
+import type { ScannedBlock, ScannedFrame } from './scanned-recipe';
 
 // Recipes read from a chosen file (useRecipeScan): a photo or a PDF's pages are read by the text
 // recognition; a Word, OpenDocument or text file is read here, as blocks of text for the recipe
