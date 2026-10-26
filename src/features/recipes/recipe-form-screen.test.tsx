@@ -11,6 +11,7 @@ import { firstIngredientPage, firstRecipePage } from '@/test/queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { deleteRecipe, getRecipe, saveRecipe } from './db/recipe-queries';
 import { RecipeFormScreen } from './recipe-form-screen';
+import { putScannedDraft } from './scanned-recipe';
 
 jest.mock('expo-router', () => ({
   router: { back: jest.fn(), replace: jest.fn() },
@@ -231,7 +232,7 @@ describe('recipeFormScreen', () => {
     const sendEvent = jest.spyOn(AccessibilityInfo, 'sendAccessibilityEvent');
     findOrCreateIngredient(connection.db, 'carrot');
     const scanned = { ingredientList: [{ name: 'carrots' }], instructions: '', title: 'Soup' };
-    jest.mocked(useLocalSearchParams).mockReturnValue({ scanned: JSON.stringify(scanned) });
+    jest.mocked(useLocalSearchParams).mockReturnValue({ draft: putScannedDraft(scanned) });
     await renderWithDatabase(<RecipeFormScreen />, connection);
 
     await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));

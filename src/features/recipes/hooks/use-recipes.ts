@@ -2,7 +2,13 @@ import { useDatabase } from '@/db/database-context';
 import { useLocalQuery } from '@/db/use-local-query';
 import { usePagedQuery } from '@/db/use-paged-query';
 import type { RecipeFilters } from '../db/recipe-queries';
-import { countRecipes, getRecipe, getRecipeSyncId, listRecipePage } from '../db/recipe-queries';
+import {
+  countRecipes,
+  getRecipe,
+  getRecipeCard,
+  getRecipeSyncId,
+  listRecipePage,
+} from '../db/recipe-queries';
 
 // `id` undefined: no recipe (nothing is read).
 export function useRecipe(id: number | undefined) {
@@ -11,6 +17,13 @@ export function useRecipe(id: number | undefined) {
   const read = () => (id === undefined ? null : (getRecipe(database, id) ?? null));
   const data = useLocalQuery(['recipes', 'detail', id], read);
   return data ?? undefined;
+}
+
+// A recipe in short (the meal choice's card); undefined once it's deleted.
+export function useRecipeCard(id: number | undefined) {
+  const database = useDatabase();
+  const read = () => (id === undefined ? null : (getRecipeCard(database, id) ?? null));
+  return useLocalQuery(['recipes', 'card', id], read) ?? undefined;
 }
 
 export function useRecipeCount(filters: RecipeFilters) {

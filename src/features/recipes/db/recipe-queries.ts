@@ -38,6 +38,22 @@ export type Recipe = Readonly<{
   title: string;
 }>;
 
+// A recipe in short, as the meal choice suggests it: no instructions nor ingredient list, only how
+// many ingredients it has (counted in SQL).
+export type RecipeCard = Pick<
+  Recipe,
+  | 'cookMinutes'
+  | 'course'
+  | 'id'
+  | 'kind'
+  | 'maturationMonths'
+  | 'photoFile'
+  | 'prepMinutes'
+  | 'season'
+  | 'title'
+> &
+  Readonly<{ ingredientCount: number; syncId: string }>;
+
 export type RecipeFilters = Readonly<{
   // Recipes of this course; undefined = any course.
   course?: Course;
@@ -190,6 +206,41 @@ export function getRecipe(database: AppDatabase, id: number): Recipe | undefined
       addedBy: authorName ? { accountId: createdBy, name: authorName } : { accountId: createdBy },
     }),
     // Left out when not given: a recipe without them reads as before.
+    ...(toMinutes(cookMinutes) !== undefined && { cookMinutes: toMinutes(cookMinutes) }),
+    ...(toMonths(maturationMonths) !== undefined && {
+      maturationMonths: toMonths(maturationMonths),
+    }),
+    ...(photoFile !== null && { photoFile }),
+    ...(toMinutes(prepMinutes) !== undefined && { prepMinutes: toMinutes(prepMinutes) }),
+  };
+}
+
+export function getRecipeCard(database: AppDatabase, id: number): RecipeCard | undefined {
+  const card = database
+    .select({
+      cookMinutes: recipes.cookMinutes,
+      course: recipes.course,
+      id: recipes.id,
+      ingredientCount: sql<number>`(select count(*) from ${recipeIngredients} where ${recipeIngredients.recipeId} = ${recipes.id})`,
+      kind: recipes.kind,
+      maturationMonths: recipes.maturationMonths,
+      photoFile: recipes.photoFile,
+      prepMinutes: recipes.prepMinutes,
+      season: recipes.season,
+      syncId: recipes.syncId,
+      title: recipes.title,
+    })
+    .from(recipes)
+    .where(eq(recipes.id, id))
+    .get();
+  if (!card) {
+    return undefined;
+  }
+  const { cookMinutes, maturationMonths, photoFile, prepMinutes, ...fields } = card;
+  // Left out when not given, as in getRecipe.
+  return {
+    ...fields,
+    title: toDisplayName(card.title),
     ...(toMinutes(cookMinutes) !== undefined && { cookMinutes: toMinutes(cookMinutes) }),
     ...(toMonths(maturationMonths) !== undefined && {
       maturationMonths: toMonths(maturationMonths),

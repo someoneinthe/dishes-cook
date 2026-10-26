@@ -6,7 +6,7 @@ import type {
   ViewInstance,
 } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { Course, RecipeKind, Season } from '@/db/schema';
@@ -53,7 +53,7 @@ import {
   withScannedDrafts,
 } from './recipe-form-quantities';
 import { deleteRecipePhoto } from './recipe-photos';
-import { parseScannedRecipe } from './scanned-recipe';
+import { forgetScannedDraft, getScannedDraft } from './scanned-recipe';
 import { seasonOptionList } from './season';
 
 type RecipeFormProps = Readonly<{
@@ -379,13 +379,13 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
 function RecipeFormRoute() {
   const database = useDatabase();
   const {
+    draft,
     id,
     kind: kindParameter,
-    scanned,
   } = useLocalSearchParams<{
+    draft?: string;
     id?: string;
     kind?: string;
-    scanned?: string;
   }>();
   const recipeId = id === undefined ? undefined : Number(id);
   // The form starts from the saved recipe; reads are synchronous, so it's ready on first render.
@@ -393,7 +393,16 @@ function RecipeFormRoute() {
     recipeId === undefined ? undefined : getRecipe(database, recipeId),
   );
   const [scannedRecipe] = useState(() =>
-    recipeId === undefined ? parseScannedRecipe(scanned) : undefined,
+    recipeId === undefined ? getScannedDraft(draft) : undefined,
+  );
+  // The draft goes with its form (saved or left).
+  useEffect(
+    () => () => {
+      if (draft !== undefined) {
+        forgetScannedDraft(draft);
+      }
+    },
+    [draft],
   );
   const t = useMessages();
   // An edit keeps the recipe's kind; a new recipe takes the one it was started for (useNewRecipe).

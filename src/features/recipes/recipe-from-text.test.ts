@@ -1,7 +1,7 @@
 import type { ScannedBlock } from './scanned-recipe';
 import { readIngredientLine } from './ingredient-line';
 import { readRecipeText } from './recipe-from-text';
-import { parseScannedRecipe } from './scanned-recipe';
+import { forgetScannedDraft, getScannedDraft, putScannedDraft } from './scanned-recipe';
 
 // A block of lines in body text, or in a larger print.
 function block(lineList: readonly string[], height = 20): ScannedBlock {
@@ -119,38 +119,29 @@ describe('recipe-from-text', () => {
     });
   });
 
-  describe('parseScannedRecipe', () => {
-    it('reads back a recipe passed as text, keeping only what is usable', () => {
-      expect(
-        parseScannedRecipe(
-          JSON.stringify({
-            ingredientList: [
-              { name: 'leeks', quantity: { amount: 2 } },
-              { name: 'flour', quantity: { amount: 200, unit: 'g' } },
-              { name: 'salt', quantity: { amount: -1 } },
-              { name: ' ' },
-              'egg',
-            ],
-            instructions: 'Cook.',
-            title: 'Soup',
-          }),
-        ),
-      ).toStrictEqual({
-        ingredientList: [
-          { name: 'leeks', quantity: { amount: 2 } },
-          { name: 'flour', quantity: { amount: 200, unit: 'g' } },
-          { name: 'salt' },
-        ],
+  describe('putScannedDraft', () => {
+    it('keeps a recipe read for its form, until the form forgets it', () => {
+      const recipe = {
+        ingredientList: [{ name: 'leeks', quantity: { amount: 2 } }],
         instructions: 'Cook.',
         title: 'Soup',
-      });
+      };
+
+      const id = putScannedDraft(recipe);
+      const kept = getScannedDraft(id);
+      forgetScannedDraft(id);
+
+      expect(kept).toStrictEqual(recipe);
+      expect(getScannedDraft(id)).toBeUndefined();
+      expect(getScannedDraft(undefined)).toBeUndefined();
     });
 
     it('keeps no more than a photo gives, nor longer texts than a sync keeps', () => {
-      const recipe = parseScannedRecipe(
-        JSON.stringify({
+      const draft = getScannedDraft(
+        putScannedDraft({
           ingredientList: [
             { name: 'x'.repeat(201) },
+            { name: ' ' },
             ...Array.from({ length: 1000 }, (_, index) => ({ name: `ingredient ${index}` })),
           ],
           instructions: 'Stir. '.repeat(30_000),
@@ -158,17 +149,10 @@ describe('recipe-from-text', () => {
         }),
       );
 
-      // The first item, a name too long, is left out of the first 40.
-      expect(recipe?.ingredientList).toHaveLength(39);
-      expect(recipe?.instructions).toHaveLength(100_000);
-      expect(recipe?.title).toHaveLength(500);
-    });
-
-    it('reads nothing from text that is not a recipe', () => {
-      expect(parseScannedRecipe(undefined)).toBeUndefined();
-      expect(parseScannedRecipe('{')).toBeUndefined();
-      expect(parseScannedRecipe('"soup"')).toBeUndefined();
-      expect(parseScannedRecipe('{"title":"Soup"}')).toBeUndefined();
+      // The first two items, a name too long and a blank one, are left out of the first 40.
+      expect(draft?.ingredientList).toHaveLength(38);
+      expect(draft?.instructions).toHaveLength(100_000);
+      expect(draft?.title).toHaveLength(500);
     });
   });
 

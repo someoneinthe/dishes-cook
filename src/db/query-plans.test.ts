@@ -10,6 +10,7 @@ import { getLastCookedMeal, markCooked } from '@/features/meal-history/db/cooked
 import {
   countRecipes,
   getRecipe,
+  getRecipeCard,
   listRecipePage,
   pickRandomRecipeId,
   saveRecipe,
@@ -230,6 +231,18 @@ describe('query plans', () => {
       'CORRELATED SCALAR SUBQUERY 1',
       expect.stringMatching(/^SEARCH recipe_ingredients USING COVERING INDEX sqlite_autoindex/),
       'USE TEMP B-TREE FOR ORDER BY',
+    ]);
+  });
+
+  it('reads a recipe card by primary key, its ingredients counted on the covering key', () => {
+    getRecipeCard(database, 1);
+
+    expect(lastPlan()).toStrictEqual([
+      expect.stringMatching(/^SEARCH recipes USING INTEGER PRIMARY KEY/),
+      'CORRELATED SCALAR SUBQUERY 1',
+      expect.stringMatching(
+        /^SEARCH recipe_ingredients USING COVERING INDEX sqlite_autoindex\S+ \(recipe_id=\?\)/,
+      ),
     ]);
   });
 

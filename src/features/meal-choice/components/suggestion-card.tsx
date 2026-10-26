@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
-import type { Recipe } from '@/features/recipes/db/recipe-queries';
+import type { RecipeCard } from '@/features/recipes/db/recipe-queries';
 import { Button } from '@/components/button';
 import { LastCooked } from '@/features/meal-history/components/last-cooked';
 import { CourseLabel, SeasonLabel } from '@/features/recipes/components/recipe-labels';
@@ -16,7 +16,7 @@ type SuggestionCardProps = Readonly<{
   isAddDisabled?: boolean;
   // Adds it to the shopping list (then another one is proposed). No button on a TV.
   onAddToList: (recipeId: number) => void;
-  recipe: Recipe;
+  recipe: RecipeCard;
 }>;
 
 // The suggested recipe, in short: Open shows it in full (the header's Suggest picks another one).
@@ -41,7 +41,7 @@ export function SuggestionCard({
       <View style={styles.details}>
         <SeasonLabel season={recipe.season} />
         <CourseLabel course={recipe.course} />
-        <Text style={styles.detail}>{t.recipes.ingredientCount(recipe.ingredientList.length)}</Text>
+        <Text style={styles.detail}>{t.recipes.ingredientCount(recipe.ingredientCount)}</Text>
         {times !== undefined && <Text style={styles.detail}>{times}</Text>}
       </View>
       <LastCooked recipeId={recipe.id} />

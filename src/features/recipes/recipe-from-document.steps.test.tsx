@@ -113,8 +113,8 @@ defineFeature(feature, (test) => {
     await waitFor(() => expect(router.push).toHaveBeenCalledTimes(1));
     const [target] = jest.mocked(router.push).mock.lastCall ?? [];
     const params = typeof target === 'object' ? target.params : undefined;
-    const scanned = typeof params?.scanned === 'string' ? params.scanned : '';
-    jest.mocked(useLocalSearchParams).mockReturnValue({ scanned });
+    const draft = typeof params?.draft === 'string' ? params.draft : '';
+    jest.mocked(useLocalSearchParams).mockReturnValue({ draft });
     await renderWithDatabase(<RecipeFormScreen />, connection);
   };
   const expectFilledIn = async (title: string, ingredient: string, steps: string) => {
