@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
 import { useDatabase } from '@/db/database-context';
+import { useLocalQuery } from '@/db/use-local-query';
 import type { SyncErrorKind } from './sync-api';
 import { getPendingChangeCount, useSyncState } from './sync-store';
 
@@ -18,11 +18,10 @@ export function useSyncStatus(): SyncStatus | undefined {
   const countPending = () => (isConnected ? getPendingChangeCount(database) : 0);
   // Writes refresh it (every query is invalidated after a write), and so does each finished sync:
   // it moves the push cursor, even when nothing was written.
-  const { data: pendingCount } = useQuery({
-    initialData: countPending,
-    queryFn: countPending,
-    queryKey: ['sync', 'pending-count', { isConnected, lastSyncedAt }],
-  });
+  const pendingCount = useLocalQuery(
+    ['sync', 'pending-count', { isConnected, lastSyncedAt }],
+    countPending,
+  );
 
   if (error !== undefined) {
     return { error, kind: 'failed', pendingCount };

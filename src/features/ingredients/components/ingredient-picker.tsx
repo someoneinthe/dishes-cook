@@ -206,6 +206,8 @@ function useChipFocus(shownList: readonly Ingredient[]) {
     clearTimeout(pendingTimer.current);
     setMovedId(undefined);
   };
+  // Nor once the picker is gone (the form saved or left).
+  useEffect(() => () => clearTimeout(pendingTimer.current), []);
   const shownIdList = shownList.map((ingredient) => ingredient.id);
   const targetId =
     movedId === undefined || shownIdList.includes(movedId) ? movedId : shownIdList[0];

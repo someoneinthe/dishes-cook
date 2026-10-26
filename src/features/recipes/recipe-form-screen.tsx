@@ -5,7 +5,7 @@ import type {
   TextInstance,
   ViewInstance,
 } from 'react-native';
-import { Redirect, router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
@@ -14,13 +14,13 @@ import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
+import { PhoneOnly } from '@/components/phone-only';
 import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
 import { useDatabase } from '@/db/database-context';
 import { IngredientPicker } from '@/features/ingredients/components/ingredient-picker';
 import { usePreferences } from '@/features/settings/preferences';
 import { useMessages } from '@/i18n/i18n-provider';
-import { isTv } from '@/lib/device';
 import { cleanName } from '@/lib/text';
 import type { TimeDrafts } from './components/recipe-time-fields';
 import type { Recipe } from './db/recipe-queries';
@@ -68,12 +68,11 @@ type RecipeFormProps = Readonly<{
 
 // Read-only on a TV: a link to the form (/recipe/new, /recipe/[id]/edit) leads to the meal choice.
 export function RecipeFormScreen() {
-  // Sonar (S100) only sees a component when it returns a JSX element, not a ternary.
-  // eslint-disable-next-line unicorn/prefer-ternary
-  if (isTv) {
-    return <Redirect href="/" />;
-  }
-  return <RecipeFormRoute />;
+  return (
+    <PhoneOnly>
+      <RecipeFormRoute />
+    </PhoneOnly>
+  );
 }
 
 // The photo a saved edit replaced or removed: no recipe has it any more.

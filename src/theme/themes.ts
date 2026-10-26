@@ -9,7 +9,7 @@ const base = {
   gap: (multiplier: number) => multiplier * 4,
   iconSize: { lg: 24, md: 20, sm: 16 },
   opacity: { disabled: 0.5, pressed: 0.6 },
-  radius: { lg: 16, md: 8, sm: 4 },
+  radius: { lg: 16, md: 8 },
   // Heights: 48 = minimum touch target (Material; Apple asks for 44).
   // minText: width under which a row's text gives its line to the row's buttons.
   // maxContent: width of a screen's content on wide screens (TV), centered, so lines stay readable.

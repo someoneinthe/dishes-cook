@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { createListeners } from '@/lib/listeners';
 
 // The meals picked for the shopping list, by recipe sync id (stable: SQLite can give a deleted
 // recipe's integer id to a new one), in the order they were picked. Kept in memory only, on
@@ -9,7 +10,7 @@ import { useSyncExternalStore } from 'react';
 export const MAX_PICKS = 50;
 
 const state: { pickList: readonly string[] } = { pickList: [] };
-const listenerSet = new Set<() => void>();
+const listeners = createListeners();
 
 // 'full': not added, the list already holds MAX_PICKS meals.
 export function addPick(syncId: string): 'added' | 'full' {
@@ -37,19 +38,10 @@ export function removePick(syncId: string): void {
 
 // A new list on each change: compared by identity, it tells whether the list changed.
 export function usePicks(): readonly string[] {
-  return useSyncExternalStore(subscribe, getPicks);
+  return useSyncExternalStore(listeners.subscribe, getPicks);
 }
 
 function publish(pickList: readonly string[]): void {
   state.pickList = pickList;
-  for (const listener of listenerSet) {
-    listener();
-  }
-}
-
-function subscribe(listener: () => void) {
-  listenerSet.add(listener);
-  return () => {
-    listenerSet.delete(listener);
-  };
+  listeners.notify();
 }
