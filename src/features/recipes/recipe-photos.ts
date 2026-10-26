@@ -7,7 +7,7 @@ import {
   requestCameraPermissionsAsync,
 } from 'expo-image-picker';
 import type { AppDatabase } from '@/db/types';
-import type { PhotoStore } from '@/features/sync/sync-engine';
+import type { PhotoStore } from '@/features/sync/sync-photos';
 import { recipes } from '@/db/schema';
 
 // Recipes' photos: JPEG files in the app's documents (kept with the app's data), one per recipe,

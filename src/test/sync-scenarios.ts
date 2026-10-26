@@ -1,7 +1,8 @@
 import { asc, eq } from 'drizzle-orm';
 import type { SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
-import type { PhotoStore, SyncCursors } from '@/features/sync/sync-engine';
+import type { SyncCursors } from '@/features/sync/sync-engine';
+import type { PhotoStore } from '@/features/sync/sync-photos';
 import { accounts, cookedMeals, ingredients, recipes, syncDeletions } from '@/db/schema';
 import {
   deleteIngredient,
