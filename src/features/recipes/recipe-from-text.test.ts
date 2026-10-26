@@ -1,5 +1,7 @@
-import type { ScannedBlock } from './recipe-from-text';
-import { parseScannedRecipe, readIngredientLine, readRecipeText } from './recipe-from-text';
+import type { ScannedBlock } from './scanned-recipe';
+import { readIngredientLine } from './ingredient-line';
+import { readRecipeText } from './recipe-from-text';
+import { parseScannedRecipe } from './scanned-recipe';
 
 // A block of lines in body text, or in a larger print.
 function block(lineList: readonly string[], height = 20): ScannedBlock {

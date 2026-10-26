@@ -1,7 +1,8 @@
 import { asc, eq } from 'drizzle-orm';
 import type { SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
-import type { PhotoStore, SyncCursors } from '@/features/sync/sync-engine';
+import type { SyncCursors } from '@/features/sync/sync-engine';
+import type { PhotoStore } from '@/features/sync/sync-photos';
 import { accounts, cookedMeals, ingredients, recipes, syncDeletions } from '@/db/schema';
 import {
   deleteIngredient,
@@ -24,10 +25,10 @@ import { createTestConnection } from './test-database';
 export type Phone = { cursors: SyncCursors; db: AppDatabase; photos?: TestPhotos };
 
 // A phone's photo files, in memory (base64 contents by file name), as the sync reads and writes them.
-export type TestPhotos = Readonly<{ files: Map<string, string>; store: PhotoStore }>;
+type TestPhotos = Readonly<{ files: Map<string, string>; store: PhotoStore }>;
 
 // A tiny JPEG (its first bytes are what PocketBase checks): a photo's content in the scenarios.
-export const TEST_JPEG =
+const TEST_JPEG =
   '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
 
 export type StoredRow = Record<string, unknown> & { id: string; updated: string };
@@ -74,35 +75,6 @@ export function cookedDatesOf(phone: Phone, title: string) {
         .all()
         .map(({ cookedAt }) => cookedAt)
     : [];
-}
-
-export function createTestPhotos(fetchFunction: typeof fetch): TestPhotos {
-  const files = new Map<string, string>();
-  let downloadCount = 0;
-  return {
-    files,
-    store: {
-      delete: (file) => {
-        files.delete(file);
-      },
-      download: async (url) => {
-        const response = await fetchFunction(url);
-        if (!response.ok) {
-          throw new Error(`Download failed: ${response.status}`);
-        }
-        downloadCount += 1;
-        const file = ['downloaded-', String(downloadCount), '.jpg'].join('');
-        files.set(file, Buffer.from(await response.arrayBuffer()).toString('base64'));
-        return file;
-      },
-      toUpload: (file) => {
-        const content = files.get(file);
-        return content === undefined
-          ? undefined
-          : new Blob([Buffer.from(content, 'base64')], { type: 'image/jpeg' });
-      },
-    },
-  };
 }
 
 // Two phones syncing with the same server: what the sync must do whatever the server is.
@@ -708,6 +680,35 @@ export function titlesOf(phone: Phone) {
       // As shown: titles are saved in lowercase.
       .map(({ title }) => toDisplayName(title))
   );
+}
+
+function createTestPhotos(fetchFunction: typeof fetch): TestPhotos {
+  const files = new Map<string, string>();
+  let downloadCount = 0;
+  return {
+    files,
+    store: {
+      delete: (file) => {
+        files.delete(file);
+      },
+      download: async (url) => {
+        const response = await fetchFunction(url);
+        if (!response.ok) {
+          throw new Error(`Download failed: ${response.status}`);
+        }
+        downloadCount += 1;
+        const file = ['downloaded-', String(downloadCount), '.jpg'].join('');
+        files.set(file, Buffer.from(await response.arrayBuffer()).toString('base64'));
+        return file;
+      },
+      toUpload: (file) => {
+        const content = files.get(file);
+        return content === undefined
+          ? undefined
+          : new Blob([Buffer.from(content, 'base64')], { type: 'image/jpeg' });
+      },
+    },
+  };
 }
 
 function ingredientNamesOf(phone: Phone) {

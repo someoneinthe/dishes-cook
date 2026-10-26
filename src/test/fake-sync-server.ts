@@ -12,7 +12,7 @@ import { SERVER_MIGRATION_LIST, SYNC_VERSION } from '@/features/sync/server-vers
 //   (server/hooks/recipe-author.pb.js);
 // - signed-in accounts list the accounts' ids and names (`users`, seeded with the phones' one).
 
-export type FakeSyncServer = Readonly<{
+type FakeSyncServer = Readonly<{
   // The id of the server's account (the one the phones sign in with).
   accountId: string;
   // The accounts the server lists, by id (the phones' one included): tests add and name them.

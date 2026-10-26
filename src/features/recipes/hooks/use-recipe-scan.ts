@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Alert } from 'react-native';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { DocumentKind } from '../recipe-documents';
-import type { ScannedRecipe } from '../recipe-from-text';
+import type { ScannedRecipe } from '../scanned-recipe';
 import { deleteFolder, MAX_PDF_PAGES, readDocument } from '../read-document';
 import { DOCUMENT_TYPE_LIST, toDocumentKind } from '../recipe-documents';
 import { readRecipeText } from '../recipe-from-text';
@@ -16,7 +16,7 @@ const PICKER_FOLDER_LIST = ['ImagePicker', 'DocumentPicker'];
 
 // Where the recipe comes from: a photo taken now, or a file chosen on the phone (a photo, a PDF,
 // a Word, OpenDocument or text document).
-export type ScanSource = 'camera' | 'file';
+type ScanSource = 'camera' | 'file';
 
 // A recipe read from a photo taken or a file chosen by the user, all on the phone (ML Kit's text
 // recognition for photos and PDF pages, no network); the photo or file isn't kept: the pickers'

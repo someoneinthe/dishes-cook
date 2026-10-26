@@ -21,7 +21,7 @@ export type ShoppingLine = Readonly<{
 
 // The lines of the list; `isTruncated` when there were more than the query reads (MAX_LINES): the
 // screen and the shared text then say so, rather than leaving lines out silently.
-export type ShoppingLines = Readonly<{ isTruncated: boolean; lineList: ShoppingLine[] }>;
+type ShoppingLines = Readonly<{ isTruncated: boolean; lineList: ShoppingLine[] }>;
 
 // At most this many lines (50 meals of 20 ingredients each): the query stays bounded. Not paged:
 // the whole list is shared at once.

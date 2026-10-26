@@ -29,7 +29,7 @@ export type ServerInfo = Readonly<{
   minimumAppSyncVersion: number;
 }>;
 
-export type ServerVersionCheck =
+type ServerVersionCheck =
   // This app is older than the server accepts: update the app.
   | 'app-outdated'
   // Both match.

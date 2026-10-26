@@ -8,7 +8,7 @@ export type { Unit } from '@/db/schema';
 // system, Settings › Units: 1000 g shows as 1 kg, or 2.25 lb in US units (`toDisplay`). Spoons and
 // counted units (pinch, clove…) exist in both systems and stay as written.
 
-export const UNIT_SYSTEM_LIST = ['metric', 'us'] as const;
+const UNIT_SYSTEM_LIST = ['metric', 'us'] as const;
 // An amount of an ingredient; without a unit, it's a number of pieces ("3 leeks").
 export type Quantity = Readonly<{ amount: number; unit?: Unit }>;
 
@@ -73,10 +73,6 @@ const POUND_IN_GRAMS = UNIT_INFO.lb.base ?? 0;
 export function formatAmount(amount: number, decimalSeparator: string): string {
   const rounded = Math.round(amount * 100) / 100;
   return String(rounded).split('.').join(decimalSeparator);
-}
-
-export function isUnit(value: unknown): value is Unit {
-  return UNIT_LIST.includes(value as Unit);
 }
 
 export function isUnitSystem(value: unknown): value is UnitSystem {
@@ -156,6 +152,10 @@ function closestUnit(kind: UnitInfo['kind'], base: number, system: UnitSystem): 
   }
   // A quarter of a cup and more in cups, less in fluid ounces.
   return base >= CUP_IN_ML / 4 ? 'cup' : 'fl_oz';
+}
+
+function isUnit(value: unknown): value is Unit {
+  return UNIT_LIST.includes(value as Unit);
 }
 
 // Grams and millilitres to the unit (to 0.1 below 10), kilos and litres to 0.01, ounces to 0.1,

@@ -8,13 +8,7 @@ import {
   findSimilarIngredient,
 } from '@/features/ingredients/db/ingredient-queries';
 import { toDisplayName, toNameKey } from '@/lib/text';
-import type { ScannedIngredient } from '../recipe-from-text';
-
-// The ingredients a recipe read from a photo starts with, and the quantities read, by id.
-export type ScanResult = Readonly<{
-  addedList: Ingredient[];
-  quantityList: [number, Quantity][];
-}>;
+import type { ScannedIngredient } from '../scanned-recipe';
 
 type Picked = Readonly<{ existing: Ingredient | undefined; scanned: ScannedIngredient }>;
 
@@ -23,6 +17,12 @@ type Resolved = Readonly<{
   newSimilarList: [number, Ingredient][];
 }> &
   ScanResult;
+
+// The ingredients a recipe read from a photo starts with, and the quantities read, by id.
+type ScanResult = Readonly<{
+  addedList: Ingredient[];
+  quantityList: [number, Quantity][];
+}>;
 
 // Ingredients typed or read from a photo, in the recipe form. One that exists (same name, ignoring
 // case) is used; the others are new, with a temporary id below 0, and created when the recipe is

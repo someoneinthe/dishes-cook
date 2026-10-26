@@ -7,7 +7,7 @@ import {
   requestCameraPermissionsAsync,
 } from 'expo-image-picker';
 import type { AppDatabase } from '@/db/types';
-import type { PhotoStore } from '@/features/sync/sync-engine';
+import type { PhotoStore } from '@/features/sync/sync-photos';
 import { recipes } from '@/db/schema';
 
 // Recipes' photos: JPEG files in the app's documents (kept with the app's data), one per recipe,
@@ -27,7 +27,7 @@ const TEMPORARY_FOLDERS = ['ImagePicker', 'ImageManipulator'] as const;
 const SWEEP_BATCH = 50;
 
 // 'denied': the camera isn't allowed (the user can allow it in the phone's settings).
-export type PickResult = 'cancelled' | 'denied' | Readonly<{ file: string }>;
+type PickResult = 'cancelled' | 'denied' | Readonly<{ file: string }>;
 
 // Deletes a recipe's photo file (replaced, removed, or its recipe deleted). One that can't be
 // deleted is swept at the next start.

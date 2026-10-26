@@ -18,7 +18,7 @@ The phone's database is the source of truth: the app works the same without a se
 
 ## How it works
 
-`synchronize` (`src/features/sync/sync-engine.ts`) runs in two steps:
+`synchronize` (`src/features/sync/sync-engine.ts`; the steps in `sync-pull.ts`, `sync-push.ts` and `sync-photos.ts`) runs in two steps:
 
 1. **Pull**: the rows written on the server since the last pull (`updated >= cursor`, one cursor per table), ingredients first since recipes link to them, then the meal history (`cooked_meals`), which links to recipes, in pages of 50 that follow each other by key (after the previous page's last `(updated, id)`, not by page number: a row written during the pull moves to the end instead of shifting the next pages). A pulled row replaces the phone's only if it's newer. A recipe using ingredients the phone doesn't have yet (another phone pushed both during the pull) gets them once the ingredients are pulled again, in the same sync; a meal of a recipe the phone doesn't have yet waits for the recipes to be pulled again, and is dropped if its recipe still isn't there (deleted). At most 200 pages per table and per sync: the next sync carries on.
 2. **Push**: the deletions made on the phone, then the rows the server doesn't have in their current version (ingredients, recipes, meals: `server_version is not updated_at`, read on the partial `*_to_push_idx` indexes, which hold only those rows), in pages of 50.

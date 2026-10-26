@@ -1,14 +1,14 @@
-import type { ScannedBlock, ScannedFrame } from './recipe-from-text';
+import type { ScannedBlock, ScannedFrame } from './scanned-recipe';
 
 // Text recognition doesn't give its blocks in reading order (on a recipe website, a step may come
 // before the menu). This puts them back in reading order from where they are on the page: rows
 // from top to bottom, each row from left to right. A row gathers the blocks whose middle is beside
 // the row's first block: side-by-side columns and grid cards ("100 g / de beurre", "poivre"…).
 
-// A block in reading order, and its row (blocks side by side share one).
-export type OrderedBlock = Readonly<{ row: number }> & ScannedBlock;
-
 type Framed = Readonly<{ block: ScannedBlock; frame: ScannedFrame }>;
+
+// A block in reading order, and its row (blocks side by side share one).
+type OrderedBlock = Readonly<{ row: number }> & ScannedBlock;
 
 // Two one-line blocks on a row closer than this many letter heights are one line ("bouquet" and
 // "garni" read apart).

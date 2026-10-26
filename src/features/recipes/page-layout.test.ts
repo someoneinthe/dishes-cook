@@ -1,4 +1,4 @@
-import type { ScannedBlock } from './recipe-from-text';
+import type { ScannedBlock } from './scanned-recipe';
 import { toReadingOrder } from './page-layout';
 
 // A one-line block at (left, top), 20 high and 10 wide per letter.
