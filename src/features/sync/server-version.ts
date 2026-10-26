@@ -15,6 +15,7 @@ export const SERVER_MIGRATION_LIST: readonly string[] = [
   '1792600000-drink-maturation.js',
   '1792700000-recipe-author.js',
   '1792800000-account-names.js',
+  '1792900000-same-version-unchanged.js',
 ];
 
 // This app's sync version. Raised together with the server's minimum (MINIMUM_APP_SYNC_VERSION in
@@ -22,7 +23,8 @@ export const SERVER_MIGRATION_LIST: readonly string[] = [
 export const SYNC_VERSION = 1;
 
 export type ServerInfo = Readonly<{
-  // Migration files the server has applied, PocketBase's own included.
+  // The app's migration files (server/migrations) the server has applied; older servers also list
+  // PocketBase's own.
   migrations: readonly string[];
   minimumAppSyncVersion: number;
 }>;

@@ -10,7 +10,7 @@ import {
   setRateLimitExclusions,
 } from '@/test/pocketbase-test-server';
 import { describeSyncScenarios } from '@/test/sync-scenarios';
-import { checkServerVersion } from './server-version';
+import { checkServerVersion, SERVER_MIGRATION_LIST } from './server-version';
 import { createSyncApi, signIn } from './sync-api';
 
 // The sync against a real PocketBase with server/migrations: the scenarios of sync-engine.test.ts,
@@ -126,6 +126,94 @@ describe('synchronize with PocketBase', () => {
         data: { id: { code: 'validation_not_unique' } },
       });
       await expect(server.rowsOf('recipes')).resolves.toMatchObject([{ title: 'Soup' }]);
+    });
+
+    it('refuses a change at the stored version, but not the same content or a photo (server/migrations)', async () => {
+      const recipe = {
+        ...ROW,
+        id: 'aaaaaaaaaaaaaaa',
+        ingredients: ['bbbbbbbbbbbbbbb', 'ccccccccccccccc'],
+        quantities: { bbbbbbbbbbbbbbb: { amount: 2 } },
+      };
+      await call('collections/recipes/records', {
+        body: JSON.stringify(recipe),
+        method: 'POST',
+        token,
+      });
+      await call('collections/ingredients/records', {
+        body: JSON.stringify({ deleted: 0, id: 'bbbbbbbbbbbbbbb', modified: 1000, name: 'eggs' }),
+        method: 'POST',
+        token,
+      });
+      const patch = (path: string, body: object) =>
+        call(`collections/${path}`, { body: JSON.stringify(body), method: 'PATCH', token });
+      const form = new FormData();
+      form.append('@jsonPayload', JSON.stringify({ modified: 1000 }));
+      form.append('photo', new Blob([new Uint8Array([0xff, 0xd8, 0xff])]), 'photo.jpg');
+
+      const missingIngredient = await patch(`recipes/records/${recipe.id}`, {
+        ...recipe,
+        ingredients: ['ccccccccccccccc'],
+      });
+      const otherTitle = await patch(`recipes/records/${recipe.id}`, { ...recipe, title: 'Stew' });
+      const otherName = await patch('ingredients/records/bbbbbbbbbbbbbbb', {
+        modified: 1000,
+        name: 'egg',
+      });
+      const same = await patch(`recipes/records/${recipe.id}`, recipe);
+      const photo = await nodeFetch(
+        `${server.serverUrl}/api/collections/recipes/records/${recipe.id}`,
+        {
+          body: form,
+          headers: { Authorization: token },
+          method: 'PATCH',
+        },
+      );
+      const newer = await patch(`recipes/records/${recipe.id}`, {
+        ...recipe,
+        ingredients: [],
+        modified: 1001,
+      });
+      const [stored] = await server.rowsOf('recipes');
+
+      expect([missingIngredient.status, otherTitle.status, otherName.status]).toStrictEqual([
+        404, 404, 404,
+      ]);
+      expect([same.status, photo.status, newer.status]).toStrictEqual([200, 200, 200]);
+      expect(stored).toMatchObject({ ingredients: [], title: 'Soup' });
+      expect(stored?.photo).toMatch(/^photo_\w+\.jpg$/);
+    });
+
+    it('refuses a version more than a day ahead of its clock (server/hooks)', async () => {
+      await createRecipe('aaaaaaaaaaaaaaa');
+      const twoDaysAhead = Date.now() + 2 * 24 * 60 * 60 * 1000;
+
+      const created = await call('collections/recipes/records', {
+        body: JSON.stringify({ ...ROW, id: 'bbbbbbbbbbbbbbb', modified: twoDaysAhead }),
+        method: 'POST',
+        token,
+      });
+      const updated = await call('collections/recipes/records/aaaaaaaaaaaaaaa', {
+        body: JSON.stringify({ ...ROW, modified: twoDaysAhead }),
+        method: 'PATCH',
+        token,
+      });
+      const hourAhead = await call('collections/recipes/records/aaaaaaaaaaaaaaa', {
+        body: JSON.stringify({ ...ROW, modified: Date.now() + 60 * 60 * 1000, title: 'Stew' }),
+        method: 'PATCH',
+        token,
+      });
+
+      expect([created.status, updated.status, hourAhead.status]).toStrictEqual([400, 400, 200]);
+      await expect(server.rowsOf('recipes')).resolves.toMatchObject([{ title: 'Stew' }]);
+    });
+
+    it('lists only the app’s migrations, not PocketBase’s own (server/hooks)', async () => {
+      const api = createSyncApi({ fetch: nodeFetch, serverUrl: server.serverUrl, token: '' });
+
+      const info = await api.getServerInfo();
+
+      expect(info?.migrations).toStrictEqual(SERVER_MIGRATION_LIST);
     });
 
     it('gives a recipe the account that creates it as author, which no request changes (server/hooks)', async () => {

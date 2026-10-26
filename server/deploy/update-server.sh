@@ -23,8 +23,11 @@ pb_service="${PB_SERVICE:-pocketbase}"
 pb_user="${PB_USER:-pocketbase}"
 health_url="${PB_HEALTH_URL:-http://127.0.0.1:8090/api/health}"
 lock_file="${UPDATE_LOCK:-/run/lock/dishes-cook-update-server.lock}"
-backup_dir="$pb_dir/backups-before-update"
-version_file="$pb_dir/server-files.version"
+# The updater's own files, root-only: in $pb_dir, which PocketBase's user may own, that user could
+# swap them for links (root would then write or delete elsewhere) or forge the installed version.
+state_dir="${UPDATE_STATE_DIR:-/var/lib/dishes-cook-update}"
+backup_dir="$state_dir/backups-before-update"
+version_file="$state_dir/server-files.version"
 backups_kept=5
 # What signs a release's server files: the repo's release workflow, run on main by GitHub Actions.
 signer="https://github.com/$repo/.github/workflows/release.yml@refs/heads/main"
@@ -71,7 +74,40 @@ if ! flock -w 900 9; then
 fi
 
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+# A backup still being written (backup_part below) goes too when the update stops halfway.
+backup_part=''
+trap 'rm -rf "$work"; [[ -z "$backup_part" ]] || rm -f -- "$backup_part"' EXIT
+
+if [[ -L "$state_dir" ]]; then
+  log "refusing to update: $state_dir is a link"
+  exit 1
+fi
+install -d -o root -g root -m 700 "$state_dir"
+# Updaters before this one kept these files in $pb_dir: moved once. The version is kept only if
+# PocketBase's user can't have written it (a plain file of root's, writable by root only: they
+# wrote it so) and it reads right; otherwise there's none, and the archive is installed. A forged
+# future version would make the updater skip every release.
+legacy_version_file="$pb_dir/server-files.version"
+if [[ ! -e "$version_file" && -e "$legacy_version_file" ]]; then
+  old_time=''
+  old_commit=''
+  if [[ -n "$(find "$legacy_version_file" -maxdepth 0 -type f -user root ! -perm /022)" ]]; then
+    read -r old_time old_commit < "$legacy_version_file" || true
+  fi
+  if [[ "${old_time:-}" =~ ^[0-9]+$ && "${old_commit:-}" =~ ^[0-9a-f]+$ ]]; then
+    echo "$old_time $old_commit" > "$version_file"
+  fi
+  if [[ -f "$legacy_version_file" || -L "$legacy_version_file" ]]; then
+    rm -f "$legacy_version_file"
+  else
+    log "ignoring $legacy_version_file: not a file"
+  fi
+fi
+if [[ ! -e "$backup_dir" && -d "$pb_dir/backups-before-update" && ! -L "$pb_dir/backups-before-update" ]]; then
+  mv "$pb_dir/backups-before-update" "$backup_dir"
+  chown -R root:root "$backup_dir"
+  chmod 700 "$backup_dir"
+fi
 
 if [[ "${1:-}" == "--archive" ]]; then
   archive="${2:?--archive needs a file}"
@@ -119,14 +155,23 @@ tar -xzf "$archive" -C "$work/files"
 
 # VERSION: "<commit time> <commit>" of the files (scripts/pack-server-files.sh).
 read -r archive_time archive_commit < "$work/files/VERSION" || true
-if [[ ! "${archive_time:-}" =~ ^[0-9]+$ || -z "${archive_commit:-}" ]]; then
+if [[ ! "${archive_time:-}" =~ ^[0-9]+$ || ! "${archive_commit:-}" =~ ^[0-9a-f]+$ ]]; then
   log "refusing the archive: invalid VERSION"
   exit 1
 fi
 installed_time=0
 installed_commit=none
+if [[ -L "$version_file" || (-e "$version_file" && ! -f "$version_file") ]]; then
+  log "refusing to update: $version_file isn't a file"
+  exit 1
+fi
 if [[ -f "$version_file" ]]; then
-  read -r installed_time installed_commit < "$version_file"
+  read -r installed_time installed_commit < "$version_file" || true
+  # Checked before any use: bash would run a command written in an arithmetic expression.
+  if [[ ! "${installed_time:-}" =~ ^[0-9]+$ || ! "${installed_commit:-}" =~ ^[0-9a-f]+$ ]]; then
+    log "refusing to update: $version_file is invalid"
+    exit 1
+  fi
 fi
 if (( archive_time < installed_time )); then
   log "skipped: these files ($archive_commit) are older than the installed ones ($installed_commit)"
@@ -204,19 +249,38 @@ rollback() {
 }
 
 systemctl stop "$pb_service"
+# PocketBase's folders must be folders, not links that would make root write, copy or delete
+# elsewhere. Checked with PocketBase stopped: its user can't change them any more meanwhile.
+for name in pb_data pb_migrations pb_hooks; do
+  if [[ -L "$pb_dir/$name" || (-e "$pb_dir/$name" && ! -d "$pb_dir/$name") ]]; then
+    log "refusing to update: $pb_dir/$name isn't a folder"
+    if ! systemctl start "$pb_service" || ! is_healthy; then
+      log "PocketBase didn't come back healthy: check \`journalctl -u $pb_service\`"
+    fi
+    exit 1
+  fi
+done
 # From here, any failing command rolls back (the ERR trap, with set -E for functions).
 trap 'log "failed (line $LINENO)"; rollback' ERR
 install -d -o "$pb_user" -g "$pb_user" -m 755 "$pb_dir/pb_migrations" "$pb_dir/pb_hooks"
 # Backups hold the users' data (accounts included): readable by root only.
 install -d -m 700 "$backup_dir"
 backup="$backup_dir/pb_data-$(date +%Y%m%d-%H%M%S).tar.gz"
-(umask 077 && tar -czf "$backup" -C "$pb_dir" pb_data)
+# Written to a new private file, then renamed: a link already at that name (moved from an earlier
+# updater's folder) is replaced, never written through.
+backup_part="$(mktemp "$backup_dir/.pb_data.XXXXXX")"
+tar -czf "$backup_part" -C "$pb_dir" pb_data
+mv -fT "$backup_part" "$backup"
+backup_part=''
 cp -a "$pb_dir/pb_hooks" "$work/previous_hooks"
 
+# A file is replaced, never written through: removed first, in case it's a link.
 for name in "${new_migration_list[@]}"; do
+  rm -f "$pb_dir/pb_migrations/$name"
   install -o "$pb_user" -g "$pb_user" -m 644 "$work/files/migrations/$name" "$pb_dir/pb_migrations/"
 done
 for name in "${changed_hook_list[@]}"; do
+  rm -f "$pb_dir/pb_hooks/$name"
   install -o "$pb_user" -g "$pb_user" -m 644 "$work/files/hooks/$name" "$pb_dir/pb_hooks/"
 done
 for name in "${removed_hook_list[@]}"; do

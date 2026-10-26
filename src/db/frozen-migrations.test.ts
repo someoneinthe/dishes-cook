@@ -44,6 +44,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
     '0554a8f3f2d19e4930fd153d113e67fd83b7d65591885ecbe7ca3b0983e90d9f',
   ],
   [
+    'server/migrations/1792900000-same-version-unchanged.js',
+    '75ea8531a32bfe106eed3d9a81f96c5ff0d6e9c37d156859aa9d929e47348419',
+  ],
+  [
     'src/db/migrations/0000_init.sql',
     '76cc3f90b737b4d4fc587e49f95b56a56dbffc1d15747624574ea1ef73c7a018',
   ],
