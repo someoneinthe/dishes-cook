@@ -58,6 +58,7 @@ erDiagram
     text season "winter / summer / both"
     integer server_version "nullable"
     text sort_key
+    text synced_content "nullable"
     text sync_id UK
     text title
     integer updated_at

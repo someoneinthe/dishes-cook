@@ -308,6 +308,110 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     expect(titlesOf(phoneB)).toStrictEqual(['Soup by b']);
   });
 
+  describe('keeps both phones’ changes to the same recipe', () => {
+    // Saves the phone's copy of the soup with these changes, as the form does.
+    const edit = (
+      phone: Phone,
+      change: (
+        recipe: NonNullable<ReturnType<typeof recipeOf>>,
+      ) => Partial<Parameters<typeof saveRecipe>[1]>,
+    ) => {
+      const recipe = recipeOf(phone, 'Soup');
+      if (!recipe) {
+        throw new Error('No soup');
+      }
+      saveRecipe(
+        phone.db,
+        {
+          ingredientIdList: recipe.ingredientList.map(({ id }) => id),
+          instructions: recipe.instructions,
+          quantities: new Map(
+            recipe.ingredientList.flatMap(({ id, quantity }) => (quantity ? [[id, quantity]] : [])),
+          ),
+          season: recipe.season,
+          title: recipe.title,
+          ...change(recipe),
+        },
+        recipe.id,
+      );
+    };
+    const idOf = (phone: Phone, name: string) => findOrCreateIngredient(phone.db, name).id;
+    const shownOf = (phone: Phone, title: string) => {
+      const recipe = recipeOf(phone, title);
+      return (
+        recipe && {
+          ingredientList: recipe.ingredientList.map(({ name, quantity }) =>
+            quantity ? `${name} ${quantity.amount}${quantity.unit ?? ''}` : name,
+          ),
+          instructions: recipe.instructions,
+          season: recipe.season,
+          title: recipe.title,
+        }
+      );
+    };
+
+    beforeEach(async () => {
+      addRecipe(phoneA, 'Soup', ['Leek', 'Potato']);
+      await syncBoth();
+    });
+
+    it('different fields: the title on one, the ingredients on the other', async () => {
+      edit(phoneA, () => ({ title: 'Leek soup' }));
+      edit(phoneB, (recipe) => ({
+        ingredientIdList: [...recipe.ingredientList.map(({ id }) => id), idOf(phoneB, 'Carrot')],
+      }));
+
+      await sync(phoneA);
+      await sync(phoneB);
+      await sync(phoneA);
+
+      const expected = {
+        ingredientList: ['Carrot', 'Leek', 'Potato'],
+        instructions: '',
+        season: 'both',
+        title: 'Leek soup',
+      };
+
+      expect(shownOf(phoneA, 'Leek soup')).toStrictEqual(expected);
+      expect(shownOf(phoneB, 'Leek soup')).toStrictEqual(expected);
+    });
+
+    it('ingredients one by one: a quantity on one, one removed and one added on the other', async () => {
+      edit(phoneA, () => ({
+        quantities: new Map([[idOf(phoneA, 'Leek'), { amount: 3 }]]),
+      }));
+      edit(phoneB, () => ({
+        ingredientIdList: [idOf(phoneB, 'Leek'), idOf(phoneB, 'Salt')],
+      }));
+
+      // B syncs first this time: A, newer, merges B's changes into its own.
+      await sync(phoneB);
+      await sync(phoneA);
+      await sync(phoneB);
+
+      expect(shownOf(phoneA, 'Soup')?.ingredientList).toStrictEqual(['Leek 3', 'Salt']);
+      expect(shownOf(phoneB, 'Soup')?.ingredientList).toStrictEqual(['Leek 3', 'Salt']);
+    });
+
+    it('the same field on both: the newest change wins it, the other fields are merged', async () => {
+      edit(phoneA, () => ({ instructions: 'From A.', season: 'winter' }));
+      edit(phoneB, () => ({ instructions: 'From B.' }));
+      // B's change a minute later (both saves can share a millisecond).
+      phoneB.db
+        .update(recipes)
+        .set({ updatedAt: Date.now() + 60_000 })
+        .run();
+
+      await sync(phoneA);
+      await sync(phoneB);
+      await sync(phoneA);
+
+      // B's text is newer (saved after A's); A's season stays.
+      expect(shownOf(phoneA, 'Soup')).toMatchObject({ instructions: 'From B.', season: 'winter' });
+      expect(shownOf(phoneB, 'Soup')).toMatchObject({ instructions: 'From B.', season: 'winter' });
+    });
+  });
+
   it('deletes on the other phone a recipe deleted on one, then forgets the deletion', async () => {
     const id = addRecipe(phoneA, 'Soup', ['Leek']);
     addRecipe(phoneA, 'Salad');

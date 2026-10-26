@@ -20,6 +20,7 @@ import { toMonths } from '@/features/recipes/months';
 import { isSyncId } from '@/lib/sync-id';
 import { cleanName, toNameKey, toSortKey } from '@/lib/text';
 import { toQuantity, toStored } from '@/lib/units';
+import type { SyncedContent } from './recipe-merge';
 import type {
   PullPosition,
   ServerAccount,
@@ -31,6 +32,7 @@ import type {
   SyncApi,
 } from './sync-api';
 import type { SyncedTableSchema } from './sync-shared';
+import { isSameContent, mergeContent, parseSyncedContent } from './recipe-merge';
 import { SyncError } from './sync-api';
 import { applySameVersionPhoto, pulledPhoto } from './sync-photos';
 import { earliest, forgetDeletion, isServerRow, isValidRow, latest } from './sync-shared';
@@ -348,19 +350,25 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
     .select({
       createdBy: recipes.createdBy,
       id: recipes.id,
+      photoFile: recipes.photoFile,
       photoPending: recipes.photoPending,
       photoSynced: recipes.photoSynced,
       serverVersion: recipes.serverVersion,
+      syncedContent: recipes.syncedContent,
       updatedAt: recipes.updatedAt,
     })
     .from(recipes)
     .where(eq(recipes.syncId, row.id))
     .get();
+  const mergedCount = mergeIfChangedOnBothSides(tx, local, row, title);
+  if (mergedCount !== undefined) {
+    return mergedCount;
+  }
   if (!isNewerThan(row, local)) {
-    markOnServer(tx, recipes, local, row);
+    markRecipeOnServer(tx, local, row, title);
     applyKnownAuthor(tx, local, row);
     applySameVersionPhoto(tx, local, row);
-    return linkArrivedIngredients(tx, local, row);
+    return linkArrivedIngredients(tx, local, row, title);
   }
   if (row.deleted > 0) {
     if (local) {
@@ -382,6 +390,7 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
     season: toSeason(row.season),
     serverVersion: row.modified,
     sortKey: toSortKey(title),
+    syncedContent: JSON.stringify(remoteContent(tx, row, title)),
     title,
     updatedAt: row.modified,
     ...pulledPhoto(row, local),
@@ -431,6 +440,20 @@ function isAfter(key: PullKey, position: PullPosition): boolean {
   return byTime > 0 || (byTime === 0 && key.id.localeCompare(id) > 0);
 }
 
+// Changed here since the phone last agreed with the server (`server_version`), and changed on the
+// server since too (another phone pushed a newer version): both changes are to keep.
+function isChangedOnBothSides(
+  local: Readonly<{ serverVersion: null | number; updatedAt: number }>,
+  row: ServerRecipe,
+): boolean {
+  return (
+    row.deleted === 0 &&
+    local.serverVersion !== null &&
+    local.updatedAt !== local.serverVersion &&
+    row.modified > local.serverVersion
+  );
+}
+
 // Deleted here after the server's change: the deletion is pushed by this sync.
 function isDeletedHereLater(tx: AppDatabase, tableName: SyncedTable, row: ServerRow): boolean {
   const deletion = tx
@@ -449,6 +472,13 @@ function isIngredientUsed(tx: AppDatabase, id: number): boolean {
     .limit(1)
     .get();
   return link !== undefined;
+}
+
+// A photo taken or removed here and not synced yet (see PHOTO_TO_PUSH): it stays through a merge.
+function isLocalPhotoChanged(
+  local: Readonly<{ photoFile: null | string; photoSynced: null | string }>,
+): boolean {
+  return (local.photoFile === null) !== (local.photoSynced === null);
 }
 
 // No row here, or an older one. Equal times are the same change (pulled before, or pushed by us).
@@ -472,6 +502,7 @@ function linkArrivedIngredients(
   tx: AppDatabase,
   local: Readonly<{ id: number; updatedAt: number }> | undefined,
   row: ServerRecipe,
+  title: string,
 ): number {
   const syncIdList = ingredientSyncIdsOf(row);
   if (local?.updatedAt !== row.modified || row.deleted > 0 || syncIdList.length === 0) {
@@ -486,9 +517,15 @@ function linkArrivedIngredients(
       .all()
       .map(({ ingredientId }) => ingredientId),
   );
-  return [...localIdMap.values()].some((id) => !linkedIdSet.has(id))
-    ? linkIngredients(tx, local.id, row)
-    : syncIdList.length - localIdMap.size;
+  if ([...localIdMap.values()].every((id) => linkedIdSet.has(id))) {
+    return syncIdList.length - localIdMap.size;
+  }
+  // The server's content, in this phone's terms now that those ingredients are here.
+  tx.update(recipes)
+    .set({ syncedContent: JSON.stringify(remoteContent(tx, row, title)) })
+    .where(eq(recipes.id, local.id))
+    .run();
+  return linkIngredients(tx, local.id, row);
 }
 
 // Replaces the recipe's ingredients (and their quantities) with the pulled ones; those not here
@@ -529,6 +566,43 @@ function linkIngredients(
   return syncIdList.length - localIdMap.size;
 }
 
+// This phone's recipe, in the terms of SyncedContent.
+function localContent(tx: AppDatabase, recipeId: number): SyncedContent | undefined {
+  const recipe = tx
+    .select({
+      cookMinutes: recipes.cookMinutes,
+      course: recipes.course,
+      instructions: recipes.instructions,
+      kind: recipes.kind,
+      maturationMonths: recipes.maturationMonths,
+      prepMinutes: recipes.prepMinutes,
+      season: recipes.season,
+      title: recipes.title,
+    })
+    .from(recipes)
+    .where(eq(recipes.id, recipeId))
+    .get();
+  if (!recipe) {
+    return undefined;
+  }
+  const linkList = tx
+    .select({
+      amount: recipeIngredients.amount,
+      syncId: ingredients.syncId,
+      unit: recipeIngredients.unit,
+    })
+    .from(recipeIngredients)
+    .innerJoin(ingredients, eq(ingredients.id, recipeIngredients.ingredientId))
+    .where(eq(recipeIngredients.recipeId, recipeId))
+    .all();
+  return {
+    ...recipe,
+    ingredients: Object.fromEntries(
+      linkList.map(({ amount, syncId, unit }) => [syncId, toQuantity(amount, unit) ?? null]),
+    ),
+  };
+}
+
 // This phone's ingredients for these sync ids: its own, or the one an alias names.
 function localIngredientIds(tx: AppDatabase, syncIdList: readonly string[]): Map<string, number> {
   const aliasList = tx
@@ -557,6 +631,124 @@ function markOnServer(
   }
 }
 
+// markOnServer for a recipe, which also keeps the server's content (`synced_content`).
+function markRecipeOnServer(
+  tx: AppDatabase,
+  local:
+    | Readonly<{
+        id: number;
+        serverVersion: null | number;
+        syncedContent: null | string;
+        updatedAt: number;
+      }>
+    | undefined,
+  row: ServerRecipe,
+  title: string,
+): void {
+  if (
+    local?.updatedAt === row.modified &&
+    (local.serverVersion !== row.modified || local.syncedContent === null)
+  ) {
+    tx.update(recipes)
+      .set({
+        serverVersion: row.modified,
+        syncedContent: JSON.stringify(remoteContent(tx, row, title)),
+      })
+      .where(eq(recipes.id, local.id))
+      .run();
+  }
+}
+
+// Changed here and on the server since they last agreed (and not deleted here meanwhile): their
+// changes are merged (mergeRecipe), from what both started from. Returns how many of its
+// ingredients aren't here (yet); undefined when there's nothing to merge, or what both started from
+// isn't known (the newest change then wins, whole).
+function mergeIfChangedOnBothSides(
+  tx: AppDatabase,
+  local:
+    | (Parameters<typeof mergeRecipe>[1]['local'] &
+        Readonly<{ serverVersion: null | number; syncedContent: null | string }>)
+    | undefined,
+  row: ServerRecipe,
+  title: string,
+): number | undefined {
+  if (!local || !isChangedOnBothSides(local, row) || isDeletedHereLater(tx, 'recipes', row)) {
+    return undefined;
+  }
+  const base = parseSyncedContent(local.syncedContent);
+  return base && mergeRecipe(tx, { base, local, row, title });
+}
+
+// The pulled version of the recipe, the phone's version and what both started from, merged field by
+// field (mergeContent). The result is pushed back by this sync, unless it's the server's version
+// (the phone's changes were already there).
+function mergeRecipe(
+  tx: AppDatabase,
+  {
+    base,
+    local,
+    row,
+    title,
+  }: Readonly<{
+    base: SyncedContent;
+    local: Readonly<{
+      createdBy: null | string;
+      id: number;
+      photoFile: null | string;
+      photoSynced: null | string;
+      updatedAt: number;
+    }>;
+    row: ServerRecipe;
+    title: string;
+  }>,
+): number {
+  const remote = remoteContent(tx, row, title);
+  const here = localContent(tx, local.id);
+  if (!here) {
+    return 0;
+  }
+  // Ingredients the phone doesn't have (not pulled yet) are left as they were: it can't have
+  // removed them.
+  const unlinkedList = Object.keys(base.ingredients).filter(
+    (syncId) => !Object.hasOwn(here.ingredients, syncId),
+  );
+  const localIdMap = localIngredientIds(tx, unlinkedList);
+  const notHereList = unlinkedList
+    .filter((syncId) => !localIdMap.has(syncId))
+    .map((syncId): [string, null | Quantity] => [syncId, base.ingredients[syncId] ?? null]);
+  const merged = mergeContent(
+    base,
+    { ...here, ingredients: { ...here.ingredients, ...Object.fromEntries(notHereList) } },
+    remote,
+    local.updatedAt > row.modified,
+  );
+  const isServerVersion = isSameContent(merged, remote);
+  tx.update(recipes)
+    .set({
+      cookMinutes: merged.cookMinutes,
+      course: merged.course,
+      createdBy: pulledAuthor(row, local),
+      instructions: merged.instructions,
+      kind: merged.kind,
+      maturationMonths: merged.maturationMonths,
+      prepMinutes: merged.prepMinutes,
+      season: merged.season,
+      serverVersion: row.modified,
+      sortKey: toSortKey(merged.title),
+      syncedContent: JSON.stringify(remote),
+      title: merged.title,
+      // Newer than both: the server takes the merged version from this phone.
+      updatedAt: isServerVersion ? row.modified : Math.max(local.updatedAt, row.modified) + 1,
+      ...(!isLocalPhotoChanged(local) && pulledPhoto(row, local)),
+    })
+    .where(eq(recipes.id, local.id))
+    .run();
+  return linkIngredients(tx, local.id, {
+    ingredients: Object.keys(merged.ingredients),
+    quantities: merged.ingredients,
+  });
+}
+
 // The other ingredient here with this name (not `id`), if any.
 function otherIngredientNamed(
   tx: AppDatabase,
@@ -572,6 +764,19 @@ function otherIngredientNamed(
         : and(eq(ingredients.nameKey, nameKey), ne(ingredients.id, id)),
     )
     .get()?.id;
+}
+
+// The own sync ids of these ingredients, by id.
+function ownSyncIds(tx: AppDatabase, idList: readonly number[]): Map<number, string> {
+  if (idList.length === 0) {
+    return new Map();
+  }
+  const rowList = tx
+    .select({ id: ingredients.id, syncId: ingredients.syncId })
+    .from(ingredients)
+    .where(inArray(ingredients.id, [...idList]))
+    .all();
+  return new Map(rowList.map(({ id, syncId }) => [id, syncId]));
 }
 
 // A pulled recipe's author: the account's id; without a usable one, what the phone already has
@@ -609,6 +814,32 @@ function pulledTimes(row: ServerRecipe) {
     cookMinutes: toMinutes(row.cook_minutes) ?? null,
     maturationMonths: toMonths(row.maturation_months) ?? null,
     prepMinutes: toMinutes(row.prep_minutes) ?? null,
+  };
+}
+
+// A pulled recipe in the terms of SyncedContent: its ingredients by this phone's sync id for them
+// when it has them (its own, or the one an alias names), else by the server's.
+function remoteContent(tx: AppDatabase, row: ServerRecipe, title: string): SyncedContent {
+  const syncIdList = ingredientSyncIdsOf(row);
+  const localIdMap = localIngredientIds(tx, syncIdList);
+  const ownSyncIdMap = ownSyncIds(tx, [...localIdMap.values()]);
+  const ingredientMap: Record<string, null | Quantity> = {};
+  for (const syncId of syncIdList) {
+    const localId = localIdMap.get(syncId);
+    const key = (localId === undefined ? undefined : ownSyncIdMap.get(localId)) ?? syncId;
+    // The first sync id naming an ingredient, as linkIngredients.
+    if (!Object.hasOwn(ingredientMap, key)) {
+      ingredientMap[key] = pulledQuantity(row.quantities, syncId) ?? null;
+    }
+  }
+  return {
+    course: toCourse(row.course),
+    ingredients: ingredientMap,
+    instructions: typeof row.instructions === 'string' ? row.instructions.trim() : '',
+    kind: toRecipeKind(row.kind),
+    ...pulledTimes(row),
+    season: toSeason(row.season),
+    title,
   };
 }
 
