@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs on the sync server, as root: installs the server files of a dishes-cook version (PocketBase
-# migrations and hooks), see docs/sync.md › Updating the server.
+# migrations and hooks, and the web app PocketBase serves), see docs/sync.md › Updating the server.
 #
 #   update-server.sh                     the latest GitHub release's server-files.tar.gz, installed
 #                                        only if its attestation proves the repo's release workflow
@@ -137,13 +137,17 @@ else
   fi
   archive="$work/server-files.tar.gz"
 fi
-# Only plain files under migrations/ and hooks/, and VERSION: no links (cmp and install, as root,
-# would follow them), devices or other paths.
+# Only plain files under migrations/ and hooks/, folders and plain files under public/ (the web
+# app, names of letters, digits and ._@+- only, never "." or ".."), and VERSION: no links (cmp and
+# install, as root, would follow them), devices or other paths.
 if ! tar -tvzf "$archive" | awk '
   BEGIN { valid = 1; has_version = 0 }
   $1 ~ /^d/ && ($NF == "migrations/" || $NF == "hooks/") { next }
   $1 ~ /^-/ && $NF == "VERSION" { has_version = 1; next }
   $1 ~ /^-/ && $NF ~ /^(migrations|hooks)\/[^/]+$/ { next }
+  $NF ~ /(^|\/)\.\.?(\/|$)/ { valid = 0; next }
+  $1 ~ /^d/ && $NF ~ /^public\/([[:alnum:]_@.+-]+\/)*$/ { next }
+  $1 ~ /^-/ && $NF ~ /^public\/([[:alnum:]_@.+-]+\/)*[[:alnum:]_@.+-]+$/ { next }
   { valid = 0 }
   END { exit !(valid && has_version) }
 '; then
@@ -204,13 +208,21 @@ for file in "$pb_dir/pb_hooks"/*.js; do
     removed_hook_list+=("$name")
   fi
 done
-if (( ${#new_migration_list[@]} + ${#changed_hook_list[@]} + ${#removed_hook_list[@]} == 0 )); then
+# The web app (public/, PocketBase's pb_public/), replaced whole when it differs. An archive without
+# one (from before the web app) leaves the installed one.
+is_public_changed=false
+if [[ -d "$work/files/public" ]] && ! diff -rq "$work/files/public" "$pb_dir/pb_public" > /dev/null 2>&1; then
+  is_public_changed=true
+fi
+if (( ${#new_migration_list[@]} + ${#changed_hook_list[@]} + ${#removed_hook_list[@]} == 0 )) &&
+  [[ "$is_public_changed" == false ]]; then
   echo "$archive_time $archive_commit" > "$version_file"
   log "up to date ($archive_commit)"
   exit 0
 fi
 log "installing $archive_commit: migrations ${new_migration_list[*]:-none};" \
-  "hooks ${changed_hook_list[*]:-none}; removed hooks ${removed_hook_list[*]:-none}"
+  "hooks ${changed_hook_list[*]:-none}; removed hooks ${removed_hook_list[*]:-none};" \
+  "web app $([[ "$is_public_changed" == true ]] && echo changed || echo unchanged)"
 
 is_healthy() {
   for _ in $(seq 1 30); do
@@ -224,6 +236,7 @@ is_healthy() {
 
 # Puts back the files (and the data, once PocketBase ran with the new files), then starts it.
 is_data_changed=false
+is_public_installed=false
 rollback() {
   trap - ERR
   log "putting the previous data and files back"
@@ -239,6 +252,12 @@ rollback() {
     rm -rf "$pb_dir/pb_hooks"
     cp -a "$work/previous_hooks" "$pb_dir/pb_hooks"
   fi
+  if [[ "$is_public_installed" == true ]]; then
+    rm -rf "$pb_dir/pb_public"
+    if [[ -d "$work/previous_public" ]]; then
+      cp -a "$work/previous_public" "$pb_dir/pb_public"
+    fi
+  fi
   systemctl start "$pb_service" || true
   if is_healthy; then
     log "rolled back: PocketBase runs as before the update"
@@ -251,7 +270,7 @@ rollback() {
 systemctl stop "$pb_service"
 # PocketBase's folders must be folders, not links that would make root write, copy or delete
 # elsewhere. Checked with PocketBase stopped: its user can't change them any more meanwhile.
-for name in pb_data pb_migrations pb_hooks; do
+for name in pb_data pb_migrations pb_hooks pb_public; do
   if [[ -L "$pb_dir/$name" || (-e "$pb_dir/$name" && ! -d "$pb_dir/$name") ]]; then
     log "refusing to update: $pb_dir/$name isn't a folder"
     if ! systemctl start "$pb_service" || ! is_healthy; then
@@ -286,6 +305,17 @@ done
 for name in "${removed_hook_list[@]}"; do
   rm -f "$pb_dir/pb_hooks/$name"
 done
+# The web app: root's, which PocketBase only reads (its user can't change what browsers run).
+if [[ "$is_public_changed" == true ]]; then
+  if [[ -d "$pb_dir/pb_public" ]]; then
+    cp -a "$pb_dir/pb_public" "$work/previous_public"
+  fi
+  is_public_installed=true
+  rm -rf "$pb_dir/pb_public"
+  cp -R "$work/files/public" "$pb_dir/pb_public"
+  chown -R root:root "$pb_dir/pb_public"
+  chmod -R u=rwX,go=rX "$pb_dir/pb_public"
+fi
 # Starting applies the new migrations: from now on, the data may change.
 is_data_changed=true
 systemctl start "$pb_service"

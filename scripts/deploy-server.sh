@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Deploys this checkout's server files (server/migrations, server/hooks) to the sync server over
-# SSH, and installs or refreshes its updater and hourly timer (see docs/sync.md › Updating the
+# Deploys this checkout's server files (server/migrations, server/hooks, and the web app it serves)
+# to the sync server over SSH, and installs or refreshes its updater and hourly timer (see docs/sync.md › Updating the
 # server). SYNC_SERVER_SSH is the server's SSH login (user@host, with sudo there).
 #
 # Only from an up-to-date main with no local change under server/ (FORCE=1 to deploy anyway, e.g.
@@ -35,7 +35,9 @@ cleanup() {
 }
 work="$(mktemp -d)"
 trap cleanup EXIT
-scripts/pack-server-files.sh "$work/server-files.tar.gz"
+# The web app the server serves (docs/sync.md › Web app), built from this checkout.
+npm run --silent web:export -- --output-dir "$work/web" > /dev/null
+scripts/pack-server-files.sh "$work/server-files.tar.gz" "$work/web"
 
 remote="$(ssh "$SYNC_SERVER_SSH" mktemp -d)"
 if ! is_remote_valid; then
