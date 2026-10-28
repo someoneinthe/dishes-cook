@@ -1,4 +1,4 @@
-import type { Bbox, Page, Worker } from 'tesseract.js';
+import type { Bbox, Line, Page, Worker } from 'tesseract.js';
 import type { DocumentKind } from './recipe-documents';
 import type { ScannedBlock, ScannedLine } from './scanned-recipe';
 import { joinPages, readDocx, readOdt, readPlainText } from './recipe-documents';
@@ -44,11 +44,6 @@ export async function readDocument(
 
 function boxHeight({ y0, y1 }: Bbox): number {
   return y1 - y0;
-}
-
-function middleHeight(heightList: readonly number[], lineBox: Bbox): number {
-  const sortedList = [...heightList].sort((first, second) => first - second);
-  return sortedList[Math.floor(sortedList.length / 2)] ?? boxHeight(lineBox);
 }
 
 // The site's address of a text recognition file (absolute: Tesseract's worker runs from a blob).
@@ -105,6 +100,11 @@ async function readPdf(uri: string) {
   }
 }
 
+// A line's row height, or its box's when Tesseract gives none.
+function rowHeight(line: Line): number {
+  return line.rowAttributes.rowHeight > 0 ? line.rowAttributes.rowHeight : boxHeight(line.bbox);
+}
+
 // Tesseract's worker, from the app's own files; terminated once the document is read (it holds its
 // languages' data, tens of MB).
 async function startTextRecognition(): Promise<Worker> {
@@ -124,20 +124,16 @@ function toFrame({ x0, x1, y0, y1 }: Bbox) {
 }
 
 // Tesseract's result as the recipe reader takes it (see toScannedBlocks in read-document.ts): the
-// height of a photo's lines is their words' middle height (a slanted photo makes a long line's box
-// taller than its letters), a PDF page's their box's.
+// height of a photo's lines is Tesseract's row height (the font's size, from its ascenders to its
+// descenders, the line straightened: its words' boxes fit their ink, so "de" would be shorter
+// than "Ingrédients" in a smaller font), a PDF page's their box's.
 function toScannedBlocks(page: Page, isLevel: boolean): ScannedBlock[] {
   return (page.blocks ?? []).map((block) => ({
     frame: toFrame(block.bbox),
     lineList: block.paragraphs
       .flatMap((paragraph) => paragraph.lines)
       .map((line): ScannedLine => ({
-        height: isLevel
-          ? boxHeight(line.bbox)
-          : middleHeight(
-              line.words.map(({ bbox }) => boxHeight(bbox)),
-              line.bbox,
-            ),
+        height: isLevel ? boxHeight(line.bbox) : rowHeight(line),
         text: line.text.trim(),
       }))
       .filter((line) => line.text !== ''),

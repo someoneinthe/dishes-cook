@@ -9,7 +9,7 @@ import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
 import { useDatabaseConnection } from '@/db/database-context';
 import { useMessages } from '@/i18n/i18n-provider';
-import { isTv } from '@/lib/device';
+import { isTv, isWeb } from '@/lib/device';
 import type { SyncErrorKind } from '../sync-api';
 import type { SyncState } from '../sync-store';
 import { isInsecureServerUrl, normalizeServerUrl, serverHost, SyncError } from '../sync-api';
@@ -76,7 +76,8 @@ export function ServerSyncSection({ isSyncNowFocused = false }: ServerSyncSectio
 function ConnectForm() {
   const t = useMessages();
   const connection = useDatabaseConnection();
-  const [serverAddress, setServerAddress] = useState('');
+  // In a browser, the web app comes from the sync server itself: its address is the server's.
+  const [serverAddress, setServerAddress] = useState(isWeb ? location.origin : '');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<ConnectError>();
