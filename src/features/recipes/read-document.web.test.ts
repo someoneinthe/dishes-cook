@@ -94,7 +94,7 @@ describe('reading a document in a browser', () => {
     const page = {
       cleanup: jest.fn(),
       getViewport: ({ scale }: { scale: number }) => ({ height: 842 * scale, width: 595 * scale }),
-      render: jest.fn(() => ({ promise: Promise.resolve() })),
+      render: jest.fn((_options: unknown) => ({ promise: Promise.resolve() })),
     };
     const destroy = jest.fn(() => Promise.resolve());
     jest.mocked(getDocument).mockReturnValue({
@@ -113,11 +113,13 @@ describe('reading a document in a browser', () => {
   });
 
   it('reads Word, OpenDocument and text files by itself', async () => {
-    fetched(new Blob([wordDocument('Soupe', ['Ingrédients'])]));
+    const docx = new Uint8Array(wordDocument('Soupe', ['Ingrédients']));
+    fetched(new Blob([docx]));
 
     await expect(readDocument('blob:docx', 'docx')).resolves.toMatchObject({ isLevel: true });
 
-    fetched(new Blob([openDocument('Soupe', ['Ingrédients'])]));
+    const odt = new Uint8Array(openDocument('Soupe', ['Ingrédients']));
+    fetched(new Blob([odt]));
 
     await expect(readDocument('blob:odt', 'odt')).resolves.toMatchObject({ isCut: false });
 
