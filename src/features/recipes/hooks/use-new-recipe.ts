@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import type { RecipeKind } from '@/db/schema';
 import { Alert } from '@/components/alert';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isWeb } from '@/lib/device';
 import { kindTexts } from '../kind';
 import { putScannedDraft } from '../scanned-recipe';
 import { useRecipeScan } from './use-recipe-scan';
@@ -27,7 +28,10 @@ export function useNewRecipe(kind: RecipeKind = 'dish') {
             text: t.recipeScan.write,
           },
           { onPress: () => void readFrom('file'), text: t.recipeScan.chooseFile },
-          { onPress: () => void readFrom('camera'), text: t.recipeScan.takePhoto },
+          // A browser has no camera to open here (a photo is a file).
+          ...(isWeb
+            ? []
+            : [{ onPress: () => void readFrom('camera'), text: t.recipeScan.takePhoto }]),
         ],
         { cancelable: true },
       );

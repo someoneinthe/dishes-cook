@@ -4,6 +4,7 @@ import { Alert } from '@/components/alert';
 import { Button } from '@/components/button';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useMessages } from '@/i18n/i18n-provider';
+import { isWeb } from '@/lib/device';
 import type { PhotoSource } from '../recipe-photos';
 import { pickRecipePhoto, recipePhotoFile } from '../recipe-photos';
 import { RecipePhoto } from './recipe-photo';
@@ -34,6 +35,11 @@ export function RecipePhotoField({ file, onChange, title }: RecipePhotoFieldProp
     }
   };
   const choose = () => {
+    // A browser has no camera to open here: its file picker, right away.
+    if (isWeb) {
+      void pickFrom('library');
+      return;
+    }
     Alert.alert(file === undefined ? t.recipes.addPhoto : t.recipes.changePhoto, undefined, [
       { style: 'cancel', text: t.common.cancel },
       { onPress: () => void pickFrom('library'), text: t.recipeScan.choosePhoto },

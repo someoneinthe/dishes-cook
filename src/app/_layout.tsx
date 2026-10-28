@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import { preventAutoHideAsync } from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { KeyboardAvoidingView, View } from 'react-native';
+import { KeyboardAvoidingView, StyleSheet as NativeStyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { AlertHost } from '@/components/alert-host';
@@ -33,7 +33,7 @@ export default function RootLayout() {
 
   return (
     // The drawer's swipe gesture needs the gesture handler root.
-    <GestureHandlerRootView style={styles.root}>
+    <GestureHandlerRootView style={nativeStyles.root}>
       <I18nProvider language={language}>
         {/* Photos no recipe uses any more (replaced by a sync, or a form left unsaved): deleted. */}
         <DatabaseProvider onReady={({ db }) => deleteUnusedPhotos(db)}>
@@ -84,6 +84,10 @@ function RootStack() {
     </Stack>
   );
 }
+
+// Not a Unistyles style: Unistyles only styles React Native's own components in a browser, where
+// the gesture handler's root would get no height (an empty page).
+const nativeStyles = NativeStyleSheet.create({ root: { flex: 1 } });
 
 const styles = StyleSheet.create((theme, rt) => ({
   root: {

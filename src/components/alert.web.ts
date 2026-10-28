@@ -1,4 +1,4 @@
-import type { AlertButton } from 'react-native';
+import type { AlertButton, AlertOptions } from 'react-native';
 import { createListeners } from '@/lib/listeners';
 
 // The web's dialogs: react-native-web's Alert does nothing, so Alert.alert queues the dialog and
@@ -15,7 +15,13 @@ const queue: { list: readonly ShownAlert[]; nextId: number } = { list: [], nextI
 const listeners = createListeners();
 
 export const Alert = {
-  alert(title: string, message?: string, buttonList?: AlertButton[]): void {
+  // A dialog without Cancel closes with Escape too, as `cancelable` asks.
+  alert(
+    title: string,
+    message?: string,
+    buttonList?: AlertButton[],
+    _options?: AlertOptions,
+  ): void {
     queue.list = [
       ...queue.list,
       // Without buttons, an OK button, like Android's (AlertHost names it).

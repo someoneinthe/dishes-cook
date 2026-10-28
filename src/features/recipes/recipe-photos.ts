@@ -1,4 +1,3 @@
-import { inArray } from 'drizzle-orm';
 import { Directory, File, Paths } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import {
@@ -8,7 +7,10 @@ import {
 } from 'expo-image-picker';
 import type { AppDatabase } from '@/db/types';
 import type { PhotoStore } from '@/features/sync/sync-photos';
-import { recipes } from '@/db/schema';
+import type { PhotoSource, StoredPhoto } from './recipe-photo-shared';
+import { newPhotoName, unusedNames } from './recipe-photo-shared';
+
+export type { PhotoSource, StoredPhoto } from './recipe-photo-shared';
 
 // Recipes' photos: JPEG files in the app's documents (kept with the app's data), one per recipe,
 // named at random. The database keeps the file's name (recipes.photo_file).
@@ -33,7 +35,7 @@ type PickResult = 'cancelled' | 'denied' | Readonly<{ file: string }>;
 // deleted is swept at the next start.
 export function deleteRecipePhoto(file: string): void {
   try {
-    const photo = recipePhotoFile(file);
+    const photo = photoFile(file);
     if (photo.exists) {
       photo.delete();
     }
@@ -76,13 +78,10 @@ export const recipePhotoStore: PhotoStore = {
   // The file itself: a Blob, which the app's fetch (Expo's) sends. It refuses React Native's
   // { uri, name, type } files.
   toUpload: (file) => {
-    const photo = recipePhotoFile(file);
+    const photo = photoFile(file);
     return photo.exists ? photo : undefined;
   },
 };
-
-// Where a recipe's photo comes from: the camera, or the phone's photos.
-export type PhotoSource = 'camera' | 'library';
 
 // Takes a photo or picks one, cropped by the picker, then saves it resized as a recipe photo.
 export async function pickRecipePhoto(source: PhotoSource): Promise<PickResult> {
@@ -122,8 +121,8 @@ export async function pickRecipePhoto(source: PhotoSource): Promise<PickResult> 
 }
 
 // The photo's file (it may be missing: not downloaded yet, or deleted).
-export function recipePhotoFile(file: string): File {
-  return new File(Paths.document, RECIPE_PHOTO_FOLDER, file);
+export function recipePhotoFile(file: string): StoredPhoto {
+  return photoFile(file);
 }
 
 // The picker's and the manipulator's copies of the photo (the user's own photos are elsewhere).
@@ -140,15 +139,8 @@ function deleteTemporaryCopies(): void {
   }
 }
 
-// The time of the last photo name given (see newPhotoName).
-const nameClock = { last: 0 };
-
-// A new photo's file name: the time, in ms, one later than the last name if two are given in the
-// same ms. It needn't be secret (the app's private files) and is never reused: if the clock went
-// back onto an existing photo, saving onto it fails, nothing is overwritten.
-function newPhotoName(): string {
-  nameClock.last = Math.max(Date.now(), nameClock.last + 1);
-  return [nameClock.last.toString(36), 'jpg'].join('.');
+function photoFile(file: string): File {
+  return new File(Paths.document, RECIPE_PHOTO_FOLDER, file);
 }
 
 // The photos' folder, created if needed.
@@ -156,17 +148,4 @@ function photoFolder(): Directory {
   const folder = new Directory(Paths.document, RECIPE_PHOTO_FOLDER);
   folder.create({ idempotent: true, intermediates: true });
   return folder;
-}
-
-// The names of the list that no recipe uses.
-function unusedNames(database: AppDatabase, nameList: readonly string[]): string[] {
-  const usedSet = new Set(
-    database
-      .select({ photoFile: recipes.photoFile })
-      .from(recipes)
-      .where(inArray(recipes.photoFile, [...nameList]))
-      .all()
-      .map(({ photoFile }) => photoFile),
-  );
-  return nameList.filter((name) => !usedSet.has(name));
 }
