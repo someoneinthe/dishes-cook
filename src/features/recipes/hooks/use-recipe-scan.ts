@@ -2,7 +2,7 @@ import { getDocumentAsync } from 'expo-document-picker';
 import { Directory, Paths } from 'expo-file-system';
 import { launchCameraAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert } from '@/components/alert';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { DocumentKind } from '../recipe-documents';
 import type { ScannedRecipe } from '../scanned-recipe';

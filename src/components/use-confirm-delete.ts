@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { Alert } from '@/components/alert';
 import { useMessages } from '@/i18n/i18n-provider';
 
 type DeleteRequest = Readonly<{

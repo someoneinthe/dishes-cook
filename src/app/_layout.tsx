@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import { AlertHost } from '@/components/alert-host';
 import { headerTitleWithIcon } from '@/components/header-title';
 import { MENU_ICONS } from '@/components/menu-entry-options';
 import { stackHeader } from '@/components/stack-header';
@@ -49,6 +50,8 @@ export default function RootLayout() {
           </View>
         </DatabaseProvider>
         <StatusBar style="auto" />
+        {/* The web's dialogs (Android shows its own). */}
+        <AlertHost />
         {isLoadingScreenVisible && (
           <LoadingScreen onFinish={() => setIsLoadingScreenVisible(false)} />
         )}

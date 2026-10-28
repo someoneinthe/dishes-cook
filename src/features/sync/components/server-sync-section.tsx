@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import type { SegmentedOption } from '@/components/segmented-control';
 import type { Messages } from '@/i18n/en';
+import { Alert } from '@/components/alert';
 import { Button } from '@/components/button';
 import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';

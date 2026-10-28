@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { Alert } from 'react-native';
 import type { RecipeKind } from '@/db/schema';
+import { Alert } from '@/components/alert';
 import { useMessages } from '@/i18n/i18n-provider';
 import { kindTexts } from '../kind';
 import { putScannedDraft } from '../scanned-recipe';

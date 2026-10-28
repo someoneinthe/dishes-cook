@@ -37,6 +37,7 @@
     "react-native-safe-area-context": "~5.10.1",
     "react-native-screens": "~4.30.0",
     "react-native-unistyles": "^3.4.0",
+    "react-native-web": "^0.21.4",
     "react-native-worklets": "0.13.0"
   },
   "devDependencies": {
@@ -72,6 +73,7 @@
     "jest-cucumber": "^4.5.0",
     "jest-expo": "~58.0.11",
     "lint-staged": "^17.6.0",
+    "patch-package": "^8.0.1",
     "prettier": "^3.9.10",
     "subset-font": "^2.9.0",
     "typescript": "~6.0.3",
@@ -101,7 +103,8 @@
     "docs:check": "npm run db:diagram -- --check && npm run docs:features -- --check && npm run icons -- --check",
     "coverage:new": "node scripts/new-code-coverage.mjs",
     "lint:sonar-rules": "node scripts/sonar-rules.mjs",
-    "icons": "node scripts/icon-font.mjs"
+    "icons": "node scripts/icon-font.mjs",
+    "postinstall": "patch-package"
   },
   "private": true,
   "engines": {

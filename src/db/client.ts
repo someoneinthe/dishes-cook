@@ -3,7 +3,7 @@ import { openDatabaseSync } from 'expo-sqlite';
 import type { DatabaseConnection } from './types';
 import { createChangeNotifier } from './change-notifier';
 
-const DATABASE_NAME = 'dishes-cook.db';
+export const DATABASE_NAME = 'dishes-cook.db';
 
 export function openAppConnection() {
   const sqlite = openDatabaseSync(DATABASE_NAME);

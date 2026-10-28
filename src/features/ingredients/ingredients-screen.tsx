@@ -1,7 +1,8 @@
 import { Drawer } from 'expo-router/drawer';
 import { useState } from 'react';
-import { Alert, FlatList, Text, View } from 'react-native';
+import { FlatList, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import { Alert } from '@/components/alert';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';

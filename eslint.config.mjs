@@ -246,6 +246,27 @@ export default defineConfig([
     },
   },
 
+  // The web: react-native-web's Alert does nothing, so dialogs go through the app's Alert, which
+  // shows its own there.
+  {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: ['src/components/alert.ts', ...TEST_FILES, 'src/test/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              importNames: ['Alert'],
+              message: 'Import Alert from @/components/alert: it also shows dialogs on the web.',
+              name: 'react-native',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // UI text comes from the dictionaries (src/i18n/en.ts, fr.ts…), never written in JSX: text in
   // JSX, and the props users see or hear (labels, hints, placeholders, messages).
   {

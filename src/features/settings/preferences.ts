@@ -5,6 +5,7 @@ import { UnistylesRuntime } from 'react-native-unistyles';
 import type { LanguagePreference } from '@/i18n/languages';
 import type { UnitSystem } from '@/lib/units';
 import { LANGUAGE_PREFERENCE_LIST } from '@/i18n/languages';
+import { isWeb } from '@/lib/device';
 import { createListeners } from '@/lib/listeners';
 import { isUnitSystem } from '@/lib/units';
 
@@ -52,7 +53,10 @@ const appearance: { subscription?: Readonly<{ remove: () => void }> } = {};
 // the configuration before it's updated when the phone switches light/dark while the app runs, so
 // the app stayed one switch behind. Appearance is told by the activity itself.
 export function applyColorScheme(colorScheme: ColorSchemePreference): void {
-  Appearance.setColorScheme(colorScheme === 'system' ? 'unspecified' : colorScheme);
+  // The web has no native UI to tell (and no setColorScheme): the page follows the theme.
+  if (!isWeb) {
+    Appearance.setColorScheme(colorScheme === 'system' ? 'unspecified' : colorScheme);
+  }
   appearance.subscription?.remove();
   appearance.subscription = undefined;
   UnistylesRuntime.setAdaptiveThemes(false);

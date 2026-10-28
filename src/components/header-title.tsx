@@ -1,6 +1,7 @@
 import type { ColorValue } from 'react-native';
-import { Alert, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import { Alert } from '@/components/alert';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 import type { IconName } from './icon';

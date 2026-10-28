@@ -1,5 +1,6 @@
-import { Alert, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import { Alert } from '@/components/alert';
 import { Button } from '@/components/button';
 import { useConfirmDelete } from '@/components/use-confirm-delete';
 import { useMessages } from '@/i18n/i18n-provider';

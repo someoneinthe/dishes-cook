@@ -18,6 +18,8 @@ const base = {
     bubbleMaxWidth: 320,
     // A chip's outline; its touch area is a touch target, the rest being transparent.
     chip: 36,
+    // A dialog on the web (src/components/alert-host.web.tsx): about Android's.
+    dialogMaxWidth: 400,
     maxContent: 720,
     minText: 160,
     multilineInput: 160,
