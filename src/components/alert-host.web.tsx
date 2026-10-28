@@ -35,6 +35,7 @@ export function AlertHost() {
           buttonList.find((button) => button.style === 'cancel'),
         )
       }
+      testID="alert-dialog"
       transparent
       visible
     >

@@ -12,6 +12,8 @@ import { getLastCookedMeal } from '@/features/meal-history/db/cooked-meal-querie
 import { getRecipeSyncId, saveRecipe } from '@/features/recipes/db/recipe-queries';
 import { RecipeDetailScreen } from '@/features/recipes/recipe-detail-screen';
 import { calendarDaysAgo } from '@/lib/dates';
+import * as shareTextModule from '@/lib/share-text';
+import { spyOnAlert } from '@/test/alert';
 import { pressInHeaderMenu } from '@/test/header-menu';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { addPick, clearPicks, getPicks } from './meal-picks';
@@ -56,7 +58,7 @@ defineFeature(feature, (test) => {
   });
 
   afterEach(() => {
-    shareSpy.mockRestore();
+    jest.restoreAllMocks();
   });
 
   const theseRecipes = (rowList: RecipeRow[]) => {
@@ -222,6 +224,27 @@ defineFeature(feature, (test) => {
         calendarDaysAgo(getLastCookedMeal(connection.db, idByTitle.get(title)!)?.cookedAt ?? 0);
 
       expect([daysAgoOf(first), daysAgoOf(second)]).toStrictEqual([0, 0]);
+    });
+  });
+
+  test("A browser that can't share copies the list", ({ and, given, then, when }) => {
+    let alert: ReturnType<typeof spyOnAlert>;
+    given('these recipes:', theseRecipes);
+    given(/^"(.*)" and "(.*)" are in the shopping list$/, inTheList);
+    when('I open the shopping list', openTheShoppingList);
+    and("I share it in a browser that can't share", async () => {
+      alert = spyOnAlert();
+      jest.spyOn(shareTextModule, 'shareText').mockResolvedValueOnce('copied');
+      await fireEvent.press(screen.getByRole('button', { name: 'Share' }));
+    });
+    then("I'm told the list is copied, to paste it where I want", () => {
+      expect(alert.spy.mock.lastCall?.slice(0, 2)).toStrictEqual([
+        'List copied',
+        'Paste it where you want it: notes, messages, email…',
+      ]);
+    });
+    and("I'm offered to mark the meals as cooked", () => {
+      expect(screen.getByRole('button', { name: 'Mark as cooked' })).toBeOnTheScreen();
     });
   });
 

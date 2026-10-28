@@ -21,7 +21,7 @@ export function useNewRecipe(kind: RecipeKind = 'dish') {
     start: () => {
       Alert.alert(
         kindTexts(t, kind).newRecipe,
-        t.recipeScan.startMessage,
+        isWeb ? t.recipeScan.startMessageWithoutCamera : t.recipeScan.startMessage,
         [
           {
             onPress: () => router.push({ params: { kind }, pathname: '/recipe/new' }),

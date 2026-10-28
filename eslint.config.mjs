@@ -139,7 +139,13 @@ export default defineConfig([
   {
     // Tooling config files: CommonJS consumers, and eslint-plugin-import can't parse the
     // modern syntax (import attributes) used inside some ESLint plugins it would resolve.
-    files: ['*.config.js', '*.config.mjs', 'metro.config.js', 'plugins/**/*.js'],
+    files: [
+      '*.config.js',
+      '*.config.mjs',
+      'metro.config.js',
+      'plugins/**/*.js',
+      'scripts/babel-dynamic-import-to-require.js',
+    ],
     rules: {
       'import/namespace': 'off',
       'import/no-named-as-default': 'off',

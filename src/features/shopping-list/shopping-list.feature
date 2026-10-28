@@ -52,6 +52,13 @@ Feature: Shopping list
     Then the shopping list is empty
     And "Leek soup" and "Leek pie" were cooked today
 
+  Scenario: A browser that can't share copies the list
+    Given "Leek soup" and "Leek pie" are in the shopping list
+    When I open the shopping list
+    And I share it in a browser that can't share
+    Then I'm told the list is copied, to paste it where I want
+    And I'm offered to mark the meals as cooked
+
   Scenario: A meal can be taken out of the list
     Given "Leek soup" and "Leek pie" are in the shopping list
     When I open the shopping list

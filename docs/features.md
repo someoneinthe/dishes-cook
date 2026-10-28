@@ -9,6 +9,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [A recipe's photo and times](#a-recipes-photo-and-times): 3 scenarios
 - [About](#about): 2 scenarios
 - [Drinks](#drinks): 5 scenarios
+- [In a browser](#in-a-browser): 4 scenarios
 - [Ingredient quantities](#ingredient-quantities): 3 scenarios
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
@@ -19,7 +20,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Recipes](#recipes): 3 scenarios
 - [Server sync](#server-sync): 10 scenarios
 - [Sharing a recipe](#sharing-a-recipe): 2 scenarios
-- [Shopping list](#shopping-list): 10 scenarios
+- [Shopping list](#shopping-list): 11 scenarios
 
 ## A recipe from a document
 
@@ -225,6 +226,32 @@ Drinks (cocktails, smoothies, hot drinks…) are written like recipes, with thei
 - **When** I open it
 - **Then** it shows no season, no course and no "I cooked it"
 - **And** it can be added to the shopping list
+
+## In a browser
+
+In a desktop browser, the web app, which the sync server serves, works like the phone's app without a camera: photos and recipe pages are files chosen on the computer. The About page says where a browser keeps the data.
+
+### A new recipe is written or read from a file, without a camera
+
+- **When** I start a new recipe in a browser
+- **Then** I can write it or choose a file, not take a photo
+- **And** I am told the file is read in the browser
+
+### A recipe's photo is chosen among the computer's files right away
+
+- **When** I add a photo to a recipe in a browser
+- **Then** the file picker opens, without asking where the photo comes from
+
+### The About page says where the browser keeps the data
+
+- **When** I open the About page in a browser
+- **Then** I am told my data is saved in this browser, which can clear it
+- **And** I am told the sign-in token stays in this site's storage
+
+### The sync server's address is the web app's
+
+- **When** I set up the sync in a browser opened on "https://recipes.example.org"
+- **Then** the server address is "https://recipes.example.org"
 
 ## Ingredient quantities
 
@@ -780,6 +807,14 @@ Meals are picked on the meal choice (the cart button, "Add to list", which propo
 - **When** I mark the meals as cooked
 - **Then** the shopping list is empty
 - **And** "Leek soup" and "Leek pie" were cooked today
+
+### A browser that can't share copies the list
+
+- **Given** "Leek soup" and "Leek pie" are in the shopping list
+- **When** I open the shopping list
+- **And** I share it in a browser that can't share
+- **Then** I'm told the list is copied, to paste it where I want
+- **And** I'm offered to mark the meals as cooked
 
 ### A meal can be taken out of the list
 

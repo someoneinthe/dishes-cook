@@ -11,6 +11,8 @@ import type * as SharePdfPhone from '@/features/recipes/share-recipe-pdf';
 import type * as SharePdfWeb from '@/features/recipes/share-recipe-pdf.web';
 import type * as SyncTokenPhone from '@/features/sync/sync-token';
 import type * as SyncTokenWeb from '@/features/sync/sync-token.web';
+import type * as ShareTextPhone from '@/lib/share-text';
+import type * as ShareTextWeb from '@/lib/share-text.web';
 /* eslint-enable sonarjs/no-wildcard-import */
 import type { SamePlatformApi } from './platform';
 
@@ -25,4 +27,5 @@ export type PlatformApis = [
   SamePlatformApi<typeof ReadDocumentWeb, Omit<typeof ReadDocumentPhone, 'toScannedBlocks'>>,
   SamePlatformApi<typeof SharePdfWeb, typeof SharePdfPhone>,
   SamePlatformApi<typeof SyncTokenWeb, typeof SyncTokenPhone>,
+  SamePlatformApi<typeof ShareTextWeb, typeof ShareTextPhone>,
 ];

@@ -1,7 +1,8 @@
 import { Drawer } from 'expo-router/drawer';
 import { useState } from 'react';
-import { ScrollView, Share, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import { Alert } from '@/components/alert';
 import { Button } from '@/components/button';
 import { EmptyState } from '@/components/empty-state';
 import { headerActions } from '@/components/header-actions';
@@ -12,6 +13,7 @@ import { markAllCooked } from '@/features/meal-history/db/cooked-meal-queries';
 import { usePreferences } from '@/features/settings/preferences';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
+import { shareText } from '@/lib/share-text';
 import { MAX_LINES } from './db/shopping-queries';
 import { usePickedMeals, useShoppingLines } from './hooks/use-shopping-list';
 import { clearPicks, removePick, usePicks } from './meal-picks';
@@ -45,7 +47,10 @@ function ShoppingList() {
   const share = async () => {
     const sharedList = pickList;
     try {
-      await Share.share({ message: toShoppingText(t, { isTruncated, itemList, mealList, units }) });
+      const result = await shareText(toShoppingText(t, { isTruncated, itemList, mealList, units }));
+      if (result === 'copied') {
+        Alert.alert(t.shoppingList.copiedTitle, t.shoppingList.copiedMessage);
+      }
     } catch {
       // Closed without sharing.
       return;

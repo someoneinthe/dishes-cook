@@ -7,7 +7,7 @@ import { Icon } from '@/components/icon';
 import { screenScrollProps } from '@/components/screen-scroll-props';
 import { useIconSize } from '@/components/use-icon-size';
 import { useMessages } from '@/i18n/i18n-provider';
-import { isTv } from '@/lib/device';
+import { isTv, isWeb } from '@/lib/device';
 
 type AboutSectionProps = Readonly<{
   icon: IconName;
@@ -61,17 +61,29 @@ function AboutSection({ icon, paragraphList, title }: AboutSectionProps) {
   );
 }
 
+function deviceIcon(): IconName {
+  if (isTv) {
+    return 'television';
+  }
+  return isWeb ? 'monitor' : 'cellphone';
+}
+
+// A browser keeps the data, reads files and shares its own way: its own paragraphs.
 function sectionList(t: Messages): AboutSectionProps[] {
   return [
     {
-      icon: isTv ? 'television' : 'cellphone',
-      paragraphList: t.about.deviceList,
+      icon: deviceIcon(),
+      paragraphList: isWeb ? t.about.webDeviceList : t.about.deviceList,
       title: t.about.deviceTitle,
     },
-    { icon: 'server', paragraphList: t.about.serverList, title: t.about.serverTitle },
+    {
+      icon: 'server',
+      paragraphList: isWeb ? t.about.webServerList : t.about.serverList,
+      title: t.about.serverTitle,
+    },
     {
       icon: 'shield-check-outline',
-      paragraphList: t.about.othersList,
+      paragraphList: isWeb ? t.about.webOthersList : t.about.othersList,
       title: t.about.othersTitle,
     },
   ];
