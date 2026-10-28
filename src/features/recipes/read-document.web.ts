@@ -15,8 +15,10 @@ const LANGUAGES = ['fra', 'eng'];
 // Tesseract's mode: its neural network only (the engine files copied are the "lstm" ones).
 const LSTM_ONLY = 1;
 
-// A browser's file picker keeps no copy: nothing to delete.
-export function deletePickerCopies(): void {}
+// The phone's picker copies (read-document.ts).
+export function deletePickerCopies(): void {
+  // A browser's file picker keeps no copy: nothing to delete.
+}
 
 export async function readDocument(
   uri: string,

@@ -12,8 +12,10 @@ const PAGE_STYLES = {
   us: '@page { size: letter; }',
 } as const satisfies Record<UnitSystem, string>;
 
-// Nothing to delete: the frame goes once printed.
-export function deleteSharedPdfs(): void {}
+// The phone's leftover PDFs (share-recipe-pdf.ts).
+export function deleteSharedPdfs(): void {
+  // Nothing to delete: the frame goes once printed.
+}
 
 export async function shareRecipePdf(
   options: Readonly<{ dialogTitle: string; html: string; title: string; units: UnitSystem }>,
