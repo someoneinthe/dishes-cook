@@ -11,7 +11,7 @@
 
 Mobile app that helps you decide what to eat, picking from the recipes you've saved.
 
-Android first (iOS later, same codebase); the same app runs on Android TV, read-only, to pick and show recipes on the big screen. Built with Expo + React Native + TypeScript. Data lives on the device; it can optionally be synced with your own self-hosted [PocketBase](https://pocketbase.io) server to share recipes between phones ([how](docs/sync.md)).
+Android first (iOS later, same codebase); the same app runs on Android TV, read-only, to pick and show recipes on the big screen, and in a desktop browser, served by the sync server ([web app](docs/sync.md#web-app)). Built with Expo + React Native + TypeScript. Data lives on the device; it can optionally be synced with your own self-hosted [PocketBase](https://pocketbase.io) server to share recipes between phones ([how](docs/sync.md)).
 
 What it does, screen by screen: [Features](docs/features.md).
 
@@ -42,6 +42,7 @@ The first native build downloads the Android NDK, SDK platform and build-tools (
 | --------------------------------- | ----------------------------------------------- |
 | `npm start`                       | Metro dev server                                |
 | `npm run android`                 | Native development build on Android             |
+| `npm run web` / `web:export`      | The web app: dev server / static export         |
 | `npm run lint` / `lint:fix`       | ESLint (eslint-config-expo + project rules)     |
 | `npm run format` / `format:check` | Prettier                                        |
 | `npm run typecheck`               | `tsc --noEmit`                                  |
