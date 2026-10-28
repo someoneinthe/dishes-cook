@@ -1,5 +1,5 @@
-import { Image } from 'expo-image';
 import { StyleSheet } from 'react-native-unistyles';
+import { Image } from '@/components/styled';
 import { useMessages } from '@/i18n/i18n-provider';
 import { recipePhotoFile } from '../recipe-photos';
 

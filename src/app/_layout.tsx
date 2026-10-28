@@ -2,13 +2,13 @@ import { Stack } from 'expo-router';
 import { preventAutoHideAsync } from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { KeyboardAvoidingView, StyleSheet as NativeStyleSheet, View } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardAvoidingView, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { AlertHost } from '@/components/alert-host';
 import { headerTitleWithIcon } from '@/components/header-title';
 import { MENU_ICONS } from '@/components/menu-entry-options';
 import { stackHeader } from '@/components/stack-header';
+import { GestureHandlerRootView } from '@/components/styled';
 import { DatabaseProvider } from '@/db/database-provider';
 import { LoadingScreen } from '@/features/loading/loading-screen';
 import { deleteUnusedPhotos } from '@/features/recipes/recipe-photos';
@@ -27,13 +27,18 @@ deleteSharedPdfs();
 // The saved light/dark choice, before the first screen renders.
 applyColorScheme(getPreferences().colorScheme);
 
+// A recipe opened by its address (a browser's address bar or reload, a link) has the menu under
+// it, so Back (and leaving a deleted recipe) returns there.
+// eslint-disable-next-line @typescript-eslint/naming-convention, sonarjs/variable-name -- name required by Expo Router.
+export const unstable_settings = { anchor: '(drawer)' };
+
 export default function RootLayout() {
   const [isLoadingScreenVisible, setIsLoadingScreenVisible] = useState(true);
   const { language } = usePreferences();
 
   return (
     // The drawer's swipe gesture needs the gesture handler root.
-    <GestureHandlerRootView style={nativeStyles.root}>
+    <GestureHandlerRootView style={styles.root}>
       <I18nProvider language={language}>
         {/* Photos no recipe uses any more (replaced by a sync, or a form left unsaved): deleted. */}
         <DatabaseProvider onReady={({ db }) => deleteUnusedPhotos(db)}>
@@ -84,10 +89,6 @@ function RootStack() {
     </Stack>
   );
 }
-
-// Not a Unistyles style: Unistyles only styles React Native's own components in a browser, where
-// the gesture handler's root would get no height (an empty page).
-const nativeStyles = NativeStyleSheet.create({ root: { flex: 1 } });
 
 const styles = StyleSheet.create((theme, rt) => ({
   root: {

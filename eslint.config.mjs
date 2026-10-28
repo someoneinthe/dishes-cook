@@ -247,10 +247,11 @@ export default defineConfig([
   },
 
   // The web: react-native-web's Alert does nothing, so dialogs go through the app's Alert, which
-  // shows its own there.
+  // shows its own there; other libraries' components take the app's styles through
+  // src/components/styled.ts.
   {
     files: ['src/**/*.ts', 'src/**/*.tsx'],
-    ignores: ['src/components/alert.ts', ...TEST_FILES, 'src/test/**'],
+    ignores: ['src/components/alert.ts', 'src/components/styled.ts', ...TEST_FILES, 'src/test/**'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -260,6 +261,25 @@ export default defineConfig([
               importNames: ['Alert'],
               message: 'Import Alert from @/components/alert: it also shows dialogs on the web.',
               name: 'react-native',
+            },
+            // Unistyles styles only React Native's own components in a browser.
+            {
+              importNames: ['Image'],
+              message:
+                'Import Image from @/components/styled: it takes Unistyles styles on the web.',
+              name: 'expo-image',
+            },
+            {
+              importNames: ['DrawerContentScrollView'],
+              message:
+                'Import DrawerContentScrollView from @/components/styled: it takes Unistyles styles on the web.',
+              name: 'expo-router/drawer',
+            },
+            {
+              importNames: ['GestureHandlerRootView'],
+              message:
+                'Import GestureHandlerRootView from @/components/styled: it takes Unistyles styles on the web.',
+              name: 'react-native-gesture-handler',
             },
           ],
         },

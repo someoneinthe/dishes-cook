@@ -1,9 +1,10 @@
 import type { DrawerContentComponentProps, DrawerNavigationOptions } from 'expo-router/drawer';
-import { DrawerContentScrollView, DrawerItem } from 'expo-router/drawer';
+import { DrawerItem } from 'expo-router/drawer';
 import { CommonActions, DrawerActions } from 'expo-router/react-navigation';
 import { View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { toMenuSections } from './menu-sections';
+import { DrawerContentScrollView } from './styled';
 
 type Route = DrawerContentComponentProps['state']['routes'][number];
 
