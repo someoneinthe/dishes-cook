@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.0](https://github.com/someoneinthe/dishes-cook/compare/v1.0.2...v1.1.0) (2026-10-28)
+
+
+### Features
+
+* two phones changing the same recipe keep both changes, merged field by field ([#138](https://github.com/someoneinthe/dishes-cook/issues/138)) ([84e5054](https://github.com/someoneinthe/dishes-cook/commit/84e50541db9220fdf9e40ab900163e641dd55fa8))
+
+
+### Bug Fixes
+
+* a read recipe reaches the form in memory, and the meal choice card reads only what it shows ([#133](https://github.com/someoneinthe/dishes-cook/issues/133)) ([ae1e15d](https://github.com/someoneinthe/dishes-cook/commit/ae1e15dc6448ca73ddd4662e30b2e52b42fedd77))
+* harden the sync server and its updater ([#128](https://github.com/someoneinthe/dishes-cook/issues/128)) ([7ad779d](https://github.com/someoneinthe/dishes-cook/commit/7ad779d98278b9773343dd4410878b395d630f73))
+
+
+### Performance
+
+* an icon font with only the app's icons (7 KB instead of 1.3 MB) ([#131](https://github.com/someoneinthe/dishes-cook/issues/131)) ([6c8565f](https://github.com/someoneinthe/dishes-cook/commit/6c8565f02ca999ed7259df16c7f5e6d52bf39583))
+
 ## [1.0.2](https://github.com/someoneinthe/dishes-cook/compare/v1.0.1...v1.0.2) (2026-10-26)
 
 
