@@ -10,6 +10,8 @@ import { joinPages, readDocx, readOdt, readPlainText } from './recipe-documents'
 
 export const MAX_PDF_PAGES = 5;
 const PDF_PAGE_WIDTH = 1600;
+// The longest side a browser draws a canvas (Firefox's limit): a very tall page is drawn smaller.
+const MAX_CANVAS_SIDE = 32_767;
 // Tesseract's languages: French first, the recipes' language here, English too.
 const LANGUAGES = ['fra', 'eng'];
 // Tesseract's mode: its neural network only (the engine files copied are the "lstm" ones).
@@ -74,16 +76,20 @@ async function readPdf(uri: string) {
   const pdfjs = await import('pdfjs-dist');
   pdfjs.GlobalWorkerOptions.workerSrc = ocrFile('pdf.worker.min.mjs');
   const loading = pdfjs.getDocument({ data: await readBytes(uri) });
-  const pdf = await loading.promise;
-  const worker = await startTextRecognition();
+  // Both let go however the reading ends, a damaged PDF or Tesseract failing to start included.
+  const started: { worker?: Worker } = {};
   try {
+    const pdf = await loading.promise;
+    const worker = await startTextRecognition();
+    started.worker = worker;
     const pageList: ScannedBlock[][] = [];
     const pageCount = Math.min(pdf.numPages, MAX_PDF_PAGES);
     for (let number = 1; number <= pageCount; number += 1) {
       // eslint-disable-next-line no-await-in-loop -- one page at a time: each holds a large image
       const page = await pdf.getPage(number);
+      const pageSize = page.getViewport({ scale: 1 });
       const viewport = page.getViewport({
-        scale: PDF_PAGE_WIDTH / page.getViewport({ scale: 1 }).width,
+        scale: Math.min(PDF_PAGE_WIDTH / pageSize.width, MAX_CANVAS_SIDE / pageSize.height),
       });
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(viewport.width);
@@ -97,7 +103,7 @@ async function readPdf(uri: string) {
     }
     return { blockList: joinPages(pageList), isCut: pdf.numPages > MAX_PDF_PAGES, isLevel: true };
   } finally {
-    await worker.terminate();
+    await started.worker?.terminate();
     await loading.destroy();
   }
 }

@@ -18,7 +18,7 @@ const { writeHead } = ServerResponse.prototype;
 /* eslint-disable unicorn/no-this-outside-of-class -- a method of ServerResponse, patched */
 ServerResponse.prototype.writeHead = function writeHeadIsolated(...argumentList) {
   if (!this.headersSent) {
-    this.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+    this.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
     this.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   }
   return writeHead.apply(this, argumentList);

@@ -49,7 +49,11 @@ export async function loadRecipePhotos(): Promise<void> {
   const handleList = folder.values();
   for await (const handle of handleList) {
     if (handle.kind === 'file') {
-      remember(handle.name, await handle.getFile());
+      try {
+        remember(handle.name, await handle.getFile());
+      } catch {
+        // An unreadable photo is left out: its recipe shows without it.
+      }
     }
   }
 }
@@ -126,6 +130,15 @@ function forget(file: string): void {
   photoMap.delete(file);
 }
 
+async function hasFile(folder: FileSystemDirectoryHandle, name: string): Promise<boolean> {
+  try {
+    await folder.getFileHandle(name);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function photoFolder(): Promise<FileSystemDirectoryHandle> {
   const root = await navigator.storage.getDirectory();
   return root.getDirectoryHandle(RECIPE_PHOTO_FOLDER, { create: true });
@@ -140,6 +153,11 @@ function remember(file: string, blob: Blob): void {
 async function savePhoto(blob: Blob): Promise<string> {
   const name = newPhotoName();
   const folder = await photoFolder();
+  // A file opened to write is replaced on close: a name already taken (the clock went back onto
+  // a photo) fails instead, as on a phone.
+  if (photoMap.has(name) || (await hasFile(folder, name))) {
+    throw new Error(`Photo ${name} already exists`);
+  }
   const handle = await folder.getFileHandle(name, { create: true });
   const writable = await handle.createWritable();
   await writable.write(blob);

@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Deploys this checkout's server files (server/migrations, server/hooks, and the web app it serves)
-# to the sync server over SSH, and installs or refreshes its updater and hourly timer (see docs/sync.md › Updating the
-# server). SYNC_SERVER_SSH is the server's SSH login (user@host, with sudo there).
+# to the sync server over SSH, and installs or refreshes its updater and hourly timer (see
+# docs/sync.md › Updating the server). SYNC_SERVER_SSH is the server's SSH login (user@host, with
+# sudo there).
 #
-# Only from an up-to-date main with no local change under server/ (FORCE=1 to deploy anyway, e.g.
-# a test server): PocketBase never re-runs a migration it applied, so a migration deployed from a
-# branch and edited before merging would never reach the server in its final form.
+# Only from an up-to-date main with no local change (FORCE=1 to deploy anyway, e.g. a test server):
+# PocketBase never re-runs a migration it applied, so a migration deployed from a branch and edited
+# before merging would never reach the server in its final form; and the web app is built from the
+# whole checkout, so any change (untracked files too) would ship under main's version.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -14,8 +16,8 @@ cd "$(dirname "$0")/.."
 if [[ "${FORCE:-}" != 1 ]]; then
   git fetch --quiet origin main
   if [[ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]] ||
-    [[ -n "$(git status --porcelain -- server)" ]]; then
-    echo "deploy-server: check out an up-to-date main without changes under server/ (or FORCE=1)" >&2
+    [[ -n "$(git status --porcelain)" ]]; then
+    echo "deploy-server: check out an up-to-date main without local changes (or FORCE=1)" >&2
     exit 1
   fi
 fi

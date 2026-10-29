@@ -149,4 +149,33 @@ describe('recipe photos in a browser', () => {
     expect(recipePhotoFile('used.jpg').exists).toBe(true);
     expect(recipePhotoFile('unused.jpg')).toMatchObject({ exists: false, uri: '' });
   });
+
+  it('leaves out a photo it can’t read: the others load', async () => {
+    files.folderMap.set(
+      'recipe-photos',
+      new Map([
+        ['fine.jpg', { blob: new Blob(['a']), name: 'fine.jpg' }],
+        ['unreadable.jpg', { blob: new Blob(['b']), name: 'unreadable.jpg' }],
+      ]),
+    );
+
+    await loadRecipePhotos();
+
+    expect(recipePhotoFile('fine.jpg').exists).toBe(true);
+    expect(recipePhotoFile('unreadable.jpg').exists).toBe(false);
+  });
+
+  it('never saves over a photo already there (a clock gone back)', async () => {
+    // Far ahead of every name given so far: the next name is this time's.
+    const time = Date.now() + 1_000_000_000;
+    const taken = `${time.toString(36)}.jpg`;
+    const folder = new Map([[taken, { blob: new Blob(['kept']), name: taken }]]);
+    files.folderMap.set('recipe-photos', folder);
+    jest.spyOn(Date, 'now').mockReturnValue(time);
+
+    await expect(recipePhotoStore.download('https://sync.example.org/photo.jpg')).rejects.toThrow(
+      'already exists',
+    );
+    await expect(new Response(folder.get(taken)?.blob).text()).resolves.toBe('kept');
+  });
 });

@@ -248,6 +248,27 @@ defineFeature(feature, (test) => {
     });
   });
 
+  test('Sharing that fails says so', ({ and, given, then, when }) => {
+    let alert: ReturnType<typeof spyOnAlert>;
+    given('these recipes:', theseRecipes);
+    given(/^"(.*)" and "(.*)" are in the shopping list$/, inTheList);
+    when('I open the shopping list', openTheShoppingList);
+    and('sharing it fails', async () => {
+      alert = spyOnAlert();
+      shareSpy.mockRejectedValueOnce(new Error('No share sheet'));
+      await fireEvent.press(screen.getByRole('button', { name: 'Share' }));
+    });
+    then("I'm told the list couldn't be shared", () => {
+      expect(alert.spy.mock.lastCall?.slice(0, 2)).toStrictEqual([
+        'Sharing failed',
+        'The list couldn’t be shared or copied. Try again.',
+      ]);
+    });
+    and("I'm not offered to mark the meals as cooked", () => {
+      expect(screen.queryByRole('button', { name: 'Mark as cooked' })).not.toBeOnTheScreen();
+    });
+  });
+
   test('A meal can be taken out of the list', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     given(/^"(.*)" and "(.*)" are in the shopping list$/, inTheList);

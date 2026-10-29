@@ -20,7 +20,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Recipes](#recipes): 3 scenarios
 - [Server sync](#server-sync): 10 scenarios
 - [Sharing a recipe](#sharing-a-recipe): 2 scenarios
-- [Shopping list](#shopping-list): 11 scenarios
+- [Shopping list](#shopping-list): 12 scenarios
 
 ## A recipe from a document
 
@@ -815,6 +815,14 @@ Meals are picked on the meal choice (the cart button, "Add to list", which propo
 - **And** I share it in a browser that can't share
 - **Then** I'm told the list is copied, to paste it where I want
 - **And** I'm offered to mark the meals as cooked
+
+### Sharing that fails says so
+
+- **Given** "Leek soup" and "Leek pie" are in the shopping list
+- **When** I open the shopping list
+- **And** sharing it fails
+- **Then** I'm told the list couldn't be shared
+- **And** I'm not offered to mark the meals as cooked
 
 ### A meal can be taken out of the list
 

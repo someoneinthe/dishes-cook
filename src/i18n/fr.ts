@@ -441,6 +441,8 @@ export const fr: Messages = {
     removeHint: 'L’enlève de la liste de courses',
     removeLabel: (title) => `Retirer ${title} de la liste`,
     share: 'Partager',
+    shareFailedMessage: 'La liste n’a pas pu être partagée ni copiée. Réessayez.',
+    shareFailedTitle: 'Échec du partage',
     shareHint: `Envoie la liste à une autre application${NARROW_SPACE}: notes, messages, e-mail…`,
     title: 'Liste de courses',
     truncated: (max) => `Seules les ${max}\u{A0}premières lignes sont listées.`,
@@ -494,5 +496,10 @@ export const fr: Messages = {
     syncNow: 'Synchroniser',
     withServer: 'Synchronisé avec un serveur',
     wrongAccount: 'E-mail ou mot de passe incorrect.',
+  },
+  webStart: {
+    failed: `Dishes Cook n’a pas pu ouvrir ses données dans ce navigateur. Rechargez la page${NARROW_SPACE}; si cela recommence, essayez un autre navigateur.`,
+    unsupported:
+      'Ce navigateur ne peut pas lancer Dishes Cook ici. Ouvrez-le depuis l’adresse de votre serveur de synchronisation (HTTPS), dans un Chrome, Edge, Firefox ou Safari récent.',
   },
 };

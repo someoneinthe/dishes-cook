@@ -510,6 +510,8 @@ export const en = {
     removeHint: 'Takes it out of the shopping list',
     removeLabel: (title: string) => `Remove ${title} from the list`,
     share: 'Share',
+    shareFailedMessage: 'The list couldn’t be shared or copied. Try again.',
+    shareFailedTitle: 'Sharing failed',
     shareHint: 'Sends the list to another app: notes, messages, email…',
     title: 'Shopping list',
     // More ingredient lines than the list reads: some are left out.
@@ -564,6 +566,13 @@ export const en = {
     syncNow: 'Sync now',
     withServer: 'Synced with a server',
     wrongAccount: 'Wrong email or password.',
+  },
+  // The web app can't start (src/web-start-error.ts), shown before the app's own screens.
+  webStart: {
+    failed:
+      'Dishes Cook couldn’t open its data in this browser. Reload the page; if it keeps failing, try another browser.',
+    unsupported:
+      'This browser can’t run Dishes Cook here. Open it from your sync server’s address (HTTPS), in a recent Chrome, Edge, Firefox or Safari.',
   },
 };
 

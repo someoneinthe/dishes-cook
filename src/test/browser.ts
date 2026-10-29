@@ -26,29 +26,36 @@ export function fakePrivateFiles() {
     const fileMap = folderMap.get(name) ?? new Map<string, FakeFile>();
     folderMap.set(name, fileMap);
     return {
-      getFileHandle: (fileName: string) =>
-        Promise.resolve({
-          createWritable: () => {
-            const partList: Blob[] = [];
-            return Promise.resolve({
-              close: () => {
-                fileMap.set(fileName, { blob: new Blob(partList), name: fileName });
-                return Promise.resolve();
+      // Without `create`, a missing file is refused, as by a browser.
+      getFileHandle: (fileName: string, options?: Readonly<{ create?: boolean }>) =>
+        options?.create || fileMap.has(fileName)
+          ? Promise.resolve({
+              createWritable: () => {
+                const partList: Blob[] = [];
+                return Promise.resolve({
+                  close: () => {
+                    fileMap.set(fileName, { blob: new Blob(partList), name: fileName });
+                    return Promise.resolve();
+                  },
+                  write: (blob: Blob) => {
+                    partList.push(blob);
+                    return Promise.resolve();
+                  },
+                });
               },
-              write: (blob: Blob) => {
-                partList.push(blob);
-                return Promise.resolve();
-              },
-            });
-          },
-          getFile: () => Promise.resolve(fileMap.get(fileName)?.blob ?? new Blob()),
-        }),
+              getFile: () => Promise.resolve(fileMap.get(fileName)?.blob ?? new Blob()),
+            })
+          : Promise.reject(new Error(`No ${fileName}`)),
       removeEntry: (fileName: string) =>
         fileMap.delete(fileName) ? Promise.resolve() : Promise.reject(new Error(`No ${fileName}`)),
       async *values() {
         for (const [fileName, file] of fileMap) {
           yield {
-            getFile: () => Promise.resolve(file.blob),
+            // A file named "unreadable…" can't be read (a damaged one).
+            getFile: () =>
+              fileName.startsWith('unreadable')
+                ? Promise.reject(new Error(`Can't read ${fileName}`))
+                : Promise.resolve(file.blob),
             kind: 'file' as const,
             name: fileName,
           };

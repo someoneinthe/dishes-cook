@@ -1,6 +1,6 @@
 import type { AlertButton } from 'react-native';
 import { useSyncExternalStore } from 'react';
-import { Modal, Text, View } from 'react-native';
+import { Modal, ScrollView, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 import { useMessages } from '@/i18n/i18n-provider';
 import { closeAlert, getShownAlert, subscribeToAlerts } from './alert.web';
@@ -41,8 +41,11 @@ export function AlertHost() {
     >
       <View style={styles.overlay}>
         <View accessibilityRole="alert" aria-modal style={styles.dialog}>
-          {title !== '' && <Text style={styles.title}>{title}</Text>}
-          {message !== undefined && <Text style={styles.message}>{message}</Text>}
+          {/* The text scrolls in a window too short for it: the buttons stay in sight. */}
+          <ScrollView contentContainerStyle={styles.textContent} style={styles.text}>
+            {title !== '' && <Text style={styles.title}>{title}</Text>}
+            {message !== undefined && <Text style={styles.message}>{message}</Text>}
+          </ScrollView>
           <View style={[styles.buttons, isStacked && styles.stackedButtons]}>
             {buttonList.map((button) => (
               <DialogButton
@@ -83,6 +86,7 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.background,
     borderRadius: theme.radius.lg,
     gap: theme.gap(4),
+    maxHeight: '100%',
     maxWidth: theme.size.dialogMaxWidth,
     padding: theme.gap(6),
     width: '100%',
@@ -101,6 +105,12 @@ const styles = StyleSheet.create((theme) => ({
   stackedButtons: {
     alignItems: 'stretch',
     flexDirection: 'column',
+  },
+  text: {
+    flexShrink: 1,
+  },
+  textContent: {
+    gap: theme.gap(4),
   },
   title: {
     ...theme.typography.subtitle,

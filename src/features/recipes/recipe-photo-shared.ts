@@ -19,7 +19,8 @@ const nameClock = { last: 0 };
 
 // A new photo's file name: the time, in ms, one later than the last name if two are given in the
 // same ms. It needn't be secret (the app's private files) and is never reused: if the clock went
-// back onto an existing photo, saving onto it fails, nothing is overwritten.
+// back onto an existing photo, saving onto it fails, nothing is overwritten (on a phone, moving a
+// file onto an existing one fails; in a browser, the saver checks first).
 export function newPhotoName(): string {
   nameClock.last = Math.max(Date.now(), nameClock.last + 1);
   return [nameClock.last.toString(36), 'jpg'].join('.');

@@ -59,6 +59,13 @@ Feature: Shopping list
     Then I'm told the list is copied, to paste it where I want
     And I'm offered to mark the meals as cooked
 
+  Scenario: Sharing that fails says so
+    Given "Leek soup" and "Leek pie" are in the shopping list
+    When I open the shopping list
+    And sharing it fails
+    Then I'm told the list couldn't be shared
+    And I'm not offered to mark the meals as cooked
+
   Scenario: A meal can be taken out of the list
     Given "Leek soup" and "Leek pie" are in the shopping list
     When I open the shopping list

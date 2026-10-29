@@ -84,8 +84,9 @@ export async function connect(
 // Back to the phone's data only. The recipes stay on the phone, and on the server.
 export async function disconnect(): Promise<void> {
   state.session += 1;
-  Storage.removeItemSync(STORAGE_KEY);
+  // The token first: if deleting it fails, the connection stays shown, to disconnect again.
   await deleteSyncToken();
+  Storage.removeItemSync(STORAGE_KEY);
   state.error = undefined;
   state.isAppUpdateAvailable = false;
   publish();

@@ -112,6 +112,42 @@ describe('reading a document in a browser', () => {
     expect(destroy).toHaveBeenCalledTimes(1);
   });
 
+  it('draws a very tall page smaller, within what a browser can draw', async () => {
+    fetched(new Blob(['%PDF']));
+    const page = {
+      cleanup: jest.fn(),
+      // A receipt-like page, 100 times taller than wide.
+      getViewport: ({ scale }: { scale: number }) => ({
+        height: 50_000 * scale,
+        width: 500 * scale,
+      }),
+      render: jest.fn((_options: unknown) => ({ promise: Promise.resolve() })),
+    };
+    jest.mocked(getDocument).mockReturnValue({
+      destroy: jest.fn(() => Promise.resolve()),
+      promise: Promise.resolve({ getPage: jest.fn(() => Promise.resolve(page)), numPages: 1 }),
+    } as never);
+
+    await readDocument('blob:pdf', 'pdf');
+
+    expect(page.render.mock.calls[0]?.[0]).toMatchObject({
+      canvas: { height: 32_767, width: 328 },
+    });
+  });
+
+  it('lets the PDF go when the text recognition can’t start', async () => {
+    fetched(new Blob(['%PDF']));
+    const destroy = jest.fn(() => Promise.resolve());
+    jest.mocked(getDocument).mockReturnValue({
+      destroy,
+      promise: Promise.resolve({ getPage: jest.fn(), numPages: 1 }),
+    } as never);
+    jest.mocked(createWorker).mockRejectedValueOnce(new Error('No engine'));
+
+    await expect(readDocument('blob:pdf', 'pdf')).rejects.toThrow('No engine');
+    expect(destroy).toHaveBeenCalledTimes(1);
+  });
+
   it('reads Word, OpenDocument and text files by itself', async () => {
     const docx = new Uint8Array(wordDocument('Soupe', ['Ingrédients']));
     fetched(new Blob([docx]));

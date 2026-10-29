@@ -13,7 +13,7 @@ import { markAllCooked } from '@/features/meal-history/db/cooked-meal-queries';
 import { usePreferences } from '@/features/settings/preferences';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
-import { shareText } from '@/lib/share-text';
+import { isCancelled, shareText } from '@/lib/share-text';
 import { MAX_LINES } from './db/shopping-queries';
 import { usePickedMeals, useShoppingLines } from './hooks/use-shopping-list';
 import { clearPicks, removePick, usePicks } from './meal-picks';
@@ -51,8 +51,11 @@ function ShoppingList() {
       if (result === 'copied') {
         Alert.alert(t.shoppingList.copiedTitle, t.shoppingList.copiedMessage);
       }
-    } catch {
-      // Closed without sharing.
+    } catch (error) {
+      // Closed without sharing: nothing to say. Otherwise, neither shared nor copied.
+      if (!isCancelled(error)) {
+        Alert.alert(t.shoppingList.shareFailedTitle, t.shoppingList.shareFailedMessage);
+      }
       return;
     }
     setSharedPickList(sharedList);
