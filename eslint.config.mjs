@@ -139,7 +139,13 @@ export default defineConfig([
   {
     // Tooling config files: CommonJS consumers, and eslint-plugin-import can't parse the
     // modern syntax (import attributes) used inside some ESLint plugins it would resolve.
-    files: ['*.config.js', '*.config.mjs', 'metro.config.js', 'plugins/**/*.js'],
+    files: [
+      '*.config.js',
+      '*.config.mjs',
+      'metro.config.js',
+      'plugins/**/*.js',
+      'scripts/babel-dynamic-import-to-require.js',
+    ],
     rules: {
       'import/namespace': 'off',
       'import/no-named-as-default': 'off',
@@ -243,6 +249,47 @@ export default defineConfig([
       'no-await-in-loop': 'error',
       'no-continue': 'error',
       'sonarjs/nested-control-flow': ['error', { maximumNestingLevel: 3 }],
+    },
+  },
+
+  // The web: react-native-web's Alert does nothing, so dialogs go through the app's Alert, which
+  // shows its own there; other libraries' components take the app's styles through
+  // src/components/styled.ts.
+  {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: ['src/components/alert.ts', 'src/components/styled.ts', ...TEST_FILES, 'src/test/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              importNames: ['Alert'],
+              message: 'Import Alert from @/components/alert: it also shows dialogs on the web.',
+              name: 'react-native',
+            },
+            // Unistyles styles only React Native's own components in a browser.
+            {
+              importNames: ['Image'],
+              message:
+                'Import Image from @/components/styled: it takes Unistyles styles on the web.',
+              name: 'expo-image',
+            },
+            {
+              importNames: ['DrawerContentScrollView'],
+              message:
+                'Import DrawerContentScrollView from @/components/styled: it takes Unistyles styles on the web.',
+              name: 'expo-router/drawer',
+            },
+            {
+              importNames: ['GestureHandlerRootView'],
+              message:
+                'Import GestureHandlerRootView from @/components/styled: it takes Unistyles styles on the web.',
+              name: 'react-native-gesture-handler',
+            },
+          ],
+        },
+      ],
     },
   },
 

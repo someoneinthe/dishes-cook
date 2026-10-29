@@ -3,11 +3,12 @@ import { preventAutoHideAsync } from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { KeyboardAvoidingView, View } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import { AlertHost } from '@/components/alert-host';
 import { headerTitleWithIcon } from '@/components/header-title';
 import { MENU_ICONS } from '@/components/menu-entry-options';
 import { stackHeader } from '@/components/stack-header';
+import { GestureHandlerRootView } from '@/components/styled';
 import { DatabaseProvider } from '@/db/database-provider';
 import { LoadingScreen } from '@/features/loading/loading-screen';
 import { deleteUnusedPhotos } from '@/features/recipes/recipe-photos';
@@ -25,6 +26,11 @@ deleteSharedPdfs();
 
 // The saved light/dark choice, before the first screen renders.
 applyColorScheme(getPreferences().colorScheme);
+
+// A recipe opened by its address (a browser's address bar or reload, a link) has the menu under
+// it, so Back (and leaving a deleted recipe) returns there.
+// eslint-disable-next-line @typescript-eslint/naming-convention, sonarjs/variable-name -- name required by Expo Router.
+export const unstable_settings = { anchor: '(drawer)' };
 
 export default function RootLayout() {
   const [isLoadingScreenVisible, setIsLoadingScreenVisible] = useState(true);
@@ -49,6 +55,8 @@ export default function RootLayout() {
           </View>
         </DatabaseProvider>
         <StatusBar style="auto" />
+        {/* The web's dialogs (Android shows its own). */}
+        <AlertHost />
         {isLoadingScreenVisible && (
           <LoadingScreen onFinish={() => setIsLoadingScreenVisible(false)} />
         )}

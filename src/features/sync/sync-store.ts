@@ -1,4 +1,3 @@
-import { deleteItemAsync, getItem, setItem } from 'expo-secure-store';
 import Storage from 'expo-sqlite/kv-store';
 import { useSyncExternalStore } from 'react';
 import type { SyncedTable } from '@/db/schema';
@@ -10,10 +9,11 @@ import type { SyncCursors } from './sync-engine';
 import { checkServerVersion } from './server-version';
 import { createSyncApi, signIn, SyncError } from './sync-api';
 import { countPendingChanges, INITIAL_CURSORS, synchronize } from './sync-engine';
+import { deleteSyncToken, getSyncToken, setSyncToken } from './sync-token';
 
 // The sync server the phone is connected to, and how the last sync went. Without a server, the
 // recipes stay on the phone only. The address, email, account id and sync progress are kept in
-// expo-sqlite's key-value store; the sign-in token (never the password) in expo-secure-store.
+// expo-sqlite's key-value store; the sign-in token (never the password) apart (sync-token.ts).
 
 export type SyncState = Readonly<{
   // undefined: not connected (the phone's data only). `accountId`: the account signed in to (the
@@ -37,7 +37,6 @@ type StoredSync = Readonly<{
 }>;
 
 const STORAGE_KEY = 'sync';
-const TOKEN_KEY = 'sync-token';
 
 const state: {
   current?: SyncState;
@@ -70,7 +69,7 @@ export async function connect(
   if (state.session !== session) {
     return;
   }
-  setItem(TOKEN_KEY, token);
+  setSyncToken(token);
   write({
     accountId,
     cursors: INITIAL_CURSORS,
@@ -85,8 +84,9 @@ export async function connect(
 // Back to the phone's data only. The recipes stay on the phone, and on the server.
 export async function disconnect(): Promise<void> {
   state.session += 1;
+  // The token first: if deleting it fails, the connection stays shown, to disconnect again.
+  await deleteSyncToken();
   Storage.removeItemSync(STORAGE_KEY);
-  await deleteItemAsync(TOKEN_KEY);
   state.error = undefined;
   state.isAppUpdateAvailable = false;
   publish();
@@ -181,7 +181,7 @@ async function runSync(connection: DatabaseConnection): Promise<void> {
   if (!stored) {
     return;
   }
-  const token = getItem(TOKEN_KEY);
+  const token = getSyncToken();
   if (!token) {
     // Connected without a token: the phone was restored from a backup, which keeps the server's
     // address but not the token (encrypted with a key that stays on the old phone).
@@ -207,7 +207,7 @@ async function runSync(connection: DatabaseConnection): Promise<void> {
     if (!isCurrent()) {
       return;
     }
-    setItem(TOKEN_KEY, currentToken);
+    setSyncToken(currentToken);
     if (accountId !== stored.accountId) {
       // Connected before the account id was kept: the Mine filter can tell the phone's recipes now.
       write({ ...stored, accountId });

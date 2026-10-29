@@ -57,3 +57,6 @@ coverage/
 
 # SonarQube
 .scannerwork/
+
+# Web text recognition files, copied from node_modules (scripts/web-ocr-files.mjs).
+public/ocr/

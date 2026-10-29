@@ -1,7 +1,6 @@
 import type { DrawerContentComponentProps } from 'expo-router/drawer';
 import type { ReactNode, Ref } from 'react';
 import type { ViewInstance } from 'react-native';
-import { DrawerContentScrollView } from 'expo-router/drawer';
 import { useCallback, useState } from 'react';
 import {
   findNodeHandle,
@@ -14,6 +13,7 @@ import {
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { useMessages } from '@/i18n/i18n-provider';
 import { toMenuSections } from './menu-sections';
+import { DrawerContentScrollView } from './styled';
 import { useFocusRing } from './use-focus-ring';
 import { useIconSize } from './use-icon-size';
 

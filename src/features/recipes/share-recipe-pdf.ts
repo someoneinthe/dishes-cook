@@ -2,6 +2,9 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { printToFileAsync } from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import type { UnitSystem } from '@/lib/units';
+import { toFileName } from './recipe-file-name';
+
+export { toFileName } from './recipe-file-name';
 
 // Shares a recipe as a PDF (the system share sheet: a messaging app, email, a drive…). The PDF is
 // a temporary file, deleted once the share sheet closes: nothing is kept, no history. Leftovers
@@ -17,11 +20,6 @@ const PAGE_SIZES = {
   metric: { height: 842, width: 595 },
   us: { height: 792, width: 612 },
 } as const satisfies Record<UnitSystem, Readonly<{ height: number; width: number }>>;
-
-// Characters a file name can't hold (Android, and the apps receiving it), and control characters.
-
-const UNSAFE_NAME_CHARACTERS = /[\u{0}-\u{1F}\u{7F}"*/:<>?\\|]/gu;
-const MAX_NAME_LENGTH = 80;
 
 // Deletes the temporary PDFs. One that can't be deleted stays in the cache, which Android clears
 // when it needs room.
@@ -52,16 +50,4 @@ export async function shareRecipePdf(
   } finally {
     deleteSharedPdfs();
   }
-}
-
-// "Soupe / potiron : maison?" -> "Soupe potiron maison": a file name from a recipe title.
-export function toFileName(title: string): string {
-  const name = title
-    .replaceAll(UNSAFE_NAME_CHARACTERS, ' ')
-    .replaceAll(/\s+/g, ' ')
-    .trim()
-    .slice(0, MAX_NAME_LENGTH)
-    .trim();
-  // Only dots or nothing left ("..", "?"): not a usable name.
-  return /^[.\s]*$/.test(name) ? 'recipe' : name;
 }

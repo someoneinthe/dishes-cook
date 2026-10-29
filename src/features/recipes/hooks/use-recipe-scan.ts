@@ -1,18 +1,13 @@
 import { getDocumentAsync } from 'expo-document-picker';
-import { Directory, Paths } from 'expo-file-system';
 import { launchCameraAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert } from '@/components/alert';
 import { useMessages } from '@/i18n/i18n-provider';
 import type { DocumentKind } from '../recipe-documents';
 import type { ScannedRecipe } from '../scanned-recipe';
-import { deleteFolder, MAX_PDF_PAGES, readDocument } from '../read-document';
+import { deletePickerCopies, MAX_PDF_PAGES, readDocument } from '../read-document';
 import { DOCUMENT_TYPE_LIST, toDocumentKind } from '../recipe-documents';
 import { readRecipeText } from '../recipe-from-text';
-
-// The pickers copy the photo taken (and its crop) or the file chosen to these folders of the app's
-// cache, and leave them there.
-const PICKER_FOLDER_LIST = ['ImagePicker', 'DocumentPicker'];
 
 // Where the recipe comes from: a photo taken now, or a file chosen on the phone (a photo, a PDF,
 // a Word, OpenDocument or text document).
@@ -73,9 +68,7 @@ export function useRecipeScan(onRead: (recipe: ScannedRecipe) => void) {
         showMessage(t.recipeScan.nothingFoundTitle, t.recipeScan.nothingFoundMessage);
       }
     } finally {
-      for (const folder of PICKER_FOLDER_LIST) {
-        deleteFolder(new Directory(Paths.cache, folder));
-      }
+      deletePickerCopies();
       setIsReading(false);
     }
   };

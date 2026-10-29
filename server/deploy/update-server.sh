@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs on the sync server, as root: installs the server files of a dishes-cook version (PocketBase
-# migrations and hooks), see docs/sync.md › Updating the server.
+# migrations and hooks, and the web app PocketBase serves), see docs/sync.md › Updating the server.
 #
 #   update-server.sh                     the latest GitHub release's server-files.tar.gz, installed
 #                                        only if its attestation proves the repo's release workflow
@@ -137,13 +137,17 @@ else
   fi
   archive="$work/server-files.tar.gz"
 fi
-# Only plain files under migrations/ and hooks/, and VERSION: no links (cmp and install, as root,
-# would follow them), devices or other paths.
+# Only plain files under migrations/ and hooks/, folders and plain files under public/ (the web
+# app, names of letters, digits and ._@+- only, never "." or ".."), and VERSION: no links (cmp and
+# install, as root, would follow them), devices or other paths.
 if ! tar -tvzf "$archive" | awk '
   BEGIN { valid = 1; has_version = 0 }
   $1 ~ /^d/ && ($NF == "migrations/" || $NF == "hooks/") { next }
   $1 ~ /^-/ && $NF == "VERSION" { has_version = 1; next }
   $1 ~ /^-/ && $NF ~ /^(migrations|hooks)\/[^/]+$/ { next }
+  $NF ~ /(^|\/)\.\.?(\/|$)/ { valid = 0; next }
+  $1 ~ /^d/ && $NF ~ /^public\/([[:alnum:]_@.+-]+\/)*$/ { next }
+  $1 ~ /^-/ && $NF ~ /^public\/([[:alnum:]_@.+-]+\/)*[[:alnum:]_@.+-]+$/ { next }
   { valid = 0 }
   END { exit !(valid && has_version) }
 '; then
@@ -152,6 +156,12 @@ if ! tar -tvzf "$archive" | awk '
 fi
 mkdir "$work/files"
 tar -xzf "$archive" -C "$work/files"
+# A web app without its page (missing, empty or a folder) would replace a working one with nothing
+# to open.
+if [[ -d "$work/files/public" && ! (-f "$work/files/public/index.html" && -s "$work/files/public/index.html") ]]; then
+  log "refusing the archive: its web app has no index.html, or an empty one"
+  exit 1
+fi
 
 # VERSION: "<commit time> <commit>" of the files (scripts/pack-server-files.sh).
 read -r archive_time archive_commit < "$work/files/VERSION" || true
@@ -204,13 +214,35 @@ for file in "$pb_dir/pb_hooks"/*.js; do
     removed_hook_list+=("$name")
   fi
 done
-if (( ${#new_migration_list[@]} + ${#changed_hook_list[@]} + ${#removed_hook_list[@]} == 0 )); then
+# PocketBase's folders must be folders, not links, even when nothing is installed: a linked
+# pb_public matching the archive would otherwise pass as up to date. Checked again once PocketBase
+# is stopped, before installing.
+for name in pb_data pb_migrations pb_hooks pb_public; do
+  if [[ -L "$pb_dir/$name" || (-e "$pb_dir/$name" && ! -d "$pb_dir/$name") ]]; then
+    log "refusing to update: $pb_dir/$name isn't a folder"
+    exit 1
+  fi
+done
+# A web app swap cut short (see the install below) left the old one set aside: put back first,
+# whatever this archive holds.
+if [[ ! -e "$pb_dir/pb_public" && -d "$pb_dir/pb_public.old" && ! -L "$pb_dir/pb_public.old" ]]; then
+  mv -T "$pb_dir/pb_public.old" "$pb_dir/pb_public"
+fi
+# The web app (public/, PocketBase's pb_public/), replaced whole when it differs. An archive without
+# one (from before the web app) leaves the installed one.
+is_public_changed=false
+if [[ -d "$work/files/public" ]] && ! diff -rq "$work/files/public" "$pb_dir/pb_public" > /dev/null 2>&1; then
+  is_public_changed=true
+fi
+if (( ${#new_migration_list[@]} + ${#changed_hook_list[@]} + ${#removed_hook_list[@]} == 0 )) &&
+  [[ "$is_public_changed" == false ]]; then
   echo "$archive_time $archive_commit" > "$version_file"
   log "up to date ($archive_commit)"
   exit 0
 fi
 log "installing $archive_commit: migrations ${new_migration_list[*]:-none};" \
-  "hooks ${changed_hook_list[*]:-none}; removed hooks ${removed_hook_list[*]:-none}"
+  "hooks ${changed_hook_list[*]:-none}; removed hooks ${removed_hook_list[*]:-none};" \
+  "web app $([[ "$is_public_changed" == true ]] && echo changed || echo unchanged)"
 
 is_healthy() {
   for _ in $(seq 1 30); do
@@ -224,6 +256,7 @@ is_healthy() {
 
 # Puts back the files (and the data, once PocketBase ran with the new files), then starts it.
 is_data_changed=false
+is_public_installed=false
 rollback() {
   trap - ERR
   log "putting the previous data and files back"
@@ -239,6 +272,12 @@ rollback() {
     rm -rf "$pb_dir/pb_hooks"
     cp -a "$work/previous_hooks" "$pb_dir/pb_hooks"
   fi
+  if [[ "$is_public_installed" == true ]]; then
+    rm -rf "$pb_dir/pb_public"
+    if [[ -d "$work/previous_public" ]]; then
+      cp -a "$work/previous_public" "$pb_dir/pb_public"
+    fi
+  fi
   systemctl start "$pb_service" || true
   if is_healthy; then
     log "rolled back: PocketBase runs as before the update"
@@ -251,7 +290,7 @@ rollback() {
 systemctl stop "$pb_service"
 # PocketBase's folders must be folders, not links that would make root write, copy or delete
 # elsewhere. Checked with PocketBase stopped: its user can't change them any more meanwhile.
-for name in pb_data pb_migrations pb_hooks; do
+for name in pb_data pb_migrations pb_hooks pb_public; do
   if [[ -L "$pb_dir/$name" || (-e "$pb_dir/$name" && ! -d "$pb_dir/$name") ]]; then
     log "refusing to update: $pb_dir/$name isn't a folder"
     if ! systemctl start "$pb_service" || ! is_healthy; then
@@ -286,6 +325,25 @@ done
 for name in "${removed_hook_list[@]}"; do
   rm -f "$pb_dir/pb_hooks/$name"
 done
+# The web app: root's, which PocketBase only reads (its user can't change what browsers run). Copied
+# beside pb_public first, then swapped in by renames (same folder, same file system): an update cut
+# short (killed, power loss) never leaves a half-copied web app, at most the old one set aside in
+# pb_public.old, which the next run puts back (before anything else). `rm -rf` on a link removes
+# the link only.
+if [[ "$is_public_changed" == true ]]; then
+  rm -rf "$pb_dir/pb_public.new" "$pb_dir/pb_public.old"
+  cp -R "$work/files/public" "$pb_dir/pb_public.new"
+  chown -R root:root "$pb_dir/pb_public.new"
+  chmod -R u=rwX,go=rX "$pb_dir/pb_public.new"
+  if [[ -d "$pb_dir/pb_public" ]]; then
+    cp -a "$pb_dir/pb_public" "$work/previous_public"
+    mv -T "$pb_dir/pb_public" "$pb_dir/pb_public.old"
+  fi
+  # From here a rollback replaces pb_public: only once its copy is safe in previous_public.
+  is_public_installed=true
+  mv -T "$pb_dir/pb_public.new" "$pb_dir/pb_public"
+  rm -rf "$pb_dir/pb_public.old"
+fi
 # Starting applies the new migrations: from now on, the data may change.
 is_data_changed=true
 systemctl start "$pb_service"

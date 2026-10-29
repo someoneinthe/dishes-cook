@@ -72,6 +72,23 @@ export const en = {
     ],
     serverTitle: 'On your own server, if you choose',
     version: (version: string) => `Version ${version}`,
+    webDeviceList: [
+      'Your recipes and drinks (their photos included), ingredients and settings are saved in this browser, in its storage for this site. The app reads and changes them there, and only your sync server receives them.',
+      'The browser is asked to keep them, but clearing this site’s data (or the browser’s) deletes them, and a browser that refuses to keep them may delete them itself when it runs short of space: sync with your server to keep them.',
+      'The web app itself comes from your sync server, which serves it.',
+    ],
+    webOthersList: [
+      'Reading a recipe from a photo or a file (a PDF, a Word, OpenDocument or text document) happens in your browser: photos and PDF pages with the Tesseract.js text recognition, the other documents by the app itself. Tesseract.js and its language data come from your server, with the app. Nothing is kept and nothing leaves your browser. A recipe’s own photo, added in the form, is kept with the recipe.',
+      'Sharing a shopping list sends it only to the app you pick, or copies it for you to paste where the browser can’t share. The list isn’t saved: it’s forgotten when the page closes.',
+      'Sharing a recipe opens your browser’s print window, where you can print it or save it as a PDF. Nothing is kept.',
+      'No account with us, no ads, no analytics, no tracking. The app connects to nothing but your sync server, which it comes from.',
+    ],
+    webServerList: [
+      'Off by default. In Settings › Data storage, you can sync with a PocketBase server that you install and run yourself, to share your recipes between your devices.',
+      'Only that server receives your data: your recipes and drinks (title, dish or drink, course, season, preparation and cooking times, a drink’s maturation time, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. The server also records which of its accounts added each recipe (shown on the recipe, and for the “Added by” filter), and every account on it can see the others’ names, not their emails. Settings stay on each device.',
+      'This browser keeps the server’s address, your email, your account’s id on the server, the names of the server’s accounts and a sign-in token, never your password. A browser can’t encrypt the token as Android does: it stays in this site’s storage, which only the app reads. The connection is encrypted (HTTPS).',
+      'The server is yours: no one else runs it, and the app’s developers can’t see it.',
+    ],
   },
   common: {
     back: 'Go back',
@@ -406,6 +423,9 @@ export const en = {
     similarMessage: (existing: string) => `You already have “${existing}”. Use it instead?`,
     startMessage:
       'Write it yourself, or fill it in from a file (a photo, a PDF, a Word, OpenDocument or text document) or a photo of a recipe page: it’s read on your phone and isn’t kept.',
+    // In a browser: no camera to open, only files.
+    startMessageWithoutCamera:
+      'Write it yourself, or fill it in from a file (a photo, a PDF, a Word, OpenDocument or text document): it’s read in your browser and isn’t kept.',
     takePhoto: 'Take a photo',
     unsupportedMessage:
       'Choose a photo, a PDF, a Word (.docx), OpenDocument (.odt) or text (.txt) file. Old Word files (.doc) can’t be read: save them as .docx first.',
@@ -446,6 +466,9 @@ export const en = {
     // On a recipe: in the list or not (header button).
     addToList: 'Add to the shopping list',
     addToListHint: 'Adds its ingredients to the shopping list',
+    // A browser that can't share copies the list instead (src/lib/share-text.web.ts).
+    copiedMessage: 'Paste it where you want it: notes, messages, email…',
+    copiedTitle: 'List copied',
     emptyMessage:
       'Add meals from the meal choice or from a recipe: their ingredients are listed here, ready to share.',
     emptyTitle: 'No meals picked yet',
@@ -487,6 +510,8 @@ export const en = {
     removeHint: 'Takes it out of the shopping list',
     removeLabel: (title: string) => `Remove ${title} from the list`,
     share: 'Share',
+    shareFailedMessage: 'The list couldn’t be shared or copied. Try again.',
+    shareFailedTitle: 'Sharing failed',
     shareHint: 'Sends the list to another app: notes, messages, email…',
     title: 'Shopping list',
     // More ingredient lines than the list reads: some are left out.
@@ -501,10 +526,10 @@ export const en = {
     connecting: 'Connecting…',
     email: 'Email',
     errorAppOutdated:
-      'This app is too old for your server: update the app to sync again. Your changes stay on this phone meanwhile.',
+      'This app is too old for your server: update the app to sync again. Your changes stay on this device meanwhile.',
     errorFailed: 'The server refused the request. Try again later.',
     errorServerOutdated:
-      'Your server is older than this app: update the server to sync again. Your changes stay on this phone meanwhile.',
+      'Your server is older than this app: update the server to sync again. Your changes stay on this device meanwhile.',
     errorUnauthorized:
       'The server refused the sign-in. Choose “This device only”, then connect again.',
     errorUnreachable:
@@ -541,6 +566,13 @@ export const en = {
     syncNow: 'Sync now',
     withServer: 'Synced with a server',
     wrongAccount: 'Wrong email or password.',
+  },
+  // The web app can't start (src/web-start-error.ts), shown before the app's own screens.
+  webStart: {
+    failed:
+      'Dishes Cook couldn’t open its data in this browser. Reload the page; if it keeps failing, try another browser.',
+    unsupported:
+      'This browser can’t run Dishes Cook here. Open it from your sync server’s address (HTTPS), in a recent Chrome, Edge, Firefox or Safari.',
   },
 };
 

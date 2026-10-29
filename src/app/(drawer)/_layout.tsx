@@ -5,6 +5,7 @@ import { headerTitleOptions } from '@/components/header-title';
 import { MENU_ICONS, menuEntryOptions } from '@/components/menu-entry-options';
 import { phoneMenu } from '@/components/phone-menu';
 import { noMenuButton, tvMenu, useTvMenuWidth } from '@/components/tv-menu';
+import { useIsMenuAlwaysOpen } from '@/components/use-menu-always-open';
 import { useMessages } from '@/i18n/i18n-provider';
 import { isTv } from '@/lib/device';
 
@@ -18,6 +19,7 @@ export default function DrawerLayout() {
   const { theme } = useUnistyles();
   const t = useMessages();
   const tvMenuWidth = useTvMenuWidth();
+  const isMenuAlwaysOpen = useIsMenuAlwaysOpen();
 
   return (
     <Drawer
@@ -32,12 +34,13 @@ export default function DrawerLayout() {
         drawerInactiveTintColor: theme.colors.text,
         drawerStyle: {
           backgroundColor: theme.colors.background,
-          ...(isTv && { width: tvMenuWidth }),
+          ...(isMenuAlwaysOpen && { width: tvMenuWidth }),
         },
         // On a TV, the menu stays on the left of the screen: the remote moves between it and the
         // screen (a menu that slides in would leave its entries in the remote's way when closed).
-        drawerType: isTv ? 'permanent' : 'front',
-        headerLeft: isTv ? noMenuButton : drawerToggle(t.menu.open),
+        // A wide browser window too (useIsMenuAlwaysOpen), with the phone's menu.
+        drawerType: isMenuAlwaysOpen ? 'permanent' : 'front',
+        headerLeft: isMenuAlwaysOpen ? noMenuButton : drawerToggle(t.menu.open),
         headerStyle: { backgroundColor: theme.colors.surface },
         headerTintColor: theme.colors.text,
         overlayAccessibilityLabel: t.menu.close,

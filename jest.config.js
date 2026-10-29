@@ -36,6 +36,11 @@ module.exports = {
       {
         ...babelOptions,
         caller: { ...babelOptions.caller, platform: 'android', supportsReactCompiler: true },
+        // The web app's `import()` (scripts/babel-dynamic-import-to-require.js).
+        plugins: [
+          ...(babelOptions.plugins ?? []),
+          require.resolve('./scripts/babel-dynamic-import-to-require.js'),
+        ],
       },
     ],
   },

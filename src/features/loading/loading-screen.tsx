@@ -1,8 +1,8 @@
-import { Image } from 'expo-image';
 import { hide as hideSplashScreen } from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { Animated } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import { Image } from '@/components/styled';
 import { useMessages } from '@/i18n/i18n-provider';
 import { loadingScreenImage } from '@/lib/assets';
 

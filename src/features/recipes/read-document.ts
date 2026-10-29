@@ -1,6 +1,6 @@
 import type { Rect, Text, TextLine } from '@infinitered/react-native-mlkit-text-recognition';
 import { recognizeText } from '@infinitered/react-native-mlkit-text-recognition';
-import { Directory, File } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import { renderPdfPages } from '@/lib/pdf-pages';
 import type { DocumentKind } from './recipe-documents';
 import type { ScannedBlock } from './scanned-recipe';
@@ -11,14 +11,14 @@ export const MAX_PDF_PAGES = 5;
 // Width of a rendered PDF page, in pixels: about a sharp phone photo's, for the text recognition.
 const PDF_PAGE_WIDTH = 1600;
 
-// A copy that can't be deleted stays in the cache, which Android clears when it needs room.
-export function deleteFolder(folder: Directory) {
-  try {
-    if (folder.exists) {
-      folder.delete();
-    }
-  } catch {
-    // Nothing the user can do about it: the recipe was read all the same.
+// The pickers copy the photo taken (and its crop) or the file chosen to these folders of the app's
+// cache, and leave them there.
+const PICKER_FOLDER_LIST = ['ImagePicker', 'DocumentPicker'];
+
+// Deletes the pickers' copies of the photo or file read (useRecipeScan), once read or not.
+export function deletePickerCopies(): void {
+  for (const folder of PICKER_FOLDER_LIST) {
+    deleteFolder(new Directory(Paths.cache, folder));
   }
 }
 
@@ -62,6 +62,17 @@ export function toScannedBlocks(text: Text, isLevel = false): ScannedBlock[] {
       text: line.text,
     })),
   }));
+}
+
+// A copy that can't be deleted stays in the cache, which Android clears when it needs room.
+function deleteFolder(folder: Directory) {
+  try {
+    if (folder.exists) {
+      folder.delete();
+    }
+  } catch {
+    // Nothing the user can do about it: the recipe was read all the same.
+  }
 }
 
 function frameHeight({ bottom, top }: Rect): number {
