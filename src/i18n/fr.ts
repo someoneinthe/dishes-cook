@@ -49,7 +49,7 @@ export const fr: Messages = {
     version: (version) => `Version ${version}`,
     webDeviceList: [
       'Vos recettes et boissons (avec leurs photos), ingrédients et paramètres sont enregistrés dans ce navigateur, dans son stockage pour ce site. L’application les lit et les modifie là, et seul votre serveur de synchronisation les reçoit.',
-      `Le navigateur est invité à les garder, mais effacer les données de ce site (ou du navigateur) les supprime${NARROW_SPACE}: synchronisez avec votre serveur pour les conserver.`,
+      `Le navigateur est invité à les garder, mais effacer les données de ce site (ou du navigateur) les supprime, et un navigateur qui refuse de les garder peut les supprimer lui-même s’il manque de place${NARROW_SPACE}: synchronisez avec votre serveur pour les conserver.`,
       'L’application web elle-même vient de votre serveur de synchronisation, qui la sert.',
     ],
     webOthersList: [

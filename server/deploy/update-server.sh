@@ -156,6 +156,11 @@ if ! tar -tvzf "$archive" | awk '
 fi
 mkdir "$work/files"
 tar -xzf "$archive" -C "$work/files"
+# A web app without its page would replace a working one with nothing to open.
+if [[ -d "$work/files/public" && ! -f "$work/files/public/index.html" ]]; then
+  log "refusing the archive: its web app has no index.html"
+  exit 1
+fi
 
 # VERSION: "<commit time> <commit>" of the files (scripts/pack-server-files.sh).
 read -r archive_time archive_commit < "$work/files/VERSION" || true

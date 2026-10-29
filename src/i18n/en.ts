@@ -74,7 +74,7 @@ export const en = {
     version: (version: string) => `Version ${version}`,
     webDeviceList: [
       'Your recipes and drinks (their photos included), ingredients and settings are saved in this browser, in its storage for this site. The app reads and changes them there, and only your sync server receives them.',
-      'The browser is asked to keep them, but clearing this site’s data (or the browser’s) deletes them: sync with your server to keep them.',
+      'The browser is asked to keep them, but clearing this site’s data (or the browser’s) deletes them, and a browser that refuses to keep them may delete them itself when it runs short of space: sync with your server to keep them.',
       'The web app itself comes from your sync server, which serves it.',
     ],
     webOthersList: [
