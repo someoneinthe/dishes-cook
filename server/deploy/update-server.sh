@@ -156,9 +156,9 @@ if ! tar -tvzf "$archive" | awk '
 fi
 mkdir "$work/files"
 tar -xzf "$archive" -C "$work/files"
-# A web app without its page would replace a working one with nothing to open.
-if [[ -d "$work/files/public" && ! -f "$work/files/public/index.html" ]]; then
-  log "refusing the archive: its web app has no index.html"
+# A web app without its page (missing or empty) would replace a working one with nothing to open.
+if [[ -d "$work/files/public" && ! -s "$work/files/public/index.html" ]]; then
+  log "refusing the archive: its web app has no index.html, or an empty one"
   exit 1
 fi
 
