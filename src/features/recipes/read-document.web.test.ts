@@ -133,6 +133,14 @@ describe('reading a document in a browser', () => {
     expect(page.render.mock.calls[0]?.[0]).toMatchObject({
       canvas: { height: 32_767, width: 328 },
     });
+
+    // The page drawn at the canvas's size.
+    const { viewport } = page.render.mock.calls[0]?.[0] as {
+      viewport: { height: number; width: number };
+    };
+
+    expect(viewport.height).toBeCloseTo(32_767);
+    expect(viewport.width).toBeCloseTo(327.67);
   });
 
   it('lets the PDF go when the text recognition can’t start', async () => {

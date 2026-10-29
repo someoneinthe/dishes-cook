@@ -208,12 +208,6 @@ for file in "$pb_dir/pb_hooks"/*.js; do
     removed_hook_list+=("$name")
   fi
 done
-# The web app (public/, PocketBase's pb_public/), replaced whole when it differs. An archive without
-# one (from before the web app) leaves the installed one.
-is_public_changed=false
-if [[ -d "$work/files/public" ]] && ! diff -rq "$work/files/public" "$pb_dir/pb_public" > /dev/null 2>&1; then
-  is_public_changed=true
-fi
 # PocketBase's folders must be folders, not links, even when nothing is installed: a linked
 # pb_public matching the archive would otherwise pass as up to date. Checked again once PocketBase
 # is stopped, before installing.
@@ -223,6 +217,17 @@ for name in pb_data pb_migrations pb_hooks pb_public; do
     exit 1
   fi
 done
+# A web app swap cut short (see the install below) left the old one set aside: put back first,
+# whatever this archive holds.
+if [[ ! -e "$pb_dir/pb_public" && -d "$pb_dir/pb_public.old" && ! -L "$pb_dir/pb_public.old" ]]; then
+  mv -T "$pb_dir/pb_public.old" "$pb_dir/pb_public"
+fi
+# The web app (public/, PocketBase's pb_public/), replaced whole when it differs. An archive without
+# one (from before the web app) leaves the installed one.
+is_public_changed=false
+if [[ -d "$work/files/public" ]] && ! diff -rq "$work/files/public" "$pb_dir/pb_public" > /dev/null 2>&1; then
+  is_public_changed=true
+fi
 if (( ${#new_migration_list[@]} + ${#changed_hook_list[@]} + ${#removed_hook_list[@]} == 0 )) &&
   [[ "$is_public_changed" == false ]]; then
   echo "$archive_time $archive_commit" > "$version_file"
@@ -317,20 +322,19 @@ done
 # The web app: root's, which PocketBase only reads (its user can't change what browsers run). Copied
 # beside pb_public first, then swapped in by renames (same folder, same file system): an update cut
 # short (killed, power loss) never leaves a half-copied web app, at most the old one set aside in
-# pb_public.old, which the next run puts back. `rm -rf` on a link removes the link only.
-if [[ ! -e "$pb_dir/pb_public" && -d "$pb_dir/pb_public.old" && ! -L "$pb_dir/pb_public.old" ]]; then
-  mv -T "$pb_dir/pb_public.old" "$pb_dir/pb_public"
-fi
+# pb_public.old, which the next run puts back (before anything else). `rm -rf` on a link removes
+# the link only.
 if [[ "$is_public_changed" == true ]]; then
   rm -rf "$pb_dir/pb_public.new" "$pb_dir/pb_public.old"
   cp -R "$work/files/public" "$pb_dir/pb_public.new"
   chown -R root:root "$pb_dir/pb_public.new"
   chmod -R u=rwX,go=rX "$pb_dir/pb_public.new"
-  is_public_installed=true
   if [[ -d "$pb_dir/pb_public" ]]; then
     cp -a "$pb_dir/pb_public" "$work/previous_public"
     mv -T "$pb_dir/pb_public" "$pb_dir/pb_public.old"
   fi
+  # From here a rollback replaces pb_public: only once its copy is safe in previous_public.
+  is_public_installed=true
   mv -T "$pb_dir/pb_public.new" "$pb_dir/pb_public"
   rm -rf "$pb_dir/pb_public.old"
 fi

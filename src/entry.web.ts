@@ -22,14 +22,15 @@ async function start(): Promise<void> {
   }
   try {
     await Promise.all([startWebDatabase(), listPhotos()]);
+    await import('./start-app');
   } catch {
     showStartError('failed');
-    return;
   }
-  await import('./start-app');
 }
 
 // The browser is asked to keep the site's data (the database, the photos) when it needs room; it
-// may still clear it when the user does, which the About page says.
-void navigator.storage.persist().catch(() => false);
+// may still clear it when the user does, which the About page says. A page that isn't secure (plain
+// HTTP, not localhost) has no storage at all: it shows the unsupported message.
+const storage: StorageManager | undefined = navigator.storage;
+void storage?.persist().catch(() => false);
 void start();

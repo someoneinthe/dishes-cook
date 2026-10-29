@@ -31,6 +31,7 @@ describe('sharing a text in a browser', () => {
     setBrowser({ navigator: { clipboard: { writeText }, share } });
 
     await expect(shareText('Leeks')).resolves.toBe('copied');
+    expect(writeText).toHaveBeenCalledWith('Leeks');
 
     share.mockRejectedValueOnce(domError('AbortError'));
     const closed = shareText('Leeks');

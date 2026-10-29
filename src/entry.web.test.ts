@@ -45,8 +45,9 @@ describe('the web app’s start', () => {
     Reflect.deleteProperty(globalThis, 'crossOriginIsolated');
   });
 
-  const start = async (language = 'en-US') => {
-    setBrowser({ navigator: { language, storage } });
+  // `hasStorage`: false on a page that isn't secure (plain HTTP, not localhost).
+  const start = async (language = 'en-US', hasStorage = true) => {
+    setBrowser({ navigator: { language, ...(hasStorage && { storage }) } });
     // Each start in its own module registry, the app's included: waited for inside it.
     await jest.isolateModulesAsync(async () => {
       await import('./entry.web');
@@ -94,5 +95,25 @@ describe('the web app’s start', () => {
     expect(openDatabaseAsync).not.toHaveBeenCalled();
     expect(mockStartApp).not.toHaveBeenCalled();
     expect(shown.text).toContain('can’t run Dishes Cook here');
+  });
+
+  it('says so on a page that isn’t secure, which has no storage either', async () => {
+    const shown = fakePage();
+    Object.defineProperty(globalThis, 'crossOriginIsolated', { configurable: true, value: false });
+
+    await start('en-US', false);
+
+    expect(shown.text).toContain('can’t run Dishes Cook here');
+  });
+
+  it('says so when the app itself can’t load', async () => {
+    const shown = fakePage();
+    mockStartApp.mockImplementationOnce(() => {
+      throw new Error('Chunk failed');
+    });
+
+    await start();
+
+    expect(shown.text).toContain('couldn’t open its data');
   });
 });
