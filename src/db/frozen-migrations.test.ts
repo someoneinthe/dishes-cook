@@ -101,7 +101,7 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
   ],
   [
     'src/db/migrations/0013_unique-recipe-titles.sql',
-    'a8172884b8893973ab02957c9fa4060c507e3c5b3b8efa4d21d8f9d885f5d801',
+    '0d47b341ab5ea8e61c839053c343f1c7f7f86237c086738ee1ed782e9ed05d54',
   ],
 ]);
 

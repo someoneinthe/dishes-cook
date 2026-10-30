@@ -39,7 +39,7 @@ describe('0013_unique-recipe-titles', () => {
     ]);
   });
 
-  it('gives its sync id to a recipe whose number another recipe already had', () => {
+  it('skips the numbers other recipes have, whatever their titles hold', () => {
     const sqlite = new Database(':memory:');
     const database = drizzle(sqlite);
     migrate(database, { migrationsFolder: firstMigrations(13) });
@@ -48,12 +48,35 @@ describe('0013_unique-recipe-titles', () => {
     );
     insert.run('crêpes', 'crepes', 'syncid000000001');
     insert.run('crêpes', 'crepes', 'syncid000000002');
-    insert.run('crêpes (2)', 'crepes (2)', 'syncid000000003');
+    insert.run('crêpes', 'crepes', 'syncid000000003');
+    // Written by hand: a number, the same one twice, and what numbering them would give.
+    insert.run('crêpes (2)', 'crepes (2)', 'syncid000000004');
+    insert.run('crêpes (2)', 'crepes (2)', 'syncid000000005');
+    insert.run('crêpes (2) (2)', 'crepes (2) (2)', 'syncid000000006');
+    insert.run('crêpes (2) (syncid000000003)', 'crepes (2) (syncid000000003)', 'syncid000000007');
 
     migrate(database, { migrationsFolder: MIGRATIONS });
 
     const titleList = sqlite.prepare('select title from recipes order by sync_id').pluck().all();
 
-    expect(titleList).toStrictEqual(['crêpes', 'crêpes (2)', 'crêpes (2) (syncid000000003)']);
+    expect(titleList).toStrictEqual([
+      'crêpes',
+      'crêpes (3)',
+      'crêpes (4)',
+      'crêpes (2)',
+      'crêpes (2) (3)',
+      'crêpes (2) (2)',
+      'crêpes (2) (syncid000000003)',
+    ]);
+  });
+
+  it('migrates a database without recipes', () => {
+    const sqlite = new Database(':memory:');
+    const database = drizzle(sqlite);
+    migrate(database, { migrationsFolder: firstMigrations(13) });
+
+    migrate(database, { migrationsFolder: MIGRATIONS });
+
+    expect(sqlite.prepare('select count(*) from recipes').pluck().get()).toBe(0);
   });
 });
