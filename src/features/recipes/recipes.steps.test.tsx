@@ -1,5 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 import { defineFeature, loadFeature } from 'jest-cucumber';
+import type { RecipeKind } from '@/db/schema';
 import type { DatabaseConnection } from '@/db/types';
 import type { NavigationMock } from '@/test/navigation-mock';
 import {
@@ -8,15 +9,17 @@ import {
 } from '@/features/ingredients/db/ingredient-queries';
 import { firstRecipePage } from '@/test/queries';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
-import { getRecipe } from './db/recipe-queries';
+import { getRecipe, saveRecipe } from './db/recipe-queries';
 import { RecipeFormScreen } from './recipe-form-screen';
+
+const mockParams: { id?: string; kind?: string } = {};
 
 jest.mock('expo-router', () => ({
   router: { back: jest.fn(), replace: jest.fn() },
   Stack: {
     Screen: jest.requireActual<NavigationMock>('@/test/navigation-mock').ScreenWithHeaderButtons,
   },
-  useLocalSearchParams: () => ({}),
+  useLocalSearchParams: () => mockParams,
 }));
 
 const feature = loadFeature('./recipes.feature', { loadRelativePath: true });
@@ -26,6 +29,7 @@ defineFeature(feature, (test) => {
 
   beforeEach(() => {
     connection = createTestConnection();
+    delete mockParams.id;
   });
 
   const startNewRecipe = async () => {
@@ -36,14 +40,26 @@ defineFeature(feature, (test) => {
     await fireEvent.press(screen.getByRole('button', { name: 'Save recipe' }));
   };
 
+  const giveTheTitle = async (title: string) => {
+    await fireEvent.changeText(screen.getByLabelText('Title'), title);
+  };
+
+  const addSaved = (kind: RecipeKind) => (title: string) => {
+    saveRecipe(connection.db, {
+      ingredientIdList: [],
+      instructions: '',
+      kind,
+      season: 'both',
+      title,
+    });
+  };
+
   test('A recipe is written with existing and new ingredients', ({ and, given, then, when }) => {
     given(/^the ingredient "(.*)" exists$/, (name: string) => {
       findOrCreateIngredient(connection.db, name);
     });
     and('I am writing a new recipe', startNewRecipe);
-    when(/^I give it the title "(.*)"$/, async (title: string) => {
-      await fireEvent.changeText(screen.getByLabelText('Title'), title);
-    });
+    when(/^I give it the title "(.*)"$/, giveTheTitle);
     and(/^I choose the "(.*)" season$/, async (season: string) => {
       await fireEvent.press(screen.getByRole('radio', { name: season }));
     });
@@ -77,6 +93,49 @@ defineFeature(feature, (test) => {
     then('I am asked to give the recipe a title', () => {
       expect(screen.getByText('Give the recipe a title.')).toBeOnTheScreen();
       expect(firstRecipePage(connection.db)).toStrictEqual([]);
+    });
+  });
+
+  test('Two recipes cannot have the same title, ignoring case and accents', ({
+    and,
+    given,
+    then,
+    when,
+  }) => {
+    given(/^the recipe "(.*)" exists$/, addSaved('dish'));
+    and('I am writing a new recipe', startNewRecipe);
+    when(/^I give it the title "(.*)"$/, giveTheTitle);
+    and('I save the recipe', saveTheRecipe);
+    then(/^I am told "(.*)"$/, (message: string) => {
+      expect(screen.getByText(message)).toBeOnTheScreen();
+    });
+    and(/^there is still only "(.*)"$/, (title: string) => {
+      expect(firstRecipePage(connection.db).map((recipe) => recipe.title)).toStrictEqual([title]);
+    });
+  });
+
+  test('A recipe cannot have the title of a drink', ({ and, given, then, when }) => {
+    given(/^the drink "(.*)" exists$/, addSaved('drink'));
+    and('I am writing a new recipe', startNewRecipe);
+    when(/^I give it the title "(.*)"$/, giveTheTitle);
+    and('I save the recipe', saveTheRecipe);
+    then(/^I am told "(.*)"$/, (message: string) => {
+      expect(screen.getByText(message)).toBeOnTheScreen();
+      expect(firstRecipePage(connection.db)).toStrictEqual([]);
+    });
+  });
+
+  test('A recipe keeps its title when edited', ({ and, given, then, when }) => {
+    given(/^the recipe "(.*)" exists$/, addSaved('dish'));
+    and('I am editing it', async () => {
+      const [{ id } = { id: -1 }] = firstRecipePage(connection.db);
+      mockParams.id = String(id);
+      await renderWithDatabase(<RecipeFormScreen />, connection);
+    });
+    when(/^I give it the title "(.*)"$/, giveTheTitle);
+    and('I save the recipe', saveTheRecipe);
+    then(/^the recipe is saved as "(.*)"$/, (title: string) => {
+      expect(firstRecipePage(connection.db).map((recipe) => recipe.title)).toStrictEqual([title]);
     });
   });
 

@@ -99,6 +99,10 @@ const SHIPPED_MIGRATIONS = new Map<string, string>([
     'src/db/migrations/0012_recipe-synced-content.sql',
     '242c7715f789bee4500191e827a26ec5faddb4396b259850e374a8607f5b35c9',
   ],
+  [
+    'src/db/migrations/0013_unique-recipe-titles.sql',
+    'a8172884b8893973ab02957c9fa4060c507e3c5b3b8efa4d21d8f9d885f5d801',
+  ],
 ]);
 
 const ROOT = path.join(__dirname, '../..');

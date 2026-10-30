@@ -117,6 +117,7 @@ export const fr: Messages = {
         : 'Affiche le filtre d’ingrédients',
     titlePlaceholder: `Ex.${NARROW_SPACE}: mojito`,
     titleRequired: 'Donnez un nom à la boisson.',
+    titleTaken: (title) => `Vous avez déjà une boisson nommée ${quote(title)}.`,
   },
   filters: {
     addedBy: 'Ajoutée par',
@@ -345,6 +346,7 @@ export const fr: Messages = {
     title: 'Titre',
     titlePlaceholder: `Ex.${NARROW_SPACE}: soupe de potiron`,
     titleRequired: 'Donnez un titre à la recette.',
+    titleTaken: (title) => `Vous avez déjà une recette nommée ${quote(title)}.`,
     write: 'Écrire',
   },
   recipeScan: {

@@ -9,6 +9,7 @@ import {
 import { getLastCookedMeal, markCooked } from '@/features/meal-history/db/cooked-meal-queries';
 import {
   countRecipes,
+  findRecipeByTitle,
   getRecipe,
   getRecipeCard,
   listRecipePage,
@@ -143,6 +144,14 @@ describe('query plans', () => {
 
     expect(lastQuery()?.query).toContain('max("cooked_meals"."cooked_at")');
     expect(lastPlan()).toContainEqual(expect.stringMatching(COOKED_INDEX));
+  });
+
+  it('finds a recipe by title on the unique sort key index', () => {
+    findRecipeByTitle(database, 'Soup');
+
+    expect(lastPlan()).toStrictEqual([
+      expect.stringMatching(/^SEARCH recipes USING INDEX recipes_sort_key_unique \(sort_key=\?\)/),
+    ]);
   });
 
   it('reads the last time a recipe was cooked from the end of the meal index', () => {

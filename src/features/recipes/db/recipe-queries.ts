@@ -146,6 +146,23 @@ export function deleteRecipe(database: AppDatabase, id: number): void {
   });
 }
 
+// The recipe (dish or drink) with this title, ignoring case and accents, other than `exceptId`:
+// titles are unique (recipes_sort_key_unique), looked up on that index.
+export function findRecipeByTitle(
+  database: AppDatabase,
+  title: string,
+  exceptId?: number,
+): Readonly<{ id: number; kind: RecipeKind; title: string }> | undefined {
+  const found = database
+    .select({ id: recipes.id, kind: recipes.kind, title: recipes.title })
+    .from(recipes)
+    .where(eq(recipes.sortKey, toSortKey(title)))
+    .get();
+  return found && found.id !== exceptId
+    ? { ...found, title: toDisplayName(found.title) }
+    : undefined;
+}
+
 export function getRecipe(database: AppDatabase, id: number): Recipe | undefined {
   const recipe = database
     .select({

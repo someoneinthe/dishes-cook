@@ -42,6 +42,7 @@ import {
   firstWrongTime,
   keepRef,
   readTimes,
+  readTitleError,
   showField,
 } from './recipe-form-fields';
 import {
@@ -174,9 +175,12 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
     setInvalidIdSet(new Set(invalidIdList));
     const undecidedIdList = newIngredients.undecidedIdList(selectedIngredientList);
     setIsChoiceMissing(undecidedIdList.length > 0);
-    if (!cleanName(title)) {
-      setTitleError(kindTexts(t, kind).titleRequired);
-    }
+    const newTitleError = readTitleError(database, t, {
+      exceptId: initialRecipe?.id,
+      kind,
+      title,
+    });
+    setTitleError(newTitleError);
     const {
       cookMinutes,
       invalidList: timeErrorList,
@@ -194,7 +198,7 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
         maturation: maturationRef.current,
         prep: prepRef.current,
       }),
-      titleInput: cleanName(title) ? undefined : titleRef.current,
+      titleInput: newTitleError === undefined ? undefined : titleRef.current,
       undecidedIdList,
     });
     if (firstInvalid) {
@@ -204,8 +208,8 @@ function RecipeForm({ initialRecipe, kind, scannedRecipe, screenTitle }: RecipeF
       );
     }
     if (
+      newTitleError !== undefined ||
       isSavedRef.current ||
-      !cleanName(title) ||
       invalidIdList.length > 0 ||
       undecidedIdList.length > 0 ||
       timeErrorList.length > 0

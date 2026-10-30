@@ -57,7 +57,7 @@ erDiagram
     integer prep_minutes "nullable"
     text season "winter / summer / both"
     integer server_version "nullable"
-    text sort_key
+    text sort_key UK
     text synced_content "nullable"
     text sync_id UK
     text title
@@ -91,11 +91,13 @@ Integer primary keys are SQLite rowids.
 | `recipes`            | `recipes_sync_id_unique`                   | `sync_id`                    | yes    |
 | `recipes`            | `recipes_to_push_idx`                      | `updated_at`, `id`           |        |
 | `recipes`            | `recipes_kind_sort_key_id_idx`             | `kind`, `sort_key`, `id`     |        |
+| `recipes`            | `recipes_sort_key_unique`                  | `sort_key`                   | yes    |
 | `sync_deletions`     | primary key                                | `table_name`, `sync_id`      | yes    |
 
 <!-- db-diagram:end -->
 
 - **Ingredients are unique** by `name_key` (trimmed, single spaces, lower case, computed by `toNameKey` in `src/lib/text.ts`). Case is ignored, accents are not (`pâte` ≠ `pâté`). The key is computed in JS because SQLite's `NOCASE` only folds ASCII (`Œuf` vs `œuf`).
+- **Recipe titles are unique** by `sort_key` (`recipes_sort_key_unique`), dishes and drinks together: case and accents are ignored (`Crêpes` = `crepes`). The form says so before saving (`findRecipeByTitle`); a sync bringing a recipe with a title already used here numbers one of them (`crêpes (2)`, see [sync.md](sync.md#how-it-works)).
 - **Many-to-many** through `recipe_ingredients`: its composite primary key forbids duplicate links and serves "ingredients of a recipe"; the reverse index serves "recipes using an ingredient" and covers its queries (no table lookup). Reading a recipe's ingredients also reads each link's quantity from its row.
 - **Quantities** live on the link (`recipe_ingredients.amount` and `unit`), **normalized**: weights in grams (`g`) and volumes in millilitres (`ml`), whatever unit they were typed in (1.5 kg is stored as 1500 g, 8 oz as 226.8 g). Spoons (`tsp`, `tbsp`) and counted units (`pinch`, `clove`, `bunch`, `can`, `leaf`, `sprig`) are stored as written, no unit = pieces, no amount = no quantity ("salt"). The unit is chosen on display, in the reader's units (Settings › Units): the closest one, 1000 g → 1 kg, or 2.25 lb in US units (`src/lib/units.ts`). Editing rewrites only the rows the user changed, so a value never drifts through display rounding. Normalized amounts add up directly (the shopping list, item 14). Amounts are checked by `toQuantity` in the code that writes them: a `CHECK` added to an existing table makes drizzle-kit rebuild it.
 - **Meal history**: `cooked_meals` has one row each time a recipe is cooked (`cooked_at`, in ms). Rows are only added and removed, never edited, and marking a recipe as cooked doesn't touch the recipe row: it isn't pushed again, so it can't overwrite an edit made on another phone (see [sync.md › Known limits](sync.md#known-limits)). The `(recipe_id, cooked_at)` index serves a recipe's last time cooked (the end of its entries) and the meal choice's "not cooked since".

@@ -11,6 +11,7 @@ import { createTestConnection } from '@/test/test-database';
 import {
   countRecipes,
   deleteRecipe,
+  findRecipeByTitle,
   getRecipe,
   getRecipeSyncId,
   listRecipePage,
@@ -210,6 +211,30 @@ describe('recipe queries', () => {
     expect(() => saveRecipe(database, soupInput, 999)).toThrow('does not exist');
   });
 
+  it('finds a recipe or a drink by title, ignoring case and accents, other than the one edited', () => {
+    const crepesId = saveRecipe(database, { ...soupInput, title: 'Crêpes' });
+    const mojitoId = saveRecipe(database, { ...soupInput, kind: 'drink', title: 'Mojito' });
+
+    expect(findRecipeByTitle(database, ' CREPES ')).toStrictEqual({
+      id: crepesId,
+      kind: 'dish',
+      title: 'Crêpes',
+    });
+    expect(findRecipeByTitle(database, 'mojito')).toMatchObject({ id: mojitoId, kind: 'drink' });
+    expect(findRecipeByTitle(database, 'crêpes', crepesId)).toBeUndefined();
+    expect(findRecipeByTitle(database, 'Crêpe')).toBeUndefined();
+  });
+
+  it('refuses a second recipe or drink with the same title', () => {
+    const crepesId = saveRecipe(database, { ...soupInput, title: 'Crêpes' });
+    saveRecipe(database, { ...soupInput, kind: 'drink', title: 'Mojito' });
+
+    expect(() => saveRecipe(database, { ...soupInput, title: 'crepes' })).toThrow('UNIQUE');
+    expect(() => saveRecipe(database, { ...soupInput, title: 'Mojito' }, crepesId)).toThrow(
+      'UNIQUE',
+    );
+  });
+
   it('rolls back the whole save when an ingredient does not exist', () => {
     expect(() => saveRecipe(database, { ...soupInput, ingredientIdList: [carrotId, 999] })).toThrow(
       'FOREIGN KEY',
@@ -309,18 +334,21 @@ describe('recipe queries', () => {
         ...soupInput,
         ingredientIdList: [carrotId, leekId],
         season: 'winter',
+        title: 'Soup 1',
       });
       summerSaladId = saveRecipe(database, {
         ...soupInput,
         course: 'starter',
         ingredientIdList: [carrotId, tomatoId],
         season: 'summer',
+        title: 'Soup 2',
       });
       allYearStewId = saveRecipe(database, {
         ...soupInput,
         course: 'main',
         ingredientIdList: [carrotId, leekId, tomatoId],
         season: 'both',
+        title: 'Soup 3',
       });
     });
 

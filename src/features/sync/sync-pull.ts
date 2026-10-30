@@ -380,6 +380,7 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
   if (isDeletedHereLater(tx, 'recipes', row)) {
     return 0;
   }
+  const claimed = claimTitle(tx, title, row.id);
   const values = {
     course: toCourse(row.course),
     // A server without an author never takes one away (like applyKnownAuthor).
@@ -389,10 +390,11 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
     ...pulledTimes(row),
     season: toSeason(row.season),
     serverVersion: row.modified,
-    sortKey: toSortKey(title),
+    sortKey: toSortKey(claimed.title),
     syncedContent: JSON.stringify(remoteContent(tx, row, title)),
-    title,
-    updatedAt: row.modified,
+    title: claimed.title,
+    // Renamed here: newer than the server's version, which takes the new title from this phone.
+    updatedAt: claimed.isRenamed ? row.modified + 1 : row.modified,
     ...pulledPhoto(row, local),
   };
   if (local) {
@@ -407,6 +409,35 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
   forgetDeletion(tx, 'recipes', row.id);
   onAdded();
   return linkIngredients(tx, id, row);
+}
+
+// Titles are unique, ignoring case and accents (recipes_sort_key_unique): when the recipe `syncId`
+// is to have the title of another recipe here (added on two phones, or renamed on one), the one with
+// the larger sync id takes the first free number, "crêpes (2)", the same choice on every phone.
+// Returns the title for `syncId`, and whether it's numbered (it then needs a newer version). The
+// other recipe, numbered, gets one here, pushed by this sync.
+function claimTitle(
+  tx: AppDatabase,
+  title: string,
+  syncId: string,
+): Readonly<{ isRenamed: boolean; title: string }> {
+  const other = otherRecipeTitled(tx, title, syncId);
+  if (!other) {
+    return { isRenamed: false, title };
+  }
+  if (isAfterInBinaryOrder(syncId, other.syncId)) {
+    return { isRenamed: true, title: numberedTitle(tx, title, syncId) };
+  }
+  const otherTitle = numberedTitle(tx, other.title, other.syncId);
+  tx.update(recipes)
+    .set({
+      sortKey: toSortKey(otherTitle),
+      title: otherTitle,
+      updatedAt: sql`max(${recipes.updatedAt} + 1, ${NOW_MS})`,
+    })
+    .where(eq(recipes.id, other.id))
+    .run();
+  return { isRenamed: false, title };
 }
 
 function forgetAlias(tx: AppDatabase, syncId: string) {
@@ -442,6 +473,18 @@ function isAfter(key: PullKey, position: PullPosition): boolean {
 
 // Changed here since the phone last agreed with the server (`server_version`), and changed on the
 // server since too (another phone pushed a newer version): both changes are to keep.
+// Whether `syncId` comes after `other` in SQLite's BINARY order (ORDER BY sync_id, migration 0013):
+// by character code, never a locale's collation, so that every phone makes the same choice.
+function isAfterInBinaryOrder(syncId: string, other: string): boolean {
+  for (let index = 0; index < Math.min(syncId.length, other.length); index += 1) {
+    const difference = (syncId.codePointAt(index) ?? 0) - (other.codePointAt(index) ?? 0);
+    if (difference !== 0) {
+      return difference > 0;
+    }
+  }
+  return syncId.length > other.length;
+}
+
 function isChangedOnBothSides(
   local: Readonly<{ serverVersion: null | number; updatedAt: number }>,
   row: ServerRecipe,
@@ -722,7 +765,8 @@ function mergeRecipe(
     remote,
     local.updatedAt > row.modified,
   );
-  const isServerVersion = isSameContent(merged, remote);
+  const claimed = claimTitle(tx, merged.title, row.id);
+  const isServerVersion = !claimed.isRenamed && isSameContent(merged, remote);
   tx.update(recipes)
     .set({
       cookMinutes: merged.cookMinutes,
@@ -734,9 +778,9 @@ function mergeRecipe(
       prepMinutes: merged.prepMinutes,
       season: merged.season,
       serverVersion: row.modified,
-      sortKey: toSortKey(merged.title),
+      sortKey: toSortKey(claimed.title),
       syncedContent: JSON.stringify(remote),
-      title: merged.title,
+      title: claimed.title,
       // Newer than both: the server takes the merged version from this phone.
       updatedAt: isServerVersion ? row.modified : Math.max(local.updatedAt, row.modified) + 1,
       ...(!isLocalPhotoChanged(local) && pulledPhoto(row, local)),
@@ -747,6 +791,15 @@ function mergeRecipe(
     ingredients: Object.keys(merged.ingredients),
     quantities: merged.ingredients,
   });
+}
+
+// The title with the first number no other recipe than `syncId` has: "crêpes (2)", "crêpes (3)"…
+function numberedTitle(tx: AppDatabase, title: string, syncId: string): string {
+  let number = 2;
+  while (otherRecipeTitled(tx, `${title} (${number})`, syncId)) {
+    number += 1;
+  }
+  return `${title} (${number})`;
 }
 
 // The other ingredient here with this name (not `id`), if any.
@@ -764,6 +817,16 @@ function otherIngredientNamed(
         : and(eq(ingredients.nameKey, nameKey), ne(ingredients.id, id)),
     )
     .get()?.id;
+}
+
+// The other recipe here (not `syncId`) with this title, ignoring case and accents, if any.
+function otherRecipeTitled(tx: AppDatabase, title: string, syncId: string) {
+  const sortKey = toSortKey(title);
+  return tx
+    .select({ id: recipes.id, syncId: recipes.syncId, title: recipes.title })
+    .from(recipes)
+    .where(and(eq(recipes.sortKey, sortKey), ne(recipes.syncId, syncId)))
+    .get();
 }
 
 // The own sync ids of these ingredients, by id.
