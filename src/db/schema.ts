@@ -132,7 +132,8 @@ export const recipes = sqliteTable(
     // server saved; null = not on the server (or not known to be). A sync pushes the rows whose
     // `updated_at` differs from it, never one it just pulled (see docs/sync.md).
     serverVersion: integer('server_version'),
-    // Sort and search key of the title, see ingredients.sortKey.
+    // Sort and search key of the title, see ingredients.sortKey. Also the title's identity: two
+    // recipes (dishes and drinks alike) can't have the same title, ignoring case and accents.
     sortKey: text('sort_key').notNull(),
     // The recipe as the server has it in `server_version` (JSON, SyncedContent in
     // src/features/sync/recipe-merge.ts): what both sides started from when the phone and another
@@ -157,6 +158,8 @@ export const recipes = sqliteTable(
     // No index on season or course: 3 values each, so an index can't beat a scan of the (small) table.
     // Pages of the alphabetical list of dishes or of drinks, see ingredients_sort_key_id_idx.
     index('recipes_kind_sort_key_id_idx').on(table.kind, table.sortKey, table.id),
+    // Enforces "one recipe per title" and serves lookups by title.
+    uniqueIndex('recipes_sort_key_unique').on(table.sortKey),
   ],
 );
 

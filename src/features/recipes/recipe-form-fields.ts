@@ -6,9 +6,14 @@ import type {
 } from 'react-native';
 import { AccessibilityInfo } from 'react-native';
 import type { RecipeKind } from '@/db/schema';
+import type { AppDatabase } from '@/db/types';
 import type { Ingredient } from '@/features/ingredients/db/ingredient-queries';
+import type { Messages } from '@/i18n/en';
+import { cleanName } from '@/lib/text';
 import type { TimeDrafts } from './components/recipe-time-fields';
+import { findRecipeByTitle } from './db/recipe-queries';
 import { scrollToTop } from './hooks/use-keep-at-top';
+import { kindTexts } from './kind';
 import { parseMinutes } from './minutes';
 import { parseMonths } from './months';
 
@@ -28,7 +33,7 @@ type InvalidFieldSearch = Readonly<{
   selectedList: readonly Ingredient[];
   // The first wrong time's field, if any.
   timeInput: null | TextInputInstance | undefined;
-  // The title's field when it's empty.
+  // The title's field when it's wrong (readTitleError).
   titleInput: null | TextInputInstance | undefined;
   undecidedIdList: readonly number[];
 }>;
@@ -95,6 +100,20 @@ export function readTimes(drafts: TimeDrafts, kind: RecipeKind) {
     maturationMonths: timeMap.maturation,
     prepMinutes: timeMap.prep,
   };
+}
+
+// The title's error on Save, if any: empty, or another recipe's title (titles are unique among
+// dishes and drinks, ignoring case and accents), named as that one's kind.
+export function readTitleError(
+  database: AppDatabase,
+  t: Messages,
+  { exceptId, kind, title }: Readonly<{ exceptId?: number; kind: RecipeKind; title: string }>,
+): string | undefined {
+  if (!cleanName(title)) {
+    return kindTexts(t, kind).titleRequired;
+  }
+  const sameTitle = findRecipeByTitle(database, title, exceptId);
+  return sameTitle && kindTexts(t, sameTitle.kind).titleTaken(sameTitle.title);
 }
 
 // Scrolls a wrong field into view and gives it the focus: the keyboard's for a text field, the

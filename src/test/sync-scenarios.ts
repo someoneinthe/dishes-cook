@@ -121,6 +121,82 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     await expect(server.rowsOf('ingredients')).resolves.toHaveLength(3);
   });
 
+  // Titles are unique (ignoring case and accents): the recipe with the larger sync id is numbered,
+  // the same one on every phone, whichever phone pulls the other's.
+  it.each([
+    ['the phone pulling it', '100000000000000', '200000000000000'],
+    ['the recipe pulled', '200000000000000', '100000000000000'],
+  ])(
+    'numbers one of two recipes added with the same title on two phones: %s',
+    async (_, syncIdA, syncIdB) => {
+      setSyncId(phoneA, addRecipe(phoneA, 'Crêpes', ['Flour']), syncIdA);
+      setSyncId(phoneB, addRecipe(phoneB, 'crepes', ['Buckwheat']), syncIdB);
+
+      await syncBoth();
+
+      const expected = {
+        [syncIdA]: syncIdA < syncIdB ? 'crêpes' : 'crêpes (2)',
+        [syncIdB]: syncIdB < syncIdA ? 'crepes' : 'crepes (2)',
+      };
+      expect(titlesBySyncId(phoneA)).toStrictEqual(expected);
+      expect(titlesBySyncId(phoneB)).toStrictEqual(expected);
+      const serverRowList = await server.rowsOf('recipes');
+      expect(
+        Object.fromEntries(serverRowList.map(({ id, title }) => [id, String(title).toLowerCase()])),
+      ).toStrictEqual(expected);
+    },
+  );
+
+  // Whichever order they sync in (each permutation of the three phones): every phone ends up with
+  // the same titles, the rename of each phone reaching the others through the server.
+  it.each(['ABC', 'ACB', 'BAC', 'BCA', 'CAB', 'CBA'])(
+    'numbers three recipes added with the same title on three phones the same on all: %s',
+    async (order) => {
+      const phoneC: Phone = { cursors: INITIAL_CURSORS, db: createTestConnection().db };
+      const phoneMap: Record<string, Phone> = { A: phoneA, B: phoneB, C: phoneC };
+      setSyncId(phoneA, addRecipe(phoneA, 'Crêpes'), '100000000000000');
+      setSyncId(phoneB, addRecipe(phoneB, 'Crêpes'), '300000000000000');
+      setSyncId(phoneC, addRecipe(phoneC, 'Crêpes'), '200000000000000');
+
+      for (const name of [...order, ...order]) {
+        await sync(phoneMap[name] ?? phoneA);
+      }
+
+      const titleList = Object.values(titlesBySyncId(phoneA));
+      expect(new Set(titleList).size).toBe(3);
+      expect(titlesBySyncId(phoneA)['100000000000000']).toBe('crêpes');
+      expect(titlesBySyncId(phoneB)).toStrictEqual(titlesBySyncId(phoneA));
+      expect(titlesBySyncId(phoneC)).toStrictEqual(titlesBySyncId(phoneA));
+    },
+  );
+
+  it('numbers a recipe renamed on one phone to a title a recipe added on the other has', async () => {
+    const soupId = addRecipe(phoneA, 'Soup');
+    setSyncId(phoneA, soupId, '200000000000000');
+    await syncBoth();
+    setSyncId(phoneA, addRecipe(phoneA, 'Pie'), '100000000000000');
+    // Changed on both phones: the pull merges them, and the merged title is the pie's.
+    saveRecipe(
+      phoneA.db,
+      { ingredientIdList: [], instructions: 'Simmer.', season: 'both', title: 'Soup' },
+      soupId,
+    );
+    const soupOnB = recipeOf(phoneB, 'Soup');
+    saveRecipe(
+      phoneB.db,
+      { ingredientIdList: [], instructions: '', season: 'both', title: 'Pie' },
+      soupOnB?.id,
+    );
+
+    await sync(phoneB);
+    await syncBoth();
+
+    const expected = { '100000000000000': 'pie', '200000000000000': 'pie (2)' };
+    expect(titlesBySyncId(phoneA)).toStrictEqual(expected);
+    expect(titlesBySyncId(phoneB)).toStrictEqual(expected);
+    expect(recipeOf(phoneB, 'Pie (2)')?.instructions).toBe('Simmer.');
+  });
+
   // A phone with an ingredient of the same name under another sync id (added with an older app, or
   // written straight into its database): it keeps its own, and the recipes it pulls link it.
   it('keeps an ingredient a phone has under another id in the recipes it pulls, without sending them back', async () => {
@@ -772,6 +848,23 @@ export function recipeOf(phone: Phone, title: string) {
     .where(eq(recipes.title, title.toLowerCase()))
     .get();
   return row && getRecipe(phone.db, row.id);
+}
+
+// A recipe's sync id, as a phone with an older app or another server could have given it: the
+// scenarios choose which of two recipes has the larger one.
+export function setSyncId(phone: Phone, id: number, syncId: string) {
+  phone.db.update(recipes).set({ syncId }).where(eq(recipes.id, id)).run();
+}
+
+// The saved titles (in lowercase) by sync id.
+export function titlesBySyncId(phone: Phone) {
+  return Object.fromEntries(
+    phone.db
+      .select({ syncId: recipes.syncId, title: recipes.title })
+      .from(recipes)
+      .all()
+      .map(({ syncId, title }) => [syncId, title]),
+  );
 }
 
 export function titlesOf(phone: Phone) {

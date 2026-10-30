@@ -144,6 +144,8 @@ export const en = {
       isAuthorShown ? 'Shows the author and ingredient filters' : 'Shows the ingredient filter',
     titlePlaceholder: 'e.g. Mojito',
     titleRequired: 'Give the drink a name.',
+    // Titles are unique among dishes and drinks: the one that has it.
+    titleTaken: (title: string) => `You already have a drink named “${title}”.`,
   },
   filters: {
     // Who added the recipe (only with a sync server): anyone, or this phone's account.
@@ -394,6 +396,7 @@ export const en = {
     title: 'Title',
     titlePlaceholder: 'e.g. Pumpkin soup',
     titleRequired: 'Give the recipe a title.',
+    titleTaken: (title: string) => `You already have a recipe named “${title}”.`,
     write: 'Write',
   },
   recipeScan: {

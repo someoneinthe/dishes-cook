@@ -17,7 +17,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Meal history](#meal-history): 8 scenarios
 - [On a TV](#on-a-tv): 4 scenarios
 - [Recipe list](#recipe-list): 11 scenarios
-- [Recipes](#recipes): 3 scenarios
+- [Recipes](#recipes): 6 scenarios
 - [Server sync](#server-sync): 10 scenarios
 - [Sharing a recipe](#sharing-a-recipe): 2 scenarios
 - [Shopping list](#shopping-list): 12 scenarios
@@ -638,6 +638,31 @@ A recipe has a title, a season, ingredients and its instructions.
 - **Given** I am writing a new recipe
 - **When** I save the recipe
 - **Then** I am asked to give the recipe a title
+
+### Two recipes cannot have the same title, ignoring case and accents
+
+- **Given** the recipe "Crêpes" exists
+- **And** I am writing a new recipe
+- **When** I give it the title "crepes"
+- **And** I save the recipe
+- **Then** I am told "You already have a recipe named “Crêpes”."
+- **And** there is still only "Crêpes"
+
+### A recipe cannot have the title of a drink
+
+- **Given** the drink "Mojito" exists
+- **And** I am writing a new recipe
+- **When** I give it the title "Mojito"
+- **And** I save the recipe
+- **Then** I am told "You already have a drink named “Mojito”."
+
+### A recipe keeps its title when edited
+
+- **Given** the recipe "Crêpes" exists
+- **And** I am editing it
+- **When** I give it the title "CRÊPES"
+- **And** I save the recipe
+- **Then** the recipe is saved as "Crêpes"
 
 ### A recipe written in Markdown is previewed formatted
 
