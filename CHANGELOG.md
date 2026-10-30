@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/someoneinthe/dishes-cook/compare/v1.1.0...v1.2.0) (2026-10-30)
+
+
+### Features
+
+* recipe titles are unique, ignoring case and accents ([#142](https://github.com/someoneinthe/dishes-cook/issues/142)) ([8b0cbbf](https://github.com/someoneinthe/dishes-cook/commit/8b0cbbf181c5e6d494eb517afc44ddd291f5691d))
+* the app in a desktop browser, served by the sync server ([#140](https://github.com/someoneinthe/dishes-cook/issues/140)) ([4ac890d](https://github.com/someoneinthe/dishes-cook/commit/4ac890d3ffe01685d95a71560b4753e390ee4ed4))
+
 ## [1.1.0](https://github.com/someoneinthe/dishes-cook/compare/v1.0.2...v1.1.0) (2026-10-28)
 
 
