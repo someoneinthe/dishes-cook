@@ -1,4 +1,5 @@
 import { fireEvent, screen } from '@testing-library/react-native';
+import { router } from 'expo-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import type { RecipeKind } from '@/db/schema';
 import type { DatabaseConnection } from '@/db/types';
@@ -130,11 +131,14 @@ defineFeature(feature, (test) => {
     and('I am editing it', async () => {
       const [{ id } = { id: -1 }] = firstRecipePage(connection.db);
       mockParams.id = String(id);
+      jest.mocked(router.back).mockClear();
       await renderWithDatabase(<RecipeFormScreen />, connection);
     });
     when(/^I give it the title "(.*)"$/, giveTheTitle);
     and('I save the recipe', saveTheRecipe);
     then(/^the recipe is saved as "(.*)"$/, (title: string) => {
+      // Saved, then left: the form goes back only once saveRecipe returned.
+      expect(router.back).toHaveBeenCalledTimes(1);
       expect(firstRecipePage(connection.db).map((recipe) => recipe.title)).toStrictEqual([title]);
     });
   });

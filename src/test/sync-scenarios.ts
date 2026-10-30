@@ -147,6 +147,29 @@ export function describeSyncScenarios(createServer: () => Promise<SyncTestServer
     },
   );
 
+  // Whichever order they sync in (each permutation of the three phones): every phone ends up with
+  // the same titles, the rename of each phone reaching the others through the server.
+  it.each(['ABC', 'ACB', 'BAC', 'BCA', 'CAB', 'CBA'])(
+    'numbers three recipes added with the same title on three phones the same on all: %s',
+    async (order) => {
+      const phoneC: Phone = { cursors: INITIAL_CURSORS, db: createTestConnection().db };
+      const phoneMap: Record<string, Phone> = { A: phoneA, B: phoneB, C: phoneC };
+      setSyncId(phoneA, addRecipe(phoneA, 'Crêpes'), '100000000000000');
+      setSyncId(phoneB, addRecipe(phoneB, 'Crêpes'), '300000000000000');
+      setSyncId(phoneC, addRecipe(phoneC, 'Crêpes'), '200000000000000');
+
+      for (const name of [...order, ...order]) {
+        await sync(phoneMap[name] ?? phoneA);
+      }
+
+      const titleList = Object.values(titlesBySyncId(phoneA));
+      expect(new Set(titleList).size).toBe(3);
+      expect(titlesBySyncId(phoneA)['100000000000000']).toBe('crêpes');
+      expect(titlesBySyncId(phoneB)).toStrictEqual(titlesBySyncId(phoneA));
+      expect(titlesBySyncId(phoneC)).toStrictEqual(titlesBySyncId(phoneA));
+    },
+  );
+
   it('numbers a recipe renamed on one phone to a title a recipe added on the other has', async () => {
     const soupId = addRecipe(phoneA, 'Soup');
     setSyncId(phoneA, soupId, '200000000000000');

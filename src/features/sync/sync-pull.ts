@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, lt, ne, or, sql } from 'drizzle-orm';
 import type { Course, RecipeKind, Season, SyncedTable } from '@/db/schema';
 import type { AppDatabase } from '@/db/types';
 import type { Quantity } from '@/lib/units';
@@ -46,6 +46,11 @@ const MAX_PULL_PAGES = 200;
 
 // A server account's id (a recipe's author): 15 characters of [0-9a-z].
 const ACCOUNT_ID = /^[\da-z]{15}$/;
+
+// A numbered title, "crêpes (2)": its title without the number is "crêpes" (claimTitle).
+const NUMBERED_TITLE = /^(.+) \((\d+)\)$/u;
+// What follows the title in a numbered sort key: " (2)".
+const NUMBER_SUFFIX = /^ \(\d+\)$/u;
 
 // A server time: "2026-10-14 18:03:59.794Z".
 const SERVER_TIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}Z$/;
@@ -412,32 +417,57 @@ function applyRecipe(tx: AppDatabase, row: ServerRecipe, onAdded: () => void): n
 }
 
 // Titles are unique, ignoring case and accents (recipes_sort_key_unique): when the recipe `syncId`
-// is to have the title of another recipe here (added on two phones, or renamed on one), the one with
-// the larger sync id takes the first free number, "crêpes (2)", the same choice on every phone.
-// Returns the title for `syncId`, and whether it's numbered (it then needs a newer version). The
-// other recipe, numbered, gets one here, pushed by this sync.
+// is to have the title of another recipe here (added on two phones, or renamed on one), the recipes
+// titled like it, numbered or not ("crêpes", "crêpes (2)"…), are numbered again in sync id order:
+// the first one "crêpes", the next "crêpes (2)"… The same recipes get the same titles on every
+// phone, whatever order they arrived in. Returns the title for `syncId`, and whether it changed (it
+// then needs a newer version). The others renumbered get one here, pushed by this sync.
 function claimTitle(
   tx: AppDatabase,
   title: string,
   syncId: string,
 ): Readonly<{ isRenamed: boolean; title: string }> {
-  const other = otherRecipeTitled(tx, title, syncId);
-  if (!other) {
+  if (!otherRecipeTitled(tx, title, syncId)) {
     return { isRenamed: false, title };
   }
-  if (isAfterInBinaryOrder(syncId, other.syncId)) {
-    return { isRenamed: true, title: numberedTitle(tx, title, syncId) };
-  }
-  const otherTitle = numberedTitle(tx, other.title, other.syncId);
+  const memberList: { isHere: boolean; syncId: string; title: string }[] = titleGroup(
+    tx,
+    withoutNumber(title),
+  )
+    .filter((member) => member.syncId !== syncId)
+    .map((member) => ({ isHere: true, syncId: member.syncId, title: member.title }));
+  const position = memberList.findIndex((member) => isAfterInBinaryOrder(member.syncId, syncId));
+  memberList.splice(position === -1 ? memberList.length : position, 0, {
+    isHere: false,
+    syncId,
+    title,
+  });
+  const numberedList = memberList.map((member, index) => ({
+    ...member,
+    // Each in its own spelling ("Crêpes", "crepes (2)").
+    newTitle: withNumber(withoutNumber(member.title), index + 1),
+  }));
+  const renamedList = numberedList.filter(
+    (member) => member.isHere && toSortKey(member.newTitle) !== toSortKey(member.title),
+  );
+  // Out of the way first (the recipe `syncId` too, written by the caller): a new title may be the
+  // one another of them still has.
   tx.update(recipes)
-    .set({
-      sortKey: toSortKey(otherTitle),
-      title: otherTitle,
-      updatedAt: sql`max(${recipes.updatedAt} + 1, ${NOW_MS})`,
-    })
-    .where(eq(recipes.id, other.id))
+    .set({ sortKey: sql`char(0) || ${recipes.syncId}` })
+    .where(inArray(recipes.syncId, [syncId, ...renamedList.map((member) => member.syncId)]))
     .run();
-  return { isRenamed: false, title };
+  for (const member of renamedList) {
+    tx.update(recipes)
+      .set({
+        sortKey: toSortKey(member.newTitle),
+        title: member.newTitle,
+        updatedAt: sql`max(${recipes.updatedAt} + 1, ${NOW_MS})`,
+      })
+      .where(eq(recipes.syncId, member.syncId))
+      .run();
+  }
+  const newTitle = numberedList.find((member) => member.syncId === syncId)?.newTitle ?? title;
+  return { isRenamed: newTitle !== title, title: newTitle };
 }
 
 function forgetAlias(tx: AppDatabase, syncId: string) {
@@ -471,8 +501,6 @@ function isAfter(key: PullKey, position: PullPosition): boolean {
   return byTime > 0 || (byTime === 0 && key.id.localeCompare(id) > 0);
 }
 
-// Changed here since the phone last agreed with the server (`server_version`), and changed on the
-// server since too (another phone pushed a newer version): both changes are to keep.
 // Whether `syncId` comes after `other` in SQLite's BINARY order (ORDER BY sync_id, migration 0013):
 // by character code, never a locale's collation, so that every phone makes the same choice.
 function isAfterInBinaryOrder(syncId: string, other: string): boolean {
@@ -485,6 +513,8 @@ function isAfterInBinaryOrder(syncId: string, other: string): boolean {
   return syncId.length > other.length;
 }
 
+// Changed here since the phone last agreed with the server (`server_version`), and changed on the
+// server since too (another phone pushed a newer version): both changes are to keep.
 function isChangedOnBothSides(
   local: Readonly<{ serverVersion: null | number; updatedAt: number }>,
   row: ServerRecipe,
@@ -527,6 +557,12 @@ function isLocalPhotoChanged(
 // No row here, or an older one. Equal times are the same change (pulled before, or pushed by us).
 function isNewerThan(row: ServerRow, local: Readonly<{ updatedAt: number }> | undefined) {
   return local === undefined || row.modified > local.updatedAt;
+}
+
+// Whether the sort key is `baseKey`'s, numbered or not ("crepes", "crepes (2)").
+function isNumberedKey(sortKey: string, baseKey: string): boolean {
+  const suffix = sortKey.slice(baseKey.length);
+  return sortKey.startsWith(baseKey) && (suffix === '' || NUMBER_SUFFIX.test(suffix));
 }
 
 // An account as the server lists it: a usable id (its name is checked by toAccount).
@@ -793,15 +829,6 @@ function mergeRecipe(
   });
 }
 
-// The title with the first number no other recipe than `syncId` has: "crêpes (2)", "crêpes (3)"…
-function numberedTitle(tx: AppDatabase, title: string, syncId: string): string {
-  let number = 2;
-  while (otherRecipeTitled(tx, `${title} (${number})`, syncId)) {
-    number += 1;
-  }
-  return `${title} (${number})`;
-}
-
 // The other ingredient here with this name (not `id`), if any.
 function otherIngredientNamed(
   tx: AppDatabase,
@@ -929,6 +956,24 @@ function settleDeletedAlias(tx: AppDatabase, syncId: string): void {
   forgetAlias(tx, syncId);
 }
 
+// The recipes here titled `base` or `base (n)`, ignoring case and accents, in sync id order: a
+// range of the unique sort key index ("crepes (" < "crepes (2)" < "crepes )"), not limited: the
+// recipes sharing a title.
+function titleGroup(tx: AppDatabase, base: string) {
+  const baseKey = toSortKey(base);
+  const numberedWhere = and(
+    gt(recipes.sortKey, `${baseKey} (`),
+    lt(recipes.sortKey, `${baseKey} )`),
+  );
+  return tx
+    .select({ sortKey: recipes.sortKey, syncId: recipes.syncId, title: recipes.title })
+    .from(recipes)
+    .where(or(eq(recipes.sortKey, baseKey), numberedWhere))
+    .orderBy(sql`${recipes.syncId} collate binary`)
+    .all()
+    .filter(({ sortKey }) => isNumberedKey(sortKey, baseKey));
+}
+
 // At most 100 characters of a name, trimmed; '' for none.
 function toAccount(item: Readonly<{ id: string; name?: unknown }>): ServerAccount {
   return { id: item.id, name: typeof item.name === 'string' ? item.name.trim().slice(0, 100) : '' };
@@ -957,4 +1002,14 @@ function toRecipeKind(value: unknown): RecipeKind {
 
 function toSeason(value: string): Season {
   return SEASON_LIST.includes(value as Season) ? (value as Season) : 'both';
+}
+
+// "crêpes (2)" for 2, "crêpes" for 1.
+function withNumber(base: string, number: number): string {
+  return number === 1 ? base : `${base} (${number})`;
+}
+
+// "crêpes" for "crêpes (2)" or "crêpes".
+function withoutNumber(title: string): string {
+  return NUMBERED_TITLE.exec(title)?.[1] ?? title;
 }
