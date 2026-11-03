@@ -127,6 +127,8 @@ export default defineConfig([
       'unicorn/prefer-promise-with-resolvers': 'off',
       'unicorn/prefer-response-static-json': 'off',
       'unicorn/prefer-set-methods': 'off',
+      // Types stay at the top of the file, where they're read first, not inside the function using them.
+      'unicorn/prefer-smaller-scope': 'off',
       'unicorn/prefer-structured-clone': 'off',
       'unicorn/prefer-temporal-conversion': 'off',
       'unicorn/prefer-top-level-await': 'off',
