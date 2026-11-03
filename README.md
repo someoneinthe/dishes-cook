@@ -5,6 +5,7 @@
 [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=someoneinthe_dishes-cook&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=someoneinthe_dishes-cook)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=someoneinthe_dishes-cook&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=someoneinthe_dishes-cook)
 [![CI](https://github.com/someoneinthe/dishes-cook/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/someoneinthe/dishes-cook/actions/workflows/ci.yml)
+[![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/someoneinthe/dishes-cook?utm_source=oss&utm_medium=github&utm_campaign=someoneinthe%2Fdishes-cook&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai)
 
 > [!NOTE]
 > **Built with AI.** This repository is created and maintained with AI: code, configuration, CI and documentation are written by [Claude Code](https://claude.com/claude-code) (Anthropic), under the direction and review of the repository owner. Eligible pull requests (not drafts or bot PRs) are also reviewed automatically by [CodeRabbit](https://www.coderabbit.ai/).
