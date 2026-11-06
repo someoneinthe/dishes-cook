@@ -47,6 +47,21 @@ describe('recent suggestions', () => {
     expect(loadModule().getSuggestedSince(0)).toStrictEqual([]);
   });
 
+  it('still suggests when the stored list cannot be read, without overwriting it', () => {
+    Storage.setItemSync('recentSuggestions', JSON.stringify([{ at: now - HOUR, syncId: 'stew' }]));
+    const { getSuggestedSince, recordSuggestion } = loadModule();
+    jest.spyOn(Storage, 'getItemSync').mockImplementationOnce(() => {
+      throw new Error('storage unavailable');
+    });
+
+    expect(getSuggestedSince(0)).toStrictEqual([]);
+
+    recordSuggestion('soup', now);
+
+    expect(getSuggestedSince(0)).toStrictEqual(['soup']);
+    expect(loadModule().getSuggestedSince(0)).toStrictEqual(['stew']);
+  });
+
   it('keeps them for the next launch', () => {
     loadModule().recordSuggestion('soup', now);
 

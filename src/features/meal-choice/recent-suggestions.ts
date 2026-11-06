@@ -16,8 +16,9 @@ const STORAGE_KEY = 'recentSuggestions';
 // Oldest first; `at`: when it was suggested (ms).
 type Suggestion = Readonly<{ at: number; syncId: string }>;
 
-// Read once from storage, then kept in memory.
-const state: { current?: readonly Suggestion[] } = {};
+// Read once from storage, then kept in memory. `isUnreadable`: the stored list couldn't be read, so
+// it is never overwritten (it may still be readable at the next launch).
+const state: { current?: readonly Suggestion[]; isUnreadable?: boolean } = {};
 
 // The recipes suggested at or after `since` (ms), by sync id, the one suggested longest ago first.
 export function getSuggestedSince(since: number): readonly string[] {
@@ -37,6 +38,9 @@ export function recordSuggestion(syncId: string, now = Date.now()): void {
   // Kept in memory even when it can't be stored (e.g. a full disk): the meal choice still works,
   // and only the next launch may suggest the recipe again sooner.
   state.current = nextList;
+  if (state.isUnreadable) {
+    return;
+  }
   try {
     Storage.setItemSync(STORAGE_KEY, JSON.stringify(nextList));
   } catch {
@@ -70,7 +74,15 @@ function parse(stored: null | string): readonly Suggestion[] {
   }
 }
 
+// Not readable (the storage failing): none, and the meal choice still works.
 function read(): readonly Suggestion[] {
-  state.current ??= parse(Storage.getItemSync(STORAGE_KEY));
+  if (state.current === undefined) {
+    try {
+      state.current = parse(Storage.getItemSync(STORAGE_KEY));
+    } catch {
+      state.current = [];
+      state.isUnreadable = true;
+    }
+  }
   return state.current;
 }
