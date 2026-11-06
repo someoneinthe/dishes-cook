@@ -47,6 +47,12 @@ Feature: Meal choice
     Then the first 3 suggestions are all different
     And the last suggestion is the first one
 
+  Scenario: A recipe suggested within the chosen delay isn't suggested again
+    Given I chose to suggest a meal again after "1 week"
+    And "Omelette" was suggested 2 hours ago
+    When I open the meal choice
+    Then the suggestion is not "Omelette"
+
   Scenario: The suggested recipe opens in full
     When I open the meal choice
     And I open the suggestion

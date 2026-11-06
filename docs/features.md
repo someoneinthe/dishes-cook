@@ -13,7 +13,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Ingredient quantities](#ingredient-quantities): 3 scenarios
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
-- [Meal choice](#meal-choice): 7 scenarios
+- [Meal choice](#meal-choice): 8 scenarios
 - [Meal history](#meal-history): 8 scenarios
 - [On a TV](#on-a-tv): 4 scenarios
 - [Recipe list](#recipe-list): 11 scenarios
@@ -378,6 +378,13 @@ The app proposes a random recipe of the chosen season and course (a main course 
 - **And** I ask for another suggestion 3 times
 - **Then** the first 3 suggestions are all different
 - **And** the last suggestion is the first one
+
+### A recipe suggested within the chosen delay isn't suggested again
+
+- **Given** I chose to suggest a meal again after "1 week"
+- **And** "Omelette" was suggested 2 hours ago
+- **When** I open the meal choice
+- **Then** the suggestion is not "Omelette"
 
 ### The suggested recipe opens in full
 

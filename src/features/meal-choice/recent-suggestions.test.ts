@@ -36,6 +36,17 @@ describe('recent suggestions', () => {
     expect(getSuggestedSince(0)).toStrictEqual(['stew', 'soup']);
   });
 
+  it('still remembers a suggestion it cannot store, until the app closes', () => {
+    const { getSuggestedSince, recordSuggestion } = loadModule();
+    jest.spyOn(Storage, 'setItemSync').mockImplementationOnce(() => {
+      throw new Error('disk full');
+    });
+
+    expect(() => recordSuggestion('soup', now)).not.toThrow();
+    expect(getSuggestedSince(0)).toStrictEqual(['soup']);
+    expect(loadModule().getSuggestedSince(0)).toStrictEqual([]);
+  });
+
   it('keeps them for the next launch', () => {
     loadModule().recordSuggestion('soup', now);
 

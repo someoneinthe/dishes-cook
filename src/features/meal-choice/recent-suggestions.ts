@@ -34,9 +34,14 @@ export function recordSuggestion(syncId: string, now = Date.now()): void {
     ),
     { at: now, syncId },
   ].slice(-MAX_RECENT_SUGGESTIONS);
-  // Stored first: if the write throws, nothing changes (the recipe may be suggested again sooner).
-  Storage.setItemSync(STORAGE_KEY, JSON.stringify(nextList));
+  // Kept in memory even when it can't be stored (e.g. a full disk): the meal choice still works,
+  // and only the next launch may suggest the recipe again sooner.
   state.current = nextList;
+  try {
+    Storage.setItemSync(STORAGE_KEY, JSON.stringify(nextList));
+  } catch {
+    // Not stored: forgotten when the app closes.
+  }
 }
 
 // The start of the delay ending now: the recipes suggested since then aren't suggested again.
