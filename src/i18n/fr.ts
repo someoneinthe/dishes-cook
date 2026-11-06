@@ -26,8 +26,8 @@ export const fr: Messages = {
   about: {
     deviceList: [
       `Vos recettes et boissons (avec leurs photos), ingrédients et paramètres sont enregistrés sur cet appareil. C’est la copie de référence${NARROW_SPACE}: l’application fonctionne entièrement sans serveur ni connexion internet.`,
-      `Le choix du repas y retient aussi les recettes qu’il a proposées récemment, et quand, pour ne pas les reproposer trop tôt (Paramètres › Reproposer un plat après)${NARROW_SPACE}: 200 au plus, celles de plus d’un mois étant oubliées à mesure qu’il en propose d’autres. Elles ne sont jamais synchronisées.`,
-      `La sauvegarde d’Android ne les inclut pas${NARROW_SPACE}: sans serveur de synchronisation, désinstaller l’application les supprime.`,
+      `La sauvegarde d’Android n’inclut pas vos recettes, boissons et ingrédients${NARROW_SPACE}: sans serveur de synchronisation, désinstaller l’application les supprime.`,
+      `Le choix du repas y retient aussi les recettes qu’il a proposées récemment, et quand, pour ne pas les reproposer trop tôt (Paramètres › Reproposer un plat après)${NARROW_SPACE}: 200 au plus, celles de plus d’un mois étant oubliées à mesure qu’il en propose d’autres. Cette liste n’est jamais synchronisée${NARROW_SPACE}: désinstaller l’application la supprime, même avec un serveur de synchronisation.`,
     ],
     deviceTitle: 'Sur cet appareil',
     intro:
@@ -50,8 +50,8 @@ export const fr: Messages = {
     version: (version) => `Version ${version}`,
     webDeviceList: [
       'Vos recettes et boissons (avec leurs photos), ingrédients et paramètres sont enregistrés dans ce navigateur, dans son stockage pour ce site. L’application les lit et les modifie là, et seul votre serveur de synchronisation les reçoit.',
-      `Le choix du repas y retient aussi les recettes qu’il a proposées récemment, et quand, pour ne pas les reproposer trop tôt (Paramètres › Reproposer un plat après)${NARROW_SPACE}: 200 au plus, celles de plus d’un mois étant oubliées à mesure qu’il en propose d’autres. Elles ne sont jamais synchronisées.`,
-      `Le navigateur est invité à les garder, mais effacer les données de ce site (ou du navigateur) les supprime, et un navigateur qui refuse de les garder peut les supprimer lui-même s’il manque de place${NARROW_SPACE}: synchronisez avec votre serveur pour les conserver.`,
+      `Le navigateur est invité à garder vos recettes, boissons et ingrédients, mais effacer les données de ce site (ou du navigateur) les supprime, et un navigateur qui refuse de les garder peut les supprimer lui-même s’il manque de place${NARROW_SPACE}: synchronisez avec votre serveur pour les conserver.`,
+      `Le choix du repas y retient aussi les recettes qu’il a proposées récemment, et quand, pour ne pas les reproposer trop tôt (Paramètres › Reproposer un plat après)${NARROW_SPACE}: 200 au plus, celles de plus d’un mois étant oubliées à mesure qu’il en propose d’autres. Cette liste n’est jamais synchronisée${NARROW_SPACE}: effacer les données de ce site la supprime, même avec un serveur de synchronisation.`,
       'L’application web elle-même vient de votre serveur de synchronisation, qui la sert.',
     ],
     webOthersList: [

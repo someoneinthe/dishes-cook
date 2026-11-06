@@ -51,8 +51,8 @@ export const en = {
   about: {
     deviceList: [
       'Your recipes and drinks (their photos included), ingredients and settings are saved on this device. It’s the reference copy: the app works fully without a server or an internet connection.',
-      'The meal choice also remembers here the recipes it suggested lately, and when, so as not to suggest them again too soon (Settings › Suggest a meal again after): at most 200, those older than a month being forgotten as it suggests others. They’re never synced.',
-      'Android’s backup doesn’t save them: without a sync server, uninstalling the app deletes them.',
+      'Android’s backup doesn’t save your recipes, drinks and ingredients: without a sync server, uninstalling the app deletes them.',
+      'The meal choice also remembers here the recipes it suggested lately, and when, so as not to suggest them again too soon (Settings › Suggest a meal again after): at most 200, those older than a month being forgotten as it suggests others. This list is never synced: uninstalling the app deletes it, even with a sync server.',
     ],
     deviceTitle: 'On this device',
     intro:
@@ -75,8 +75,8 @@ export const en = {
     version: (version: string) => `Version ${version}`,
     webDeviceList: [
       'Your recipes and drinks (their photos included), ingredients and settings are saved in this browser, in its storage for this site. The app reads and changes them there, and only your sync server receives them.',
-      'The meal choice also remembers there the recipes it suggested lately, and when, so as not to suggest them again too soon (Settings › Suggest a meal again after): at most 200, those older than a month being forgotten as it suggests others. They’re never synced.',
-      'The browser is asked to keep them, but clearing this site’s data (or the browser’s) deletes them, and a browser that refuses to keep them may delete them itself when it runs short of space: sync with your server to keep them.',
+      'The browser is asked to keep your recipes, drinks and ingredients, but clearing this site’s data (or the browser’s) deletes them, and a browser that refuses to keep them may delete them itself when it runs short of space: sync with your server to keep them.',
+      'The meal choice also remembers there the recipes it suggested lately, and when, so as not to suggest them again too soon (Settings › Suggest a meal again after): at most 200, those older than a month being forgotten as it suggests others. This list is never synced: it goes when the browser deletes this site’s data, even with a sync server.',
       'The web app itself comes from your sync server, which serves it.',
     ],
     webOthersList: [
