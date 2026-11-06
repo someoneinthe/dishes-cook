@@ -536,5 +536,73 @@ describe('recipe queries', () => {
         expect(new Set(findSkippingIds())).toStrictEqual(new Set([allYearStewId, winterSoupId]));
       });
     });
+
+    describe('skipping the recipes suggested recently', () => {
+      const anyFilters = { ingredientIdList: [], kind: 'dish' } as const;
+      const syncIdOf = (id: number) => getRecipeSyncId(database, id)!;
+      // Every id the pick can return.
+      const findPickedIds = (options: Parameters<typeof pickRandomRecipeId>[2]) =>
+        new Set(
+          [0, 0.5, 0.99].map((value) =>
+            pickRandomRecipeId(database, anyFilters, { ...options, random: () => value }),
+          ),
+        );
+
+      it('never picks a recipe suggested recently while another one matches', () => {
+        expect(
+          findPickedIds({
+            recentlySuggestedSyncIdList: [syncIdOf(winterSoupId), syncIdOf(summerSaladId)],
+          }),
+        ).toStrictEqual(new Set([allYearStewId]));
+      });
+
+      it('picks the one suggested longest ago when all matches were, never the current one', () => {
+        const recentlySuggestedSyncIdList = [
+          syncIdOf(summerSaladId),
+          syncIdOf(allYearStewId),
+          syncIdOf(winterSoupId),
+        ];
+
+        expect(findPickedIds({ recentlySuggestedSyncIdList })).toStrictEqual(
+          new Set([summerSaladId]),
+        );
+        expect(
+          findPickedIds({ excludedId: summerSaladId, recentlySuggestedSyncIdList }),
+        ).toStrictEqual(new Set([allYearStewId]));
+      });
+
+      it('never picks the current suggestion when it was not recorded yet', () => {
+        expect(
+          findPickedIds({
+            excludedId: winterSoupId,
+            recentlySuggestedSyncIdList: [syncIdOf(summerSaladId), syncIdOf(allYearStewId)],
+          }),
+        ).toStrictEqual(new Set([summerSaladId]));
+      });
+
+      it('picks the current suggestion again when it is the only match', () => {
+        const filters = { ingredientIdList: [leekId], kind: 'dish', season: 'summer' } as const;
+
+        expect(
+          pickRandomRecipeId(database, filters, {
+            excludedId: allYearStewId,
+            recentlySuggestedSyncIdList: [syncIdOf(allYearStewId)],
+          }),
+        ).toBe(allYearStewId);
+      });
+
+      it('prefers a recipe suggested recently to one cooked recently', () => {
+        const now = Date.UTC(2026, 9, 17, 12);
+        markCooked(database, allYearStewId, now - 1000);
+        markCooked(database, summerSaladId, now - 1000);
+
+        expect(
+          findPickedIds({
+            recentlySuggestedSyncIdList: [syncIdOf(winterSoupId)],
+            skipCookedSince: now - 7 * 24 * 60 * 60 * 1000,
+          }),
+        ).toStrictEqual(new Set([winterSoupId]));
+      });
+    });
   });
 });

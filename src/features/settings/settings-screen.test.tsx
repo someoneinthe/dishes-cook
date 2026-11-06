@@ -151,6 +151,17 @@ describe('settingsScreen', () => {
     expect(getPreferences().recentMealDays).toBe(0);
   });
 
+  it('waits 1 h before suggesting a meal again by default, and as long as chosen', async () => {
+    await render(<SettingsScreen />);
+
+    expect(screen.getByRole('radio', { name: '1 h' })).toBeChecked();
+
+    await fireEvent.press(screen.getByRole('radio', { name: '1 week' }));
+
+    expect(getPreferences().suggestionDelayHours).toBe(168);
+    expect(screen.getByRole('radio', { name: '1 week' })).toBeChecked();
+  });
+
   it('switches the app to French, then back to English', async () => {
     await render(
       <AppLanguage>

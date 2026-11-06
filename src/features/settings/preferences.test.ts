@@ -20,6 +20,7 @@ describe('preferences', () => {
       isShowingButtonLabels: false,
       language: 'system',
       recentMealDays: 14,
+      suggestionDelayHours: 1,
       units: 'metric',
     });
   });
@@ -28,6 +29,7 @@ describe('preferences', () => {
     loadPreferences().updatePreferences({
       isShowingButtonLabels: true,
       recentMealDays: 30,
+      suggestionDelayHours: 168,
       units: 'us',
     });
 
@@ -36,6 +38,7 @@ describe('preferences', () => {
       isShowingButtonLabels: true,
       language: 'system',
       recentMealDays: 30,
+      suggestionDelayHours: 168,
       units: 'us',
     });
   });
@@ -59,7 +62,7 @@ describe('preferences', () => {
 
     Storage.setItemSync(
       'preferences',
-      '{"colorScheme":"sepia","isShowingButtonLabels":"yes","language":"tlh","recentMealDays":3,"units":"cubits"}',
+      '{"colorScheme":"sepia","isShowingButtonLabels":"yes","language":"tlh","recentMealDays":3,"suggestionDelayHours":2,"units":"cubits"}',
     );
 
     expect(loadPreferences().getPreferences()).toStrictEqual({
@@ -67,6 +70,7 @@ describe('preferences', () => {
       isShowingButtonLabels: false,
       language: 'system',
       recentMealDays: 14,
+      suggestionDelayHours: 1,
       units: 'metric',
     });
   });

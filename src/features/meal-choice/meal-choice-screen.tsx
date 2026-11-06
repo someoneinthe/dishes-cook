@@ -14,39 +14,33 @@ import {
   RecipeFilters,
   toQueryFilters,
 } from '@/features/recipes/components/recipe-filters';
-import { getRecipeSyncId, pickRandomRecipeId } from '@/features/recipes/db/recipe-queries';
+import { getRecipeSyncId } from '@/features/recipes/db/recipe-queries';
 import { useNewRecipe } from '@/features/recipes/hooks/use-new-recipe';
 import { useRecipeCard, useRecipeCount } from '@/features/recipes/hooks/use-recipes';
-import { usePreferences } from '@/features/settings/preferences';
 import { ShoppingListBar } from '@/features/shopping-list/components/shopping-list-bar';
 import { ShoppingListHelp } from '@/features/shopping-list/components/shopping-list-help';
-import { addPick, getPicks, MAX_PICKS, usePicks } from '@/features/shopping-list/meal-picks';
+import { addPick, MAX_PICKS, usePicks } from '@/features/shopping-list/meal-picks';
 import { SyncStatusButton } from '@/features/sync/components/sync-status-button';
 import { useMessages } from '@/i18n/i18n-provider';
-import { startOfLastDays } from '@/lib/dates';
 import { isTv } from '@/lib/device';
 import { SuggestionCard } from './components/suggestion-card';
+import { pickSuggestion } from './pick-suggestion';
 
 // A main course unless asked otherwise; any season. The ingredients are filtered in the recipe list.
 const INITIAL_FILTERS: RecipeFilterValues = { ...NO_FILTERS, course: 'main' };
 
 // Proposes a random recipe of the chosen season and course, and another one on request, skipping
-// the recipes cooked in the last days (Settings › Skip recent meals) while others match, and those
-// already in the shopping list (a suggestion can be added to it, which proposes another one).
+// the recipes cooked in the last days (Settings › Skip recent meals), then those suggested in the
+// last hours (Settings › Suggest a meal again after), while others match, and those already in the
+// shopping list (a suggestion can be added to it, which proposes another one).
 export function MealChoiceScreen() {
   const t = useMessages();
   const newRecipe = useNewRecipe();
   const database = useDatabase();
-  const { recentMealDays } = usePreferences();
   const pickList = usePicks();
   const [filterValues, setFilterValues] = useState(INITIAL_FILTERS);
   const pick = (values: RecipeFilterValues, excludedId?: number) =>
-    pickRandomRecipeId(database, toQueryFilters(values, '', 'dish'), {
-      excludedId,
-      // Read when picking: a meal just added to the list is left out at once.
-      omittedSyncIdList: getPicks(),
-      skipCookedSince: recentMealDays === 0 ? undefined : startOfLastDays(recentMealDays),
-    });
+    pickSuggestion(database, values, excludedId);
   // A recipe is proposed as soon as the screen opens (reads are synchronous).
   const [suggestedId, setSuggestedId] = useState(() => pick(INITIAL_FILTERS));
   const recipeCount = useRecipeCount({ ingredientIdList: [], kind: 'dish' });

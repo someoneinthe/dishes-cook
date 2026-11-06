@@ -13,7 +13,7 @@ What the app does, scenario by scenario. Every scenario runs as a test (jest-cuc
 - [Ingredient quantities](#ingredient-quantities): 3 scenarios
 - [Ingredients](#ingredients): 2 scenarios
 - [Loading screen](#loading-screen): 3 scenarios
-- [Meal choice](#meal-choice): 6 scenarios
+- [Meal choice](#meal-choice): 7 scenarios
 - [Meal history](#meal-history): 8 scenarios
 - [On a TV](#on-a-tv): 4 scenarios
 - [Recipe list](#recipe-list): 11 scenarios
@@ -328,7 +328,7 @@ At startup, the app icon (its plate and cutlery, on its blue-grey background, ov
 
 ## Meal choice
 
-The app proposes a random recipe of the chosen season and course (a main course by default), and another one on request. The recipe list narrows recipes down by ingredients too.
+The app proposes a random recipe of the chosen season and course (a main course by default), and another one on request. A recipe it suggested isn't suggested again for an hour, or as long as chosen in Settings › Suggest a meal again after (1 h, 4 h, 12 h, 1 day, 1 week or 1 month), while other recipes match; when every matching recipe was, it proposes the one suggested longest ago. It remembers them on the device only, never synced. The recipe list narrows recipes down by ingredients too.
 
 **For every scenario:**
 
@@ -371,6 +371,13 @@ The app proposes a random recipe of the chosen season and course (a main course 
 - **When** I open the meal choice
 - **And** I ask for another suggestion
 - **Then** the two suggestions are different
+
+### Asking again goes through every matching recipe before suggesting one again
+
+- **When** I open the meal choice
+- **And** I ask for another suggestion 3 times
+- **Then** the first 3 suggestions are all different
+- **And** the last suggestion is the first one
 
 ### The suggested recipe opens in full
 

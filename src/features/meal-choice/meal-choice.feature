@@ -1,7 +1,11 @@
 Feature: Meal choice
   The app proposes a random recipe of the chosen season and course (a main
-  course by default), and another one on request. The recipe list narrows
-  recipes down by ingredients too.
+  course by default), and another one on request. A recipe it suggested
+  isn't suggested again for an hour, or as long as chosen in Settings ›
+  Suggest a meal again after (1 h, 4 h, 12 h, 1 day, 1 week or 1 month),
+  while other recipes match; when every matching recipe was, it proposes the
+  one suggested longest ago. It remembers them on the device only, never
+  synced. The recipe list narrows recipes down by ingredients too.
 
   Background:
     Given these recipes:
@@ -36,6 +40,12 @@ Feature: Meal choice
     When I open the meal choice
     And I ask for another suggestion
     Then the two suggestions are different
+
+  Scenario: Asking again goes through every matching recipe before suggesting one again
+    When I open the meal choice
+    And I ask for another suggestion 3 times
+    Then the first 3 suggestions are all different
+    And the last suggestion is the first one
 
   Scenario: The suggested recipe opens in full
     When I open the meal choice

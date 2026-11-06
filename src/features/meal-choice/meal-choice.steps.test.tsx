@@ -104,6 +104,35 @@ defineFeature(feature, (test) => {
     });
   });
 
+  test('Asking again goes through every matching recipe before suggesting one again', ({
+    and,
+    given,
+    then,
+    when,
+  }) => {
+    const suggestionList: (string | undefined)[] = [];
+    given('these recipes:', theseRecipes);
+    when('I open the meal choice', async () => {
+      await openTheMealChoice();
+      suggestionList.push(firstSuggestion);
+    });
+    and(/^I ask for another suggestion (\d+) times$/, async (times: string) => {
+      for (let index = 0; index < Number(times); index += 1) {
+        await fireEvent.press(screen.getByRole('button', { name: 'Suggest another one' }));
+        suggestionList.push(currentSuggestion());
+      }
+    });
+    then(/^the first (\d+) suggestions are all different$/, (count: string) => {
+      const firstList = suggestionList.slice(0, Number(count));
+
+      expect(firstList).not.toContain(undefined);
+      expect(new Set(firstList).size).toBe(Number(count));
+    });
+    and('the last suggestion is the first one', () => {
+      expect(suggestionList.at(-1)).toBe(suggestionList[0]);
+    });
+  });
+
   test('The suggested recipe opens in full', ({ and, given, then, when }) => {
     given('these recipes:', theseRecipes);
     when('I open the meal choice', openTheMealChoice);
