@@ -14,12 +14,24 @@ import { ServerSyncSection } from '@/features/sync/components/server-sync-sectio
 import { useMessages } from '@/i18n/i18n-provider';
 import { LANGUAGE_LIST, LANGUAGE_NAMES } from '@/i18n/languages';
 import { isTv } from '@/lib/device';
-import type { ColorSchemePreference, RecentMealDays } from './preferences';
-import { RECENT_MEAL_DAYS_LIST, updatePreferences, usePreferences } from './preferences';
+import type { ColorSchemePreference, RecentMealDays, SuggestionDelayHours } from './preferences';
+import {
+  RECENT_MEAL_DAYS_LIST,
+  SUGGESTION_DELAY_HOURS_LIST,
+  updatePreferences,
+  usePreferences,
+} from './preferences';
 
 export function SettingsScreen() {
   const t = useMessages();
-  const { colorScheme, isShowingButtonLabels, language, recentMealDays, units } = usePreferences();
+  const {
+    colorScheme,
+    isShowingButtonLabels,
+    language,
+    recentMealDays,
+    suggestionDelayHours,
+    units,
+  } = usePreferences();
   // Switch colors are props, not styles.
   const { theme } = useUnistyles();
   const scrollViewRef = useRef<ScrollViewInstance>(null);
@@ -66,6 +78,14 @@ export function SettingsScreen() {
           onChange={(value) => updatePreferences({ recentMealDays: toRecentMealDays(value) })}
           optionList={recentMealOptionList(t)}
           value={String(recentMealDays)}
+        />
+        <SegmentedControl
+          label={t.settings.suggestionDelay}
+          onChange={(value) =>
+            updatePreferences({ suggestionDelayHours: toSuggestionDelayHours(value) })
+          }
+          optionList={suggestionDelayOptionList(t)}
+          value={String(suggestionDelayHours)}
         />
       </View>
       <View
@@ -148,8 +168,20 @@ function recentMealOptionList(t: Messages): readonly SegmentedOption<string>[] {
   }));
 }
 
+// The meal choice doesn't suggest a recipe again for these hours. The control's values are strings.
+function suggestionDelayOptionList(t: Messages): readonly SegmentedOption<string>[] {
+  return SUGGESTION_DELAY_HOURS_LIST.map((hours) => ({
+    label: t.settings.suggestionDelayHours(hours),
+    value: String(hours),
+  }));
+}
+
 function toRecentMealDays(value: string): RecentMealDays {
   return RECENT_MEAL_DAYS_LIST.find((days) => String(days) === value) ?? 0;
+}
+
+function toSuggestionDelayHours(value: string): SuggestionDelayHours {
+  return SUGGESTION_DELAY_HOURS_LIST.find((hours) => String(hours) === value) ?? 1;
 }
 
 // Ingredient quantities: amounts written in the other system are converted.

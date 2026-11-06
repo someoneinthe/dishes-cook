@@ -19,6 +19,10 @@ export type ColorSchemePreference = (typeof COLOR_SCHEME_LIST)[number];
 export const RECENT_MEAL_DAYS_LIST = [0, 7, 14, 30] as const;
 export type RecentMealDays = (typeof RECENT_MEAL_DAYS_LIST)[number];
 
+// How many hours the meal choice waits before suggesting a recipe again: 1 h to a month (30 days).
+export const SUGGESTION_DELAY_HOURS_LIST = [1, 4, 12, 24, 168, 720] as const;
+export type SuggestionDelayHours = (typeof SUGGESTION_DELAY_HOURS_LIST)[number];
+
 type Preferences = Readonly<{
   colorScheme: ColorSchemePreference;
   // Show the text of icon-only buttons too.
@@ -27,6 +31,8 @@ type Preferences = Readonly<{
   language: LanguagePreference;
   // The meal choice skips the recipes cooked in the last days (the meal history).
   recentMealDays: RecentMealDays;
+  // The meal choice doesn't suggest a recipe again for these hours (kept on the device only).
+  suggestionDelayHours: SuggestionDelayHours;
   // Units of ingredient quantities: European (metric, the default) or US.
   units: UnitSystem;
 }>;
@@ -37,6 +43,7 @@ const DEFAULT_PREFERENCES: Preferences = {
   isShowingButtonLabels: false,
   language: 'system',
   recentMealDays: 14,
+  suggestionDelayHours: 1,
   units: 'metric',
 };
 
@@ -112,6 +119,11 @@ function parse(stored: null | string): Preferences {
       recentMealDays: RECENT_MEAL_DAYS_LIST.includes(parsed.recentMealDays as RecentMealDays)
         ? (parsed.recentMealDays as RecentMealDays)
         : DEFAULT_PREFERENCES.recentMealDays,
+      suggestionDelayHours: SUGGESTION_DELAY_HOURS_LIST.includes(
+        parsed.suggestionDelayHours as SuggestionDelayHours,
+      )
+        ? (parsed.suggestionDelayHours as SuggestionDelayHours)
+        : DEFAULT_PREFERENCES.suggestionDelayHours,
       units: isUnitSystem(parsed.units) ? parsed.units : DEFAULT_PREFERENCES.units,
     };
   } catch {

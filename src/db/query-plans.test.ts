@@ -12,6 +12,7 @@ import {
   findRecipeByTitle,
   getRecipe,
   getRecipeCard,
+  getRecipeSyncId,
   listRecipePage,
   pickRandomRecipeId,
   saveRecipe,
@@ -144,6 +145,22 @@ describe('query plans', () => {
 
     expect(lastQuery()?.query).toContain('max("cooked_meals"."cooked_at")');
     expect(lastPlan()).toContainEqual(expect.stringMatching(COOKED_INDEX));
+  });
+
+  it('picks the recipe suggested longest ago in the kind index when all were suggested recently', () => {
+    const syncId = getRecipeSyncId(database, 1)!;
+    pickRandomRecipeId(
+      database,
+      { ingredientIdList: [], kind: 'dish' },
+      { random: () => 0, recentlySuggestedSyncIdList: [syncId] },
+    );
+    const planList = lastPlan();
+
+    expect(lastQuery()?.query).toContain('json_each');
+    expect(planList[0]).toMatch(
+      /^SEARCH recipes USING INDEX recipes_kind_sort_key_id_idx \(kind=\?\)/,
+    );
+    expect(planList).not.toContainEqual(expect.stringMatching(/^SCAN recipes/));
   });
 
   it('finds a recipe by title on the unique sort key index', () => {

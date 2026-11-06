@@ -3,9 +3,11 @@ import { router } from 'expo-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import type { Course, Season } from '@/db/schema';
 import type { DatabaseConnection } from '@/db/types';
-import { saveRecipe } from '@/features/recipes/db/recipe-queries';
+import { getRecipeSyncId, saveRecipe } from '@/features/recipes/db/recipe-queries';
+import { updatePreferences } from '@/features/settings/preferences';
 import { createTestConnection, renderWithDatabase } from '@/test/test-database';
 import { MealChoiceScreen } from './meal-choice-screen';
+import { recordSuggestion } from './recent-suggestions';
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn() }, useIsFocused: () => true }));
 
@@ -23,6 +25,11 @@ defineFeature(feature, (test) => {
     firstSuggestion = undefined;
     idByTitle.clear();
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    updatePreferences({ suggestionDelayHours: 1 });
+    jest.restoreAllMocks();
   });
 
   const theseRecipes = (rowList: RecipeRow[]) => {
@@ -101,6 +108,61 @@ defineFeature(feature, (test) => {
     then('the two suggestions are different', () => {
       expect(firstSuggestion).toBeDefined();
       expect(currentSuggestion()).not.toBe(firstSuggestion);
+    });
+  });
+
+  test('Asking again goes through every matching recipe before suggesting one again', ({
+    and,
+    given,
+    then,
+    when,
+  }) => {
+    const suggestionList: (string | undefined)[] = [];
+    given('these recipes:', theseRecipes);
+    when('I open the meal choice', async () => {
+      await openTheMealChoice();
+      suggestionList.push(firstSuggestion);
+    });
+    and(/^I ask for another suggestion (\d+) times$/, async (times: string) => {
+      for (let index = 0; index < Number(times); index += 1) {
+        await fireEvent.press(screen.getByRole('button', { name: 'Suggest another one' }));
+        suggestionList.push(currentSuggestion());
+      }
+    });
+    then(/^the first (\d+) suggestions are all different$/, (count: string) => {
+      const firstList = suggestionList.slice(0, Number(count));
+
+      expect(firstList).not.toContain(undefined);
+      expect(new Set(firstList).size).toBe(Number(count));
+    });
+    and('the last suggestion is the first one', () => {
+      expect(suggestionList.at(-1)).toBe(suggestionList[0]);
+    });
+  });
+
+  test("A recipe suggested within the chosen delay isn't suggested again", ({
+    and,
+    given,
+    then,
+    when,
+  }) => {
+    const HOUR = 60 * 60 * 1000;
+    given('these recipes:', theseRecipes);
+    given(/^I chose to suggest a meal again after "1 week"$/, () => {
+      updatePreferences({ suggestionDelayHours: 168 });
+    });
+    and(/^"(.*)" was suggested (\d+) hours ago$/, (title: string, hours: string) => {
+      recordSuggestion(
+        getRecipeSyncId(connection.db, idByTitle.get(title) ?? 0)!,
+        Date.now() - Number(hours) * HOUR,
+      );
+      // The first match in sort order ("Omelette") unless it's left out.
+      jest.spyOn(Math, 'random').mockReturnValue(0);
+    });
+    when('I open the meal choice', openTheMealChoice);
+    then(/^the suggestion is not "(.*)"$/, (title: string) => {
+      expect(currentSuggestion()).toBeDefined();
+      expect(currentSuggestion()).not.toBe(title);
     });
   });
 

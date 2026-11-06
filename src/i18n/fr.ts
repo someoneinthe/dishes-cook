@@ -26,7 +26,8 @@ export const fr: Messages = {
   about: {
     deviceList: [
       `Vos recettes et boissons (avec leurs photos), ingrédients et paramètres sont enregistrés sur cet appareil. C’est la copie de référence${NARROW_SPACE}: l’application fonctionne entièrement sans serveur ni connexion internet.`,
-      `La sauvegarde d’Android ne les inclut pas${NARROW_SPACE}: sans serveur de synchronisation, désinstaller l’application les supprime.`,
+      `La sauvegarde d’Android n’inclut pas vos recettes, boissons et ingrédients${NARROW_SPACE}: sans serveur de synchronisation, désinstaller l’application les supprime.`,
+      `Le choix du repas y retient aussi les recettes qu’il a proposées récemment, et quand, pour ne pas les reproposer trop tôt (Paramètres › Reproposer un plat après)${NARROW_SPACE}: 200 au plus, celles de plus d’un mois étant oubliées à mesure qu’il en propose d’autres. Cette liste n’est jamais synchronisée${NARROW_SPACE}: désinstaller l’application la supprime, même avec un serveur de synchronisation.`,
     ],
     deviceTitle: 'Sur cet appareil',
     intro:
@@ -41,7 +42,7 @@ export const fr: Messages = {
     othersTitle: 'Rien pour personne d’autre',
     serverList: [
       'Désactivée par défaut. Dans Paramètres › Stockage des données, vous pouvez synchroniser avec un serveur PocketBase que vous installez et gérez vous-même, pour partager vos recettes entre vos appareils.',
-      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes et boissons (titre, plat ou boisson, type de plat, saison, temps de préparation et de cuisson, temps de maturation d’une boisson, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Le serveur note aussi lequel de ses comptes a ajouté chaque recette (affiché sur la recette et pour le filtre ${quote('Ajoutée par')}), et chaque compte peut y voir le nom des autres, pas leur e-mail. Les paramètres restent sur chaque appareil.`,
+      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes et boissons (titre, plat ou boisson, type de plat, saison, temps de préparation et de cuisson, temps de maturation d’une boisson, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Le serveur note aussi lequel de ses comptes a ajouté chaque recette (affiché sur la recette et pour le filtre ${quote('Ajoutée par')}), et chaque compte peut y voir le nom des autres, pas leur e-mail. Les paramètres et les plats proposés récemment restent sur chaque appareil.`,
       'L’appareil garde l’adresse du serveur, votre e-mail, l’identifiant de votre compte sur le serveur, le nom des comptes du serveur et un jeton de connexion chiffré, jamais votre mot de passe. La connexion est chiffrée (HTTPS).',
       `Le serveur est à vous${NARROW_SPACE}: personne d’autre ne le gère, et les développeurs de l’application ne peuvent pas le voir.`,
     ],
@@ -49,7 +50,8 @@ export const fr: Messages = {
     version: (version) => `Version ${version}`,
     webDeviceList: [
       'Vos recettes et boissons (avec leurs photos), ingrédients et paramètres sont enregistrés dans ce navigateur, dans son stockage pour ce site. L’application les lit et les modifie là, et seul votre serveur de synchronisation les reçoit.',
-      `Le navigateur est invité à les garder, mais effacer les données de ce site (ou du navigateur) les supprime, et un navigateur qui refuse de les garder peut les supprimer lui-même s’il manque de place${NARROW_SPACE}: synchronisez avec votre serveur pour les conserver.`,
+      `Le navigateur est invité à garder vos recettes, boissons et ingrédients, mais effacer les données de ce site (ou du navigateur) les supprime, et un navigateur qui refuse de les garder peut les supprimer lui-même s’il manque de place${NARROW_SPACE}: synchronisez avec votre serveur pour les conserver.`,
+      `Le choix du repas y retient aussi les recettes qu’il a proposées récemment, et quand, pour ne pas les reproposer trop tôt (Paramètres › Reproposer un plat après)${NARROW_SPACE}: 200 au plus, celles de plus d’un mois étant oubliées à mesure qu’il en propose d’autres. Cette liste n’est jamais synchronisée${NARROW_SPACE}: effacer les données de ce site la supprime, même avec un serveur de synchronisation.`,
       'L’application web elle-même vient de votre serveur de synchronisation, qui la sert.',
     ],
     webOthersList: [
@@ -60,7 +62,7 @@ export const fr: Messages = {
     ],
     webServerList: [
       'Désactivée par défaut. Dans Paramètres › Stockage des données, vous pouvez synchroniser avec un serveur PocketBase que vous installez et gérez vous-même, pour partager vos recettes entre vos appareils.',
-      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes et boissons (titre, plat ou boisson, type de plat, saison, temps de préparation et de cuisson, temps de maturation d’une boisson, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Le serveur note aussi lequel de ses comptes a ajouté chaque recette (affiché sur la recette et pour le filtre ${quote('Ajoutée par')}), et chaque compte peut y voir le nom des autres, pas leur e-mail. Les paramètres restent sur chaque appareil.`,
+      `Seul ce serveur reçoit vos données${NARROW_SPACE}: vos recettes et boissons (titre, plat ou boisson, type de plat, saison, temps de préparation et de cuisson, temps de maturation d’une boisson, instructions, ingrédients et quantités, photo), vos ingrédients, les dates où vous avez cuisiné chaque recette, et ce que vous avez supprimé. Le serveur note aussi lequel de ses comptes a ajouté chaque recette (affiché sur la recette et pour le filtre ${quote('Ajoutée par')}), et chaque compte peut y voir le nom des autres, pas leur e-mail. Les paramètres et les plats proposés récemment restent sur chaque appareil.`,
       `Ce navigateur garde l’adresse du serveur, votre e-mail, l’identifiant de votre compte sur le serveur, le nom des comptes du serveur et un jeton de connexion, jamais votre mot de passe. Un navigateur ne peut pas chiffrer le jeton comme Android${NARROW_SPACE}: il reste dans le stockage de ce site, que seule l’application lit. La connexion est chiffrée (HTTPS).`,
       `Le serveur est à vous${NARROW_SPACE}: personne d’autre ne le gère, et les développeurs de l’application ne peuvent pas le voir.`,
     ],
@@ -398,6 +400,21 @@ export const fr: Messages = {
     recentMealsDays: (days) => (days === 0 ? 'Non' : `${days}\u{A0}jours`),
     showButtonLabels: 'Afficher le texte des boutons',
     showButtonLabelsHint: 'Ajoute le texte à côté des boutons à icône',
+    suggestionDelay: 'Reproposer un plat après',
+    suggestionDelayHours: (hours) => {
+      if (hours < 24) {
+        return `${hours}\u{A0}h`;
+      }
+      if (hours < 168) {
+        const days = hours / 24;
+        return days === 1 ? '1\u{A0}jour' : `${days}\u{A0}jours`;
+      }
+      if (hours < 720) {
+        const weeks = hours / 168;
+        return weeks === 1 ? '1\u{A0}semaine' : `${weeks}\u{A0}semaines`;
+      }
+      return `${hours / 720}\u{A0}mois`;
+    },
     system: 'Système',
     units: 'Unités',
     unitsMetric: 'Européennes (g, l)',
