@@ -90,6 +90,7 @@ describe('recent suggestions', () => {
     recordSuggestion('salad', now);
 
     expect(getSuggestedSince(0, now)).toStrictEqual(['soup', 'stew', 'salad']);
+    expect(loadModule().getSuggestedSince(0, now)).toStrictEqual(['soup', 'stew', 'salad']);
   });
 
   it('ignores the suggestions dated after now, from a clock set back since', () => {
