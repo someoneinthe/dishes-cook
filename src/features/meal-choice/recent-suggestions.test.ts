@@ -78,6 +78,20 @@ describe('recent suggestions', () => {
     expect(loadModule().getSuggestedSince(0)).toStrictEqual(['stew', 'soup']);
   });
 
+  it('keeps the merged list oldest first when a stored suggestion is newer', () => {
+    Storage.setItemSync('recentSuggestions', JSON.stringify([{ at: now - HOUR, syncId: 'stew' }]));
+    const { getSuggestedSince, recordSuggestion } = loadModule();
+    const fail = () => {
+      throw new Error('storage unavailable');
+    };
+    jest.spyOn(Storage, 'getItemSync').mockImplementationOnce(fail).mockImplementationOnce(fail);
+    getSuggestedSince(0, now - 3 * HOUR);
+    recordSuggestion('soup', now - 3 * HOUR);
+    recordSuggestion('salad', now);
+
+    expect(getSuggestedSince(0, now)).toStrictEqual(['soup', 'stew', 'salad']);
+  });
+
   it('ignores the suggestions dated after now, from a clock set back since', () => {
     const { getSuggestedSince, recordSuggestion } = loadModule();
     recordSuggestion('soup', now + 5 * HOUR);

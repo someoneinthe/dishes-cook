@@ -89,7 +89,8 @@ function read(): readonly Suggestion[] {
 }
 
 // Before writing, a stored list that couldn't be read is read again: once the storage works again,
-// it is merged with the suggestions made meanwhile (newer, so after it) instead of being lost.
+// it is merged with the suggestions made meanwhile instead of being lost, oldest first (a stored one
+// can be newer if the clock was set back).
 function readForWriting(): readonly Suggestion[] {
   const currentList = read();
   if (!state.isUnreadable) {
@@ -104,7 +105,7 @@ function readForWriting(): readonly Suggestion[] {
   return [
     ...storedList.filter((suggestion) => !suggestedMeanwhile.has(suggestion.syncId)),
     ...currentList,
-  ];
+  ].sort((first, second) => first.at - second.at);
 }
 
 // undefined: the storage failed.
