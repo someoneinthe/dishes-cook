@@ -51,7 +51,8 @@ export const en = {
   about: {
     deviceList: [
       'Your recipes and drinks (their photos included), ingredients and settings are saved on this device. It’s the reference copy: the app works fully without a server or an internet connection.',
-      'Android’s backup doesn’t save them: without a sync server, uninstalling the app deletes them.',
+      'Android’s backup doesn’t save your recipes, drinks and ingredients: without a sync server, uninstalling the app deletes them.',
+      'The meal choice also remembers here the recipes it suggested lately, and when, so as not to suggest them again too soon (Settings › Suggest a meal again after): at most 200, those older than a month being forgotten as it suggests others. This list is never synced: uninstalling the app deletes it, even with a sync server.',
     ],
     deviceTitle: 'On this device',
     intro:
@@ -66,7 +67,7 @@ export const en = {
     othersTitle: 'Nothing for anyone else',
     serverList: [
       'Off by default. In Settings › Data storage, you can sync with a PocketBase server that you install and run yourself, to share your recipes between your devices.',
-      'Only that server receives your data: your recipes and drinks (title, dish or drink, course, season, preparation and cooking times, a drink’s maturation time, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. The server also records which of its accounts added each recipe (shown on the recipe, and for the “Added by” filter), and every account on it can see the others’ names, not their emails. Settings stay on each device.',
+      'Only that server receives your data: your recipes and drinks (title, dish or drink, course, season, preparation and cooking times, a drink’s maturation time, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. The server also records which of its accounts added each recipe (shown on the recipe, and for the “Added by” filter), and every account on it can see the others’ names, not their emails. Settings and the meals suggested lately stay on each device.',
       'The device keeps the server’s address, your email, your account’s id on the server, the names of the server’s accounts and an encrypted sign-in token, never your password. The connection is encrypted (HTTPS).',
       'The server is yours: no one else runs it, and the app’s developers can’t see it.',
     ],
@@ -74,7 +75,8 @@ export const en = {
     version: (version: string) => `Version ${version}`,
     webDeviceList: [
       'Your recipes and drinks (their photos included), ingredients and settings are saved in this browser, in its storage for this site. The app reads and changes them there, and only your sync server receives them.',
-      'The browser is asked to keep them, but clearing this site’s data (or the browser’s) deletes them, and a browser that refuses to keep them may delete them itself when it runs short of space: sync with your server to keep them.',
+      'The browser is asked to keep your recipes, drinks and ingredients, but clearing this site’s data (or the browser’s) deletes them, and a browser that refuses to keep them may delete them itself when it runs short of space: sync with your server to keep them.',
+      'The meal choice also remembers there the recipes it suggested lately, and when, so as not to suggest them again too soon (Settings › Suggest a meal again after): at most 200, those older than a month being forgotten as it suggests others. This list is never synced: it goes when the browser deletes this site’s data, even with a sync server.',
       'The web app itself comes from your sync server, which serves it.',
     ],
     webOthersList: [
@@ -85,7 +87,7 @@ export const en = {
     ],
     webServerList: [
       'Off by default. In Settings › Data storage, you can sync with a PocketBase server that you install and run yourself, to share your recipes between your devices.',
-      'Only that server receives your data: your recipes and drinks (title, dish or drink, course, season, preparation and cooking times, a drink’s maturation time, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. The server also records which of its accounts added each recipe (shown on the recipe, and for the “Added by” filter), and every account on it can see the others’ names, not their emails. Settings stay on each device.',
+      'Only that server receives your data: your recipes and drinks (title, dish or drink, course, season, preparation and cooking times, a drink’s maturation time, instructions, ingredients and quantities, photo), your ingredients, the dates you cooked each recipe, and what you deleted. The server also records which of its accounts added each recipe (shown on the recipe, and for the “Added by” filter), and every account on it can see the others’ names, not their emails. Settings and the meals suggested lately stay on each device.',
       'This browser keeps the server’s address, your email, your account’s id on the server, the names of the server’s accounts and a sign-in token, never your password. A browser can’t encrypt the token as Android does: it stays in this site’s storage, which only the app reads. The connection is encrypted (HTTPS).',
       'The server is yours: no one else runs it, and the app’s developers can’t see it.',
     ],
@@ -457,6 +459,23 @@ export const en = {
     recentMealsDays: (days: number) => (days === 0 ? 'Off' : `${days} days`),
     showButtonLabels: 'Show button labels',
     showButtonLabelsHint: 'Adds the text next to icon buttons',
+    suggestionDelay: 'Suggest a meal again after',
+    // Settings › Suggest a meal again after: 1 h, 4 h, 12 h, 1 day, 1 week, 1 month.
+    suggestionDelayHours: (hours: number) => {
+      if (hours < 24) {
+        return `${hours} h`;
+      }
+      if (hours < 168) {
+        const days = hours / 24;
+        return days === 1 ? '1 day' : `${days} days`;
+      }
+      if (hours < 720) {
+        const weeks = hours / 168;
+        return weeks === 1 ? '1 week' : `${weeks} weeks`;
+      }
+      const months = hours / 720;
+      return months === 1 ? '1 month' : `${months} months`;
+    },
     system: 'System',
     units: 'Units',
     unitsMetric: 'European (g, l)',

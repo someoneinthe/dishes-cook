@@ -119,6 +119,10 @@ type PickOptions = Readonly<{
   omittedSyncIdList?: readonly string[];
   // Returns a number in [0, 1).
   random?: () => number;
+  // The recipes suggested recently, by sync id, the one suggested longest ago first: skipped while
+  // others match; when every match was, the one suggested longest ago is picked. At most
+  // MAX_RECENT_SUGGESTIONS.
+  recentlySuggestedSyncIdList?: readonly string[];
   // Recipes cooked at or after this time (ms) are skipped (the meal history); undefined = none.
   // When every match was cooked since then, the one cooked longest ago is picked.
   skipCookedSince?: number;
@@ -326,20 +330,41 @@ export function pickRandomRecipeId(
   filters: RecipeFilters,
   options: PickOptions = {},
 ): number | undefined {
-  const { excludedId, omittedSyncIdList = [], random = Math.random, skipCookedSince } = options;
+  const {
+    excludedId,
+    omittedSyncIdList = [],
+    random = Math.random,
+    recentlySuggestedSyncIdList = [],
+    skipCookedSince,
+  } = options;
   const filtersMatch = filtersWhere(database, filters);
   const matchingWhere =
     omittedSyncIdList.length === 0
       ? filtersMatch
       : and(filtersMatch, notInArray(recipes.syncId, [...omittedSyncIdList]));
+  // Not cooked recently, then not suggested recently: a random one of those, else the one suggested
+  // longest ago among those not cooked recently, else the one cooked longest ago.
+  const notCookedWhere =
+    skipCookedSince === undefined
+      ? matchingWhere
+      : and(matchingWhere, notCookedSinceWhere(skipCookedSince));
+  const pickNotCooked = () => {
+    if (recentlySuggestedSyncIdList.length === 0) {
+      return pickAtRandom(database, notCookedWhere, excludedId, random);
+    }
+    const notSuggestedWhere = and(
+      notCookedWhere,
+      notInArray(recipes.syncId, [...recentlySuggestedSyncIdList]),
+      excludedId === undefined ? undefined : ne(recipes.id, excludedId),
+    );
+    return (
+      pickAtRandom(database, notSuggestedWhere, undefined, random) ??
+      pickLeastRecentlySuggested(database, notCookedWhere, excludedId, recentlySuggestedSyncIdList)
+    );
+  };
   return skipCookedSince === undefined
-    ? pickAtRandom(database, matchingWhere, excludedId, random)
-    : (pickAtRandom(
-        database,
-        and(matchingWhere, notCookedSinceWhere(skipCookedSince)),
-        excludedId,
-        random,
-      ) ?? pickLeastRecentlyCooked(database, matchingWhere, excludedId));
+    ? pickNotCooked()
+    : (pickNotCooked() ?? pickLeastRecentlyCooked(database, matchingWhere, excludedId));
 }
 
 // Creates (no id) or updates a recipe and its ingredients (with their quantities) in one
@@ -517,6 +542,31 @@ function pickLeastRecentlyCooked(
       .from(recipes)
       .where(condition)
       .orderBy(asc(LAST_COOKED_AT), asc(recipes.sortKey), asc(recipes.id))
+      .limit(1)
+      .get()?.id;
+  return (
+    (excludedId === undefined ? undefined : pick(and(where, ne(recipes.id, excludedId)))) ??
+    pick(where)
+  );
+}
+
+// The matching recipe suggested longest ago (first in `syncIdList`), other than `excludedId` when
+// another one matches; one not suggested recently comes last. Its place in the list (at most
+// MAX_RECENT_SUGGESTIONS sync ids) is read with json_each: one lookup per match.
+function pickLeastRecentlySuggested(
+  database: AppDatabase,
+  where: SQL | undefined,
+  excludedId: number | undefined,
+  syncIdList: readonly string[],
+): number | undefined {
+  // Not in the list: after it.
+  const placeInList = sql`coalesce((select "key" from json_each(${JSON.stringify(syncIdList)}) where "value" = "recipes"."sync_id"), ${syncIdList.length})`;
+  const pick = (condition: SQL | undefined) =>
+    database
+      .select({ id: recipes.id })
+      .from(recipes)
+      .where(condition)
+      .orderBy(asc(placeInList), asc(recipes.sortKey), asc(recipes.id))
       .limit(1)
       .get()?.id;
   return (
