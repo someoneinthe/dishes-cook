@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/someoneinthe/dishes-cook/compare/v1.2.0...v1.3.0) (2026-11-09)
+
+
+### Features
+
+* don't suggest the same meal again within a delay ([#150](https://github.com/someoneinthe/dishes-cook/issues/150)) ([779b32c](https://github.com/someoneinthe/dishes-cook/commit/779b32c4e7b4ffc3f7fb24c8acd84769f1568cfa))
+
 ## [1.2.0](https://github.com/someoneinthe/dishes-cook/compare/v1.1.0...v1.2.0) (2026-11-03)
 
 
