@@ -20,18 +20,21 @@ type Suggestion = Readonly<{ at: number; syncId: string }>;
 // it is never overwritten (it may still be readable at the next launch).
 const state: { current?: readonly Suggestion[]; isUnreadable?: boolean } = {};
 
-// The recipes suggested at or after `since` (ms), by sync id, the one suggested longest ago first.
-export function getSuggestedSince(since: number): readonly string[] {
+// The recipes suggested between `since` (ms) and now, by sync id, the one suggested longest ago
+// first. Those dated after now (suggested while the clock was ahead) are ignored: they would stay
+// skipped for longer than the delay.
+export function getSuggestedSince(since: number, now = Date.now()): readonly string[] {
   return read()
-    .filter((suggestion) => suggestion.at >= since)
+    .filter((suggestion) => suggestion.at >= since && suggestion.at <= now)
     .map((suggestion) => suggestion.syncId);
 }
 
 // A recipe suggested again moves to the end, with its new time.
 export function recordSuggestion(syncId: string, now = Date.now()): void {
   const nextList = [
-    ...read().filter(
-      (suggestion) => suggestion.syncId !== syncId && suggestion.at > now - LONGEST_DELAY,
+    ...readForWriting().filter(
+      (suggestion) =>
+        suggestion.syncId !== syncId && suggestion.at > now - LONGEST_DELAY && suggestion.at <= now,
     ),
     { at: now, syncId },
   ].slice(-MAX_RECENT_SUGGESTIONS);
@@ -68,7 +71,8 @@ function parse(stored: null | string): readonly Suggestion[] {
   }
   try {
     const parsed: unknown = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed.filter(isSuggestion) : [];
+    // At most MAX_RECENT_SUGGESTIONS, even if more were stored: the pick's query stays bounded.
+    return Array.isArray(parsed) ? parsed.filter(isSuggestion).slice(-MAX_RECENT_SUGGESTIONS) : [];
   } catch {
     return [];
   }
@@ -77,12 +81,37 @@ function parse(stored: null | string): readonly Suggestion[] {
 // Not readable (the storage failing): none, and the meal choice still works.
 function read(): readonly Suggestion[] {
   if (state.current === undefined) {
-    try {
-      state.current = parse(Storage.getItemSync(STORAGE_KEY));
-    } catch {
-      state.current = [];
-      state.isUnreadable = true;
-    }
+    const storedList = readStored();
+    state.current = storedList ?? [];
+    state.isUnreadable = storedList === undefined;
   }
   return state.current;
+}
+
+// Before writing, a stored list that couldn't be read is read again: once the storage works again,
+// it is merged with the suggestions made meanwhile (newer, so after it) instead of being lost.
+function readForWriting(): readonly Suggestion[] {
+  const currentList = read();
+  if (!state.isUnreadable) {
+    return currentList;
+  }
+  const storedList = readStored();
+  if (storedList === undefined) {
+    return currentList;
+  }
+  state.isUnreadable = false;
+  const suggestedMeanwhile = new Set(currentList.map((suggestion) => suggestion.syncId));
+  return [
+    ...storedList.filter((suggestion) => !suggestedMeanwhile.has(suggestion.syncId)),
+    ...currentList,
+  ];
+}
+
+// undefined: the storage failed.
+function readStored(): readonly Suggestion[] | undefined {
+  try {
+    return parse(Storage.getItemSync(STORAGE_KEY));
+  } catch {
+    return undefined;
+  }
 }
