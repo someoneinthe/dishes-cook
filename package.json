@@ -49,7 +49,7 @@
     "@commitlint/config-conventional": "^21.2.3",
     "@eslint/compat": "^2.1.1",
     "@react-native/eslint-plugin": "0.88.0",
-    "@tanstack/eslint-plugin-query": "^5.105.0",
+    "@tanstack/eslint-plugin-query": "^5.105.3",
     "@testing-library/react-native": "^14.1.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/jest": "^30.0.0",
@@ -58,7 +58,7 @@
     "babel-preset-expo": "~58.0.16",
     "better-sqlite3": "^13.0.3",
     "drizzle-kit": "^0.31.11",
-    "eslint": "^10.13.0",
+    "eslint": "^10.14.0",
     "eslint-config-expo": "~58.0.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-i18next": "^6.1.5",
@@ -66,7 +66,7 @@
     "eslint-plugin-perfectionist": "^5.13.0",
     "eslint-plugin-react-native": "^5.0.0",
     "eslint-plugin-react-native-a11y": "^3.5.1",
-    "eslint-plugin-react-you-might-not-need-an-effect": "^1.0.2",
+    "eslint-plugin-react-you-might-not-need-an-effect": "^1.1.0",
     "eslint-plugin-sonarjs": "^4.2.2",
     "eslint-plugin-testing-library": "^7.16.2",
     "eslint-plugin-unicorn": "^79.0.0",
@@ -81,7 +81,7 @@
     "prettier": "^3.9.10",
     "subset-font": "^2.9.0",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.72.0"
+    "typescript-eslint": "^8.72.1"
   },
   "scripts": {
     "start": "expo start",
