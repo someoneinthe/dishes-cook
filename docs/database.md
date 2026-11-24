@@ -146,4 +146,4 @@ A change to a synced table (`recipes`, `ingredients`, `recipe_ingredients`, `coo
 
 ## Tests
 
-Query and screen tests run on a real in-memory SQLite (`better-sqlite3`, the same engine and the same migrations as the app) via `createTestConnection` and `renderWithDatabase` from `src/test/test-database.tsx`.
+Query and screen tests run on a real in-memory SQLite (`better-sqlite3`, the same engine and the same migrations as the app) via `createTestConnection` and `renderWithDatabase` from `src/test/test-database.tsx`. `better-sqlite3` is pinned to a version bundling the same SQLite minor as `expo-sqlite` (`SQLITE_VERSION` in `node_modules/expo-sqlite`; Dependabot ignores it): SQLite 3.54 changed how a subquery's JSON nests, which migration 0012 relies on. Bump it by hand when `expo-sqlite`'s SQLite moves.

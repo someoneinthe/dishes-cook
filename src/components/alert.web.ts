@@ -18,6 +18,7 @@ export const Alert = {
   // A dialog without Cancel closes with Escape too, as `cancelable` asks.
   alert(
     title: string,
+    // eslint-disable-next-line unicorn/prefer-options-parameter -- same signature as React Native's Alert.alert
     message?: string,
     buttonList?: AlertButton[],
     _options?: AlertOptions,
