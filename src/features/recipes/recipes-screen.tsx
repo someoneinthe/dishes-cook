@@ -158,13 +158,12 @@ function describeMaturation(item: RecipeListItem, t: Messages): string | undefin
 // What a screen reader announces for a row: its labels, read as one (a drink has no course).
 function describeRecipeRow(item: RecipeListItem, kind: RecipeKind, t: Messages): string {
   const ingredients = t.recipes.ingredientCount(item.ingredientCount);
-  return kind === 'drink'
-    ? t.recipes.rowLabel(item.title, [describeMaturation(item, t), ingredients])
-    : t.recipes.rowLabel(item.title, [
-        describeSeason(item.season, t),
-        t.courses[item.course],
-        ingredients,
-      ]);
+  return t.recipes.rowLabel(
+    item.title,
+    kind === 'drink'
+      ? [describeMaturation(item, t), ingredients]
+      : [describeSeason(item.season, t), t.courses[item.course], ingredients],
+  );
 }
 
 // Read-only on a TV: recipes are written on the phone.
